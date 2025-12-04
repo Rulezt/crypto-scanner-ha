@@ -177,45 +177,57 @@ class VolumeScanner:
         """Send Telegram alert"""
         if not self.telegram_token or not self.telegram_chat_id:
             return
-        
-        message = f"📊 *Volume & Movers Alert!*\n\n"
-        
-        if result['gainers']:
-            message += f"🚀 *Top Gainers:*\n"
-            for coin in result['gainers'][:5]:
-                message += f"   {coin['symbol']}: +{coin['change_pct']:.2f}%\n"
-            message += "\n"
-        
-        if result['losers']:
-            message += f"📉 *Top Losers:*\n"
-            for coin in result['losers'][:5]:
-                message += f"   {coin['symbol']}: {coin['change_pct']:.2f}%\n"
-            message += "\n"
-        
-        message += f"🕐 {datetime.now().strftime('%H:%M:%S')}"
-        
-        try:
-            url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-            payload = {
-                'chat_id': self.telegram_chat_id,
-                'text': message,
-                'parse_mode': 'Markdown'
-            }
-            requests.post(url, json=payload, timeout=10)
-            print("✅ Volume alert sent")
-            
-            # Send charts for top gainer and top loser
-            if CHARTS_AVAILABLE:
-                charts_to_send = []
-                if result['gainers']:
-                    charts_to_send.append(result['gainers'][0])
-                if result['losers']:
-                    charts_to_send.append(result['losers'][0])
-                if charts_to_send:
-                    self.send_charts(charts_to_send)
-                    
-        except Exception as e:
-            print(f"❌ Error sending alert: {e}")
+
+        # Text alerts disabled - send only charts
+        # message = f"📊 *Volume & Movers Alert!*\n\n"
+        #
+        # if result['gainers']:
+        #     message += f"🚀 *Top Gainers:*\n"
+        #     for coin in result['gainers'][:5]:
+        #         message += f"   {coin['symbol']}: +{coin['change_pct']:.2f}%\n"
+        #     message += "\n"
+        #
+        # if result['losers']:
+        #     message += f"📉 *Top Losers:*\n"
+        #     for coin in result['losers'][:5]:
+        #         message += f"   {coin['symbol']}: {coin['change_pct']:.2f}%\n"
+        #     message += "\n"
+        #
+        # message += f"🕐 {datetime.now().strftime('%H:%M:%S')}"
+        #
+        # try:
+        #     url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
+        #     payload = {
+        #         'chat_id': self.telegram_chat_id,
+        #         'text': message,
+        #         'parse_mode': 'Markdown'
+        #     }
+        #     requests.post(url, json=payload, timeout=10)
+        #     print("✅ Volume alert sent")
+        #
+        #     # Send charts for top gainer and top loser
+        #     if CHARTS_AVAILABLE:
+        #         charts_to_send = []
+        #         if result['gainers']:
+        #             charts_to_send.append(result['gainers'][0])
+        #         if result['losers']:
+        #             charts_to_send.append(result['losers'][0])
+        #         if charts_to_send:
+        #             self.send_charts(charts_to_send)
+        #
+        # except Exception as e:
+        #     print(f"❌ Error sending alert: {e}")
+
+        # Send only charts for top gainer and top loser
+        if CHARTS_AVAILABLE:
+            print("📊 Sending only chart images (text alerts disabled)")
+            charts_to_send = []
+            if result['gainers']:
+                charts_to_send.append(result['gainers'][0])
+            if result['losers']:
+                charts_to_send.append(result['losers'][0])
+            if charts_to_send:
+                self.send_charts(charts_to_send)
     
     def send_charts(self, coins):
         """Send chart images"""

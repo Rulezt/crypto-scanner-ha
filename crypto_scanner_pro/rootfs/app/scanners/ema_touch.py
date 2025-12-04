@@ -157,37 +157,43 @@ class EMAScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             print("⚠️ Telegram not configured")
             return
-        
-        message = f"🎯 *EMA {self.ema_period} Touch Alert!*\n\n"
-        message += f"Found {len(coins)} coins:\n\n"
-        
-        for coin in coins[:10]:
-            message += f"🟢 *{coin['symbol']}*\n"
-            message += f"   Price: ${coin['price']:.4f}\n"
-            message += f"   Distance: {coin['distance_pct']:.2f}%\n\n"
-        
-        message += f"🕐 {datetime.now().strftime('%H:%M:%S')}"
-        
-        try:
-            url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-            payload = {
-                'chat_id': self.telegram_chat_id,
-                'text': message,
-                'parse_mode': 'Markdown'
-            }
-            response = requests.post(url, json=payload, timeout=10)
-            
-            if response.ok:
-                print("✅ Telegram alert sent")
-                
-                # Send charts for top 3 coins
-                if CHARTS_AVAILABLE and len(coins) > 0:
-                    self.send_charts(coins[:3])
-            else:
-                print(f"❌ Telegram error: {response.text}")
-                
-        except Exception as e:
-            print(f"❌ Error sending Telegram: {e}")
+
+        # Text alerts disabled - send only charts
+        # message = f"🎯 *EMA {self.ema_period} Touch Alert!*\n\n"
+        # message += f"Found {len(coins)} coins:\n\n"
+        #
+        # for coin in coins[:10]:
+        #     message += f"🟢 *{coin['symbol']}*\n"
+        #     message += f"   Price: ${coin['price']:.4f}\n"
+        #     message += f"   Distance: {coin['distance_pct']:.2f}%\n\n"
+        #
+        # message += f"🕐 {datetime.now().strftime('%H:%M:%S')}"
+        #
+        # try:
+        #     url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
+        #     payload = {
+        #         'chat_id': self.telegram_chat_id,
+        #         'text': message,
+        #         'parse_mode': 'Markdown'
+        #     }
+        #     response = requests.post(url, json=payload, timeout=10)
+        #
+        #     if response.ok:
+        #         print("✅ Telegram alert sent")
+        #
+        #         # Send charts for top 3 coins
+        #         if CHARTS_AVAILABLE and len(coins) > 0:
+        #             self.send_charts(coins[:3])
+        #     else:
+        #         print(f"❌ Telegram error: {response.text}")
+        #
+        # except Exception as e:
+        #     print(f"❌ Error sending Telegram: {e}")
+
+        # Send only charts for top 3 coins
+        if CHARTS_AVAILABLE and len(coins) > 0:
+            print("📊 Sending only chart images (text alerts disabled)")
+            self.send_charts(coins[:3])
     
     def send_charts(self, coins):
         """Send chart images for coins"""
