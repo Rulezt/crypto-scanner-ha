@@ -1,6 +1,6 @@
 name: "Crypto Scanner Professional"
 description: "Scanner crypto unificato con tutto integrato - Zero dipendenze"
-version: "2.1.8"
+version: "2.1.9"
 slug: "crypto_scanner_pro"
 init: false
 arch:
@@ -24,6 +24,8 @@ ports_description:
 options:
   telegram_token: ""
   telegram_chat_id: ""
+  ema_touch_threshold: 2.0
 schema:
   telegram_token: str
   telegram_chat_id: str
+  ema_touch_threshold: float

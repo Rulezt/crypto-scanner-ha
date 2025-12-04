@@ -1,6 +1,6 @@
-"""EMA Touch Scanner"""
+"""EMA Touch Scanner - 30m Timeframe with EMA 60 Focus"""
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 import sys
 import os
 import json
@@ -19,24 +19,32 @@ except ImportError:
 COOLDOWN_FILE = '/data/ema_cooldown.json'
 
 class EMAScanner:
-    def __init__(self, telegram_config, enabled=True, ema_period=60, 
-                 ema_touch_candles=3, proximity_threshold=0.5, 
+    def __init__(self, telegram_config, enabled=True, ema_touch_threshold=2.0,
                  scan_interval_minutes=30, min_volume_24h=10000000,
-                 new_listing_days=30, cooldown_hours=2, 
-                 send_screenshots=True, max_coins_per_alert=10):
-        
+                 max_coins_per_alert=10, **kwargs):
+        """
+        EMA Touch Scanner - Monitors 30m timeframe for EMA 60 proximity
+
+        Args:
+            telegram_config: Dict with 'token' and 'chat_id'
+            enabled: Enable/disable scanner
+            ema_touch_threshold: Distance threshold in % (default 2.0%)
+            min_volume_24h: Minimum 24h volume filter
+            max_coins_per_alert: Max coins per alert batch
+        """
+
         self.telegram_token = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
         self.enabled = enabled
-        self.ema_period = ema_period
-        self.proximity_threshold = proximity_threshold / 100
+        self.ema_touch_threshold = ema_touch_threshold  # Configurable threshold
         self.min_volume_24h = min_volume_24h
-        self.cooldown_hours = cooldown_hours
         self.max_coins_per_alert = max_coins_per_alert
-        
+
         # Carica cooldown da file
         self.last_alerts = self._load_cooldown()
-        
+
+        print(f"🎯 EMA Touch Scanner initialized - Threshold: {self.ema_touch_threshold}%, Timeframe: 30m")
+
     def _load_cooldown(self):
         """Carica cooldown da file persistente"""
         try:
@@ -48,7 +56,7 @@ class EMAScanner:
         except Exception as e:
             print(f"⚠️ Error loading cooldown: {e}")
         return {}
-    
+
     def _save_cooldown(self):
         """Salva cooldown su file persistente"""
         try:
@@ -58,7 +66,7 @@ class EMAScanner:
                 json.dump(data, f)
         except Exception as e:
             print(f"⚠️ Error saving cooldown: {e}")
-    
+
     def is_in_cooldown(self, symbol):
         """Check if symbol already alerted on current daily candle (UTC 00:00 reset)"""
         if symbol not in self.last_alerts:
@@ -79,155 +87,224 @@ class EMAScanner:
         # Same candle, in cooldown
         print(f"⏳ {symbol} already alerted on current daily candle (UTC)")
         return True
-    
+
     def mark_alerted(self, symbol):
         """Mark symbol as alerted"""
         self.last_alerts[symbol] = datetime.utcnow()
-        self._save_cooldown()  # Salva subito su file!
-        
+        self._save_cooldown()
+
+    def fetch_klines_and_calculate_ema(self, symbol, interval='30', limit=250):
+        """
+        Fetch klines from Bybit and calculate EMA 60
+
+        Returns:
+            dict: {
+                'current_price': float,
+                'ema60': float,
+                'distance_pct': float,
+                'ema5': float,
+                'ema10': float,
+                'ema223': float
+            } or None if error
+        """
+        try:
+            url = 'https://api.bybit.com/v5/market/kline'
+            params = {
+                'category': 'linear',
+                'symbol': symbol,
+                'interval': interval,  # 30m timeframe
+                'limit': limit
+            }
+
+            response = requests.get(url, params=params, timeout=10)
+            data = response.json()
+
+            if data['retCode'] != 0:
+                return None
+
+            # Converti klines in lista di prezzi di chiusura
+            klines = data['result']['list']
+            if len(klines) < 223:  # Need at least 223 candles for EMA 223
+                return None
+
+            # Ordina per timestamp crescente
+            klines.sort(key=lambda x: int(x[0]))
+
+            # Estrai prezzi di chiusura
+            closes = [float(k[4]) for k in klines]
+
+            # Calcola EMA usando formula: EMA = (Close - EMA_prev) * multiplier + EMA_prev
+            # Multiplier = 2 / (period + 1)
+
+            def calculate_ema(prices, period):
+                """Calculate EMA for given period"""
+                if len(prices) < period:
+                    return None
+
+                multiplier = 2 / (period + 1)
+                # SMA come primo valore
+                ema = sum(prices[:period]) / period
+
+                # Calcola EMA per tutti i valori successivi
+                for price in prices[period:]:
+                    ema = (price - ema) * multiplier + ema
+
+                return ema
+
+            # Calcola tutte le 4 EMA
+            ema5 = calculate_ema(closes, 5)
+            ema10 = calculate_ema(closes, 10)
+            ema60 = calculate_ema(closes, 60)
+            ema223 = calculate_ema(closes, 223)
+
+            if ema60 is None:
+                return None
+
+            # Prezzo corrente (ultima chiusura)
+            current_price = closes[-1]
+
+            # Calcola distanza percentuale dall'EMA 60
+            distance_pct = abs((current_price - ema60) / ema60 * 100)
+
+            return {
+                'current_price': current_price,
+                'ema60': ema60,
+                'ema5': ema5,
+                'ema10': ema10,
+                'ema223': ema223,
+                'distance_pct': distance_pct
+            }
+
+        except Exception as e:
+            print(f"❌ Error fetching klines for {symbol}: {e}")
+            return None
+
     def scan(self):
-        """Scan for EMA touches"""
+        """Scan for EMA 60 touches on 30m timeframe"""
         if not self.enabled:
             return []
-        
-        print(f"🎯 EMA Touch Scanner - Looking for EMA {self.ema_period} touches...")
-        
+
+        print(f"🎯 EMA Touch Scanner - Looking for EMA 60 proximity (Threshold: {self.ema_touch_threshold}%, Timeframe: 30m)...")
+
         # Get trading pairs from Bybit
         try:
             url = "https://api.bybit.com/v5/market/tickers?category=linear"
             response = requests.get(url, timeout=10)
             data = response.json()
-            
+
             if data['retCode'] != 0:
                 print(f"❌ Bybit API error: {data['retMsg']}")
                 return []
-            
-            pairs = [item for item in data['result']['list'] 
-                    if item['symbol'].endswith('USDT') and 
+
+            # Filter pairs by volume
+            pairs = [item for item in data['result']['list']
+                    if item['symbol'].endswith('USDT') and
                     float(item.get('volume24h', 0)) * float(item.get('lastPrice', 0)) > self.min_volume_24h]
-            
-            print(f"📊 Analyzing {len(pairs)} pairs...")
-            
+
+            print(f"📊 Analyzing {len(pairs)} pairs with sufficient volume...")
+
             found = []
+            analyzed = 0
+
             for pair in pairs[:50]:  # Limit to avoid rate limits
                 symbol = pair['symbol']
-                
-                # Get klines and calculate EMA
-                # Simplified: check if price is near EMA
-                last_price = float(pair['lastPrice'])
-                
-                # Mock EMA calculation (in production, fetch klines and calculate)
-                # For demo, assume EMA is close to last price
-                mock_ema = last_price * 1.001  # Mock: EMA slightly above
-                
-                distance = abs(last_price - mock_ema) / last_price
-                
-                if distance < self.proximity_threshold:
-                    # Check cooldown
+                analyzed += 1
+
+                if analyzed % 10 == 0:
+                    print(f"   Progress: {analyzed}/50 pairs analyzed...")
+
+                # Fetch klines and calculate EMA
+                ema_data = self.fetch_klines_and_calculate_ema(symbol, interval='30', limit=250)
+
+                if not ema_data:
+                    continue
+
+                # Check if distance is within threshold
+                if ema_data['distance_pct'] < self.ema_touch_threshold:
+                    # Check if first touch of the day
                     if self.is_in_cooldown(symbol):
-                        print(f"⏳ {symbol} in cooldown, skipping")
                         continue
-                    
+
+                    # Determine approach direction
+                    approach_dir = "from above" if ema_data['current_price'] > ema_data['ema60'] else "from below"
+
                     found.append({
                         'symbol': symbol,
-                        'price': last_price,
-                        'distance_pct': distance * 100,
+                        'price': ema_data['current_price'],
+                        'ema60': ema_data['ema60'],
+                        'distance_pct': ema_data['distance_pct'],
+                        'approach': approach_dir,
                         'volume_24h': float(pair.get('volume24h', 0))
                     })
-            
+
+                    print(f"   ✅ {symbol}: {ema_data['distance_pct']:.2f}% from EMA60 ({approach_dir})")
+
             # Limita coins per alert
             found = found[:self.max_coins_per_alert]
-            
+
             if found:
-                print(f"✅ Found {len(found)} EMA touches!")
-                
+                print(f"🎯 Found {len(found)} EMA 60 touches!")
+
                 # Mark all coins as alerted
                 for coin in found:
                     self.mark_alerted(coin['symbol'])
-                
+
                 self.send_alert(found)
             else:
-                print(f"⚠️ No EMA touches found")
-            
+                print(f"⚠️ No EMA 60 touches found within {self.ema_touch_threshold}% threshold")
+
             return found
-            
+
         except Exception as e:
             print(f"❌ Error in EMA scanner: {e}")
+            import traceback
+            traceback.print_exc()
             return []
-    
+
     def send_alert(self, coins):
-        """Send Telegram alert"""
+        """Send Telegram alert - charts only"""
         if not self.telegram_token or not self.telegram_chat_id:
             print("⚠️ Telegram not configured")
             return
 
-        # Text alerts disabled - send only charts
-        # message = f"🎯 *EMA {self.ema_period} Touch Alert!*\n\n"
-        # message += f"Found {len(coins)} coins:\n\n"
-        #
-        # for coin in coins[:10]:
-        #     message += f"🟢 *{coin['symbol']}*\n"
-        #     message += f"   Price: ${coin['price']:.4f}\n"
-        #     message += f"   Distance: {coin['distance_pct']:.2f}%\n\n"
-        #
-        # message += f"🕐 {datetime.now().strftime('%H:%M:%S')}"
-        #
-        # try:
-        #     url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-        #     payload = {
-        #         'chat_id': self.telegram_chat_id,
-        #         'text': message,
-        #         'parse_mode': 'Markdown'
-        #     }
-        #     response = requests.post(url, json=payload, timeout=10)
-        #
-        #     if response.ok:
-        #         print("✅ Telegram alert sent")
-        #
-        #         # Send charts for top 3 coins
-        #         if CHARTS_AVAILABLE and len(coins) > 0:
-        #             self.send_charts(coins[:3])
-        #     else:
-        #         print(f"❌ Telegram error: {response.text}")
-        #
-        # except Exception as e:
-        #     print(f"❌ Error sending Telegram: {e}")
-
         # Send only charts for top 3 coins
         if CHARTS_AVAILABLE and len(coins) > 0:
-            print("📊 Sending only chart images (text alerts disabled)")
+            print(f"📊 Sending chart images for {len(coins[:3])} coins (text alerts disabled)")
             self.send_charts(coins[:3])
-    
+
     def send_charts(self, coins):
         """Send chart images for coins"""
         for coin in coins:
             try:
-                print(f"📊 Generating chart for {coin['symbol']}...")
-                chart_bytes = generate_chart_for_coin(coin['symbol'], self.ema_period)
-                
+                print(f"📊 Generating 30m chart for {coin['symbol']}...")
+                chart_bytes = generate_chart_for_coin(coin['symbol'], ema_period=60)
+
                 if chart_bytes:
                     # Link TradingView con .P per perpetual
-                    # BTCUSDT -> BYBIT:BTCUSDT.P
                     tv_symbol = coin['symbol'].replace('USDT', 'USDT.P')
                     tv_link = f"https://it.tradingview.com/chart/KDtSSRjB/?symbol=BYBIT:{tv_symbol}"
-                    
+
+                    # Caption con distanza e approccio
+                    caption = f"📈 [{coin['symbol']}]({tv_link}) - EMA 60\n"
+                    caption += f"Distance: {coin['distance_pct']:.2f}% ({coin['approach']})"
+
                     # Send photo to Telegram
                     url = f"https://api.telegram.org/bot{self.telegram_token}/sendPhoto"
                     files = {'photo': ('chart.png', chart_bytes, 'image/png')}
                     data = {
                         'chat_id': self.telegram_chat_id,
-                        'caption': f"📈 [{coin['symbol']}]({tv_link}) - EMA {self.ema_period}",
+                        'caption': caption,
                         'parse_mode': 'Markdown'
                     }
-                    
+
                     response = requests.post(url, files=files, data=data, timeout=30)
-                    
+
                     if response.ok:
                         print(f"✅ Chart sent for {coin['symbol']}")
                     else:
                         print(f"❌ Failed to send chart: {response.text}")
                 else:
                     print(f"⚠️ No chart generated for {coin['symbol']}")
-                    
+
             except Exception as e:
                 print(f"❌ Error sending chart for {coin['symbol']}: {e}")
