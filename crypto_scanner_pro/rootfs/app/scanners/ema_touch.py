@@ -15,8 +15,8 @@ except ImportError:
     CHARTS_AVAILABLE = False
     print("⚠️ Chart generator not available")
 
-# File per salvare cooldown persistente
-COOLDOWN_FILE = '/data/ema_cooldown.json'
+# File per salvare cooldown persistente - Path fallback per massima compatibilità
+COOLDOWN_FILE = None  # Will be set in __init__
 
 class EMAScanner:
     def __init__(self, telegram_config, enabled=True, ema_touch_threshold=2.0,
@@ -40,58 +40,155 @@ class EMAScanner:
         self.min_volume_24h = min_volume_24h
         self.max_coins_per_alert = max_coins_per_alert
 
-        # Carica cooldown da file
+        # Find persistent path for cooldown file
+        self._setup_cooldown_path()
+
+        # Carica cooldown da file CON LOGGING
+        print(f"🔄 Initializing EMA Scanner cooldown system...")
         self.last_alerts = self._load_cooldown()
+        print(f"📊 Cooldown state loaded: {len(self.last_alerts)} active cooldowns")
 
         print(f"🎯 EMA Touch Scanner initialized - Threshold: {self.ema_touch_threshold}%, Timeframe: 30m")
 
+    def _setup_cooldown_path(self):
+        """Find first writable path for cooldown persistence"""
+        global COOLDOWN_FILE
+
+        # Prova path multipli in ordine di preferenza (HA persistent locations)
+        candidate_paths = [
+            '/config/ema_cooldown.json',
+            '/share/ema_cooldown.json',
+            '/data/ema_cooldown.json'
+        ]
+
+        print("🔍 Searching for persistent cooldown storage path...")
+        for path in candidate_paths:
+            try:
+                test_dir = os.path.dirname(path)
+                # Check if directory exists and is writable
+                if os.path.exists(test_dir):
+                    # Try to create test file
+                    test_file = os.path.join(test_dir, '.test_write')
+                    try:
+                        with open(test_file, 'w') as f:
+                            f.write('test')
+                        os.remove(test_file)
+                        COOLDOWN_FILE = path
+                        print(f"✅ Using cooldown path: {COOLDOWN_FILE}")
+                        return
+                    except:
+                        print(f"   ⚠️ Path {path} exists but not writable")
+                        continue
+                else:
+                    print(f"   ℹ️ Path {test_dir} does not exist")
+            except Exception as e:
+                print(f"   ⚠️ Error checking {path}: {e}")
+                continue
+
+        # Fallback to /data/ if nothing else works
+        COOLDOWN_FILE = '/data/ema_cooldown.json'
+        print(f"⚠️ Using fallback path: {COOLDOWN_FILE}")
+
     def _load_cooldown(self):
-        """Carica cooldown da file persistente"""
+        """Carica cooldown da file persistente con logging esteso"""
         try:
             if os.path.exists(COOLDOWN_FILE):
+                print(f"📂 Loading cooldown from: {COOLDOWN_FILE}")
                 with open(COOLDOWN_FILE, 'r') as f:
                     data = json.load(f)
                     # Converti stringhe ISO in datetime
-                    return {k: datetime.fromisoformat(v) for k, v in data.items()}
+                    cooldown_data = {k: datetime.fromisoformat(v) for k, v in data.items()}
+                    print(f"✅ Loaded {len(cooldown_data)} cooldown entries")
+                    if cooldown_data:
+                        print(f"📋 Cooldown data preview: {dict(list(cooldown_data.items())[:3])}...")
+                    return cooldown_data
+            else:
+                print(f"⚠️ Cooldown file not found at {COOLDOWN_FILE} (first run or file deleted)")
         except Exception as e:
-            print(f"⚠️ Error loading cooldown: {e}")
+            print(f"❌ Error loading cooldown: {e}")
+            import traceback
+            traceback.print_exc()
         return {}
 
     def _save_cooldown(self):
-        """Salva cooldown su file persistente"""
+        """Salva cooldown su file persistente con verifica"""
         try:
+            # Crea directory se non esiste
+            cooldown_dir = os.path.dirname(COOLDOWN_FILE)
+            if not os.path.exists(cooldown_dir):
+                print(f"📁 Creating directory: {cooldown_dir}")
+                os.makedirs(cooldown_dir, exist_ok=True)
+
             # Converti datetime in stringhe ISO
             data = {k: v.isoformat() for k, v in self.last_alerts.items()}
+
+            print(f"💾 Saving cooldown to: {COOLDOWN_FILE}")
+            print(f"📋 Data to save: {len(data)} entries")
+            if data:
+                print(f"   Sample: {dict(list(data.items())[:2])}...")
+
             with open(COOLDOWN_FILE, 'w') as f:
-                json.dump(data, f)
+                json.dump(data, f, indent=2)
+
+            print(f"✅ Cooldown saved successfully")
+
+            # Verifica che il file sia stato salvato
+            if os.path.exists(COOLDOWN_FILE):
+                file_size = os.path.getsize(COOLDOWN_FILE)
+                print(f"✅ File verified at {COOLDOWN_FILE} ({file_size} bytes)")
+            else:
+                print(f"❌ WARNING: File not found after save!")
+
         except Exception as e:
-            print(f"⚠️ Error saving cooldown: {e}")
+            print(f"❌ Error saving cooldown: {e}")
+            import traceback
+            traceback.print_exc()
 
     def is_in_cooldown(self, symbol):
         """Check if symbol already alerted on current daily candle (UTC 00:00 reset)"""
+        now = datetime.utcnow()
+        current_candle_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        print(f"🔍 Checking cooldown for {symbol}")
+        print(f"   Current UTC time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"   Current daily candle start: {current_candle_start.strftime('%Y-%m-%d %H:%M:%S')}")
+
         if symbol not in self.last_alerts:
+            print(f"   ✅ {symbol} - NO previous alert found")
             return False
 
         last_alert_time = self.last_alerts[symbol]
-        now = datetime.utcnow()
-
-        # Get current daily candle start (UTC 00:00)
-        current_candle_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         last_alert_candle_start = last_alert_time.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        print(f"   Last alert time: {last_alert_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"   Last alert candle start: {last_alert_candle_start.strftime('%Y-%m-%d %H:%M:%S')}")
 
         # If last alert was on a different daily candle, allow new alert
         if last_alert_candle_start < current_candle_start:
-            print(f"✅ {symbol} - new daily candle, allowing alert")
+            print(f"   ✅ {symbol} - New daily candle, allowing alert")
             return False
 
         # Same candle, in cooldown
-        print(f"⏳ {symbol} already alerted on current daily candle (UTC)")
+        hours_since_alert = (now - last_alert_time).total_seconds() / 3600
+        print(f"   ❌ {symbol} - Already alerted on current daily candle ({hours_since_alert:.1f}h ago)")
         return True
 
     def mark_alerted(self, symbol):
-        """Mark symbol as alerted"""
-        self.last_alerts[symbol] = datetime.utcnow()
+        """Mark symbol as alerted with verification"""
+        now = datetime.utcnow()
+        self.last_alerts[symbol] = now
+        print(f"✅ Marking {symbol} as alerted at {now.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+
+        # Save to file
         self._save_cooldown()
+
+        # Ricarica per verificare che il salvataggio sia andato a buon fine
+        print(f"🔄 Verifying cooldown persistence for {symbol}...")
+        reloaded = self._load_cooldown()
+        if symbol in reloaded:
+            print(f"   ✅ Cooldown verified for {symbol}")
+        else:
+            print(f"   ❌ WARNING: {symbol} not found in reloaded cooldown!")
 
     def fetch_klines_and_calculate_ema(self, symbol, interval='30', limit=250):
         """
