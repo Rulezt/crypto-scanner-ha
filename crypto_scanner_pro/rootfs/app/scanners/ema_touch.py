@@ -60,26 +60,29 @@ class EMAScanner:
             print(f"⚠️ Error saving cooldown: {e}")
     
     def is_in_cooldown(self, symbol):
-        """Check if symbol is in cooldown period"""
+        """Check if symbol already alerted on current daily candle (UTC 00:00 reset)"""
         if symbol not in self.last_alerts:
             return False
-        
+
         last_alert_time = self.last_alerts[symbol]
-        now = datetime.now()
-        cooldown_delta = timedelta(hours=self.cooldown_hours)
-        
-        in_cooldown = (now - last_alert_time) < cooldown_delta
-        
-        if in_cooldown:
-            remaining = cooldown_delta - (now - last_alert_time)
-            remaining_minutes = int(remaining.total_seconds() / 60)
-            print(f"⏳ {symbol} in cooldown ({remaining_minutes} min remaining)")
-        
-        return in_cooldown
+        now = datetime.utcnow()
+
+        # Get current daily candle start (UTC 00:00)
+        current_candle_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        last_alert_candle_start = last_alert_time.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # If last alert was on a different daily candle, allow new alert
+        if last_alert_candle_start < current_candle_start:
+            print(f"✅ {symbol} - new daily candle, allowing alert")
+            return False
+
+        # Same candle, in cooldown
+        print(f"⏳ {symbol} already alerted on current daily candle (UTC)")
+        return True
     
     def mark_alerted(self, symbol):
         """Mark symbol as alerted"""
-        self.last_alerts[symbol] = datetime.now()
+        self.last_alerts[symbol] = datetime.utcnow()
         self._save_cooldown()  # Salva subito su file!
         
     def scan(self):
