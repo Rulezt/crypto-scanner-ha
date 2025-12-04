@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Scanner Pro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { color: #667eea; margin-bottom: 30px; }
+        .scanner {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .scanner h3 { color: #333; margin-bottom: 15px; }
+        label { display: block; margin: 10px 0 5px; font-weight: 600; }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .checkbox { display: flex; align-items: center; margin: 15px 0; }
+        .checkbox input { width: auto; margin-right: 10px; }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 10px 0 0;
+        }
+        button:hover { background: #5568d3; }
+        .status { margin-top: 20px; padding: 15px; border-radius: 8px; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        
+        .warning-banner {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .warning-banner.show { display: block; }
+        .warning-banner strong { color: #856404; display: block; margin-bottom: 8px; font-size: 16px; }
+        .warning-banner p { margin: 3px 0; color: #856404; }
+        .warning-banner ul { margin: 10px 0 10px 20px; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Crypto Scanner Professional</h1>
+        
+        <div id="telegram-warning" class="warning-banner">
+            <strong>⚠️ Telegram Non Configurato!</strong>
+            <p>Le notifiche non verranno inviate finché non configuri Telegram.</p>
+            <p><strong>Come configurare:</strong></p>
+            <ul>
+                <li><strong>Opzione 1:</strong> Settings → Add-ons → Crypto Scanner Pro → Configuration → Inserisci token e chat_id → Restart</li>
+                <li><strong>Opzione 2 (Dashboard):</strong> Compila i campi sotto e clicca "💾 Salva"</li>
+            </ul>
+        </div>
+        
+        <!-- EMA Touch Scanner -->
+        <div class="scanner">
+            <h3>🎯 EMA Touch Scanner</h3>
+            <div class="checkbox">
+                <input type="checkbox" id="ema-enabled" checked>
+                <label for="ema-enabled">Abilita Scanner</label>
+            </div>
+            <label>Periodo EMA:</label>
+            <input type="number" id="ema-period" value="60">
+            <label>Soglia prossimità (%):</label>
+            <input type="number" id="ema-proximity" value="0.5" step="0.1">
+            <label>Intervallo scansione (minuti):</label>
+            <input type="number" id="ema-interval" value="30">
+        </div>
+        
+        <!-- Daily Flip Scanner -->
+        <div class="scanner">
+            <h3>🔄 Daily Flip Scanner</h3>
+            <div class="checkbox">
+                <input type="checkbox" id="flip-enabled" checked>
+                <label for="flip-enabled">Abilita Scanner</label>
+            </div>
+            <label>Soglia flip (%):</label>
+            <input type="number" id="flip-threshold" value="2.0" step="0.1">
+            <label>Tipo flip:</label>
+            <select id="flip-type">
+                <option value="both">Entrambi</option>
+                <option value="green_to_red">Verde → Rosso</option>
+                <option value="red_to_green">Rosso → Verde</option>
+            </select>
+            <label>Intervallo scansione (minuti):</label>
+            <input type="number" id="flip-interval" value="30">
+        </div>
+        
+        <!-- Volume Scanner -->
+        <div class="scanner">
+            <h3>📊 Volume Scanner</h3>
+            <div class="checkbox">
+                <input type="checkbox" id="volume-enabled" checked>
+                <label for="volume-enabled">Abilita Scanner</label>
+            </div>
+            <div class="checkbox">
+                <input type="checkbox" id="gainers-enabled" checked>
+                <label for="gainers-enabled">Abilita Gainers</label>
+            </div>
+            <label>Soglia gainers (%):</label>
+            <input type="number" id="gainers-threshold" value="10">
+            <div class="checkbox">
+                <input type="checkbox" id="losers-enabled" checked>
+                <label for="losers-enabled">Abilita Losers</label>
+            </div>
+            <label>Soglia losers (%):</label>
+            <input type="number" id="losers-threshold" value="10">
+            <label>Intervallo scansione (minuti):</label>
+            <input type="number" id="volume-interval" value="30">
+        </div>
+        
+        <!-- General Settings -->
+        <div class="scanner">
+            <h3>⚙️ Impostazioni Generali</h3>
+            
+            <h4 style="margin-top: 20px; color: #667eea;">📱 Telegram</h4>
+            <label>Bot Token:</label>
+            <input type="text" id="telegram-token" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+            <label>Chat ID:</label>
+            <input type="text" id="telegram-chat-id" placeholder="123456789">
+            <small style="color: #666; margin-top: 5px; display: block;">
+                💡 Come ottenere: Cerca @BotFather su Telegram → /newbot → Copia token<br>
+                💡 Chat ID: Invia /start al bot → Visita https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates
+            </small>
+            
+            <h4 style="margin-top: 20px; color: #667eea;">🔧 Parametri Scanner</h4>
+            <label>Volume minimo 24h ($):</label>
+            <input type="number" id="min-volume" value="10000000">
+            <label>Cooldown notifiche (ore):</label>
+            <input type="number" id="cooldown" value="2">
+            <label>Max coin per alert:</label>
+            <input type="number" id="max-coins" value="10">
+        </div>
+        
+        <button onclick="saveConfig()">💾 Salva Configurazione</button>
+        <button onclick="loadConfig()">🔄 Ricarica</button>
+        <button onclick="testScan()">🧪 Test Scan</button>
+        
+        <div id="status"></div>
+    </div>
+    
+    <script>
+        // Fix per Home Assistant Ingress
+        // '.' = path relativo dalla directory corrente
+        // Così la richiesta rimane dentro il tunnel Ingress
+        const API_URL = '.';  // Relativo alla directory corrente!
+        
+        async function loadConfig() {
+            try {
+                const res = await fetch(`${API_URL}/scanner-api/config`);
+                const config = await res.json();
+                
+                // EMA
+                document.getElementById('ema-enabled').checked = config.ema_touch.enabled;
+                document.getElementById('ema-period').value = config.ema_touch.ema_period;
+                document.getElementById('ema-proximity').value = config.ema_touch.proximity_threshold;
+                document.getElementById('ema-interval').value = config.ema_touch.scan_interval_minutes;
+                
+                // Flip
+                document.getElementById('flip-enabled').checked = config.daily_flip.enabled;
+                document.getElementById('flip-threshold').value = config.daily_flip.flip_threshold;
+                document.getElementById('flip-type').value = config.daily_flip.flip_type;
+                document.getElementById('flip-interval').value = config.daily_flip.scan_interval_minutes;
+                
+                // Volume
+                document.getElementById('volume-enabled').checked = config.volume_scanner.enabled;
+                document.getElementById('gainers-enabled').checked = config.volume_scanner.gainers_enabled;
+                document.getElementById('gainers-threshold').value = config.volume_scanner.gainers_threshold;
+                document.getElementById('losers-enabled').checked = config.volume_scanner.losers_enabled;
+                document.getElementById('losers-threshold').value = config.volume_scanner.losers_threshold;
+                document.getElementById('volume-interval').value = config.volume_scanner.scan_interval_minutes;
+                
+                // General
+                document.getElementById('telegram-token').value = config.telegram.token || '';
+                document.getElementById('telegram-chat-id').value = config.telegram.chat_id || '';
+                document.getElementById('min-volume').value = config.general.min_volume_24h;
+                document.getElementById('cooldown').value = config.general.cooldown_hours;
+                document.getElementById('max-coins').value = config.general.max_coins_per_alert;
+                
+                showStatus('✅ Configurazione caricata!', 'success');
+                
+                // Check if Telegram is configured
+                checkTelegramConfig();
+                
+            } catch (e) {
+                showStatus('❌ Errore caricamento: ' + e.message, 'error');
+            }
+        }
+        
+        async function saveConfig() {
+            const config = {
+                telegram: {
+                    token: document.getElementById('telegram-token').value || '',
+                    chat_id: document.getElementById('telegram-chat-id').value || '',
+                    enabled: true
+                },
+                ema_touch: {
+                    enabled: document.getElementById('ema-enabled').checked,
+                    ema_period: parseInt(document.getElementById('ema-period').value),
+                    ema_touch_candles: 3,
+                    proximity_threshold: parseFloat(document.getElementById('ema-proximity').value),
+                    scan_interval_minutes: parseInt(document.getElementById('ema-interval').value)
+                },
+                daily_flip: {
+                    enabled: document.getElementById('flip-enabled').checked,
+                    flip_threshold: parseFloat(document.getElementById('flip-threshold').value),
+                    flip_type: document.getElementById('flip-type').value,
+                    scan_interval_minutes: parseInt(document.getElementById('flip-interval').value),
+                    max_coins: 20
+                },
+                volume_scanner: {
+                    enabled: document.getElementById('volume-enabled').checked,
+                    volume_spike_threshold: 200,
+                    gainers_enabled: document.getElementById('gainers-enabled').checked,
+                    gainers_threshold: parseInt(document.getElementById('gainers-threshold').value),
+                    losers_enabled: document.getElementById('losers-enabled').checked,
+                    losers_threshold: parseInt(document.getElementById('losers-threshold').value),
+                    scan_interval_minutes: parseInt(document.getElementById('volume-interval').value)
+                },
+                general: {
+                    min_volume_24h: parseInt(document.getElementById('min-volume').value),
+                    new_listing_days: 30,
+                    cooldown_hours: parseInt(document.getElementById('cooldown').value),
+                    send_screenshots: true,
+                    max_coins_per_alert: parseInt(document.getElementById('max-coins').value)
+                }
+            };
+            
+            try {
+                console.log('💾 Saving config...', config);
+                
+                const res = await fetch(`${API_URL}/scanner-api/config`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(config)
+                });
+                
+                console.log('Response status:', res.status);
+                console.log('Response headers:', res.headers.get('content-type'));
+                
+                // Check if response is JSON
+                const contentType = res.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await res.text();
+                    console.error('Expected JSON, got:', text);
+                    throw new Error('Server returned non-JSON response: ' + text.substring(0, 100));
+                }
+                
+                const result = await res.json();
+                console.log('Result:', result);
+                
+                if (result.success) {
+                    showStatus('✅ Configurazione salvata! Gli scanner si aggiorneranno automaticamente.', 'success');
+                    
+                    // Check Telegram config again
+                    checkTelegramConfig();
+                } else {
+                    showStatus('❌ Errore: ' + result.error, 'error');
+                }
+            } catch (e) {
+                console.error('Save error:', e);
+                showStatus('❌ Errore salvataggio: ' + e.message, 'error');
+            }
+        }
+        
+        async function testScan() {
+            showStatus('🔄 Test scan in corso...', 'success');
+            try {
+                const res = await fetch(`${API_URL}/scanner-api/scan/ema`, {method: 'POST'});
+                const result = await res.json();
+                showStatus('✅ Test completato! Controlla Telegram per le notifiche.', 'success');
+            } catch (e) {
+                showStatus('❌ Errore test: ' + e.message, 'error');
+            }
+        }
+        
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+        
+        async function checkTelegramConfig() {
+            try {
+                const res = await fetch(`${API_URL}/scanner-api/health`);
+                const health = await res.json();
+                
+                const warningBanner = document.getElementById('telegram-warning');
+                
+                if (!health.telegram_configured) {
+                    warningBanner.classList.add('show');
+                } else {
+                    warningBanner.classList.remove('show');
+                }
+            } catch (e) {
+                console.error('Error checking Telegram config:', e);
+            }
+        }
+        
+        // Load config on start
+        loadConfig();
+    </script>
+</body>
+</html>
