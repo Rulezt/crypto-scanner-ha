@@ -180,7 +180,7 @@ class EMAScanner:
             return None
 
     def scan(self):
-        """Scan for EMA 60 touches on 30m timeframe"""
+        """Scan for EMA 60 touches on 30m timeframe - Top 10 Gainers + Top 10 Losers"""
         if not self.enabled:
             return []
 
@@ -196,22 +196,52 @@ class EMAScanner:
                 print(f"❌ Bybit API error: {data['retMsg']}")
                 return []
 
-            # Filter pairs by volume
-            pairs = [item for item in data['result']['list']
-                    if item['symbol'].endswith('USDT') and
-                    float(item.get('volume24h', 0)) * float(item.get('lastPrice', 0)) > self.min_volume_24h]
+            # Filter pairs by volume and calculate 24h change %
+            all_pairs = []
+            for item in data['result']['list']:
+                if not item['symbol'].endswith('USDT'):
+                    continue
 
-            print(f"📊 Analyzing {len(pairs)} pairs with sufficient volume...")
+                volume_24h_usd = float(item.get('volume24h', 0)) * float(item.get('lastPrice', 0))
+                if volume_24h_usd < self.min_volume_24h:
+                    continue
+
+                # Get 24h price change %
+                change_pct = float(item.get('price24hPcnt', 0)) * 100
+
+                all_pairs.append({
+                    'item': item,
+                    'change_pct': change_pct
+                })
+
+            print(f"📊 Found {len(all_pairs)} pairs with sufficient volume")
+
+            # Sort by change % to get gainers and losers
+            all_pairs.sort(key=lambda x: x['change_pct'], reverse=True)
+
+            # Get top 10 gainers (highest positive change)
+            top_10_gainers = all_pairs[:10]
+
+            # Get top 10 losers (lowest negative change)
+            top_10_losers = all_pairs[-10:] if len(all_pairs) >= 10 else []
+
+            # Combine: analyze top 10 gainers + top 10 losers (20 total)
+            pairs_to_analyze = [p['item'] for p in top_10_gainers] + [p['item'] for p in top_10_losers]
+
+            print(f"🎯 Analyzing top 10 Gainers + top 10 Losers (20 total)...")
+            print(f"   Top Gainer: {top_10_gainers[0]['item']['symbol']} (+{top_10_gainers[0]['change_pct']:.2f}%)")
+            if top_10_losers:
+                print(f"   Top Loser: {top_10_losers[-1]['item']['symbol']} ({top_10_losers[-1]['change_pct']:.2f}%)")
 
             found = []
             analyzed = 0
 
-            for pair in pairs[:50]:  # Limit to avoid rate limits
+            for pair in pairs_to_analyze:
                 symbol = pair['symbol']
                 analyzed += 1
 
-                if analyzed % 10 == 0:
-                    print(f"   Progress: {analyzed}/50 pairs analyzed...")
+                if analyzed % 5 == 0:
+                    print(f"   Progress: {analyzed}/20 pairs analyzed...")
 
                 # Fetch klines and calculate EMA
                 ema_data = self.fetch_klines_and_calculate_ema(symbol, interval='30', limit=250)
