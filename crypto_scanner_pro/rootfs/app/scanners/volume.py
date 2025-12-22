@@ -90,65 +90,82 @@ class VolumeScanner:
             self._save_cooldown(LOSERS_COOLDOWN_FILE, self.last_losers)
         
     def scan(self):
-        """Scan for volume spikes, gainers, losers"""
+        """Scan for volume spikes, gainers, losers - Top 20 Gainers + Top 20 Losers"""
         if not self.enabled:
             return {}
-        
+
         print(f"📊 Volume Scanner - Looking for spikes and movers...")
-        
+
         try:
             url = "https://api.bybit.com/v5/market/tickers?category=linear"
             response = requests.get(url, timeout=10)
             data = response.json()
-            
+
             if data['retCode'] != 0:
                 return {}
-            
-            pairs = [item for item in data['result']['list'] 
-                    if item['symbol'].endswith('USDT')]
-            
+
+            # Filter pairs by volume and calculate 24h change %
+            all_pairs = []
+            for item in data['result']['list']:
+                if not item['symbol'].endswith('USDT'):
+                    continue
+
+                last_price = float(item['lastPrice'])
+                change_pct = float(item.get('price24hPcnt', 0)) * 100
+                volume_24h_usd = float(item.get('volume24h', 0)) * last_price
+
+                if volume_24h_usd < self.min_volume_24h:
+                    continue
+
+                all_pairs.append({
+                    'symbol': item['symbol'],
+                    'price': last_price,
+                    'change_pct': change_pct,
+                    'volume_24h_usd': volume_24h_usd
+                })
+
+            print(f"📊 Found {len(all_pairs)} pairs with sufficient volume")
+
+            # Sort by change % to get gainers and losers
+            all_pairs.sort(key=lambda x: x['change_pct'], reverse=True)
+
+            # Get top 20 gainers and top 20 losers
+            top_20_gainers = all_pairs[:20]
+            top_20_losers = all_pairs[-20:] if len(all_pairs) >= 20 else []
+
+            print(f"🎯 Analyzing top 20 Gainers + top 20 Losers ({len(top_20_gainers) + len(top_20_losers)} total)...")
+            if top_20_gainers:
+                print(f"   Top Gainer: {top_20_gainers[0]['symbol']} (+{top_20_gainers[0]['change_pct']:.2f}%)")
+            if top_20_losers:
+                print(f"   Top Loser: {top_20_losers[-1]['symbol']} ({top_20_losers[-1]['change_pct']:.2f}%)")
+
             gainers = []
             losers = []
             volume_spikes = []
-            
-            for pair in pairs:
-                symbol = pair['symbol']
-                last_price = float(pair['lastPrice'])
-                change_pct = float(pair.get('price24hPcnt', 0)) * 100
-                volume_24h_usd = float(pair.get('volume24h', 0)) * last_price
-                
-                if volume_24h_usd < self.min_volume_24h:
-                    continue
-                
-                # Gainers
-                if self.gainers_enabled and change_pct > self.gainers_threshold:
-                    # Check cooldown
-                    if not self.is_in_cooldown(symbol, 'gainer'):
-                        gainers.append({
-                            'symbol': symbol,
-                            'price': last_price,
-                            'change_pct': change_pct,
-                            'volume_24h_usd': volume_24h_usd
-                        })
-                    else:
-                        print(f"⏳ {symbol} (gainer) in cooldown, skipping")
-                
-                # Losers
-                if self.losers_enabled and change_pct < -self.losers_threshold:
-                    # Check cooldown
-                    if not self.is_in_cooldown(symbol, 'loser'):
-                        losers.append({
-                            'symbol': symbol,
-                            'price': last_price,
-                            'change_pct': change_pct,
-                            'volume_24h_usd': volume_24h_usd
-                        })
-                    else:
-                        print(f"⏳ {symbol} (loser) in cooldown, skipping")
-            
-            # Sort and limit
-            gainers.sort(key=lambda x: x['change_pct'], reverse=True)
-            losers.sort(key=lambda x: x['change_pct'])
+
+            # Process top 20 gainers
+            if self.gainers_enabled:
+                for pair in top_20_gainers:
+                    if pair['change_pct'] > self.gainers_threshold:
+                        # Check cooldown
+                        if not self.is_in_cooldown(pair['symbol'], 'gainer'):
+                            gainers.append(pair)
+                        else:
+                            print(f"⏳ {pair['symbol']} (gainer) in cooldown, skipping")
+
+            # Process top 20 losers
+            if self.losers_enabled:
+                for pair in top_20_losers:
+                    if pair['change_pct'] < -self.losers_threshold:
+                        # Check cooldown
+                        if not self.is_in_cooldown(pair['symbol'], 'loser'):
+                            losers.append(pair)
+                        else:
+                            print(f"⏳ {pair['symbol']} (loser) in cooldown, skipping")
+
+            # Already sorted, just limit to max_coins
+            gainers = gainers[:self.max_coins]
+            losers = losers[:self.max_coins]
             
             result = {
                 'gainers': gainers[:self.max_coins],

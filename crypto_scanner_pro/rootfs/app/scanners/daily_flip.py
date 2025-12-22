@@ -77,45 +77,77 @@ class DailyFlipScanner:
         self._save_cooldown()
         
     def scan(self):
-        """Scan for daily flips"""
+        """Scan for daily flips - Top 20 Gainers + Top 20 Losers"""
         if not self.enabled:
             return []
-        
+
         print(f"🔄 Daily Flip Scanner - Looking for flips within {self.flip_threshold*100}%...")
-        
+
         try:
             url = "https://api.bybit.com/v5/market/tickers?category=linear"
             response = requests.get(url, timeout=10)
             data = response.json()
-            
+
             if data['retCode'] != 0:
                 return []
-            
-            pairs = [item for item in data['result']['list'] 
-                    if item['symbol'].endswith('USDT') and 
-                    float(item.get('volume24h', 0)) * float(item.get('lastPrice', 0)) > self.min_volume_24h]
-            
-            found = []
-            for pair in pairs[:self.max_coins]:
-                symbol = pair['symbol']
-                last_price = float(pair['lastPrice'])
-                open_price = float(pair.get('prevPrice24h', last_price))
-                
+
+            # Filter pairs by volume and calculate 24h change %
+            all_pairs = []
+            for item in data['result']['list']:
+                if not item['symbol'].endswith('USDT'):
+                    continue
+
+                volume_24h_usd = float(item.get('volume24h', 0)) * float(item.get('lastPrice', 0))
+                if volume_24h_usd < self.min_volume_24h:
+                    continue
+
+                last_price = float(item['lastPrice'])
+                open_price = float(item.get('prevPrice24h', last_price))
                 change_pct = ((last_price - open_price) / open_price) * 100
-                
+
+                all_pairs.append({
+                    'item': item,
+                    'change_pct': change_pct,
+                    'last_price': last_price
+                })
+
+            print(f"📊 Found {len(all_pairs)} pairs with sufficient volume")
+
+            # Sort by change % to get gainers and losers
+            all_pairs.sort(key=lambda x: x['change_pct'], reverse=True)
+
+            # Get top 20 gainers and top 20 losers
+            top_20_gainers = all_pairs[:20]
+            top_20_losers = all_pairs[-20:] if len(all_pairs) >= 20 else []
+
+            # Combine: analyze top 20 gainers + top 20 losers (40 total max)
+            pairs_to_analyze = top_20_gainers + top_20_losers
+
+            print(f"🎯 Analyzing top 20 Gainers + top 20 Losers ({len(pairs_to_analyze)} total)...")
+            if top_20_gainers:
+                print(f"   Top Gainer: {top_20_gainers[0]['item']['symbol']} (+{top_20_gainers[0]['change_pct']:.2f}%)")
+            if top_20_losers:
+                print(f"   Top Loser: {top_20_losers[-1]['item']['symbol']} ({top_20_losers[-1]['change_pct']:.2f}%)")
+
+            found = []
+            for pair_data in pairs_to_analyze:
+                symbol = pair_data['item']['symbol']
+                change_pct = pair_data['change_pct']
+                last_price = pair_data['last_price']
+
                 # Check if near flip (green to red or red to green)
                 if abs(change_pct) < self.flip_threshold * 100:
                     flip_direction = "🟢➡️🔴" if change_pct > 0 else "🔴➡️🟢"
-                    
+
                     if self.flip_type == 'both' or \
                        (self.flip_type == 'green_to_red' and change_pct > 0) or \
                        (self.flip_type == 'red_to_green' and change_pct < 0):
-                        
+
                         # Check cooldown
                         if self.is_in_cooldown(symbol):
                             print(f"⏳ {symbol} in cooldown, skipping")
                             continue
-                        
+
                         found.append({
                             'symbol': symbol,
                             'price': last_price,
