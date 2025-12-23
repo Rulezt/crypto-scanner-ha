@@ -1,6 +1,6 @@
 name: "Crypto Scanner Professional"
 description: "Scanner crypto unificato con tutto integrato - Zero dipendenze"
-version: "2.2.3"
+version: "2.2.4"
 slug: "crypto_scanner_pro"
 init: false
 arch:
