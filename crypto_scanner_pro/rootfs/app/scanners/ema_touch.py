@@ -411,9 +411,9 @@ class EMAScanner:
                     tv_symbol = coin['symbol'].replace('USDT', 'USDT.P')
                     tv_link = f"https://it.tradingview.com/chart/KDtSSRjB/?symbol=BYBIT:{tv_symbol}"
 
-                    # Caption con distanza e approccio
-                    caption = f"📈 [{coin['symbol']}]({tv_link}) - EMA 60\n"
-                    caption += f"Distance: {coin['distance_pct']:.2f}% ({coin['approach']})"
+                    # Caption con distanza
+                    caption = f"[{coin['symbol']}]({tv_link}) - EMA 60\n"
+                    caption += f"Distanza: {coin['distance_pct']:.2f}%"
 
                     # Send photo to Telegram
                     url = f"https://api.telegram.org/bot{self.telegram_token}/sendPhoto"

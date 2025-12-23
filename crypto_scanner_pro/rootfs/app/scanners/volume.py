@@ -261,9 +261,9 @@ class VolumeScanner:
                     
                     # Caption con nome coin come link
                     if coin['change_pct'] > 0:
-                        caption = f"📊 [{coin['symbol']}]({tv_link}) 🚀 +{coin['change_pct']:.2f}%"
+                        caption = f"[{coin['symbol']}]({tv_link}) 🚀 +{coin['change_pct']:.2f}%"
                     else:
-                        caption = f"📊 [{coin['symbol']}]({tv_link}) 📉 {coin['change_pct']:.2f}%"
+                        caption = f"[{coin['symbol']}]({tv_link}) 📉 {coin['change_pct']:.2f}%"
                     
                     data = {
                         'chat_id': self.telegram_chat_id, 

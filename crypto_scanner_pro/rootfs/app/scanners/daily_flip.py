@@ -220,8 +220,8 @@ class DailyFlipScanner:
                     url = f"https://api.telegram.org/bot{self.telegram_token}/sendPhoto"
                     files = {'photo': ('chart.png', chart_bytes, 'image/png')}
                     data = {
-                        'chat_id': self.telegram_chat_id, 
-                        'caption': f"📊 [{coin['symbol']}]({tv_link}) Daily Flip",
+                        'chat_id': self.telegram_chat_id,
+                        'caption': f"[{coin['symbol']}]({tv_link}) Daily Flip",
                         'parse_mode': 'Markdown'
                     }
                     requests.post(url, files=files, data=data, timeout=30)
