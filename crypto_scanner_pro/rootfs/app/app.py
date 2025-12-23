@@ -12,6 +12,7 @@ import logging
 from scanners.ema_touch import EMAScanner
 from scanners.daily_flip import DailyFlipScanner
 from scanners.volume import VolumeScanner
+from scanners.ath_atl_scanner import ATHATLScanner
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -52,6 +53,14 @@ DEFAULT_CONFIG = {
         'losers_enabled': True,
         'losers_threshold': 10,
         'scan_interval_minutes': 30
+    },
+    'ath_atl': {
+        'enabled': True,
+        'ath_enabled': True,
+        'atl_enabled': True,
+        'proximity_threshold': 2.0,
+        'lookback_days': 365,
+        'scan_interval_minutes': 60
     },
     'general': {
         'min_volume_24h': 10000000,
@@ -153,7 +162,13 @@ def init_scanners():
             **config['volume_scanner'],
             **config['general']
         )
-        
+
+        scanners['ath_atl'] = ATHATLScanner(
+            telegram_config=telegram_config,
+            **config['ath_atl'],
+            **config['general']
+        )
+
         logger.info("✅ Scanners initialized")
     except Exception as e:
         logger.error(f"❌ Error initializing scanners: {e}")
@@ -177,7 +192,8 @@ def start_scanners():
     threads_config = [
         ('ema_touch', scanners.get('ema'), config['ema_touch']['scan_interval_minutes']),
         ('daily_flip', scanners.get('flip'), config['daily_flip']['scan_interval_minutes']),
-        ('volume_scanner', scanners.get('volume'), config['volume_scanner']['scan_interval_minutes'])
+        ('volume_scanner', scanners.get('volume'), config['volume_scanner']['scan_interval_minutes']),
+        ('ath_atl', scanners.get('ath_atl'), config['ath_atl']['scan_interval_minutes'])
     ]
     
     for name, scanner, interval in threads_config:
@@ -200,14 +216,15 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '2.1.5',
+        'version': '2.2.0',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
         'scanners': {
             'ema_touch': config['ema_touch']['enabled'],
             'daily_flip': config['daily_flip']['enabled'],
-            'volume_scanner': config['volume_scanner']['enabled']
+            'volume_scanner': config['volume_scanner']['enabled'],
+            'ath_atl': config['ath_atl']['enabled']
         }
     })
 
