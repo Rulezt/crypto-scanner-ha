@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Scanner Pro - Trading Dashboard</title>
+    <title>Crypto Scanner Pro - Dashboard Trading</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -45,15 +45,15 @@
                         <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
                             Crypto Scanner Pro
                         </h1>
-                        <p class="text-xs text-gray-500">Professional Trading Dashboard</p>
+                        <p class="text-xs text-gray-500">Dashboard Trading Professionale</p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
                     <div id="bot-status" class="flex items-center space-x-2 px-3 py-1.5 bg-dark-hover rounded-lg">
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
-                        <span class="text-sm text-gray-400">Loading...</span>
+                        <span class="text-sm text-gray-400">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500" id="version">v2.2.4</div>
+                    <div class="text-xs text-gray-500" id="version">v2.2.5</div>
                 </div>
             </div>
         </div>
@@ -65,41 +65,41 @@
             <!-- EMA Scanner Status -->
             <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-blue-500 transition-all">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-blue-400">🎯 EMA Scanner</div>
+                    <div class="text-blue-400">🎯 Scanner EMA</div>
                     <div id="ema-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
                 </div>
                 <div class="text-2xl font-bold" id="ema-count">-</div>
-                <div class="text-xs text-gray-500 mt-1">Active Signals</div>
+                <div class="text-xs text-gray-500 mt-1">Segnali Attivi</div>
             </div>
 
             <!-- Flip Scanner Status -->
             <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-purple-500 transition-all">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-purple-400">🔄 Flip Scanner</div>
+                    <div class="text-purple-400">🔄 Scanner Flip</div>
                     <div id="flip-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
                 </div>
                 <div class="text-2xl font-bold" id="flip-count">-</div>
-                <div class="text-xs text-gray-500 mt-1">Flip Opportunities</div>
+                <div class="text-xs text-gray-500 mt-1">Opportunità Flip</div>
             </div>
 
             <!-- Volume Scanner Status -->
             <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-emerald-500 transition-all">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-emerald-400">📊 Volume Scanner</div>
+                    <div class="text-emerald-400">📊 Scanner Volume</div>
                     <div id="volume-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
                 </div>
                 <div class="text-2xl font-bold" id="volume-count">-</div>
-                <div class="text-xs text-gray-500 mt-1">High Volume</div>
+                <div class="text-xs text-gray-500 mt-1">Alto Volume</div>
             </div>
 
             <!-- ATH/ATL Scanner Status -->
             <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-amber-500 transition-all">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-amber-400">🏆 ATH/ATL Scanner</div>
+                    <div class="text-amber-400">🏆 Scanner ATH/ATL</div>
                     <div id="ath-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
                 </div>
                 <div class="text-2xl font-bold" id="ath-count">40</div>
-                <div class="text-xs text-gray-500 mt-1">Coins Monitored</div>
+                <div class="text-xs text-gray-500 mt-1">Coin Monitorate</div>
             </div>
         </div>
 
@@ -111,13 +111,13 @@
                 <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
                     <div class="flex border-b border-dark-border">
                         <button onclick="switchMarketTab('gainers')" id="tab-gainers" class="flex-1 px-4 py-3 text-sm font-medium bg-dark-hover text-emerald-400 border-b-2 border-emerald-400">
-                            🚀 Top Gainers
+                            🚀 Top Rialzi
                         </button>
                         <button onclick="switchMarketTab('losers')" id="tab-losers" class="flex-1 px-4 py-3 text-sm font-medium text-gray-400 hover:text-gray-300">
-                            📉 Top Losers
+                            📉 Top Ribassi
                         </button>
                         <button onclick="switchMarketTab('monitored')" id="tab-monitored" class="flex-1 px-4 py-3 text-sm font-medium text-gray-400 hover:text-gray-300">
-                            👁️ Monitored (40)
+                            👁️ Monitorate (40)
                         </button>
                     </div>
 
@@ -128,14 +128,14 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left">#</th>
                                     <th class="px-4 py-3 text-left">Coin</th>
-                                    <th class="px-4 py-3 text-right">Price</th>
-                                    <th class="px-4 py-3 text-right">24h Change</th>
+                                    <th class="px-4 py-3 text-right">Prezzo</th>
+                                    <th class="px-4 py-3 text-right">Variazione 24h</th>
                                     <th class="px-4 py-3 text-right">Volume</th>
                                 </tr>
                             </thead>
                             <tbody id="gainers-tbody" class="text-sm">
                                 <tr>
-                                    <td colspan="5" class="text-center py-8 text-gray-500">Loading market data...</td>
+                                    <td colspan="5" class="text-center py-8 text-gray-500">Caricamento dati mercato...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -148,14 +148,14 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left">#</th>
                                     <th class="px-4 py-3 text-left">Coin</th>
-                                    <th class="px-4 py-3 text-right">Price</th>
-                                    <th class="px-4 py-3 text-right">24h Change</th>
+                                    <th class="px-4 py-3 text-right">Prezzo</th>
+                                    <th class="px-4 py-3 text-right">Variazione 24h</th>
                                     <th class="px-4 py-3 text-right">Volume</th>
                                 </tr>
                             </thead>
                             <tbody id="losers-tbody" class="text-sm">
                                 <tr>
-                                    <td colspan="5" class="text-center py-8 text-gray-500">Loading market data...</td>
+                                    <td colspan="5" class="text-center py-8 text-gray-500">Caricamento dati mercato...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -168,14 +168,14 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left">#</th>
                                     <th class="px-4 py-3 text-left">Coin</th>
-                                    <th class="px-4 py-3 text-right">Price</th>
-                                    <th class="px-4 py-3 text-right">24h Change</th>
+                                    <th class="px-4 py-3 text-right">Prezzo</th>
+                                    <th class="px-4 py-3 text-right">Variazione 24h</th>
                                     <th class="px-4 py-3 text-right">Volume</th>
                                 </tr>
                             </thead>
                             <tbody id="monitored-tbody" class="text-sm">
                                 <tr>
-                                    <td colspan="5" class="text-center py-8 text-gray-500">Loading market data...</td>
+                                    <td colspan="5" class="text-center py-8 text-gray-500">Caricamento dati mercato...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -183,17 +183,17 @@
                 </div>
             </div>
 
-            <!-- Right Column: Alerts & Scanner Status -->
+            <!-- Right Column: Alerts & Settings -->
             <div class="space-y-6">
                 <!-- Recent Alerts -->
                 <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
                     <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between">
-                        <h3 class="text-sm font-medium">🔔 Recent Alerts</h3>
+                        <h3 class="text-sm font-medium">🔔 Alert Recenti</h3>
                         <span class="text-xs text-gray-500">Live</span>
                     </div>
                     <div id="alerts-container" class="p-4 space-y-3 max-h-96 overflow-y-auto">
                         <div class="text-center py-8 text-gray-500 text-sm">
-                            Waiting for alerts...
+                            In attesa di alert...
                         </div>
                     </div>
                 </div>
@@ -201,14 +201,14 @@
                 <!-- Scanner Configuration Quick Access -->
                 <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
                     <div class="px-4 py-3 bg-dark-hover border-b border-dark-border">
-                        <h3 class="text-sm font-medium">⚙️ Scanner Settings</h3>
+                        <h3 class="text-sm font-medium">⚙️ Stato Scanner</h3>
                     </div>
                     <div class="p-4 space-y-4">
                         <!-- EMA Touch -->
                         <div class="flex items-center justify-between py-2 border-b border-dark-border">
                             <div>
-                                <div class="text-sm font-medium">EMA Touch</div>
-                                <div class="text-xs text-gray-500">Threshold: <span id="ema-threshold">2.0</span>%</div>
+                                <div class="text-sm font-medium">Tocco EMA</div>
+                                <div class="text-xs text-gray-500">Soglia: <span id="ema-threshold">2.0</span>%</div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="ema-toggle" class="sr-only peer" checked onchange="toggleScanner('ema_touch')">
@@ -219,8 +219,8 @@
                         <!-- Daily Flip -->
                         <div class="flex items-center justify-between py-2 border-b border-dark-border">
                             <div>
-                                <div class="text-sm font-medium">Daily Flip</div>
-                                <div class="text-xs text-gray-500">Threshold: <span id="flip-threshold">2.0</span>%</div>
+                                <div class="text-sm font-medium">Flip Giornaliero</div>
+                                <div class="text-xs text-gray-500">Soglia: <span id="flip-threshold">2.0</span>%</div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="flip-toggle" class="sr-only peer" checked onchange="toggleScanner('daily_flip')">
@@ -231,8 +231,8 @@
                         <!-- Volume Scanner -->
                         <div class="flex items-center justify-between py-2 border-b border-dark-border">
                             <div>
-                                <div class="text-sm font-medium">Volume Scanner</div>
-                                <div class="text-xs text-gray-500">Gainers: <span id="gainers-threshold">10</span>%</div>
+                                <div class="text-sm font-medium">Volume</div>
+                                <div class="text-xs text-gray-500">Rialzi: <span id="gainers-threshold">10</span>%</div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="volume-toggle" class="sr-only peer" checked onchange="toggleScanner('volume_scanner')">
@@ -243,8 +243,8 @@
                         <!-- ATH/ATL Scanner -->
                         <div class="flex items-center justify-between py-2">
                             <div>
-                                <div class="text-sm font-medium">ATH/ATL Scanner</div>
-                                <div class="text-xs text-gray-500">Proximity: <span id="ath-threshold">1.0</span>%</div>
+                                <div class="text-sm font-medium">ATH/ATL</div>
+                                <div class="text-xs text-gray-500">Prossimità: <span id="ath-threshold">1.0</span>%</div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="ath-toggle" class="sr-only peer" checked onchange="toggleScanner('ath_atl')">
@@ -254,110 +254,233 @@
                     </div>
                 </div>
 
-                <!-- Dashboard Info - Current Settings -->
+                <!-- Configuration Form -->
                 <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
-                    <div class="px-4 py-3 bg-dark-hover border-b border-dark-border">
-                        <h3 class="text-sm font-medium">📊 Current Settings</h3>
+                    <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between">
+                        <h3 class="text-sm font-medium">⚙️ Configurazione</h3>
+                        <button onclick="toggleConfigForm()" id="toggle-form-btn" class="text-xs text-blue-400 hover:text-blue-300">
+                            Modifica
+                        </button>
                     </div>
-                    <div class="p-4 space-y-3 text-xs">
+
+                    <!-- View Mode -->
+                    <div id="config-view" class="p-4 space-y-3 text-xs">
                         <!-- Telegram Config -->
                         <div class="bg-dark-hover/50 rounded p-3 space-y-2">
                             <div class="font-medium text-blue-400 mb-2">📱 Telegram</div>
                             <div class="flex justify-between items-center">
                                 <span class="text-gray-500">Token:</span>
-                                <span id="info-telegram-token" class="text-gray-300 font-mono text-xs">***</span>
+                                <span id="view-telegram-token" class="text-gray-300 font-mono text-xs">***</span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-gray-500">Chat ID:</span>
-                                <span id="info-telegram-chat" class="text-gray-300 font-mono text-xs">-</span>
+                                <span id="view-telegram-chat" class="text-gray-300 font-mono text-xs">-</span>
                             </div>
                         </div>
 
                         <!-- EMA Touch Settings -->
                         <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                            <div class="font-medium text-blue-400 mb-2">🎯 EMA Touch</div>
+                            <div class="font-medium text-blue-400 mb-2">🎯 Tocco EMA</div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Threshold:</span>
-                                <span id="info-ema-threshold" class="text-gray-300">2.0%</span>
+                                <span class="text-gray-500">Soglia:</span>
+                                <span id="view-ema-threshold" class="text-gray-300">2.0%</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">EMA Period:</span>
-                                <span id="info-ema-period" class="text-gray-300">60</span>
+                                <span class="text-gray-500">Periodo EMA:</span>
+                                <span id="view-ema-period" class="text-gray-300">60</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Interval:</span>
-                                <span id="info-ema-interval" class="text-gray-300">30 min</span>
+                                <span class="text-gray-500">Intervallo:</span>
+                                <span id="view-ema-interval" class="text-gray-300">30 min</span>
                             </div>
                         </div>
 
                         <!-- Daily Flip Settings -->
                         <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                            <div class="font-medium text-purple-400 mb-2">🔄 Daily Flip</div>
+                            <div class="font-medium text-purple-400 mb-2">🔄 Flip Giornaliero</div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Threshold:</span>
-                                <span id="info-flip-threshold" class="text-gray-300">2.0%</span>
+                                <span class="text-gray-500">Soglia:</span>
+                                <span id="view-flip-threshold" class="text-gray-300">2.0%</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Type:</span>
-                                <span id="info-flip-type" class="text-gray-300">Both</span>
+                                <span class="text-gray-500">Tipo:</span>
+                                <span id="view-flip-type" class="text-gray-300">Entrambi</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Interval:</span>
-                                <span id="info-flip-interval" class="text-gray-300">30 min</span>
+                                <span class="text-gray-500">Intervallo:</span>
+                                <span id="view-flip-interval" class="text-gray-300">30 min</span>
                             </div>
                         </div>
 
                         <!-- Volume Settings -->
                         <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                            <div class="font-medium text-emerald-400 mb-2">📊 Volume Scanner</div>
+                            <div class="font-medium text-emerald-400 mb-2">📊 Scanner Volume</div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Gainers:</span>
-                                <span id="info-gainers-threshold" class="text-emerald-300">10%</span>
+                                <span class="text-gray-500">Soglia Rialzi:</span>
+                                <span id="view-gainers-threshold" class="text-emerald-300">10%</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Losers:</span>
-                                <span id="info-losers-threshold" class="text-red-300">10%</span>
+                                <span class="text-gray-500">Soglia Ribassi:</span>
+                                <span id="view-losers-threshold" class="text-red-300">10%</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Interval:</span>
-                                <span id="info-volume-interval" class="text-gray-300">30 min</span>
+                                <span class="text-gray-500">Intervallo:</span>
+                                <span id="view-volume-interval" class="text-gray-300">30 min</span>
                             </div>
                         </div>
 
                         <!-- ATH/ATL Settings -->
                         <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                            <div class="font-medium text-amber-400 mb-2">🏆 ATH/ATL Scanner</div>
+                            <div class="font-medium text-amber-400 mb-2">🏆 Scanner ATH/ATL</div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Proximity:</span>
-                                <span id="info-ath-proximity" class="text-gray-300">1.0%</span>
+                                <span class="text-gray-500">Prossimità:</span>
+                                <span id="view-ath-proximity" class="text-gray-300">1.0%</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Lookback:</span>
-                                <span id="info-ath-lookback" class="text-gray-300">365 days</span>
+                                <span class="text-gray-500">Storico:</span>
+                                <span id="view-ath-lookback" class="text-gray-300">365 giorni</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Interval:</span>
-                                <span id="info-ath-interval" class="text-gray-300">60 min</span>
+                                <span class="text-gray-500">Intervallo:</span>
+                                <span id="view-ath-interval" class="text-gray-300">60 min</span>
                             </div>
                         </div>
 
                         <!-- General Settings -->
                         <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                            <div class="font-medium text-gray-400 mb-2">⚙️ General</div>
+                            <div class="font-medium text-gray-400 mb-2">⚙️ Generali</div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Min Volume:</span>
-                                <span id="info-min-volume" class="text-gray-300">$10M</span>
+                                <span class="text-gray-500">Volume Min:</span>
+                                <span id="view-min-volume" class="text-gray-300">$10M</span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-gray-500">Cooldown:</span>
-                                <span id="info-cooldown" class="text-gray-300">2h</span>
+                                <span id="view-cooldown" class="text-gray-300">2h</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Max Coins/Alert:</span>
-                                <span id="info-max-coins" class="text-gray-300">10</span>
+                                <span class="text-gray-500">Max Coin/Alert:</span>
+                                <span id="view-max-coins" class="text-gray-300">10</span>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Edit Mode (Form) -->
+                    <form id="config-form" class="p-4 space-y-4 hidden">
+                        <!-- Telegram -->
+                        <div class="space-y-3">
+                            <div class="font-medium text-blue-400 text-sm">📱 Telegram</div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Token Bot:</label>
+                                <input type="text" id="input-telegram-token" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none" placeholder="123456:ABC-DEF1234">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Chat ID:</label>
+                                <input type="text" id="input-telegram-chat" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none" placeholder="123456789">
+                            </div>
+                        </div>
+
+                        <!-- EMA Touch -->
+                        <div class="space-y-3">
+                            <div class="font-medium text-blue-400 text-sm">🎯 Tocco EMA</div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Soglia (%):</label>
+                                <input type="number" step="0.1" id="input-ema-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Periodo EMA:</label>
+                                <input type="number" id="input-ema-period" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Intervallo (min):</label>
+                                <input type="number" id="input-ema-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Daily Flip -->
+                        <div class="space-y-3">
+                            <div class="font-medium text-purple-400 text-sm">🔄 Flip Giornaliero</div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Soglia (%):</label>
+                                <input type="number" step="0.1" id="input-flip-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Tipo Flip:</label>
+                                <select id="input-flip-type" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none">
+                                    <option value="both">Entrambi</option>
+                                    <option value="green_to_red">Verde → Rosso</option>
+                                    <option value="red_to_green">Rosso → Verde</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Intervallo (min):</label>
+                                <input type="number" id="input-flip-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Volume -->
+                        <div class="space-y-3">
+                            <div class="font-medium text-emerald-400 text-sm">📊 Scanner Volume</div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Soglia Rialzi (%):</label>
+                                <input type="number" id="input-gainers-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Soglia Ribassi (%):</label>
+                                <input type="number" id="input-losers-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Intervallo (min):</label>
+                                <input type="number" id="input-volume-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <!-- ATH/ATL -->
+                        <div class="space-y-3">
+                            <div class="font-medium text-amber-400 text-sm">🏆 Scanner ATH/ATL</div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Prossimità (%):</label>
+                                <input type="number" step="0.1" id="input-ath-proximity" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Storico (giorni):</label>
+                                <input type="number" id="input-ath-lookback" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Intervallo (min):</label>
+                                <input type="number" id="input-ath-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <!-- General -->
+                        <div class="space-y-3">
+                            <div class="font-medium text-gray-400 text-sm">⚙️ Impostazioni Generali</div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Volume Minimo 24h ($):</label>
+                                <input type="number" id="input-min-volume" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Cooldown (ore):</label>
+                                <input type="number" id="input-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">Max Coin per Alert:</label>
+                                <input type="number" id="input-max-coins" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Save Button -->
+                        <div class="flex gap-2 pt-4">
+                            <button type="button" onclick="saveConfiguration()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">
+                                💾 Salva Configurazione
+                            </button>
+                            <button type="button" onclick="toggleConfigForm()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors">
+                                Annulla
+                            </button>
+                        </div>
+
+                        <!-- Status Message -->
+                        <div id="save-status" class="hidden p-3 rounded text-sm"></div>
+                    </form>
                 </div>
 
                 <!-- Telegram Status -->
@@ -365,8 +488,8 @@
                     <div class="flex items-start space-x-3">
                         <div class="text-2xl">⚠️</div>
                         <div>
-                            <div class="font-medium text-amber-400 text-sm mb-1">Telegram Not Configured</div>
-                            <div class="text-xs text-amber-200/70">Configure in Settings → Add-ons → Crypto Scanner Pro</div>
+                            <div class="font-medium text-amber-400 text-sm mb-1">Telegram Non Configurato</div>
+                            <div class="text-xs text-amber-200/70">Configura in Impostazioni → Add-ons → Crypto Scanner Pro</div>
                         </div>
                     </div>
                 </div>
@@ -377,6 +500,7 @@
     <script>
         const API_URL = '.';
         let currentConfig = {};
+        let isFormMode = false;
 
         // Initialize
         async function init() {
@@ -426,57 +550,196 @@
             if (currentConfig.telegram) {
                 const token = currentConfig.telegram.token || '';
                 if (token) {
-                    // Show first 8 and last 4 chars, mask the rest
                     const masked = token.length > 12 ?
                         token.substring(0, 8) + '...' + token.substring(token.length - 4) : '***';
-                    document.getElementById('info-telegram-token').textContent = masked;
+                    document.getElementById('view-telegram-token').textContent = masked;
                 } else {
-                    document.getElementById('info-telegram-token').textContent = 'Not set';
+                    document.getElementById('view-telegram-token').textContent = 'Non configurato';
                 }
-                document.getElementById('info-telegram-chat').textContent = currentConfig.telegram.chat_id || 'Not set';
+                document.getElementById('view-telegram-chat').textContent = currentConfig.telegram.chat_id || 'Non configurato';
             }
 
             // EMA Touch
             if (currentConfig.ema_touch) {
-                document.getElementById('info-ema-threshold').textContent = (currentConfig.ema_touch.ema_touch_threshold || 2.0) + '%';
-                document.getElementById('info-ema-period').textContent = currentConfig.ema_touch.ema_period || 60;
-                document.getElementById('info-ema-interval').textContent = (currentConfig.ema_touch.scan_interval_minutes || 30) + ' min';
+                document.getElementById('view-ema-threshold').textContent = (currentConfig.ema_touch.ema_touch_threshold || 2.0) + '%';
+                document.getElementById('view-ema-period').textContent = currentConfig.ema_touch.ema_period || 60;
+                document.getElementById('view-ema-interval').textContent = (currentConfig.ema_touch.scan_interval_minutes || 30) + ' min';
             }
 
             // Daily Flip
             if (currentConfig.daily_flip) {
-                document.getElementById('info-flip-threshold').textContent = (currentConfig.daily_flip.flip_threshold || 2.0) + '%';
+                document.getElementById('view-flip-threshold').textContent = (currentConfig.daily_flip.flip_threshold || 2.0) + '%';
                 const flipType = currentConfig.daily_flip.flip_type || 'both';
                 const flipTypeMap = {
-                    'both': 'Both',
-                    'green_to_red': 'Green → Red',
-                    'red_to_green': 'Red → Green'
+                    'both': 'Entrambi',
+                    'green_to_red': 'Verde → Rosso',
+                    'red_to_green': 'Rosso → Verde'
                 };
-                document.getElementById('info-flip-type').textContent = flipTypeMap[flipType] || flipType;
-                document.getElementById('info-flip-interval').textContent = (currentConfig.daily_flip.scan_interval_minutes || 30) + ' min';
+                document.getElementById('view-flip-type').textContent = flipTypeMap[flipType] || flipType;
+                document.getElementById('view-flip-interval').textContent = (currentConfig.daily_flip.scan_interval_minutes || 30) + ' min';
             }
 
             // Volume Scanner
             if (currentConfig.volume_scanner) {
-                document.getElementById('info-gainers-threshold').textContent = (currentConfig.volume_scanner.gainers_threshold || 10) + '%';
-                document.getElementById('info-losers-threshold').textContent = (currentConfig.volume_scanner.losers_threshold || 10) + '%';
-                document.getElementById('info-volume-interval').textContent = (currentConfig.volume_scanner.scan_interval_minutes || 30) + ' min';
+                document.getElementById('view-gainers-threshold').textContent = (currentConfig.volume_scanner.gainers_threshold || 10) + '%';
+                document.getElementById('view-losers-threshold').textContent = (currentConfig.volume_scanner.losers_threshold || 10) + '%';
+                document.getElementById('view-volume-interval').textContent = (currentConfig.volume_scanner.scan_interval_minutes || 30) + ' min';
             }
 
             // ATH/ATL Scanner
             if (currentConfig.ath_atl) {
-                document.getElementById('info-ath-proximity').textContent = (currentConfig.ath_atl.proximity_threshold || 1.0) + '%';
-                document.getElementById('info-ath-lookback').textContent = (currentConfig.ath_atl.lookback_days || 365) + ' days';
-                document.getElementById('info-ath-interval').textContent = (currentConfig.ath_atl.scan_interval_minutes || 60) + ' min';
+                document.getElementById('view-ath-proximity').textContent = (currentConfig.ath_atl.proximity_threshold || 1.0) + '%';
+                document.getElementById('view-ath-lookback').textContent = (currentConfig.ath_atl.lookback_days || 365) + ' giorni';
+                document.getElementById('view-ath-interval').textContent = (currentConfig.ath_atl.scan_interval_minutes || 60) + ' min';
             }
 
             // General Settings
             if (currentConfig.general) {
                 const minVol = currentConfig.general.min_volume_24h || 10000000;
                 const volFormatted = minVol >= 1e6 ? '$' + (minVol / 1e6).toFixed(0) + 'M' : '$' + minVol;
-                document.getElementById('info-min-volume').textContent = volFormatted;
-                document.getElementById('info-cooldown').textContent = (currentConfig.general.cooldown_hours || 2) + 'h';
-                document.getElementById('info-max-coins').textContent = currentConfig.general.max_coins_per_alert || 10;
+                document.getElementById('view-min-volume').textContent = volFormatted;
+                document.getElementById('view-cooldown').textContent = (currentConfig.general.cooldown_hours || 2) + 'h';
+                document.getElementById('view-max-coins').textContent = currentConfig.general.max_coins_per_alert || 10;
+            }
+        }
+
+        // Toggle between view and edit mode
+        function toggleConfigForm() {
+            isFormMode = !isFormMode;
+            const viewMode = document.getElementById('config-view');
+            const formMode = document.getElementById('config-form');
+            const toggleBtn = document.getElementById('toggle-form-btn');
+
+            if (isFormMode) {
+                viewMode.classList.add('hidden');
+                formMode.classList.remove('hidden');
+                toggleBtn.textContent = 'Visualizza';
+                populateForm();
+            } else {
+                viewMode.classList.remove('hidden');
+                formMode.classList.add('hidden');
+                toggleBtn.textContent = 'Modifica';
+            }
+        }
+
+        // Populate form with current values
+        function populateForm() {
+            if (currentConfig.telegram) {
+                document.getElementById('input-telegram-token').value = currentConfig.telegram.token || '';
+                document.getElementById('input-telegram-chat').value = currentConfig.telegram.chat_id || '';
+            }
+
+            if (currentConfig.ema_touch) {
+                document.getElementById('input-ema-threshold').value = currentConfig.ema_touch.ema_touch_threshold || 2.0;
+                document.getElementById('input-ema-period').value = currentConfig.ema_touch.ema_period || 60;
+                document.getElementById('input-ema-interval').value = currentConfig.ema_touch.scan_interval_minutes || 30;
+            }
+
+            if (currentConfig.daily_flip) {
+                document.getElementById('input-flip-threshold').value = currentConfig.daily_flip.flip_threshold || 2.0;
+                document.getElementById('input-flip-type').value = currentConfig.daily_flip.flip_type || 'both';
+                document.getElementById('input-flip-interval').value = currentConfig.daily_flip.scan_interval_minutes || 30;
+            }
+
+            if (currentConfig.volume_scanner) {
+                document.getElementById('input-gainers-threshold').value = currentConfig.volume_scanner.gainers_threshold || 10;
+                document.getElementById('input-losers-threshold').value = currentConfig.volume_scanner.losers_threshold || 10;
+                document.getElementById('input-volume-interval').value = currentConfig.volume_scanner.scan_interval_minutes || 30;
+            }
+
+            if (currentConfig.ath_atl) {
+                document.getElementById('input-ath-proximity').value = currentConfig.ath_atl.proximity_threshold || 1.0;
+                document.getElementById('input-ath-lookback').value = currentConfig.ath_atl.lookback_days || 365;
+                document.getElementById('input-ath-interval').value = currentConfig.ath_atl.scan_interval_minutes || 60;
+            }
+
+            if (currentConfig.general) {
+                document.getElementById('input-min-volume').value = currentConfig.general.min_volume_24h || 10000000;
+                document.getElementById('input-cooldown').value = currentConfig.general.cooldown_hours || 2;
+                document.getElementById('input-max-coins').value = currentConfig.general.max_coins_per_alert || 10;
+            }
+        }
+
+        // Save configuration
+        async function saveConfiguration() {
+            const statusEl = document.getElementById('save-status');
+            statusEl.className = 'p-3 rounded text-sm bg-blue-500/20 text-blue-300';
+            statusEl.textContent = 'Salvataggio in corso...';
+            statusEl.classList.remove('hidden');
+
+            try {
+                const newConfig = {
+                    telegram: {
+                        token: document.getElementById('input-telegram-token').value || '',
+                        chat_id: document.getElementById('input-telegram-chat').value || '',
+                        enabled: true
+                    },
+                    ema_touch: {
+                        enabled: currentConfig.ema_touch?.enabled || true,
+                        ema_period: parseInt(document.getElementById('input-ema-period').value) || 60,
+                        ema_touch_candles: currentConfig.ema_touch?.ema_touch_candles || 3,
+                        ema_touch_threshold: parseFloat(document.getElementById('input-ema-threshold').value) || 2.0,
+                        scan_interval_minutes: parseInt(document.getElementById('input-ema-interval').value) || 30
+                    },
+                    daily_flip: {
+                        enabled: currentConfig.daily_flip?.enabled || true,
+                        flip_threshold: parseFloat(document.getElementById('input-flip-threshold').value) || 2.0,
+                        flip_type: document.getElementById('input-flip-type').value || 'both',
+                        scan_interval_minutes: parseInt(document.getElementById('input-flip-interval').value) || 30,
+                        max_coins: currentConfig.daily_flip?.max_coins || 20
+                    },
+                    volume_scanner: {
+                        enabled: currentConfig.volume_scanner?.enabled || true,
+                        volume_spike_threshold: currentConfig.volume_scanner?.volume_spike_threshold || 200,
+                        gainers_enabled: currentConfig.volume_scanner?.gainers_enabled || true,
+                        gainers_threshold: parseInt(document.getElementById('input-gainers-threshold').value) || 10,
+                        losers_enabled: currentConfig.volume_scanner?.losers_enabled || true,
+                        losers_threshold: parseInt(document.getElementById('input-losers-threshold').value) || 10,
+                        scan_interval_minutes: parseInt(document.getElementById('input-volume-interval').value) || 30
+                    },
+                    ath_atl: {
+                        enabled: currentConfig.ath_atl?.enabled || true,
+                        ath_enabled: currentConfig.ath_atl?.ath_enabled || true,
+                        atl_enabled: currentConfig.ath_atl?.atl_enabled || true,
+                        proximity_threshold: parseFloat(document.getElementById('input-ath-proximity').value) || 1.0,
+                        lookback_days: parseInt(document.getElementById('input-ath-lookback').value) || 365,
+                        scan_interval_minutes: parseInt(document.getElementById('input-ath-interval').value) || 60
+                    },
+                    general: {
+                        min_volume_24h: parseInt(document.getElementById('input-min-volume').value) || 10000000,
+                        new_listing_days: currentConfig.general?.new_listing_days || 30,
+                        cooldown_hours: parseInt(document.getElementById('input-cooldown').value) || 2,
+                        send_screenshots: currentConfig.general?.send_screenshots || true,
+                        max_coins_per_alert: parseInt(document.getElementById('input-max-coins').value) || 10
+                    }
+                };
+
+                const res = await fetch(`${API_URL}/scanner-api/config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newConfig)
+                });
+
+                const result = await res.json();
+
+                if (result.success) {
+                    statusEl.className = 'p-3 rounded text-sm bg-emerald-500/20 text-emerald-300';
+                    statusEl.textContent = '✅ Configurazione salvata con successo!';
+
+                    currentConfig = newConfig;
+                    updateDashboardInfo();
+                    updateBotStatus();
+
+                    setTimeout(() => {
+                        toggleConfigForm();
+                        statusEl.classList.add('hidden');
+                    }, 2000);
+                } else {
+                    throw new Error(result.error || 'Errore sconosciuto');
+                }
+            } catch (e) {
+                statusEl.className = 'p-3 rounded text-sm bg-red-500/20 text-red-300';
+                statusEl.textContent = '❌ Errore: ' + e.message;
             }
         }
 
@@ -533,7 +796,7 @@
                     }
                 } catch (e) {
                     console.error('Error toggling scanner:', e);
-                    toggle.checked = !toggle.checked; // Revert
+                    toggle.checked = !toggle.checked;
                 }
             }
         }
@@ -559,7 +822,7 @@
             const tbody = document.getElementById(tbodyId);
 
             if (!coins || coins.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">No data available</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Nessun dato disponibile</td></tr>';
                 return;
             }
 
