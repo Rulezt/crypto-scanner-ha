@@ -41,8 +41,8 @@ def generate_chart(symbol, candles_data, ema_period=60, ema_value=None):
     # Crea figura (solo 1 subplot ora, senza volumi)
     fig, ax = plt.subplots(1, 1, figsize=(14, 8))
 
-    # Aggiungi margine sinistro per migliore leggibilità
-    plt.subplots_adjust(left=0.1)
+    # Aggiungi margine sinistro significativo per migliore leggibilità (100px extra)
+    plt.subplots_adjust(left=0.16)
     
     # Colori tema scuro
     bg_color = '#1a1a2e'
