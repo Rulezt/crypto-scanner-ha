@@ -35,7 +35,7 @@ DEFAULT_CONFIG = {
         'enabled': True,
         'ema_period': 60,
         'ema_touch_candles': 3,
-        'proximity_threshold': 0.5,
+        'ema_touch_threshold': 2.0,
         'scan_interval_minutes': 30
     },
     'daily_flip': {
@@ -58,7 +58,7 @@ DEFAULT_CONFIG = {
         'enabled': True,
         'ath_enabled': True,
         'atl_enabled': True,
-        'proximity_threshold': 2.0,
+        'proximity_threshold': 1.0,
         'lookback_days': 365,
         'scan_interval_minutes': 60
     },
@@ -107,7 +107,19 @@ def load_config():
                     if telegram_chat_id:
                         config['telegram']['chat_id'] = telegram_chat_id
                         logger.info("✅ Telegram chat_id loaded from add-on config")
-                        
+
+                    # Get EMA Touch threshold from add-on (if set)
+                    ema_touch_threshold = addon_options.get('ema_touch_threshold')
+                    if ema_touch_threshold is not None:
+                        config['ema_touch']['ema_touch_threshold'] = float(ema_touch_threshold)
+                        logger.info(f"✅ EMA touch threshold loaded from add-on config: {ema_touch_threshold}%")
+
+                    # Get ATH/ATL threshold from add-on (if set)
+                    ath_atl_threshold = addon_options.get('ath_atl_threshold')
+                    if ath_atl_threshold is not None:
+                        config['ath_atl']['proximity_threshold'] = float(ath_atl_threshold)
+                        logger.info(f"✅ ATH/ATL threshold loaded from add-on config: {ath_atl_threshold}%")
+
             except Exception as e:
                 logger.warning(f"⚠️ Could not load add-on options: {e}")
                 
@@ -216,7 +228,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '2.2.0',
+        'version': '2.2.1',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
