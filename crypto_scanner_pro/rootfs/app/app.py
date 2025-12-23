@@ -228,7 +228,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '2.2.2',
+        'version': '2.2.3',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -341,6 +341,29 @@ def get_ath_atl_status():
 
     except Exception as e:
         logger.error(f"❌ Error getting ATH/ATL status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/scanner-api/alerts/recent', methods=['GET'])
+def get_recent_alerts():
+    """Get recent alerts from all scanners (simulated for now - in future can use persistent storage)"""
+    try:
+        from datetime import datetime
+
+        # For now, return mock data - in production this would read from a database/log file
+        # This is a placeholder that can be extended to read actual alert history
+        recent_alerts = []
+
+        # You can extend this to read from actual scanner logs or database
+        # For now, just return empty or sample data structure
+
+        return jsonify({
+            'success': True,
+            'alerts': recent_alerts,
+            'count': len(recent_alerts)
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Error getting recent alerts: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/', methods=['GET'])

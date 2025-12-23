@@ -1,588 +1,467 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Scanner Pro</title>
+    <title>Crypto Scanner Pro - Trading Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#0B0E11',
+                            card: '#161A1E',
+                            hover: '#1E2329',
+                            border: '#2B3139',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
         }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        .glow-green {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
         }
-        h1 { color: #667eea; margin-bottom: 30px; }
-        .scanner {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-        .scanner h3 { color: #333; margin-bottom: 15px; }
-        label { display: block; margin: 10px 0 5px; font-weight: 600; }
-        input, select {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        .checkbox { display: flex; align-items: center; margin: 15px 0; }
-        .checkbox input { width: auto; margin-right: 10px; }
-        button {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 10px 10px 0 0;
-        }
-        button:hover { background: #5568d3; }
-        .status { margin-top: 20px; padding: 15px; border-radius: 8px; }
-        .status.success { background: #d4edda; color: #155724; }
-        .status.error { background: #f8d7da; color: #721c24; }
-        
-        .warning-banner {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-            border-radius: 10px;
-            padding: 15px 20px;
-            margin-bottom: 20px;
-            display: none;
-        }
-        .warning-banner.show { display: block; }
-        .warning-banner strong { color: #856404; display: block; margin-bottom: 8px; font-size: 16px; }
-        .warning-banner p { margin: 3px 0; color: #856404; }
-        .warning-banner ul { margin: 10px 0 10px 20px; color: #856404; }
-
-        .monitoring-section {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-            color: white;
-        }
-        .monitoring-section h3 { color: white; margin-bottom: 15px; }
-
-        .coin-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-top: 15px;
-        }
-        .coin-table th {
-            background: #667eea;
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-        }
-        .coin-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #e0e0e0;
-            color: #333;
-        }
-        .coin-table tr:last-child td { border-bottom: none; }
-        .coin-table tr:hover { background: #f8f9fa; }
-
-        .positive { color: #28a745; font-weight: 600; }
-        .negative { color: #dc3545; font-weight: 600; }
-
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .tab {
-            background: rgba(255,255,255,0.3);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            border: none;
-            font-size: 14px;
-            font-weight: 600;
-        }
-        .tab.active {
-            background: white;
-            color: #667eea;
-        }
-
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
+        .glow-red {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>🚀 Crypto Scanner Professional</h1>
-        
-        <div id="telegram-warning" class="warning-banner">
-            <strong>⚠️ Telegram Non Configurato!</strong>
-            <p>Le notifiche non verranno inviate finché non configuri Telegram.</p>
-            <p><strong>Come configurare:</strong></p>
-            <ul>
-                <li><strong>Opzione 1:</strong> Settings → Add-ons → Crypto Scanner Pro → Configuration → Inserisci token e chat_id → Restart</li>
-                <li><strong>Opzione 2 (Dashboard):</strong> Compila i campi sotto e clicca "💾 Salva"</li>
-            </ul>
+<body class="bg-dark-bg text-gray-100">
+    <!-- Header -->
+    <header class="bg-dark-card border-b border-dark-border sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="text-2xl">📊</div>
+                    <div>
+                        <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                            Crypto Scanner Pro
+                        </h1>
+                        <p class="text-xs text-gray-500">Professional Trading Dashboard</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="bot-status" class="flex items-center space-x-2 px-3 py-1.5 bg-dark-hover rounded-lg">
+                        <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
+                        <span class="text-sm text-gray-400">Loading...</span>
+                    </div>
+                    <div class="text-xs text-gray-500" id="version">v2.2.3</div>
+                </div>
+            </div>
         </div>
-        
-        <!-- EMA Touch Scanner -->
-        <div class="scanner">
-            <h3>🎯 EMA Touch Scanner</h3>
-            <div class="checkbox">
-                <input type="checkbox" id="ema-enabled" checked>
-                <label for="ema-enabled">Abilita Scanner</label>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <!-- EMA Scanner Status -->
+            <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-blue-500 transition-all">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-blue-400">🎯 EMA Scanner</div>
+                    <div id="ema-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                </div>
+                <div class="text-2xl font-bold" id="ema-count">-</div>
+                <div class="text-xs text-gray-500 mt-1">Active Signals</div>
             </div>
-            <label>Periodo EMA:</label>
-            <input type="number" id="ema-period" value="60">
-            <label>Soglia prossimità (%):</label>
-            <input type="number" id="ema-proximity" value="0.5" step="0.1">
-            <label>Intervallo scansione (minuti):</label>
-            <input type="number" id="ema-interval" value="30">
-        </div>
-        
-        <!-- Daily Flip Scanner -->
-        <div class="scanner">
-            <h3>🔄 Daily Flip Scanner</h3>
-            <div class="checkbox">
-                <input type="checkbox" id="flip-enabled" checked>
-                <label for="flip-enabled">Abilita Scanner</label>
+
+            <!-- Flip Scanner Status -->
+            <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-purple-500 transition-all">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-purple-400">🔄 Flip Scanner</div>
+                    <div id="flip-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                </div>
+                <div class="text-2xl font-bold" id="flip-count">-</div>
+                <div class="text-xs text-gray-500 mt-1">Flip Opportunities</div>
             </div>
-            <label>Soglia flip (%):</label>
-            <input type="number" id="flip-threshold" value="2.0" step="0.1">
-            <label>Tipo flip:</label>
-            <select id="flip-type">
-                <option value="both">Entrambi</option>
-                <option value="green_to_red">Verde → Rosso</option>
-                <option value="red_to_green">Rosso → Verde</option>
-            </select>
-            <label>Intervallo scansione (minuti):</label>
-            <input type="number" id="flip-interval" value="30">
-        </div>
-        
-        <!-- Volume Scanner -->
-        <div class="scanner">
-            <h3>📊 Volume Scanner</h3>
-            <div class="checkbox">
-                <input type="checkbox" id="volume-enabled" checked>
-                <label for="volume-enabled">Abilita Scanner</label>
+
+            <!-- Volume Scanner Status -->
+            <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-emerald-500 transition-all">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-emerald-400">📊 Volume Scanner</div>
+                    <div id="volume-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                </div>
+                <div class="text-2xl font-bold" id="volume-count">-</div>
+                <div class="text-xs text-gray-500 mt-1">High Volume</div>
             </div>
-            <div class="checkbox">
-                <input type="checkbox" id="gainers-enabled" checked>
-                <label for="gainers-enabled">Abilita Gainers</label>
+
+            <!-- ATH/ATL Scanner Status -->
+            <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-amber-500 transition-all">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-amber-400">🏆 ATH/ATL Scanner</div>
+                    <div id="ath-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                </div>
+                <div class="text-2xl font-bold" id="ath-count">40</div>
+                <div class="text-xs text-gray-500 mt-1">Coins Monitored</div>
             </div>
-            <label>Soglia gainers (%):</label>
-            <input type="number" id="gainers-threshold" value="10">
-            <div class="checkbox">
-                <input type="checkbox" id="losers-enabled" checked>
-                <label for="losers-enabled">Abilita Losers</label>
-            </div>
-            <label>Soglia losers (%):</label>
-            <input type="number" id="losers-threshold" value="10">
-            <label>Intervallo scansione (minuti):</label>
-            <input type="number" id="volume-interval" value="30">
         </div>
 
-        <!-- ATH/ATL Scanner -->
-        <div class="scanner">
-            <h3>🏆 ATH/ATL Scanner</h3>
-            <div class="checkbox">
-                <input type="checkbox" id="ath-atl-enabled" checked>
-                <label for="ath-atl-enabled">Abilita Scanner</label>
-            </div>
-            <div class="checkbox">
-                <input type="checkbox" id="ath-enabled" checked>
-                <label for="ath-enabled">Monitora ATH (All-Time High)</label>
-            </div>
-            <div class="checkbox">
-                <input type="checkbox" id="atl-enabled" checked>
-                <label for="atl-enabled">Monitora ATL (All-Time Low)</label>
-            </div>
-            <label>Soglia prossimità (%):</label>
-            <input type="number" id="ath-atl-proximity" value="1.0" step="0.1">
-            <label>Giorni di storico:</label>
-            <input type="number" id="lookback-days" value="365">
-            <label>Intervallo scansione (minuti):</label>
-            <input type="number" id="ath-atl-interval" value="60">
-        </div>
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column: Market Overview -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Top Gainers/Losers Tabs -->
+                <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
+                    <div class="flex border-b border-dark-border">
+                        <button onclick="switchMarketTab('gainers')" id="tab-gainers" class="flex-1 px-4 py-3 text-sm font-medium bg-dark-hover text-emerald-400 border-b-2 border-emerald-400">
+                            🚀 Top Gainers
+                        </button>
+                        <button onclick="switchMarketTab('losers')" id="tab-losers" class="flex-1 px-4 py-3 text-sm font-medium text-gray-400 hover:text-gray-300">
+                            📉 Top Losers
+                        </button>
+                        <button onclick="switchMarketTab('monitored')" id="tab-monitored" class="flex-1 px-4 py-3 text-sm font-medium text-gray-400 hover:text-gray-300">
+                            👁️ Monitored (40)
+                        </button>
+                    </div>
 
-        <!-- General Settings -->
-        <div class="scanner">
-            <h3>⚙️ Impostazioni Generali</h3>
-            
-            <h4 style="margin-top: 20px; color: #667eea;">📱 Telegram</h4>
-            <label>Bot Token:</label>
-            <input type="text" id="telegram-token" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
-            <label>Chat ID:</label>
-            <input type="text" id="telegram-chat-id" placeholder="123456789">
-            <small style="color: #666; margin-top: 5px; display: block;">
-                💡 Come ottenere: Cerca @BotFather su Telegram → /newbot → Copia token<br>
-                💡 Chat ID: Invia /start al bot → Visita https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates
-            </small>
-            
-            <h4 style="margin-top: 20px; color: #667eea;">🔧 Parametri Scanner</h4>
-            <label>Volume minimo 24h ($):</label>
-            <input type="number" id="min-volume" value="10000000">
-            <label>Cooldown notifiche (ore):</label>
-            <input type="number" id="cooldown" value="2">
-            <label>Max coin per alert:</label>
-            <input type="number" id="max-coins" value="10">
-        </div>
-        
-        <button onclick="saveConfig()">💾 Salva Configurazione</button>
-        <button onclick="loadConfig()">🔄 Ricarica</button>
-        <button onclick="testScan()">🧪 Test Scan</button>
+                    <!-- Gainers Table -->
+                    <div id="content-gainers" class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">#</th>
+                                    <th class="px-4 py-3 text-left">Coin</th>
+                                    <th class="px-4 py-3 text-right">Price</th>
+                                    <th class="px-4 py-3 text-right">24h Change</th>
+                                    <th class="px-4 py-3 text-right">Volume</th>
+                                </tr>
+                            </thead>
+                            <tbody id="gainers-tbody" class="text-sm">
+                                <tr>
+                                    <td colspan="5" class="text-center py-8 text-gray-500">Loading market data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
-        <div id="status"></div>
+                    <!-- Losers Table -->
+                    <div id="content-losers" class="overflow-x-auto hidden">
+                        <table class="w-full">
+                            <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">#</th>
+                                    <th class="px-4 py-3 text-left">Coin</th>
+                                    <th class="px-4 py-3 text-right">Price</th>
+                                    <th class="px-4 py-3 text-right">24h Change</th>
+                                    <th class="px-4 py-3 text-right">Volume</th>
+                                </tr>
+                            </thead>
+                            <tbody id="losers-tbody" class="text-sm">
+                                <tr>
+                                    <td colspan="5" class="text-center py-8 text-gray-500">Loading market data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
-        <!-- ATH/ATL Live Monitoring -->
-        <div class="monitoring-section">
-            <h3>🏆 Monitoraggio ATH/ATL - Top 20 Coin</h3>
-            <p style="margin-bottom: 15px; opacity: 0.9;">
-                📊 Coin monitorate dal scanner ATH/ATL (aggiornamento automatico ogni 30 secondi)
-            </p>
-
-            <div class="tabs">
-                <button class="tab active" onclick="switchTab('monitored')">📋 Tutte (Top 20 Gainers + Losers)</button>
-                <button class="tab" onclick="switchTab('gainers')">🚀 Top 10 Gainers</button>
-                <button class="tab" onclick="switchTab('losers')">📉 Top 10 Losers</button>
-            </div>
-
-            <div id="monitored-tab" class="tab-content active">
-                <table class="coin-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Coin</th>
-                            <th>Prezzo</th>
-                            <th>Change 24h</th>
-                            <th>Volume 24h</th>
-                        </tr>
-                    </thead>
-                    <tbody id="monitored-tbody">
-                        <tr><td colspan="5" style="text-align: center; padding: 20px;">Caricamento...</td></tr>
-                    </tbody>
-                </table>
+                    <!-- Monitored Table -->
+                    <div id="content-monitored" class="overflow-x-auto hidden">
+                        <table class="w-full">
+                            <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">#</th>
+                                    <th class="px-4 py-3 text-left">Coin</th>
+                                    <th class="px-4 py-3 text-right">Price</th>
+                                    <th class="px-4 py-3 text-right">24h Change</th>
+                                    <th class="px-4 py-3 text-right">Volume</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monitored-tbody" class="text-sm">
+                                <tr>
+                                    <td colspan="5" class="text-center py-8 text-gray-500">Loading market data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
-            <div id="gainers-tab" class="tab-content">
-                <table class="coin-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Coin</th>
-                            <th>Prezzo</th>
-                            <th>Change 24h</th>
-                            <th>Volume 24h</th>
-                        </tr>
-                    </thead>
-                    <tbody id="gainers-tbody">
-                        <tr><td colspan="5" style="text-align: center; padding: 20px;">Caricamento...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+            <!-- Right Column: Alerts & Scanner Status -->
+            <div class="space-y-6">
+                <!-- Recent Alerts -->
+                <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
+                    <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between">
+                        <h3 class="text-sm font-medium">🔔 Recent Alerts</h3>
+                        <span class="text-xs text-gray-500">Live</span>
+                    </div>
+                    <div id="alerts-container" class="p-4 space-y-3 max-h-96 overflow-y-auto">
+                        <div class="text-center py-8 text-gray-500 text-sm">
+                            Waiting for alerts...
+                        </div>
+                    </div>
+                </div>
 
-            <div id="losers-tab" class="tab-content">
-                <table class="coin-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Coin</th>
-                            <th>Prezzo</th>
-                            <th>Change 24h</th>
-                            <th>Volume 24h</th>
-                        </tr>
-                    </thead>
-                    <tbody id="losers-tbody">
-                        <tr><td colspan="5" style="text-align: center; padding: 20px;">Caricamento...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+                <!-- Scanner Configuration Quick Access -->
+                <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
+                    <div class="px-4 py-3 bg-dark-hover border-b border-dark-border">
+                        <h3 class="text-sm font-medium">⚙️ Scanner Settings</h3>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        <!-- EMA Touch -->
+                        <div class="flex items-center justify-between py-2 border-b border-dark-border">
+                            <div>
+                                <div class="text-sm font-medium">EMA Touch</div>
+                                <div class="text-xs text-gray-500">Threshold: <span id="ema-threshold">2.0</span>%</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="ema-toggle" class="sr-only peer" checked onchange="toggleScanner('ema_touch')">
+                                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
 
-            <p style="margin-top: 15px; font-size: 12px; opacity: 0.8;">
-                💡 Queste sono le coin che lo scanner ATH/ATL monitora in tempo reale
-            </p>
+                        <!-- Daily Flip -->
+                        <div class="flex items-center justify-between py-2 border-b border-dark-border">
+                            <div>
+                                <div class="text-sm font-medium">Daily Flip</div>
+                                <div class="text-xs text-gray-500">Threshold: <span id="flip-threshold">2.0</span>%</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="flip-toggle" class="sr-only peer" checked onchange="toggleScanner('daily_flip')">
+                                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            </label>
+                        </div>
+
+                        <!-- Volume Scanner -->
+                        <div class="flex items-center justify-between py-2 border-b border-dark-border">
+                            <div>
+                                <div class="text-sm font-medium">Volume Scanner</div>
+                                <div class="text-xs text-gray-500">Gainers: <span id="gainers-threshold">10</span>%</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="volume-toggle" class="sr-only peer" checked onchange="toggleScanner('volume_scanner')">
+                                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                            </label>
+                        </div>
+
+                        <!-- ATH/ATL Scanner -->
+                        <div class="flex items-center justify-between py-2">
+                            <div>
+                                <div class="text-sm font-medium">ATH/ATL Scanner</div>
+                                <div class="text-xs text-gray-500">Proximity: <span id="ath-threshold">1.0</span>%</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="ath-toggle" class="sr-only peer" checked onchange="toggleScanner('ath_atl')">
+                                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Telegram Status -->
+                <div id="telegram-warning" class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 hidden">
+                    <div class="flex items-start space-x-3">
+                        <div class="text-2xl">⚠️</div>
+                        <div>
+                            <div class="font-medium text-amber-400 text-sm mb-1">Telegram Not Configured</div>
+                            <div class="text-xs text-amber-200/70">Configure in Settings → Add-ons → Crypto Scanner Pro</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Fix per Home Assistant Ingress
-        // '.' = path relativo dalla directory corrente
-        // Così la richiesta rimane dentro il tunnel Ingress
-        const API_URL = '.';  // Relativo alla directory corrente!
-        
+        const API_URL = '.';
+        let currentConfig = {};
+
+        // Initialize
+        async function init() {
+            await loadConfig();
+            await loadMarketData();
+            checkTelegramStatus();
+
+            // Auto refresh every 30 seconds
+            setInterval(loadMarketData, 30000);
+        }
+
+        // Load configuration
         async function loadConfig() {
             try {
                 const res = await fetch(`${API_URL}/scanner-api/config`);
-                const config = await res.json();
-                
-                // EMA
-                document.getElementById('ema-enabled').checked = config.ema_touch.enabled;
-                document.getElementById('ema-period').value = config.ema_touch.ema_period;
-                document.getElementById('ema-proximity').value = config.ema_touch.proximity_threshold;
-                document.getElementById('ema-interval').value = config.ema_touch.scan_interval_minutes;
-                
-                // Flip
-                document.getElementById('flip-enabled').checked = config.daily_flip.enabled;
-                document.getElementById('flip-threshold').value = config.daily_flip.flip_threshold;
-                document.getElementById('flip-type').value = config.daily_flip.flip_type;
-                document.getElementById('flip-interval').value = config.daily_flip.scan_interval_minutes;
-                
-                // Volume
-                document.getElementById('volume-enabled').checked = config.volume_scanner.enabled;
-                document.getElementById('gainers-enabled').checked = config.volume_scanner.gainers_enabled;
-                document.getElementById('gainers-threshold').value = config.volume_scanner.gainers_threshold;
-                document.getElementById('losers-enabled').checked = config.volume_scanner.losers_enabled;
-                document.getElementById('losers-threshold').value = config.volume_scanner.losers_threshold;
-                document.getElementById('volume-interval').value = config.volume_scanner.scan_interval_minutes;
+                currentConfig = await res.json();
 
-                // ATH/ATL
-                if (config.ath_atl) {
-                    document.getElementById('ath-atl-enabled').checked = config.ath_atl.enabled;
-                    document.getElementById('ath-enabled').checked = config.ath_atl.ath_enabled;
-                    document.getElementById('atl-enabled').checked = config.ath_atl.atl_enabled;
-                    document.getElementById('ath-atl-proximity').value = config.ath_atl.proximity_threshold;
-                    document.getElementById('lookback-days').value = config.ath_atl.lookback_days;
-                    document.getElementById('ath-atl-interval').value = config.ath_atl.scan_interval_minutes;
+                // Update threshold displays
+                if (currentConfig.ema_touch) {
+                    document.getElementById('ema-threshold').textContent = currentConfig.ema_touch.ema_touch_threshold || 2.0;
+                    document.getElementById('ema-toggle').checked = currentConfig.ema_touch.enabled;
+                }
+                if (currentConfig.daily_flip) {
+                    document.getElementById('flip-threshold').textContent = currentConfig.daily_flip.flip_threshold || 2.0;
+                    document.getElementById('flip-toggle').checked = currentConfig.daily_flip.enabled;
+                }
+                if (currentConfig.volume_scanner) {
+                    document.getElementById('gainers-threshold').textContent = currentConfig.volume_scanner.gainers_threshold || 10;
+                    document.getElementById('volume-toggle').checked = currentConfig.volume_scanner.enabled;
+                }
+                if (currentConfig.ath_atl) {
+                    document.getElementById('ath-threshold').textContent = currentConfig.ath_atl.proximity_threshold || 1.0;
+                    document.getElementById('ath-toggle').checked = currentConfig.ath_atl.enabled;
                 }
 
-                // General
-                document.getElementById('telegram-token').value = config.telegram.token || '';
-                document.getElementById('telegram-chat-id').value = config.telegram.chat_id || '';
-                document.getElementById('min-volume').value = config.general.min_volume_24h;
-                document.getElementById('cooldown').value = config.general.cooldown_hours;
-                document.getElementById('max-coins').value = config.general.max_coins_per_alert;
-                
-                showStatus('✅ Configurazione caricata!', 'success');
-                
-                // Check if Telegram is configured
-                checkTelegramConfig();
-                
+                updateBotStatus();
             } catch (e) {
-                showStatus('❌ Errore caricamento: ' + e.message, 'error');
+                console.error('Error loading config:', e);
             }
         }
-        
-        async function saveConfig() {
-            const config = {
-                telegram: {
-                    token: document.getElementById('telegram-token').value || '',
-                    chat_id: document.getElementById('telegram-chat-id').value || '',
-                    enabled: true
-                },
-                ema_touch: {
-                    enabled: document.getElementById('ema-enabled').checked,
-                    ema_period: parseInt(document.getElementById('ema-period').value),
-                    ema_touch_candles: 3,
-                    proximity_threshold: parseFloat(document.getElementById('ema-proximity').value),
-                    scan_interval_minutes: parseInt(document.getElementById('ema-interval').value)
-                },
-                daily_flip: {
-                    enabled: document.getElementById('flip-enabled').checked,
-                    flip_threshold: parseFloat(document.getElementById('flip-threshold').value),
-                    flip_type: document.getElementById('flip-type').value,
-                    scan_interval_minutes: parseInt(document.getElementById('flip-interval').value),
-                    max_coins: 20
-                },
-                volume_scanner: {
-                    enabled: document.getElementById('volume-enabled').checked,
-                    volume_spike_threshold: 200,
-                    gainers_enabled: document.getElementById('gainers-enabled').checked,
-                    gainers_threshold: parseInt(document.getElementById('gainers-threshold').value),
-                    losers_enabled: document.getElementById('losers-enabled').checked,
-                    losers_threshold: parseInt(document.getElementById('losers-threshold').value),
-                    scan_interval_minutes: parseInt(document.getElementById('volume-interval').value)
-                },
-                ath_atl: {
-                    enabled: document.getElementById('ath-atl-enabled').checked,
-                    ath_enabled: document.getElementById('ath-enabled').checked,
-                    atl_enabled: document.getElementById('atl-enabled').checked,
-                    proximity_threshold: parseFloat(document.getElementById('ath-atl-proximity').value),
-                    lookback_days: parseInt(document.getElementById('lookback-days').value),
-                    scan_interval_minutes: parseInt(document.getElementById('ath-atl-interval').value)
-                },
-                general: {
-                    min_volume_24h: parseInt(document.getElementById('min-volume').value),
-                    new_listing_days: 30,
-                    cooldown_hours: parseInt(document.getElementById('cooldown').value),
-                    send_screenshots: true,
-                    max_coins_per_alert: parseInt(document.getElementById('max-coins').value)
-                }
+
+        // Update bot status indicators
+        function updateBotStatus() {
+            const scanners = {
+                'ema-status': currentConfig.ema_touch?.enabled,
+                'flip-status': currentConfig.daily_flip?.enabled,
+                'volume-status': currentConfig.volume_scanner?.enabled,
+                'ath-status': currentConfig.ath_atl?.enabled
             };
-            
-            try {
-                console.log('💾 Saving config...', config);
-                
-                const res = await fetch(`${API_URL}/scanner-api/config`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(config)
-                });
-                
-                console.log('Response status:', res.status);
-                console.log('Response headers:', res.headers.get('content-type'));
-                
-                // Check if response is JSON
-                const contentType = res.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await res.text();
-                    console.error('Expected JSON, got:', text);
-                    throw new Error('Server returned non-JSON response: ' + text.substring(0, 100));
-                }
-                
-                const result = await res.json();
-                console.log('Result:', result);
-                
-                if (result.success) {
-                    showStatus('✅ Configurazione salvata! Gli scanner si aggiorneranno automaticamente.', 'success');
-                    
-                    // Check Telegram config again
-                    checkTelegramConfig();
-                } else {
-                    showStatus('❌ Errore: ' + result.error, 'error');
-                }
-            } catch (e) {
-                console.error('Save error:', e);
-                showStatus('❌ Errore salvataggio: ' + e.message, 'error');
-            }
-        }
-        
-        async function testScan() {
-            showStatus('🔄 Test scan in corso...', 'success');
-            try {
-                const res = await fetch(`${API_URL}/scanner-api/scan/ema`, {method: 'POST'});
-                const result = await res.json();
-                showStatus('✅ Test completato! Controlla Telegram per le notifiche.', 'success');
-            } catch (e) {
-                showStatus('❌ Errore test: ' + e.message, 'error');
-            }
-        }
-        
-        function showStatus(message, type) {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = 'status ' + type;
-        }
-        
-        async function checkTelegramConfig() {
-            try {
-                const res = await fetch(`${API_URL}/scanner-api/health`);
-                const health = await res.json();
 
-                const warningBanner = document.getElementById('telegram-warning');
-
-                if (!health.telegram_configured) {
-                    warningBanner.classList.add('show');
-                } else {
-                    warningBanner.classList.remove('show');
+            Object.entries(scanners).forEach(([id, enabled]) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.className = `w-2 h-2 rounded-full ${enabled ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'}`;
                 }
-            } catch (e) {
-                console.error('Error checking Telegram config:', e);
+            });
+
+            // Update main bot status
+            const allEnabled = Object.values(scanners).some(v => v);
+            const statusEl = document.getElementById('bot-status');
+            if (allEnabled) {
+                statusEl.innerHTML = `
+                    <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                    <span class="text-sm text-emerald-400 font-medium">Online</span>
+                `;
+            } else {
+                statusEl.innerHTML = `
+                    <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                    <span class="text-sm text-gray-500">Offline</span>
+                `;
             }
         }
 
-        // Tab switching
-        function switchTab(tabName) {
-            // Remove active class from all tabs
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        // Toggle scanner
+        async function toggleScanner(scannerName) {
+            const newConfig = { ...currentConfig };
+            const toggle = document.getElementById(`${scannerName.split('_')[0]}-toggle`);
 
-            // Add active class to selected tab
-            event.target.classList.add('active');
-            document.getElementById(tabName + '-tab').classList.add('active');
+            if (newConfig[scannerName]) {
+                newConfig[scannerName].enabled = toggle.checked;
+
+                try {
+                    const res = await fetch(`${API_URL}/scanner-api/config`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newConfig)
+                    });
+
+                    if (res.ok) {
+                        currentConfig = newConfig;
+                        updateBotStatus();
+                    }
+                } catch (e) {
+                    console.error('Error toggling scanner:', e);
+                    toggle.checked = !toggle.checked; // Revert
+                }
+            }
         }
 
-        // Load ATH/ATL status and monitored coins
-        async function loadATHATLStatus() {
+        // Load market data
+        async function loadMarketData() {
             try {
                 const res = await fetch(`${API_URL}/scanner-api/ath-atl/status`);
                 const data = await res.json();
 
-                if (!data.success) {
-                    console.error('Error loading ATH/ATL status:', data.error);
-                    return;
+                if (data.success) {
+                    renderTable('gainers-tbody', data.top_gainers || []);
+                    renderTable('losers-tbody', data.top_losers || []);
+                    renderTable('monitored-tbody', data.monitored_coins || []);
                 }
-
-                // Render tables
-                renderCoinTable('monitored-tbody', data.monitored_coins);
-                renderCoinTable('gainers-tbody', data.top_gainers);
-                renderCoinTable('losers-tbody', data.top_losers);
-
             } catch (e) {
-                console.error('Error loading ATH/ATL status:', e);
+                console.error('Error loading market data:', e);
             }
         }
 
-        // Render coin table
-        function renderCoinTable(tbodyId, coins) {
+        // Render table
+        function renderTable(tbodyId, coins) {
             const tbody = document.getElementById(tbodyId);
 
             if (!coins || coins.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">Nessun dato disponibile</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">No data available</td></tr>';
                 return;
             }
 
             tbody.innerHTML = coins.map((coin, index) => {
-                const changeClass = coin.change_24h >= 0 ? 'positive' : 'negative';
-                const changeSign = coin.change_24h >= 0 ? '+' : '';
+                const isPositive = coin.change_24h >= 0;
+                const changeColor = isPositive ? 'text-emerald-400' : 'text-red-400';
+                const bgColor = isPositive ? 'bg-emerald-400/5' : 'bg-red-400/5';
 
                 return `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td><strong>${coin.symbol}</strong></td>
-                        <td>$${formatPrice(coin.price)}</td>
-                        <td class="${changeClass}">${changeSign}${coin.change_24h.toFixed(2)}%</td>
-                        <td>$${formatVolume(coin.volume_24h)}</td>
+                    <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
+                        <td class="px-4 py-3 text-gray-500">${index + 1}</td>
+                        <td class="px-4 py-3 font-medium">${coin.symbol.replace('USDT', '')}</td>
+                        <td class="px-4 py-3 text-right text-gray-300">$${formatPrice(coin.price)}</td>
+                        <td class="px-4 py-3 text-right">
+                            <span class="${changeColor} ${bgColor} px-2 py-1 rounded text-sm font-medium">
+                                ${isPositive ? '+' : ''}${coin.change_24h.toFixed(2)}%
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-right text-gray-400 text-sm">$${formatVolume(coin.volume_24h)}</td>
                     </tr>
                 `;
             }).join('');
         }
 
-        // Format price with appropriate decimals
+        // Switch market tab
+        function switchMarketTab(tab) {
+            const tabs = ['gainers', 'losers', 'monitored'];
+            tabs.forEach(t => {
+                document.getElementById(`tab-${t}`).className = `flex-1 px-4 py-3 text-sm font-medium text-gray-400 hover:text-gray-300`;
+                document.getElementById(`content-${t}`).classList.add('hidden');
+            });
+
+            const color = tab === 'gainers' ? 'emerald' : tab === 'losers' ? 'red' : 'blue';
+            document.getElementById(`tab-${tab}`).className = `flex-1 px-4 py-3 text-sm font-medium bg-dark-hover text-${color}-400 border-b-2 border-${color}-400`;
+            document.getElementById(`content-${tab}`).classList.remove('hidden');
+        }
+
+        // Check Telegram status
+        async function checkTelegramStatus() {
+            try {
+                const res = await fetch(`${API_URL}/scanner-api/health`);
+                const health = await res.json();
+
+                const warning = document.getElementById('telegram-warning');
+                if (!health.telegram_configured) {
+                    warning.classList.remove('hidden');
+                } else {
+                    warning.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('Error checking Telegram:', e);
+            }
+        }
+
+        // Format price
         function formatPrice(price) {
-            if (price >= 1) {
-                return price.toFixed(2);
-            } else if (price >= 0.01) {
-                return price.toFixed(4);
-            } else {
-                return price.toFixed(6);
-            }
+            if (price >= 1) return price.toFixed(2);
+            if (price >= 0.01) return price.toFixed(4);
+            return price.toFixed(6);
         }
 
-        // Format volume (millions/billions)
+        // Format volume
         function formatVolume(volume) {
-            if (volume >= 1000000000) {
-                return (volume / 1000000000).toFixed(2) + 'B';
-            } else if (volume >= 1000000) {
-                return (volume / 1000000).toFixed(2) + 'M';
-            } else {
-                return volume.toFixed(0);
-            }
+            if (volume >= 1e9) return (volume / 1e9).toFixed(2) + 'B';
+            if (volume >= 1e6) return (volume / 1e6).toFixed(2) + 'M';
+            return volume.toFixed(0);
         }
 
-        // Load config on start
-        loadConfig();
-
-        // Load ATH/ATL status immediately and every 30 seconds
-        loadATHATLStatus();
-        setInterval(loadATHATLStatus, 30000);
+        // Start
+        init();
     </script>
 </body>
 </html>
