@@ -65,6 +65,68 @@
         .warning-banner strong { color: #856404; display: block; margin-bottom: 8px; font-size: 16px; }
         .warning-banner p { margin: 3px 0; color: #856404; }
         .warning-banner ul { margin: 10px 0 10px 20px; color: #856404; }
+
+        .monitoring-section {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            color: white;
+        }
+        .monitoring-section h3 { color: white; margin-bottom: 15px; }
+
+        .coin-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        .coin-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        .coin-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e0e0e0;
+            color: #333;
+        }
+        .coin-table tr:last-child td { border-bottom: none; }
+        .coin-table tr:hover { background: #f8f9fa; }
+
+        .positive { color: #28a745; font-weight: 600; }
+        .negative { color: #dc3545; font-weight: 600; }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .tab {
+            background: rgba(255,255,255,0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .tab.active {
+            background: white;
+            color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -137,7 +199,30 @@
             <label>Intervallo scansione (minuti):</label>
             <input type="number" id="volume-interval" value="30">
         </div>
-        
+
+        <!-- ATH/ATL Scanner -->
+        <div class="scanner">
+            <h3>🏆 ATH/ATL Scanner</h3>
+            <div class="checkbox">
+                <input type="checkbox" id="ath-atl-enabled" checked>
+                <label for="ath-atl-enabled">Abilita Scanner</label>
+            </div>
+            <div class="checkbox">
+                <input type="checkbox" id="ath-enabled" checked>
+                <label for="ath-enabled">Monitora ATH (All-Time High)</label>
+            </div>
+            <div class="checkbox">
+                <input type="checkbox" id="atl-enabled" checked>
+                <label for="atl-enabled">Monitora ATL (All-Time Low)</label>
+            </div>
+            <label>Soglia prossimità (%):</label>
+            <input type="number" id="ath-atl-proximity" value="1.0" step="0.1">
+            <label>Giorni di storico:</label>
+            <input type="number" id="lookback-days" value="365">
+            <label>Intervallo scansione (minuti):</label>
+            <input type="number" id="ath-atl-interval" value="60">
+        </div>
+
         <!-- General Settings -->
         <div class="scanner">
             <h3>⚙️ Impostazioni Generali</h3>
@@ -164,10 +249,79 @@
         <button onclick="saveConfig()">💾 Salva Configurazione</button>
         <button onclick="loadConfig()">🔄 Ricarica</button>
         <button onclick="testScan()">🧪 Test Scan</button>
-        
+
         <div id="status"></div>
+
+        <!-- ATH/ATL Live Monitoring -->
+        <div class="monitoring-section">
+            <h3>🏆 Monitoraggio ATH/ATL - Top 20 Coin</h3>
+            <p style="margin-bottom: 15px; opacity: 0.9;">
+                📊 Coin monitorate dal scanner ATH/ATL (aggiornamento automatico ogni 30 secondi)
+            </p>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('monitored')">📋 Tutte (Top 20 Gainers + Losers)</button>
+                <button class="tab" onclick="switchTab('gainers')">🚀 Top 10 Gainers</button>
+                <button class="tab" onclick="switchTab('losers')">📉 Top 10 Losers</button>
+            </div>
+
+            <div id="monitored-tab" class="tab-content active">
+                <table class="coin-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Coin</th>
+                            <th>Prezzo</th>
+                            <th>Change 24h</th>
+                            <th>Volume 24h</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monitored-tbody">
+                        <tr><td colspan="5" style="text-align: center; padding: 20px;">Caricamento...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="gainers-tab" class="tab-content">
+                <table class="coin-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Coin</th>
+                            <th>Prezzo</th>
+                            <th>Change 24h</th>
+                            <th>Volume 24h</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gainers-tbody">
+                        <tr><td colspan="5" style="text-align: center; padding: 20px;">Caricamento...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="losers-tab" class="tab-content">
+                <table class="coin-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Coin</th>
+                            <th>Prezzo</th>
+                            <th>Change 24h</th>
+                            <th>Volume 24h</th>
+                        </tr>
+                    </thead>
+                    <tbody id="losers-tbody">
+                        <tr><td colspan="5" style="text-align: center; padding: 20px;">Caricamento...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p style="margin-top: 15px; font-size: 12px; opacity: 0.8;">
+                💡 Queste sono le coin che lo scanner ATH/ATL monitora in tempo reale
+            </p>
+        </div>
     </div>
-    
+
     <script>
         // Fix per Home Assistant Ingress
         // '.' = path relativo dalla directory corrente
@@ -198,7 +352,17 @@
                 document.getElementById('losers-enabled').checked = config.volume_scanner.losers_enabled;
                 document.getElementById('losers-threshold').value = config.volume_scanner.losers_threshold;
                 document.getElementById('volume-interval').value = config.volume_scanner.scan_interval_minutes;
-                
+
+                // ATH/ATL
+                if (config.ath_atl) {
+                    document.getElementById('ath-atl-enabled').checked = config.ath_atl.enabled;
+                    document.getElementById('ath-enabled').checked = config.ath_atl.ath_enabled;
+                    document.getElementById('atl-enabled').checked = config.ath_atl.atl_enabled;
+                    document.getElementById('ath-atl-proximity').value = config.ath_atl.proximity_threshold;
+                    document.getElementById('lookback-days').value = config.ath_atl.lookback_days;
+                    document.getElementById('ath-atl-interval').value = config.ath_atl.scan_interval_minutes;
+                }
+
                 // General
                 document.getElementById('telegram-token').value = config.telegram.token || '';
                 document.getElementById('telegram-chat-id').value = config.telegram.chat_id || '';
@@ -245,6 +409,14 @@
                     losers_enabled: document.getElementById('losers-enabled').checked,
                     losers_threshold: parseInt(document.getElementById('losers-threshold').value),
                     scan_interval_minutes: parseInt(document.getElementById('volume-interval').value)
+                },
+                ath_atl: {
+                    enabled: document.getElementById('ath-atl-enabled').checked,
+                    ath_enabled: document.getElementById('ath-enabled').checked,
+                    atl_enabled: document.getElementById('atl-enabled').checked,
+                    proximity_threshold: parseFloat(document.getElementById('ath-atl-proximity').value),
+                    lookback_days: parseInt(document.getElementById('lookback-days').value),
+                    scan_interval_minutes: parseInt(document.getElementById('ath-atl-interval').value)
                 },
                 general: {
                     min_volume_24h: parseInt(document.getElementById('min-volume').value),
@@ -313,9 +485,9 @@
             try {
                 const res = await fetch(`${API_URL}/scanner-api/health`);
                 const health = await res.json();
-                
+
                 const warningBanner = document.getElementById('telegram-warning');
-                
+
                 if (!health.telegram_configured) {
                     warningBanner.classList.add('show');
                 } else {
@@ -325,9 +497,92 @@
                 console.error('Error checking Telegram config:', e);
             }
         }
-        
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            // Add active class to selected tab
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        // Load ATH/ATL status and monitored coins
+        async function loadATHATLStatus() {
+            try {
+                const res = await fetch(`${API_URL}/scanner-api/ath-atl/status`);
+                const data = await res.json();
+
+                if (!data.success) {
+                    console.error('Error loading ATH/ATL status:', data.error);
+                    return;
+                }
+
+                // Render tables
+                renderCoinTable('monitored-tbody', data.monitored_coins);
+                renderCoinTable('gainers-tbody', data.top_gainers);
+                renderCoinTable('losers-tbody', data.top_losers);
+
+            } catch (e) {
+                console.error('Error loading ATH/ATL status:', e);
+            }
+        }
+
+        // Render coin table
+        function renderCoinTable(tbodyId, coins) {
+            const tbody = document.getElementById(tbodyId);
+
+            if (!coins || coins.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">Nessun dato disponibile</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = coins.map((coin, index) => {
+                const changeClass = coin.change_24h >= 0 ? 'positive' : 'negative';
+                const changeSign = coin.change_24h >= 0 ? '+' : '';
+
+                return `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><strong>${coin.symbol}</strong></td>
+                        <td>$${formatPrice(coin.price)}</td>
+                        <td class="${changeClass}">${changeSign}${coin.change_24h.toFixed(2)}%</td>
+                        <td>$${formatVolume(coin.volume_24h)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Format price with appropriate decimals
+        function formatPrice(price) {
+            if (price >= 1) {
+                return price.toFixed(2);
+            } else if (price >= 0.01) {
+                return price.toFixed(4);
+            } else {
+                return price.toFixed(6);
+            }
+        }
+
+        // Format volume (millions/billions)
+        function formatVolume(volume) {
+            if (volume >= 1000000000) {
+                return (volume / 1000000000).toFixed(2) + 'B';
+            } else if (volume >= 1000000) {
+                return (volume / 1000000).toFixed(2) + 'M';
+            } else {
+                return volume.toFixed(0);
+            }
+        }
+
         // Load config on start
         loadConfig();
+
+        // Load ATH/ATL status immediately and every 30 seconds
+        loadATHATLStatus();
+        setInterval(loadATHATLStatus, 30000);
     </script>
 </body>
 </html>

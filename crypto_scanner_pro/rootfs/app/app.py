@@ -228,7 +228,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '2.2.1',
+        'version': '2.2.2',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -281,6 +281,66 @@ def manual_scan(scanner_name):
             return jsonify({'success': False, 'error': 'Scanner not found'}), 404
     except Exception as e:
         logger.error(f"❌ Error in manual scan: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/scanner-api/ath-atl/status', methods=['GET'])
+def get_ath_atl_status():
+    """Get ATH/ATL scanner status and top monitored coins"""
+    try:
+        import requests
+
+        # Get top 20 gainers + top 20 losers from Bybit
+        url = "https://api.bybit.com/v5/market/tickers?category=linear"
+        response = requests.get(url, timeout=10)
+        data = response.json()
+
+        if data['retCode'] != 0:
+            return jsonify({'success': False, 'error': 'Bybit API error'}), 500
+
+        # Filter and sort pairs
+        all_pairs = []
+        min_volume = config['general']['min_volume_24h']
+
+        for item in data['result']['list']:
+            if not item['symbol'].endswith('USDT'):
+                continue
+
+            last_price = float(item['lastPrice'])
+            change_pct = float(item.get('price24hPcnt', 0)) * 100
+            volume_24h_usd = float(item.get('volume24h', 0)) * last_price
+
+            if volume_24h_usd < min_volume:
+                continue
+
+            all_pairs.append({
+                'symbol': item['symbol'],
+                'price': last_price,
+                'change_24h': change_pct,
+                'volume_24h': volume_24h_usd
+            })
+
+        # Sort by change %
+        all_pairs.sort(key=lambda x: x['change_24h'], reverse=True)
+
+        # Get top 20 gainers and losers
+        top_gainers = all_pairs[:20]
+        top_losers = all_pairs[-20:] if len(all_pairs) >= 20 else []
+        top_losers.reverse()  # Most negative first
+
+        # Combine for monitoring (what scanner analyzes)
+        monitored_coins = top_gainers + top_losers
+
+        return jsonify({
+            'success': True,
+            'config': config.get('ath_atl', {}),
+            'monitored_coins': monitored_coins,
+            'top_gainers': top_gainers[:10],
+            'top_losers': top_losers[:10],
+            'total_pairs': len(all_pairs)
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Error getting ATH/ATL status: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/', methods=['GET'])
