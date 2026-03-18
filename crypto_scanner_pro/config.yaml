@@ -1,6 +1,6 @@
 name: "Crypto Scanner"
-description: "Dashboard completa per gestire scanner crypto con notifiche Telegram e TradingView alerts"
-version: "1.1.0"
+description: "Dashboard completa per gestire scanner crypto con notifiche Telegram, TradingView alerts e EMA Pi Greco Multi-Timeframe"
+version: "2.3.0"
 slug: "crypto_scanner"
 init: false
 arch:
@@ -21,7 +21,7 @@ panel_title: "Crypto Scanner"
 ports:
   5000/tcp: 5000
 ports_description:
-  5000/tcp: "API Backend + Webhook TradingView"
+  5000/tcp: "API Backend + Webhook TradingView + EMA Pi Scanner"
 map:
   - config:rw
   - addons:rw
