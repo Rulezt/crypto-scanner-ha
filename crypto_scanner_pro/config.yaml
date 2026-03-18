@@ -1,7 +1,7 @@
-name: "Crypto Scanner Professional"
-description: "Scanner crypto unificato con tutto integrato - Zero dipendenze"
-version: "2.2.6"
-slug: "crypto_scanner_pro"
+name: "Crypto Scanner"
+description: "Dashboard completa per gestire scanner crypto con notifiche Telegram e TradingView alerts"
+version: "1.1.0"
+slug: "crypto_scanner"
 init: false
 arch:
   - armhf
@@ -12,22 +12,29 @@ arch:
 startup: application
 boot: auto
 hassio_api: true
-homeassistant_api: false
+hassio_role: default
+homeassistant_api: true
 ingress: true
-ingress_port: 8080
-panel_icon: mdi:bitcoin
+ingress_port: 8099
+panel_icon: mdi:chart-line
 panel_title: "Crypto Scanner"
 ports:
-  8080/tcp: 8080
+  5000/tcp: 5000
 ports_description:
-  8080/tcp: "Dashboard & API"
+  5000/tcp: "API Backend + Webhook TradingView"
+map:
+  - config:rw
+  - addons:rw
 options:
   telegram_token: ""
   telegram_chat_id: ""
-  ema_touch_threshold: 2.0
-  ath_atl_threshold: 1.0
+  tv_username: ""
+  tv_password: ""
+  tv_webhook_url: ""
 schema:
-  telegram_token: str
-  telegram_chat_id: str
-  ema_touch_threshold: float
-  ath_atl_threshold: float
+  telegram_token: str?
+  telegram_chat_id: str?
+  tv_username: str?
+  tv_password: str?
+  tv_webhook_url: str?
+url: https://github.com/Rulezt/crypto-scanner-ha
