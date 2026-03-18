@@ -1,40 +1,4 @@
-name: "Crypto Scanner"
-description: "Dashboard completa per gestire scanner crypto con notifiche Telegram, TradingView alerts e EMA Pi Greco Multi-Timeframe"
-version: "2.3.0"
-slug: "crypto_scanner"
-init: false
-arch:
-  - armhf
-  - armv7
-  - aarch64
-  - amd64
-  - i386
-startup: application
-boot: auto
-hassio_api: true
-hassio_role: default
-homeassistant_api: true
-ingress: true
-ingress_port: 8099
-panel_icon: mdi:chart-line
-panel_title: "Crypto Scanner"
-ports:
-  5000/tcp: 5000
-ports_description:
-  5000/tcp: "API Backend + Webhook TradingView + EMA Pi Scanner"
-map:
-  - config:rw
-  - addons:rw
-options:
-  telegram_token: ""
-  telegram_chat_id: ""
-  tv_username: ""
-  tv_password: ""
-  tv_webhook_url: ""
-schema:
-  telegram_token: str?
-  telegram_chat_id: str?
-  tv_username: str?
-  tv_password: str?
-  tv_webhook_url: str?
-url: https://github.com/Rulezt/crypto-scanner-ha
+version: "2.3.1"
+description: |
+  TradingView EMA Pi Greco Multi-Timeframe Scanner support
+# (resto della configurazione)
