@@ -43,7 +43,7 @@ LABEL \
     io.hass.name="Crypto Scanner Pro" \
     io.hass.description="Scanner crypto avanzato con Telegram" \
     io.hass.type="addon" \
-    io.hass.version="2.3.1"
+    io.hass.version="2.3.2"
 
 # Run
 CMD [ "/run.sh" ]
