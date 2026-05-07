@@ -14,7 +14,7 @@ RUN apk add --no-cache \
     nginx \
     bash \
     curl \
-    # Chromium + Selenium deps (Alpine-native, no musl issues)
+    jq \
     chromium \
     chromium-chromedriver \
     xvfb \
@@ -35,15 +35,15 @@ COPY rootfs /
 RUN chmod a+x /run.sh
 RUN chmod a+x /usr/local/bin/* || true
 
-# Expose ports
-EXPOSE 8099 5000
+# Expose port
+EXPOSE 8080
 
 # Labels
 LABEL \
-    io.hass.name="Crypto Scanner" \
-    io.hass.description="Dashboard completa per scanner crypto" \
+    io.hass.name="Crypto Scanner Pro" \
+    io.hass.description="Scanner crypto avanzato con Telegram" \
     io.hass.type="addon" \
-    io.hass.version="1.1.0"
+    io.hass.version="2.3.1"
 
 # Run
 CMD [ "/run.sh" ]
