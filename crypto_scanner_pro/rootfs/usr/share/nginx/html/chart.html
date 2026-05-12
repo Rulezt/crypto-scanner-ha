@@ -52,10 +52,10 @@
 
     <!-- EMA legend -->
     <div class="hidden sm:flex items-center gap-3 text-xs">
-        <span class="flex items-center gap-1"><span style="color:#00bcd4">&#9644;</span><span class="text-gray-400">EMA5</span></span>
-        <span class="flex items-center gap-1"><span style="color:#ffeb3b">&#9644;</span><span class="text-gray-400">EMA10</span></span>
-        <span class="flex items-center gap-1"><span style="color:#ff9800">&#9644;</span><span class="text-gray-400">EMA60</span></span>
-        <span class="flex items-center gap-1"><span style="color:#9c27b0">&#9644;</span><span class="text-gray-400">EMA223</span></span>
+        <span class="flex items-center gap-1"><span style="color:#ef4444">&#9644;</span><span class="text-gray-400">EMA5</span></span>
+        <span class="flex items-center gap-1"><span style="color:#fbbf24">&#9644;</span><span class="text-gray-400">EMA10</span></span>
+        <span class="flex items-center gap-1"><span style="color:#3b82f6">&#9644;</span><span class="text-gray-400">EMA60</span></span>
+        <span class="flex items-center gap-1"><span style="color:#a855f7">&#9644;</span><span class="text-gray-400">EMA223</span></span>
     </div>
 
     <!-- Spacer -->
@@ -184,10 +184,10 @@ function initCharts() {
     });
 
     const lineOpts = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
-    ema5S   = addSeries(mainChart,'LineSeries',{...lineOpts,color:'#00bcd4',lineWidth:1});
-    ema10S  = addSeries(mainChart,'LineSeries',{...lineOpts,color:'#ffeb3b',lineWidth:1});
-    ema60S  = addSeries(mainChart,'LineSeries',{...lineOpts,color:'#ff9800',lineWidth:1});
-    ema223S = addSeries(mainChart,'LineSeries',{...lineOpts,color:'#9c27b0',lineWidth:1});
+    ema5S   = addSeries(mainChart,'LineSeries',{...lineOpts,color:'#ef4444',lineWidth:2});
+    ema10S  = addSeries(mainChart,'LineSeries',{...lineOpts,color:'#fbbf24',lineWidth:2});
+    ema60S  = addSeries(mainChart,'LineSeries',{...lineOpts,color:'#3b82f6',lineWidth:3});
+    ema223S = addSeries(mainChart,'LineSeries',{...lineOpts,color:'#a855f7',lineWidth:2.5});
 
     rsiS = addSeries(rsiChart,'LineSeries',{color:'#2196f3',lineWidth:2,priceLineVisible:false,lastValueVisible:true});
     const LS = LC.LineStyle || {Dashed:1, Dotted:2};
