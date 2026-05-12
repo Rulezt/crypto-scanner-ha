@@ -33,7 +33,7 @@
 <!-- ===== HEADER ===== -->
 <header class="bg-dark-card border-b border-dark-border flex items-center gap-2 px-3 flex-shrink-0" style="height:52px;">
 
-    <a href="/"
+    <a href="./"
        class="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded hover:bg-dark-hover transition-colors whitespace-nowrap">
         ← Scanner
     </a>
@@ -208,7 +208,7 @@ function initCharts() {
 // ── data loading ───────────────────────────────────────────────────────────
 async function loadData() {
     try {
-        const r = await fetch(`/api/klines?symbol=${curSym}&interval=${curTF}`);
+        const r = await fetch(`api/klines?symbol=${curSym}&interval=${curTF}`);
         const j = await r.json();
         if (!j.success) throw new Error(j.error);
         klines = j.data;
