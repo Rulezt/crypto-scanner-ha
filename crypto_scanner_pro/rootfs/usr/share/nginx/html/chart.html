@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart - Crypto Scanner Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: { bg: '#0B0E11', card: '#161A1E', hover: '#1E2329', border: '#2B3139' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; }
+        .btn-sym-active  { background: #2B3139; color: #E5E7EB; }
+        .btn-sym-idle    { color: #6B7280; }
+        .btn-sym-idle:hover { color: #9CA3AF; background: #1E2329; }
+        .btn-tf-active   { background: #2563EB; color: #fff; }
+        .btn-tf-idle     { color: #6B7280; }
+        .btn-tf-idle:hover { color: #9CA3AF; background: #1E2329; }
+    </style>
+</head>
+<body class="bg-dark-bg text-gray-100" style="height:100vh;display:flex;flex-direction:column;">
+
+<!-- ===== HEADER ===== -->
+<header class="bg-dark-card border-b border-dark-border flex items-center gap-2 px-3 flex-shrink-0" style="height:52px;">
+
+    <a href="/"
+       class="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded hover:bg-dark-hover transition-colors whitespace-nowrap">
+        ← Scanner
+    </a>
+
+    <div class="w-px h-5 bg-dark-border"></div>
+
+    <!-- Symbol switcher -->
+    <div class="flex gap-1" id="sym-bar"></div>
+
+    <div class="w-px h-5 bg-dark-border"></div>
+
+    <!-- Timeframe selector -->
+    <div class="flex gap-1" id="tf-bar"></div>
+
+    <div class="w-px h-5 bg-dark-border"></div>
+
+    <!-- EMA legend -->
+    <div class="hidden sm:flex items-center gap-3 text-xs">
+        <span class="flex items-center gap-1"><span style="color:#00bcd4">&#9644;</span><span class="text-gray-400">EMA5</span></span>
+        <span class="flex items-center gap-1"><span style="color:#ffeb3b">&#9644;</span><span class="text-gray-400">EMA10</span></span>
+        <span class="flex items-center gap-1"><span style="color:#ff9800">&#9644;</span><span class="text-gray-400">EMA60</span></span>
+        <span class="flex items-center gap-1"><span style="color:#9c27b0">&#9644;</span><span class="text-gray-400">EMA223</span></span>
+    </div>
+
+    <!-- Spacer -->
+    <div class="flex-1"></div>
+
+    <!-- WS status + price -->
+    <div id="ws-dot" class="flex items-center gap-1.5">
+        <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
+        <span class="text-xs text-gray-500">WS</span>
+    </div>
+    <div id="price-tag" class="text-sm font-mono text-gray-300 min-w-[110px] text-right"></div>
+</header>
+
+<!-- ===== CHARTS ===== -->
+<div id="charts-wrap" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+    <div id="main-chart" style="flex:3;min-height:0;"></div>
+    <div id="rsi-chart"  style="flex:1;min-height:0;border-top:1px solid #2B3139;"></div>
+</div>
+
+<script>
+// ── constants ──────────────────────────────────────────────────────────────
+const SYMBOLS   = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];
+const TIMEFRAMES = ['1','5','15','60','240','D'];
+const TF_LABEL   = {'1':'1m','5':'5m','15':'15m','60':'1h','240':'4h','D':'1D'};
+
+const LC = LightweightCharts;
+
+// ── state ──────────────────────────────────────────────────────────────────
+const urlP = new URLSearchParams(location.search);
+let curSym = (urlP.get('symbol') || 'BTCUSDT').toUpperCase().trim();
+if (!SYMBOLS.includes(curSym)) curSym = 'BTCUSDT';
+let curTF  = '15';
+
+let mainChart, rsiChart;
+let candleS, ema5S, ema10S, ema60S, ema223S, rsiS;
+
+let klines = [];                              // full candle array
+let lastEMA = {5:null,10:null,60:null,223:null};
+let rsiSt   = {avgGain:0,avgLoss:0,prevClose:null,ok:false};
+
+let ws = null, wsTimer = null;
+
+// ── helpers ────────────────────────────────────────────────────────────────
+function fmtPrice(p) {
+    if (p >= 10000) return p.toLocaleString('en-US',{maximumFractionDigits:1});
+    if (p >= 1)     return p.toFixed(3);
+    if (p >= 0.01)  return p.toFixed(5);
+    return p.toFixed(7);
+}
+
+// ── indicator math ─────────────────────────────────────────────────────────
+function calcEMA(bars, period) {
+    const k = 2 / (period + 1);
+    let v = bars[0].close;
+    return bars.map((b, i) => {
+        if (i > 0) v = b.close * k + v * (1 - k);
+        return {time: b.time, value: v};
+    });
+}
+
+function calcRSI(bars, period) {
+    if (bars.length < period + 1) return [];
+    let ag = 0, al = 0;
+    for (let i = 1; i <= period; i++) {
+        const d = bars[i].close - bars[i-1].close;
+        d > 0 ? ag += d : al -= d;
+    }
+    ag /= period; al /= period;
+
+    const out = [];
+    const push = (bar, aGain, aLoss) => {
+        const rs = aLoss === 0 ? 100 : aGain / aLoss;
+        out.push({time: bar.time, value: 100 - 100/(1+rs)});
+    };
+    push(bars[period], ag, al);
+
+    for (let i = period+1; i < bars.length; i++) {
+        const d = bars[i].close - bars[i-1].close;
+        ag = (ag*13 + (d>0?d:0)) / 14;
+        al = (al*13 + (d<0?-d:0)) / 14;
+        push(bars[i], ag, al);
+    }
+
+    rsiSt = {avgGain:ag, avgLoss:al, prevClose:bars[bars.length-1].close, ok:true};
+    return out;
+}
+
+// ── chart creation ─────────────────────────────────────────────────────────
+function addSeries(chart, type, opts) {
+    // supports both v5 (addSeries) and v4 (addCandlestickSeries etc.)
+    if (typeof chart.addSeries === 'function' && LC[type]) {
+        return chart.addSeries(LC[type], opts);
+    }
+    const legacy = {
+        CandlestickSeries: 'addCandlestickSeries',
+        LineSeries:        'addLineSeries',
+        HistogramSeries:   'addHistogramSeries',
+    };
+    return chart[legacy[type]](opts);
+}
+
+function makeChart(el, showTime) {
+    return LC.createChart(el, {
+        autoSize: true,
+        layout: {background:{color:'#0B0E11'}, textColor:'#9CA3AF'},
+        grid:   {vertLines:{color:'#1E2329'}, horzLines:{color:'#1E2329'}},
+        crosshair: {mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1},
+        rightPriceScale: {borderColor:'#2B3139'},
+        timeScale: {
+            borderColor:'#2B3139',
+            visible: showTime,
+            timeVisible: true,
+            secondsVisible: false,
+        },
+    });
+}
+
+function initCharts() {
+    mainChart = makeChart(document.getElementById('main-chart'), false);
+    rsiChart  = makeChart(document.getElementById('rsi-chart'),  true);
+
+    candleS = addSeries(mainChart, 'CandlestickSeries', {
+        upColor:'#26a69a', downColor:'#ef5350',
+        borderVisible:false,
+        wickUpColor:'#26a69a', wickDownColor:'#ef5350',
+    });
+
+    const lineOpts = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
+    ema5S   = addSeries(mainChart,'LineSeries',{...lineOpts,color:'#00bcd4',lineWidth:1});
+    ema10S  = addSeries(mainChart,'LineSeries',{...lineOpts,color:'#ffeb3b',lineWidth:1});
+    ema60S  = addSeries(mainChart,'LineSeries',{...lineOpts,color:'#ff9800',lineWidth:1});
+    ema223S = addSeries(mainChart,'LineSeries',{...lineOpts,color:'#9c27b0',lineWidth:1});
+
+    rsiS = addSeries(rsiChart,'LineSeries',{color:'#2196f3',lineWidth:2,priceLineVisible:false,lastValueVisible:true});
+    const LS = LC.LineStyle || {Dashed:1, Dotted:2};
+    rsiS.createPriceLine({price:70, color:'#ef5350', lineWidth:1, lineStyle:LS.Dashed, title:'OB', axisLabelVisible:false});
+    rsiS.createPriceLine({price:30, color:'#26a69a', lineWidth:1, lineStyle:LS.Dashed, title:'OS', axisLabelVisible:false});
+    rsiS.createPriceLine({price:50, color:'#37474f', lineWidth:1, lineStyle:LS.Dotted, title:'',   axisLabelVisible:false});
+
+    // sync time scales
+    let sync = false;
+    mainChart.timeScale().subscribeVisibleLogicalRangeChange(r => {
+        if (sync||!r) return; sync=true; rsiChart.timeScale().setVisibleLogicalRange(r); sync=false;
+    });
+    rsiChart.timeScale().subscribeVisibleLogicalRangeChange(r => {
+        if (sync||!r) return; sync=true; mainChart.timeScale().setVisibleLogicalRange(r); sync=false;
+    });
+}
+
+// ── data loading ───────────────────────────────────────────────────────────
+async function loadData() {
+    try {
+        const r = await fetch(`/api/klines?symbol=${curSym}&interval=${curTF}`);
+        const j = await r.json();
+        if (!j.success) throw new Error(j.error);
+        klines = j.data;
+
+        candleS.setData(klines);
+
+        const e5=calcEMA(klines,5), e10=calcEMA(klines,10);
+        const e60=calcEMA(klines,60), e223=calcEMA(klines,223);
+        ema5S.setData(e5); ema10S.setData(e10);
+        ema60S.setData(e60); ema223S.setData(e223);
+        lastEMA[5]=e5[e5.length-1].value; lastEMA[10]=e10[e10.length-1].value;
+        lastEMA[60]=e60[e60.length-1].value; lastEMA[223]=e223[e223.length-1].value;
+
+        rsiS.setData(calcRSI(klines,14));
+
+        mainChart.timeScale().fitContent();
+
+        const last = klines[klines.length-1];
+        setPriceTag(last.close);
+    } catch(e) {
+        console.error('loadData error:', e);
+    }
+}
+
+function setPriceTag(price) {
+    document.getElementById('price-tag').textContent =
+        curSym.replace('USDT','') + ' ' + fmtPrice(price);
+}
+
+// ── websocket ──────────────────────────────────────────────────────────────
+function connectWS() {
+    if (ws) { try{ws.close();}catch(e){} ws=null; }
+    clearTimeout(wsTimer);
+    setWSDot('connecting');
+
+    ws = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+
+    ws.onopen = () => {
+        setWSDot('live');
+        ws.send(JSON.stringify({op:'subscribe', args:[`kline.${curTF}.${curSym}`]}));
+    };
+
+    ws.onmessage = ev => {
+        let msg;
+        try { msg = JSON.parse(ev.data); } catch(e) { return; }
+        if (!msg.topic || !msg.topic.startsWith('kline.')) return;
+
+        const b = msg.data[0];
+        const confirmed = b.confirm === true || b.confirm === 'true';
+        const candle = {
+            time:  Math.floor(parseInt(b.start) / 1000),
+            open:  parseFloat(b.open),
+            high:  parseFloat(b.high),
+            low:   parseFloat(b.low),
+            close: parseFloat(b.close),
+        };
+
+        candleS.update(candle);
+        liveUpdate(candle, confirmed);
+        setPriceTag(candle.close);
+    };
+
+    ws.onerror = () => setWSDot('error');
+    ws.onclose = () => {
+        setWSDot('off');
+        wsTimer = setTimeout(connectWS, 5000);
+    };
+}
+
+function liveUpdate(candle, confirmed) {
+    // EMA incremental
+    const emaSeries = [ema5S,ema10S,ema60S,ema223S];
+    [5,10,60,223].forEach((p,i) => {
+        if (lastEMA[p] === null) return;
+        const k = 2/(p+1);
+        const live = candle.close*k + lastEMA[p]*(1-k);
+        emaSeries[i].update({time:candle.time, value:live});
+        if (confirmed) lastEMA[p] = live;
+    });
+
+    // RSI incremental
+    if (rsiSt.ok) {
+        const ch = candle.close - rsiSt.prevClose;
+        const ag = (rsiSt.avgGain*13 + (ch>0?ch:0)) / 14;
+        const al = (rsiSt.avgLoss*13 + (ch<0?-ch:0)) / 14;
+        const rs = al===0 ? 100 : ag/al;
+        rsiS.update({time:candle.time, value:100-100/(1+rs)});
+        if (confirmed) {
+            rsiSt.avgGain=ag; rsiSt.avgLoss=al; rsiSt.prevClose=candle.close;
+        }
+    }
+}
+
+function setWSDot(state) {
+    const map = {
+        connecting: ['bg-yellow-500','','Conn...','text-gray-500'],
+        live:       ['bg-emerald-400','animate-pulse','Live','text-emerald-400'],
+        error:      ['bg-red-500','','Err','text-red-400'],
+        off:        ['bg-gray-500','','WS','text-gray-500'],
+    };
+    const [col,anim,label,tcol] = map[state]||map.off;
+    document.getElementById('ws-dot').innerHTML =
+        `<div class="w-2 h-2 ${col} ${anim} rounded-full"></div>`+
+        `<span class="text-xs ${tcol}">${label}</span>`;
+}
+
+// ── navigation ─────────────────────────────────────────────────────────────
+async function switchSym(s) {
+    if (s===curSym) return;
+    curSym=s; history.pushState({},'',(location.pathname)+'?symbol='+s);
+    renderSwitchers(); await reload();
+}
+
+async function switchTF(tf) {
+    if (tf===curTF) return;
+    curTF=tf; renderSwitchers(); await reload();
+}
+
+async function reload() {
+    if (ws) { try{ws.close();}catch(e){} ws=null; }
+    clearTimeout(wsTimer);
+    await loadData();
+    connectWS();
+}
+
+// ── UI builders ────────────────────────────────────────────────────────────
+function renderSwitchers() {
+    const sb = document.getElementById('sym-bar');
+    sb.innerHTML = SYMBOLS.map(s => {
+        const label = s.replace('USDT','');
+        const cls = s===curSym ? 'btn-sym-active' : 'btn-sym-idle';
+        return `<button onclick="switchSym('${s}')"
+            class="px-2 py-1 rounded text-xs font-medium transition-colors ${cls}">${label}</button>`;
+    }).join('');
+
+    const tb = document.getElementById('tf-bar');
+    tb.innerHTML = TIMEFRAMES.map(tf => {
+        const cls = tf===curTF ? 'btn-tf-active' : 'btn-tf-idle';
+        return `<button onclick="switchTF('${tf}')"
+            class="px-2 py-1 rounded text-xs font-medium transition-colors ${cls}">${TF_LABEL[tf]}</button>`;
+    }).join('');
+}
+
+// ── bootstrap ──────────────────────────────────────────────────────────────
+async function init() {
+    renderSwitchers();
+    initCharts();
+    await loadData();
+    connectWS();
+}
+
+init();
+</script>
+</body>
+</html>

@@ -361,6 +361,54 @@ def get_recent_alerts():
         logger.error(f"❌ Error getting recent alerts: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/klines', methods=['GET'])
+def get_klines():
+    """Proxy Bybit klines for the chart page"""
+    import requests as req
+    import re
+
+    symbol = request.args.get('symbol', 'BTCUSDT').upper()
+    interval = request.args.get('interval', '15')
+
+    if not re.match(r'^[A-Z0-9]{3,20}$', symbol) or not symbol.endswith('USDT'):
+        return jsonify({'error': 'Invalid symbol'}), 400
+
+    if interval not in {'1', '5', '15', '60', '240', 'D'}:
+        return jsonify({'error': 'Invalid interval'}), 400
+
+    try:
+        url = 'https://api.bybit.com/v5/market/kline'
+        params = {'category': 'linear', 'symbol': symbol, 'interval': interval, 'limit': 500}
+        response = req.get(url, params=params, timeout=10)
+        data = response.json()
+
+        if data.get('retCode') != 0:
+            return jsonify({'error': 'Bybit API error', 'detail': data.get('retMsg')}), 502
+
+        # Bybit returns newest first — reverse to chronological order
+        klines = list(reversed(data['result']['list']))
+        result = [{
+            'time':   int(k[0]) // 1000,
+            'open':   float(k[1]),
+            'high':   float(k[2]),
+            'low':    float(k[3]),
+            'close':  float(k[4]),
+            'volume': float(k[5]),
+        } for k in klines]
+
+        return jsonify({'success': True, 'data': result, 'symbol': symbol, 'interval': interval})
+
+    except Exception as e:
+        logger.error(f"Error fetching klines for {symbol}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/chart', methods=['GET'])
+def chart_page():
+    """Serve realtime chart page"""
+    return send_file('/usr/share/nginx/html/chart.html')
+
+
 @app.route('/', methods=['GET'])
 def index():
     """Serve dashboard"""

@@ -131,11 +131,12 @@
                                     <th class="px-4 py-3 text-right">Prezzo</th>
                                     <th class="px-4 py-3 text-right">Variazione 24h</th>
                                     <th class="px-4 py-3 text-right">Volume</th>
+                                    <th class="px-4 py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
                             <tbody id="gainers-tbody" class="text-sm">
                                 <tr>
-                                    <td colspan="5" class="text-center py-8 text-gray-500">Caricamento dati mercato...</td>
+                                    <td colspan="6" class="text-center py-8 text-gray-500">Caricamento dati mercato...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -151,11 +152,12 @@
                                     <th class="px-4 py-3 text-right">Prezzo</th>
                                     <th class="px-4 py-3 text-right">Variazione 24h</th>
                                     <th class="px-4 py-3 text-right">Volume</th>
+                                    <th class="px-4 py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
                             <tbody id="losers-tbody" class="text-sm">
                                 <tr>
-                                    <td colspan="5" class="text-center py-8 text-gray-500">Caricamento dati mercato...</td>
+                                    <td colspan="6" class="text-center py-8 text-gray-500">Caricamento dati mercato...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -171,11 +173,12 @@
                                     <th class="px-4 py-3 text-right">Prezzo</th>
                                     <th class="px-4 py-3 text-right">Variazione 24h</th>
                                     <th class="px-4 py-3 text-right">Volume</th>
+                                    <th class="px-4 py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
                             <tbody id="monitored-tbody" class="text-sm">
                                 <tr>
-                                    <td colspan="5" class="text-center py-8 text-gray-500">Caricamento dati mercato...</td>
+                                    <td colspan="6" class="text-center py-8 text-gray-500">Caricamento dati mercato...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -822,7 +825,7 @@
             const tbody = document.getElementById(tbodyId);
 
             if (!coins || coins.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Nessun dato disponibile</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Nessun dato disponibile</td></tr>';
                 return;
             }
 
@@ -842,6 +845,12 @@
                             </span>
                         </td>
                         <td class="px-4 py-3 text-right text-gray-400 text-sm">$${formatVolume(coin.volume_24h)}</td>
+                        <td class="px-4 py-3 text-center">
+                            <a href="/chart?symbol=${coin.symbol}"
+                               class="text-xs text-blue-400 hover:text-blue-300 hover:bg-dark-hover px-2 py-1 rounded transition-colors whitespace-nowrap">
+                                Chart
+                            </a>
+                        </td>
                     </tr>
                 `;
             }).join('');
