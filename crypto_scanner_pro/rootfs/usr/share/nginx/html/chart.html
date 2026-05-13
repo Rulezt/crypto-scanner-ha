@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.9.2</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.9.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -117,6 +117,7 @@
             <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
             <span class="text-xs text-gray-500">WS</span>
         </div>
+        <span id="fs-candle-pct" style="font-size:12px;font-family:monospace;min-width:58px;text-align:right;"></span>
         <span id="fs-price" style="font-size:13px;font-family:monospace;color:#E5E7EB;min-width:110px;text-align:right;"></span>
         <button onclick="closeFullscreen()"
             style="margin-left:8px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;">
@@ -529,6 +530,9 @@ function buildGrid() {
         const rightGroup = document.createElement('div');
         rightGroup.style.cssText = 'margin-left:auto;display:flex;align-items:center;gap:4px;';
 
+        const candlePctEl = document.createElement('span');
+        candlePctEl.style.cssText = 'font-size:10px;font-family:monospace;min-width:48px;text-align:right;white-space:nowrap;';
+
         const priceEl = document.createElement('span');
         priceEl.style.cssText = 'font-size:10px;font-family:monospace;color:#E5E7EB;white-space:nowrap;';
 
@@ -539,7 +543,7 @@ function buildGrid() {
         expandEl.onmouseleave = () => expandEl.style.color = '#4B5563';
         expandEl.onclick = () => openFullscreen(i);
 
-        rightGroup.append(priceEl, expandEl);
+        rightGroup.append(candlePctEl, priceEl, expandEl);
         hdr.append(starEl, titleEl, changeEl, sep1, volEl, sep2, tfEl, sep3, bybitEl, rightGroup);
         cell.appendChild(hdr);
 
@@ -574,6 +578,17 @@ function buildGrid() {
             const s = slots[i];
             if (!s.alertBtn) return;
             if (param && param.point && param.point.y > 0 && s.candleS) {
+                // candle % movement
+                if (s.candlePctEl) {
+                    const cd = param.seriesData && param.seriesData.get(s.candleS);
+                    if (cd && cd.open != null) {
+                        const pct = ((cd.close - cd.open) / cd.open) * 100;
+                        s.candlePctEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+                        s.candlePctEl.style.color = pct >= 0 ? '#34d399' : '#f87171';
+                    } else {
+                        s.candlePctEl.textContent = '';
+                    }
+                }
                 try {
                     const price = s.candleS.coordinateToPrice(param.point.y);
                     if (price != null && price > 0) {
@@ -585,6 +600,7 @@ function buildGrid() {
                     }
                 } catch(e) {}
             } else {
+                if (s.candlePctEl) s.candlePctEl.textContent = '';
                 s.crosshairPrice = null;
                 s.alertBtn.style.display = 'none';
             }
@@ -593,7 +609,7 @@ function buildGrid() {
         slots.push({
             cell, chart, candleS, emaSeries,
             lastEMA: {5:null, 10:null, 60:null, 223:null},
-            starEl, titleEl, changeEl, volEl, priceEl, tfEl, bybitEl, alertBtn,
+            starEl, titleEl, changeEl, volEl, priceEl, candlePctEl, tfEl, bybitEl, alertBtn,
             symbol: null, coin: null, curTF, lastPrice: null, crosshairPrice: null,
             alertLines: new Map(),
         });
@@ -733,6 +749,23 @@ function initFsChart() {
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
     for (const {p, color, width} of EMA_CFG)
         fsEmaS[p] = addSeries(fsChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
+
+    fsChart.subscribeCrosshairMove(param => {
+        const el = document.getElementById('fs-candle-pct');
+        if (!el) return;
+        if (param && param.seriesData) {
+            const cd = param.seriesData.get(fsCandleS);
+            if (cd && cd.open != null) {
+                const pct = ((cd.close - cd.open) / cd.open) * 100;
+                el.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+                el.style.color = pct >= 0 ? '#34d399' : '#f87171';
+            } else {
+                el.textContent = '';
+            }
+        } else {
+            el.textContent = '';
+        }
+    });
 }
 
 async function openFullscreen(idx) {
