@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.8.1</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.8.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -184,6 +184,16 @@ function fmtVol(v) {
 }
 
 // ── price alert helpers ───────────────────────────────────────────────────────
+function updateAlertBtn(s) {
+    if (!s.alertBtn || s.lastPrice == null || !s.candleS) return;
+    try {
+        const y = s.candleS.priceToCoordinate(s.lastPrice);
+        if (y == null || y < 0) return;
+        s.alertBtn.style.top     = (y - 8) + 'px';
+        s.alertBtn.style.display = 'flex';
+    } catch(e) {}
+}
+
 function openAlertPopover(symbol, price, btn) {
     pendingAlert = { symbol, price };
     document.getElementById('alert-pop-symbol').textContent = symbol.replace('USDT','/USDT');
@@ -368,13 +378,13 @@ function buildGrid() {
         body.appendChild(chartEl);
 
         const alertBtn = document.createElement('button');
-        alertBtn.innerHTML = '🔔';
+        alertBtn.textContent = '+';
         alertBtn.title = 'Imposta alert prezzo';
         alertBtn.dataset.alertTrigger = '1';
-        alertBtn.style.cssText = 'position:absolute;right:1px;width:16px;height:16px;font-size:9px;display:none;align-items:center;justify-content:center;background:rgba(22,26,30,0.85);border:none;border-radius:50%;cursor:pointer;z-index:10;padding:0;line-height:1;opacity:0.45;transition:opacity .15s;pointer-events:auto;';
-        alertBtn.onmouseenter = () => { alertBtn.style.opacity = '1'; alertBtn.style.background = 'rgba(43,49,57,0.95)'; };
-        alertBtn.onmouseleave = () => { alertBtn.style.opacity = '0.45'; alertBtn.style.background = 'rgba(22,26,30,0.85)'; };
-        alertBtn.onclick = (e) => { e.stopPropagation(); const s = slots[i]; if (s.crosshairPrice) openAlertPopover(s.symbol, s.crosshairPrice, alertBtn); };
+        alertBtn.style.cssText = 'position:absolute;right:2px;width:15px;height:15px;font-size:13px;font-weight:700;display:none;align-items:center;justify-content:center;background:rgba(11,14,17,0.85);border:1px solid #374151;border-radius:50%;cursor:pointer;z-index:10;padding:0;line-height:1;color:#6B7280;transition:color .15s,border-color .15s;';
+        alertBtn.onmouseenter = () => { alertBtn.style.color = '#E5E7EB'; alertBtn.style.borderColor = '#9CA3AF'; };
+        alertBtn.onmouseleave = () => { alertBtn.style.color = '#6B7280'; alertBtn.style.borderColor = '#374151'; };
+        alertBtn.onclick = (e) => { e.stopPropagation(); const s = slots[i]; const price = s.crosshairPrice || s.lastPrice; if (price) openAlertPopover(s.symbol, price, alertBtn); };
         body.appendChild(alertBtn);
 
         cell.appendChild(body);
@@ -391,6 +401,7 @@ function buildGrid() {
         for (const {p, color, width} of EMA_CFG)
             emaSeries[p] = addSeries(chart, 'LineSeries', {...lineBase, color, lineWidth:width});
 
+        chart.timeScale().subscribeVisibleLogicalRangeChange(() => updateAlertBtn(slots[i]));
         chart.subscribeCrosshairMove(param => {
             const s = slots[i];
             if (!s.alertBtn) return;
@@ -399,14 +410,12 @@ function buildGrid() {
                     const price = s.candleS.coordinateToPrice(param.point.y);
                     if (price != null && price > 0) {
                         s.crosshairPrice = price;
-                        s.alertBtn.style.top     = (param.point.y - 8) + 'px';
-                        s.alertBtn.style.display = 'flex';
-                        s.alertBtn.style.opacity = '1';
+                        s.alertBtn.style.top = (param.point.y - 8) + 'px';
                     }
                 } catch(e) {}
             } else {
-                s.alertBtn.style.display = 'none';
                 s.crosshairPrice = null;
+                updateAlertBtn(s);
             }
         });
 
@@ -535,6 +544,7 @@ async function loadSlotData(idx) {
         const lastClose = klines[klines.length - 1].close;
         s.priceEl.textContent = fmtPrice(lastClose);
         s.lastPrice = lastClose;
+        requestAnimationFrame(() => updateAlertBtn(s));
     } catch(e) { console.error(`Error loading ${s.symbol}:`, e); }
 }
 
@@ -695,6 +705,7 @@ function openWS() {
         s.candleS.update(candle);
         s.priceEl.textContent = fmtPrice(candle.close);
         s.lastPrice = candle.close;
+        updateAlertBtn(s);
         for (const {p} of EMA_CFG) {
             if (s.lastEMA[p] === null) continue;
             const k = 2/(p+1);
