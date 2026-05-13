@@ -333,30 +333,46 @@ class ATHATLScanner:
             return {}
 
     def send_alert(self, result):
-        """Send Telegram alert"""
+        """Send Telegram alert - text + optional chart images"""
         if not self.telegram_token or not self.telegram_chat_id:
             print("⚠️ Telegram not configured")
             return
 
-        # Send charts only
+        # Always send text message first
+        try:
+            message = "🏆 *ATH/ATL Alert!*\n\n"
+            if result['ath']:
+                message += "📈 *Near ATH:*\n"
+                for coin in result['ath'][:5]:
+                    status = "🚀 NUOVO ATH!" if coin['is_new_ath'] else f"Dist: {coin['distance_pct']:.2f}%"
+                    message += f"   *{coin['symbol']}*: {status}\n"
+                message += "\n"
+            if result['atl']:
+                message += "📉 *Near ATL:*\n"
+                for coin in result['atl'][:5]:
+                    status = "💥 NUOVO ATL!" if coin['is_new_atl'] else f"Dist: {coin['distance_pct']:.2f}%"
+                    message += f"   *{coin['symbol']}*: {status}\n"
+                message += "\n"
+            message += f"🕐 {datetime.now().strftime('%H:%M:%S')}"
+
+            url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
+            payload = {'chat_id': self.telegram_chat_id, 'text': message, 'parse_mode': 'Markdown'}
+            resp = requests.post(url, json=payload, timeout=10)
+            if resp.ok:
+                print("✅ ATH/ATL text alert sent")
+            else:
+                print(f"❌ Text alert failed: {resp.text}")
+        except Exception as e:
+            print(f"❌ Error sending text alert: {e}")
+
+        # Send chart images if matplotlib is available
         if CHARTS_AVAILABLE:
             print("📊 Sending ATH/ATL chart images")
             charts_to_send = []
-
-            # Add ATH coins (max 3)
             for coin in result['ath'][:3]:
-                charts_to_send.append({
-                    'coin': coin,
-                    'type': 'ath'
-                })
-
-            # Add ATL coins (max 3)
+                charts_to_send.append({'coin': coin, 'type': 'ath'})
             for coin in result['atl'][:3]:
-                charts_to_send.append({
-                    'coin': coin,
-                    'type': 'atl'
-                })
-
+                charts_to_send.append({'coin': coin, 'type': 'atl'})
             if charts_to_send:
                 self.send_charts(charts_to_send)
 

@@ -389,14 +389,33 @@ class EMAScanner:
             return []
 
     def send_alert(self, coins):
-        """Send Telegram alert - charts only"""
+        """Send Telegram alert - text + optional chart images"""
         if not self.telegram_token or not self.telegram_chat_id:
             print("⚠️ Telegram not configured")
             return
 
-        # Send only charts for top 3 coins
+        # Always send text message first
+        try:
+            message = "🎯 *EMA 60 Touch Alert!*\n\n"
+            for coin in coins:
+                direction = "⬆️" if "from below" in coin['approach'] else "⬇️"
+                message += f"{direction} *{coin['symbol']}*\n"
+                message += f"   Distanza EMA60: {coin['distance_pct']:.2f}%\n\n"
+            message += f"🕐 {datetime.utcnow().strftime('%H:%M UTC')}"
+
+            url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
+            payload = {'chat_id': self.telegram_chat_id, 'text': message, 'parse_mode': 'Markdown'}
+            resp = requests.post(url, json=payload, timeout=10)
+            if resp.ok:
+                print("✅ EMA Touch text alert sent")
+            else:
+                print(f"❌ Text alert failed: {resp.text}")
+        except Exception as e:
+            print(f"❌ Error sending text alert: {e}")
+
+        # Send chart images if matplotlib is available
         if CHARTS_AVAILABLE and len(coins) > 0:
-            print(f"📊 Sending chart images for {len(coins[:3])} coins (text alerts disabled)")
+            print(f"📊 Sending chart images for {len(coins[:3])} coins")
             self.send_charts(coins[:3])
 
     def send_charts(self, coins):

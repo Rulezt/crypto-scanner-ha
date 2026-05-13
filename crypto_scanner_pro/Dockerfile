@@ -26,7 +26,10 @@ RUN apk add --no-cache \
 RUN pip3 install --break-system-packages --no-cache-dir \
     flask-cors==4.0.0 \
     selenium==4.18.1 \
-    schedule==1.2.1
+    schedule==1.2.1 \
+    matplotlib==3.8.4 \
+    pandas==2.2.1 \
+    numpy==1.26.4
 
 # Copy root filesystem
 COPY rootfs /

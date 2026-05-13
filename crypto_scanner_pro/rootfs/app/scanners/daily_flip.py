@@ -171,40 +171,29 @@ class DailyFlipScanner:
             return []
     
     def send_alert(self, coins):
-        """Send Telegram alert"""
+        """Send Telegram alert - text + optional chart images"""
         if not self.telegram_token or not self.telegram_chat_id:
             return
 
-        # Text alerts disabled - send only charts
-        # message = f"🔄 *Daily Flip Alert!*\n\n"
-        # message += f"Found {len(coins)} near flip:\n\n"
-        #
-        # for coin in coins:
-        #     message += f"{coin['flip_direction']} *{coin['symbol']}*\n"
-        #     message += f"   Change: {coin['change_pct']:.2f}%\n\n"
-        #
-        # message += f"🕐 {datetime.now().strftime('%H:%M:%S')}"
-        #
-        # try:
-        #     url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-        #     payload = {
-        #         'chat_id': self.telegram_chat_id,
-        #         'text': message,
-        #         'parse_mode': 'Markdown'
-        #     }
-        #     requests.post(url, json=payload, timeout=10)
-        #     print("✅ Flip alert sent")
-        #
-        #     # Send charts
-        #     if CHARTS_AVAILABLE and len(coins) > 0:
-        #         self.send_charts(coins[:2])
-        #
-        # except Exception as e:
-        #     print(f"❌ Error sending alert: {e}")
+        # Always send text message first
+        try:
+            message = "🔄 *Daily Flip Alert!*\n\n"
+            message += f"Found {len(coins)} near flip:\n\n"
+            for coin in coins:
+                message += f"{coin['flip_direction']} *{coin['symbol']}*\n"
+                message += f"   Change: {coin['change_pct']:.2f}%\n\n"
+            message += f"🕐 {datetime.now().strftime('%H:%M:%S')}"
 
-        # Send only charts for top 2 coins
+            url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
+            payload = {'chat_id': self.telegram_chat_id, 'text': message, 'parse_mode': 'Markdown'}
+            requests.post(url, json=payload, timeout=10)
+            print("✅ Flip text alert sent")
+        except Exception as e:
+            print(f"❌ Error sending text alert: {e}")
+
+        # Send chart images if matplotlib is available
         if CHARTS_AVAILABLE and len(coins) > 0:
-            print("📊 Sending only chart images (text alerts disabled)")
+            print("📊 Sending chart images")
             self.send_charts(coins[:2])
     
     def send_charts(self, coins):
