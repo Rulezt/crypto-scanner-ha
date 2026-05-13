@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.8.6</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.8.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -407,8 +407,9 @@ function buildGrid() {
                     if (price != null && price > 0) {
                         s.crosshairPrice = price;
                         const axisW = s.chart.priceScale('right').width();
-                        s.alertBtn.style.right = (axisW + 2) + 'px';
-                        s.alertBtn.style.top   = (param.point.y - 8) + 'px';
+                        s.alertBtn.style.right   = (axisW + 2) + 'px';
+                        s.alertBtn.style.top     = (param.point.y - 8) + 'px';
+                        s.alertBtn.style.display = 'flex';
                     }
                 } catch(e) {}
             } else {
