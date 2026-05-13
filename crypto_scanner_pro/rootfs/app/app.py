@@ -77,6 +77,9 @@ config = DEFAULT_CONFIG.copy()
 scanners = {}
 scanner_threads = {}
 
+_triggered_lock = threading.Lock()
+_recently_triggered = []
+
 def load_config():
     """Load config from file"""
     global config
@@ -233,7 +236,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '2.8.7',
+        'version': '2.9.0',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -538,6 +541,8 @@ def check_price_alerts():
                 if hit:
                     alert['triggered'] = True
                     modified = True
+                    with _triggered_lock:
+                        _recently_triggered.append(dict(alert))
                     coin = sym.replace('USDT', '')
                     direction = '📈' if alert['condition'] == 'above' else '📉'
                     msg = (f"{direction} *Alert Prezzo Raggiunto*\n"
@@ -545,7 +550,8 @@ def check_price_alerts():
                            f"Prezzo attuale: `{cur_price}`\n"
                            f"Target: `{alert['price']}` "
                            f"({'sopra' if alert['condition'] == 'above' else 'sotto'})")
-                    send_telegram(msg)
+                    if alert.get('notify', 'both') != 'browser':
+                        send_telegram(msg)
                     logger.info(f"Alert triggered: {sym} {alert['condition']} {alert['price']}")
             if modified:
                 _save_alerts(alerts)
@@ -566,12 +572,16 @@ def create_price_alert():
         condition = str(body.get('condition', ''))
         if not symbol or price <= 0 or condition not in ('above', 'below'):
             return jsonify({'success': False, 'error': 'Invalid params'}), 400
+        notify = str(body.get('notify', 'both'))
+        if notify not in ('both', 'browser'):
+            notify = 'both'
         alerts = _load_alerts()
         alert = {
             'id':         str(uuid.uuid4()),
             'symbol':     symbol,
             'price':      price,
             'condition':  condition,
+            'notify':     notify,
             'created_at': time.time(),
             'triggered':  False,
         }
@@ -586,6 +596,13 @@ def delete_price_alert(alert_id):
     alerts = [a for a in _load_alerts() if a.get('id') != alert_id]
     _save_alerts(alerts)
     return jsonify({'success': True})
+
+@app.route('/api/price-alerts/recent-triggered', methods=['GET'])
+def get_recent_triggered():
+    with _triggered_lock:
+        data = list(_recently_triggered)
+        _recently_triggered.clear()
+    return jsonify({'success': True, 'data': data})
 
 @app.route('/api/klines', methods=['GET'])
 def get_klines():

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.8.7</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.9.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -127,10 +127,17 @@
 </div>
 
 <!-- Alert popover -->
-<div id="alert-popover" style="display:none;position:fixed;z-index:200;background:#161A1E;border:1px solid #2B3139;border-radius:8px;padding:14px 16px;min-width:230px;box-shadow:0 8px 32px rgba(0,0,0,.7);">
+<div id="alert-popover" style="display:none;position:fixed;z-index:200;background:#161A1E;border:1px solid #2B3139;border-radius:8px;padding:14px 16px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.7);">
     <div style="font-size:13px;font-weight:700;color:#E5E7EB;margin-bottom:6px;">🔔 Imposta Alert</div>
     <div id="alert-pop-symbol" style="font-size:11px;color:#9CA3AF;margin-bottom:3px;"></div>
-    <div id="alert-pop-price"  style="font-size:17px;font-family:monospace;color:#fbbf24;margin-bottom:13px;"></div>
+    <div id="alert-pop-price"  style="font-size:17px;font-family:monospace;color:#fbbf24;margin-bottom:8px;"></div>
+    <div style="margin-bottom:10px;">
+        <div style="font-size:10px;color:#6B7280;margin-bottom:4px;">Notifica via:</div>
+        <div style="display:flex;gap:4px;">
+            <button id="notify-both" onclick="setNotifyMode('both')" style="flex:1;padding:5px 0;font-size:10px;background:#1d4ed8;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;">📱 Telegram + PC</button>
+            <button id="notify-browser" onclick="setNotifyMode('browser')" style="flex:1;padding:5px 0;font-size:10px;background:#1E2329;color:#6B7280;border:none;border-radius:4px;cursor:pointer;font-weight:600;">🖥 Solo PC</button>
+        </div>
+    </div>
     <div style="display:flex;gap:6px;">
         <button onclick="confirmAlert('above')" style="flex:1;padding:7px 0;font-size:12px;background:#065f46;color:#34d399;border:none;border-radius:4px;cursor:pointer;font-weight:600;">↑ Sopra</button>
         <button onclick="confirmAlert('below')" style="flex:1;padding:7px 0;font-size:12px;background:#7f1d1d;color:#f87171;border:none;border-radius:4px;cursor:pointer;font-weight:600;">↓ Sotto</button>
@@ -168,6 +175,7 @@ let fsWs = null, fsWsTimer = null;
 
 // price alerts
 let pendingAlert = null;
+let notifyMode = 'both';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function fmtPrice(p) {
@@ -202,18 +210,57 @@ function closeAlertPopover() {
     pendingAlert = null;
 }
 
+function setNotifyMode(mode) {
+    notifyMode = mode;
+    const both = document.getElementById('notify-both');
+    const browser = document.getElementById('notify-browser');
+    if (mode === 'both') {
+        both.style.background = '#1d4ed8'; both.style.color = '#fff';
+        browser.style.background = '#1E2329'; browser.style.color = '#6B7280';
+    } else {
+        both.style.background = '#1E2329'; both.style.color = '#6B7280';
+        browser.style.background = '#1d4ed8'; browser.style.color = '#fff';
+    }
+}
+
 async function confirmAlert(condition) {
     if (!pendingAlert) return;
     try {
         const r = await fetch('api/price-alerts', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ symbol: pendingAlert.symbol, price: pendingAlert.price, condition }),
+            body: JSON.stringify({ symbol: pendingAlert.symbol, price: pendingAlert.price, condition, notify: notifyMode }),
         });
         const j = await r.json();
         closeAlertPopover();
         showToast(j.success ? '🔔 Alert impostato!' : '❌ Errore alert');
     } catch(e) { showToast('❌ Errore connessione'); }
+}
+
+async function initNotifications() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        await Notification.requestPermission();
+    }
+}
+
+function fireBrowserNotification(alert) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const coin = alert.symbol.replace('USDT', '');
+    const dir = alert.condition === 'above' ? '📈' : '📉';
+    new Notification(`${dir} Alert: ${coin}/USDT`, {
+        body: `Prezzo ${alert.condition === 'above' ? 'sopra' : 'sotto'} ${alert.price}`,
+    });
+}
+
+async function pollTriggeredAlerts() {
+    try {
+        const r = await fetch('api/price-alerts/recent-triggered');
+        const j = await r.json();
+        if (j.success && j.data && j.data.length) {
+            for (const a of j.data) fireBrowserNotification(a);
+        }
+    } catch(e) {}
+    setTimeout(pollTriggeredAlerts, 30000);
 }
 
 function showToast(msg) {
@@ -804,6 +851,8 @@ document.addEventListener('keydown', e => {
 async function init() {
     renderTFBar(); renderModeButtons();
     buildGrid(); applyView();
+    await initNotifications();
+    pollTriggeredAlerts();
     try { await fetchCoins(); } catch(e) { setStatus('Errore caricamento coin'); return; }
     await loadPage();
 }
