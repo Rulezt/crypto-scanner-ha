@@ -236,7 +236,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '2.9.7',
+        'version': '2.9.8',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -405,6 +405,61 @@ def get_top_coins():
         return jsonify({'success': True, 'data': coins[:limit]})
     except Exception as e:
         logger.error(f"Error fetching top coins: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/new-listings', methods=['GET'])
+def get_new_listings():
+    """Return recently listed USDT perpetuals on Bybit, sorted by listing date desc"""
+    import requests as req
+    try:
+        days  = int(request.args.get('days', 90))
+        limit = min(int(request.args.get('limit', 18)), 50)
+        cutoff_ms = (time.time() - days * 86400) * 1000
+
+        resp_i = req.get('https://api.bybit.com/v5/market/instruments-info',
+                         params={'category': 'linear', 'limit': 1000}, timeout=15)
+        instr_data = resp_i.json()
+        if instr_data.get('retCode') != 0:
+            return jsonify({'error': 'Bybit instruments API error'}), 502
+
+        new_symbols = {}
+        for item in instr_data['result']['list']:
+            sym = item.get('symbol', '')
+            if not sym.endswith('USDT') or item.get('status') != 'Trading':
+                continue
+            launch = int(item.get('launchTime', 0))
+            if launch >= cutoff_ms:
+                new_symbols[sym] = launch
+
+        if not new_symbols:
+            return jsonify({'success': True, 'data': []})
+
+        resp_t = req.get('https://api.bybit.com/v5/market/tickers',
+                         params={'category': 'linear'}, timeout=10)
+        ticker_data = resp_t.json()
+        if ticker_data.get('retCode') != 0:
+            return jsonify({'error': 'Bybit tickers API error'}), 502
+
+        result = []
+        for item in ticker_data['result']['list']:
+            sym = item['symbol']
+            if sym not in new_symbols:
+                continue
+            last_price = float(item['lastPrice'])
+            vol_24h = float(item.get('volume24h', 0)) * last_price
+            result.append({
+                'symbol': sym,
+                'price': last_price,
+                'change_24h': round(float(item.get('price24hPcnt', 0)) * 100, 2),
+                'volume_24h': vol_24h,
+                'launch_time': new_symbols[sym],
+            })
+
+        result.sort(key=lambda x: x['launch_time'], reverse=True)
+        return jsonify({'success': True, 'data': result[:limit]})
+    except Exception as e:
+        logger.error(f"Error fetching new listings: {e}")
         return jsonify({'error': str(e)}), 500
 
 

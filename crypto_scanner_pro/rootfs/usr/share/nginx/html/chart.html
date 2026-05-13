@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.9.7</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.9.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -32,6 +32,9 @@
         .btn-view-active  { background: #374151; color: #E5E7EB; }
         .btn-view-idle    { color: #6B7280; background: #1E2329; }
         .btn-view-idle:hover { color: #9CA3AF; background: #2B3139; }
+        .btn-ico-active   { background: #312e81; color: #a5b4fc; }
+        .btn-ico-idle     { color: #6B7280; background: #1E2329; }
+        .btn-ico-idle:hover { color: #a5b4fc; background: #1e1b4b; }
 
         /* Side nav arrows */
         .side-nav {
@@ -61,6 +64,7 @@
         <button id="btn-mode-gain" onclick="switchMode('gainers')"   class="px-3 py-1 rounded text-xs font-medium transition-colors btn-gain-active">▲ Migliori</button>
         <button id="btn-mode-loss" onclick="switchMode('losers')"    class="px-3 py-1 rounded text-xs font-medium transition-colors btn-loss-idle">▼ Peggiori</button>
         <button id="btn-mode-fav"  onclick="switchMode('favorites')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-fav-idle">★ Preferiti</button>
+        <button id="btn-mode-ico"  onclick="switchMode('ico')"       class="px-3 py-1 rounded text-xs font-medium transition-colors btn-ico-idle">◆ ICO</button>
     </div>
 
     <div class="w-px h-5 bg-dark-border"></div>
@@ -90,11 +94,11 @@
 <!-- ===== GRID ===== -->
 <div id="grid" style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);overflow:hidden;min-height:0;"></div>
 
-<!-- Empty favorites notice -->
+<!-- Empty state notice -->
 <div id="fav-empty" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;z-index:5;">
-    <div style="font-size:48px;margin-bottom:12px;">★</div>
-    <div style="font-size:16px;color:#9CA3AF;">Nessun preferito</div>
-    <div style="font-size:12px;color:#6B7280;margin-top:6px;">Clicca ★ su qualsiasi grafico per aggiungerlo</div>
+    <div id="fav-empty-icon"  style="font-size:48px;margin-bottom:12px;">★</div>
+    <div id="fav-empty-title" style="font-size:16px;color:#9CA3AF;">Nessun preferito</div>
+    <div id="fav-empty-sub"   style="font-size:12px;color:#6B7280;margin-top:6px;">Clicca ★ su qualsiasi grafico per aggiungerlo</div>
 </div>
 
 <!-- ===== FULLSCREEN OVERLAY ===== -->
@@ -689,7 +693,13 @@ async function loadPage() {
         ? allCoins.slice(0, 18)
         : allCoins.slice(curPage * 9, curPage * 9 + 9);
 
-    const isEmpty = curMode === 'favorites' && allCoins.length === 0;
+    const isEmpty = (curMode === 'favorites' || curMode === 'ico') && allCoins.length === 0;
+    if (isEmpty) {
+        const isIco = curMode === 'ico';
+        document.getElementById('fav-empty-icon').textContent  = isIco ? '◆' : '★';
+        document.getElementById('fav-empty-title').textContent = isIco ? 'Nessuna nuova listing' : 'Nessun preferito';
+        document.getElementById('fav-empty-sub').textContent   = isIco ? 'Nessuna coin listata negli ultimi 90 giorni' : 'Clicca ★ su qualsiasi grafico per aggiungerlo';
+    }
     document.getElementById('fav-empty').style.display = isEmpty ? 'block' : 'none';
     document.getElementById('grid').style.opacity = isEmpty ? '0.15' : '1';
 
@@ -1031,10 +1041,11 @@ async function switchMode(mode) {
 }
 
 function renderModeButtons() {
-    const g = curMode==='gainers', l = curMode==='losers', f = curMode==='favorites';
+    const g = curMode==='gainers', l = curMode==='losers', f = curMode==='favorites', ic = curMode==='ico';
     document.getElementById('btn-mode-gain').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${g?'btn-gain-active':'btn-gain-idle'}`;
     document.getElementById('btn-mode-loss').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${l?'btn-loss-active':'btn-loss-idle'}`;
     document.getElementById('btn-mode-fav').className  = `px-3 py-1 rounded text-xs font-medium transition-colors ${f?'btn-fav-active':'btn-fav-idle'}`;
+    document.getElementById('btn-mode-ico').className  = `px-3 py-1 rounded text-xs font-medium transition-colors ${ic?'btn-ico-active':'btn-ico-idle'}`;
 }
 
 function renderTFBar() {
@@ -1050,6 +1061,12 @@ async function fetchCoins() {
     setStatus('Caricamento coin...');
     if (curMode === 'favorites') {
         allCoins = await fetchFavoritesList();
+    } else if (curMode === 'ico') {
+        const r = await fetch('api/new-listings?limit=18&days=90');
+        const j = await r.json();
+        if (!j.success) throw new Error('API error');
+        allCoins = j.data;
+        await fetchFavoritesList();
     } else {
         const r = await fetch(`api/top-coins?limit=18&min_volume=10000000&sort=${curMode}`);
         const j = await r.json();
