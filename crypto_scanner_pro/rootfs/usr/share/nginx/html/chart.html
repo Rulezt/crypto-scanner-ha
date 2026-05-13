@@ -29,6 +29,21 @@
         .btn-fav-active   { background: #78350f; color: #fbbf24; }
         .btn-fav-idle     { color: #6B7280; background: #1E2329; }
         .btn-fav-idle:hover { color: #fbbf24; background: #451a03; }
+        .btn-view-active  { background: #374151; color: #E5E7EB; }
+        .btn-view-idle    { color: #6B7280; background: #1E2329; }
+        .btn-view-idle:hover { color: #9CA3AF; background: #2B3139; }
+
+        /* Side nav arrows */
+        .side-nav {
+            position: fixed; top: 50%; transform: translateY(-50%);
+            z-index: 50; background: rgba(22,26,30,0.5); border: none;
+            cursor: pointer; color: #6B7280; font-size: 24px;
+            padding: 28px 7px; transition: background .15s, color .15s;
+            user-select: none;
+        }
+        .side-nav:hover { background: rgba(43,49,57,0.92); color: #E5E7EB; }
+        #nav-prev { left:0;  border-radius: 0 6px 6px 0; }
+        #nav-next { right:0; border-radius: 6px 0 0 6px; }
     </style>
 </head>
 <body class="bg-dark-bg text-gray-100" style="height:100vh;display:flex;flex-direction:column;overflow:hidden;">
@@ -50,10 +65,7 @@
 
     <div class="w-px h-5 bg-dark-border"></div>
 
-    <div class="flex gap-1">
-        <button id="btn-page-1" onclick="switchPage(0)" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-page-active">1–9</button>
-        <button id="btn-page-2" onclick="switchPage(1)" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-page-idle">10–18</button>
-    </div>
+    <button id="btn-view" onclick="toggleView()" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Alterna tra 9 e 18 grafici">⊞ 18</button>
 
     <div class="w-px h-5 bg-dark-border"></div>
 
@@ -68,7 +80,11 @@
     </div>
 </header>
 
-<!-- ===== 3×3 GRID ===== -->
+<!-- Side navigation arrows (visible only in 9-view) -->
+<button id="nav-prev" class="side-nav" onclick="prevPage()">&#8249;</button>
+<button id="nav-next" class="side-nav" onclick="nextPage()">&#8250;</button>
+
+<!-- ===== GRID ===== -->
 <div id="grid" style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);overflow:hidden;min-height:0;"></div>
 
 <!-- Empty favorites notice -->
@@ -90,9 +106,7 @@
         <div  id="fs-tf-bar" style="display:flex;gap:3px;align-items:center;"></div>
         <span style="color:#374151;font-size:11px;">|</span>
         <a id="fs-bybit-link" href="#" target="_blank" rel="noopener noreferrer"
-           style="font-size:11px;color:#f7a600;text-decoration:none;padding:2px 7px;border-radius:3px;background:#1E2329;white-space:nowrap;">
-            Bybit ↗
-        </a>
+           style="font-size:11px;color:#f7a600;text-decoration:none;padding:2px 7px;border-radius:3px;background:#1E2329;white-space:nowrap;">Bybit ↗</a>
 
         <div style="flex:1;"></div>
 
@@ -114,11 +128,11 @@
 
 <script>
 // ── constants ─────────────────────────────────────────────────────────────────
-const LC         = LightweightCharts;
-const TIMEFRAMES = ['1','5','30','60','240','D'];
-const TF_LABEL   = {'1':'1m','5':'5m','30':'30m','60':'1h','240':'4h','D':'1D'};
-const PER_PAGE   = 9;
-const EMA_CFG    = [
+const LC          = LightweightCharts;
+const TIMEFRAMES  = ['1','5','30','60','240','D'];
+const TF_LABEL    = {'1':'1m','5':'5m','30':'30m','60':'1h','240':'4h','D':'1D'};
+const SLOTS_TOTAL = 18;
+const EMA_CFG     = [
     {p:5,   color:'#ef4444', width:2},
     {p:10,  color:'#fbbf24', width:2},
     {p:60,  color:'#3b82f6', width:3},
@@ -126,16 +140,16 @@ const EMA_CFG    = [
 ];
 
 // ── state ─────────────────────────────────────────────────────────────────────
-let curTF   = '30';
-let curPage = 0;
-let curMode = 'gainers';
+let curTF    = '30';
+let curPage  = 0;
+let curMode  = 'gainers';
+let viewMode = '9';      // '9' | '18'
 let allCoins = [];
 let favoriteSymbols = new Set();
-let slots   = [];
+let slots    = [];       // always 18 slots
 let ws = null, wsTimer = null;
 
 // fullscreen
-let fsSlotIdx = -1;
 let fsChart = null, fsCandleS = null, fsEmaS = {}, fsLastEMA = {};
 let fsTF = '30', fsCoin = null;
 let fsWs = null, fsWsTimer = null;
@@ -210,22 +224,22 @@ function addSeries(chart, type, opts) {
 function makeChart(el, opts) {
     return LC.createChart(el, {
         autoSize: true,
-        layout: { background:{color:'#0B0E11'}, textColor:'#9CA3AF', fontSize:opts?.fontSize||10 },
+        layout: { background:{color:'#0B0E11'}, textColor:'#9CA3AF', fontSize: opts?.fontSize || 10 },
         grid:    { vertLines:{color:'#1E2329'}, horzLines:{color:'#1E2329'} },
         crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
         rightPriceScale: { borderColor:'#2B3139', scaleMargins:{top:0.05, bottom:0.05} },
         timeScale: { borderColor:'#2B3139', visible:true, timeVisible:true, secondsVisible:false,
-                     barSpacing: opts?.barSpacing||3, rightOffset: opts?.rightOffset||15 },
+                     barSpacing: opts?.barSpacing || 3, rightOffset: opts?.rightOffset || 15 },
     });
 }
 
-// ── build grid (once) ─────────────────────────────────────────────────────────
+// ── build grid (once — 18 slots) ──────────────────────────────────────────────
 function buildGrid() {
     const grid = document.getElementById('grid');
     grid.innerHTML = '';
     slots = [];
 
-    for (let i = 0; i < PER_PAGE; i++) {
+    for (let i = 0; i < SLOTS_TOTAL; i++) {
         const cell = document.createElement('div');
         cell.style.cssText = 'display:flex;flex-direction:column;border:1px solid #2B3139;overflow:hidden;';
 
@@ -235,44 +249,38 @@ function buildGrid() {
 
         const starEl = document.createElement('button');
         starEl.textContent = '☆';
-        starEl.title = 'Aggiungi/rimuovi dai preferiti';
+        starEl.title = 'Preferiti';
         starEl.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;';
         starEl.onclick = () => toggleFavorite(i);
 
-        const titleEl = document.createElement('span');
+        const titleEl  = document.createElement('span');
         titleEl.style.cssText = 'font-size:11px;font-weight:700;color:#E5E7EB;white-space:nowrap;';
 
         const changeEl = document.createElement('span');
         changeEl.style.cssText = 'font-size:10px;font-weight:500;white-space:nowrap;';
 
         const sep1 = document.createElement('span');
-        sep1.textContent = '|';
-        sep1.style.cssText = 'font-size:10px;color:#374151;';
+        sep1.textContent = '|'; sep1.style.cssText = 'font-size:10px;color:#374151;';
 
         const volEl = document.createElement('span');
         volEl.style.cssText = 'font-size:10px;color:#60a5fa;white-space:nowrap;';
 
         const sep2 = document.createElement('span');
-        sep2.textContent = '|';
-        sep2.style.cssText = 'font-size:10px;color:#374151;';
+        sep2.textContent = '|'; sep2.style.cssText = 'font-size:10px;color:#374151;';
 
         const tfEl = document.createElement('div');
         tfEl.style.cssText = 'display:flex;gap:2px;align-items:center;';
 
         const sep3 = document.createElement('span');
-        sep3.textContent = '|';
-        sep3.style.cssText = 'font-size:10px;color:#374151;';
+        sep3.textContent = '|'; sep3.style.cssText = 'font-size:10px;color:#374151;';
 
         const bybitEl = document.createElement('a');
         bybitEl.textContent = 'Bybit ↗';
-        bybitEl.target = '_blank';
-        bybitEl.rel = 'noopener noreferrer';
-        bybitEl.href = '#';
+        bybitEl.target = '_blank'; bybitEl.rel = 'noopener noreferrer'; bybitEl.href = '#';
         bybitEl.style.cssText = 'font-size:9px;color:#f7a600;text-decoration:none;padding:1px 5px;border-radius:2px;background:#1E2329;white-space:nowrap;';
         bybitEl.onmouseenter = () => bybitEl.style.background = '#2B3139';
         bybitEl.onmouseleave = () => bybitEl.style.background = '#1E2329';
 
-        // right group: price + expand
         const rightGroup = document.createElement('div');
         rightGroup.style.cssText = 'margin-left:auto;display:flex;align-items:center;gap:4px;';
 
@@ -280,8 +288,7 @@ function buildGrid() {
         priceEl.style.cssText = 'font-size:10px;font-family:monospace;color:#E5E7EB;white-space:nowrap;';
 
         const expandEl = document.createElement('button');
-        expandEl.textContent = '⤢';
-        expandEl.title = 'Espandi a schermo intero';
+        expandEl.textContent = '⤢'; expandEl.title = 'Schermo intero';
         expandEl.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
         expandEl.onmouseenter = () => expandEl.style.color = '#9CA3AF';
         expandEl.onmouseleave = () => expandEl.style.color = '#4B5563';
@@ -312,12 +319,32 @@ function buildGrid() {
             emaSeries[p] = addSeries(chart, 'LineSeries', {...lineBase, color, lineWidth:width});
 
         slots.push({
-            chart, candleS, emaSeries,
+            cell, chart, candleS, emaSeries,
             lastEMA: {5:null, 10:null, 60:null, 223:null},
             starEl, titleEl, changeEl, volEl, priceEl, tfEl, bybitEl,
             symbol: null, coin: null, curTF,
         });
     }
+}
+
+// ── view layout ───────────────────────────────────────────────────────────────
+function applyView() {
+    const is18  = viewMode === '18';
+    const cols  = is18 ? 6 : 3;
+    const grid  = document.getElementById('grid');
+    grid.style.gridTemplateColumns = `repeat(${cols},1fr)`;
+    grid.style.gridTemplateRows    = 'repeat(3,1fr)';
+
+    const visible = is18 ? 18 : 9;
+    slots.forEach((s, i) => { s.cell.style.display = i < visible ? 'flex' : 'none'; });
+
+    const showArrows = !is18;
+    document.getElementById('nav-prev').style.display = showArrows ? 'block' : 'none';
+    document.getElementById('nav-next').style.display = showArrows ? 'block' : 'none';
+
+    document.getElementById('btn-view').textContent = is18 ? '⊟ 9' : '⊞ 18';
+    document.getElementById('btn-view').className   =
+        `px-3 py-1 rounded text-xs font-medium transition-colors ${is18 ? 'btn-view-active' : 'btn-view-idle'}`;
 }
 
 // ── per-slot TF bar ───────────────────────────────────────────────────────────
@@ -349,18 +376,25 @@ async function switchSlotTF(idx, tf) {
 // ── load page ──────────────────────────────────────────────────────────────────
 async function loadPage() {
     closeWS();
-    const pageCoins = allCoins.slice(curPage * PER_PAGE, curPage * PER_PAGE + PER_PAGE);
-    const isEmpty   = curMode === 'favorites' && allCoins.length === 0;
+    applyView();
 
+    const is18      = viewMode === '18';
+    const visible   = is18 ? 18 : 9;
+    const pageCoins = is18
+        ? allCoins.slice(0, 18)
+        : allCoins.slice(curPage * 9, curPage * 9 + 9);
+
+    const isEmpty = curMode === 'favorites' && allCoins.length === 0;
     document.getElementById('fav-empty').style.display = isEmpty ? 'block' : 'none';
     document.getElementById('grid').style.opacity = isEmpty ? '0.15' : '1';
 
-    for (const s of slots) {
+    for (let i = 0; i < visible; i++) {
+        const s = slots[i];
         s.symbol = null; s.coin = null; s.curTF = curTF;
         s.starEl.textContent = '☆'; s.starEl.style.color = '#4B5563';
         s.titleEl.textContent = ''; s.changeEl.textContent = '';
         s.volEl.textContent = ''; s.priceEl.textContent = '';
-        s.tfEl.innerHTML = '';
+        s.tfEl.innerHTML = ''; s.bybitEl.href = '#';
         s.candleS.setData([]);
         for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
         s.lastEMA = {5:null, 10:null, 60:null, 223:null};
@@ -382,7 +416,7 @@ async function loadSlot(idx, coin) {
     s.changeEl.textContent = '(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)';
     s.changeEl.style.color = pct >= 0 ? '#34d399' : '#f87171';
     s.volEl.textContent    = fmtVol(coin.volume_24h);
-    s.bybitEl.href = `https://www.bybit.com/trade/usdt/${coin.symbol}`;
+    s.bybitEl.href         = `https://www.bybit.com/trade/usdt/${coin.symbol}`;
     const isFav = favoriteSymbols.has(coin.symbol);
     s.starEl.textContent = isFav ? '★' : '☆';
     s.starEl.style.color = isFav ? '#fbbf24' : '#4B5563';
@@ -411,8 +445,7 @@ async function loadSlotData(idx) {
 // ── fullscreen ─────────────────────────────────────────────────────────────────
 function initFsChart() {
     if (fsChart) return;
-    const el = document.getElementById('fs-chart-el');
-    fsChart  = makeChart(el, { fontSize:11, barSpacing:6, rightOffset:20 });
+    fsChart   = makeChart(document.getElementById('fs-chart-el'), { fontSize:11, barSpacing:6, rightOffset:20 });
     fsCandleS = addSeries(fsChart, 'CandlestickSeries', {
         upColor:'#26a69a', downColor:'#ef5350',
         borderVisible:false, wickUpColor:'#26a69a', wickDownColor:'#ef5350',
@@ -425,17 +458,12 @@ function initFsChart() {
 async function openFullscreen(idx) {
     const s = slots[idx];
     if (!s.coin) return;
-    fsSlotIdx = idx;
-    fsCoin    = s.coin;
-    fsTF      = s.curTF;
+    fsCoin = s.coin; fsTF = s.curTF;
 
-    const overlay = document.getElementById('fs-overlay');
-    overlay.style.display = 'flex';
-
-    const pct    = fsCoin.change_24h;
-    const pctStr = '(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)';
+    document.getElementById('fs-overlay').style.display = 'flex';
+    const pct = fsCoin.change_24h;
     document.getElementById('fs-title').textContent  = fsCoin.symbol.replace('USDT','');
-    document.getElementById('fs-change').textContent = pctStr;
+    document.getElementById('fs-change').textContent = '(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)';
     document.getElementById('fs-change').style.color = pct >= 0 ? '#34d399' : '#f87171';
     document.getElementById('fs-vol').textContent    = fmtVol(fsCoin.volume_24h);
     document.getElementById('fs-bybit-link').href   = `https://www.bybit.com/trade/usdt/${fsCoin.symbol}`;
@@ -455,30 +483,25 @@ function closeFullscreen() {
         for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
         fsLastEMA = {};
     }
-    fsSlotIdx = -1; fsCoin = null;
+    fsCoin = null;
 }
 
 function renderFsTFBar() {
     document.getElementById('fs-tf-bar').innerHTML = TIMEFRAMES.map(tf => {
         const active = tf === fsTF;
-        const bg    = active ? '#2563EB' : '#2B3139';
-        const color = active ? '#fff'    : '#9CA3AF';
         return `<button onclick="switchFsTF('${tf}')"
-            style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:${bg};color:${color};"
+            style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:${active?'#2563EB':'#2B3139'};color:${active?'#fff':'#9CA3AF'};"
             >${TF_LABEL[tf]}</button>`;
     }).join('');
 }
 
 async function switchFsTF(tf) {
     if (tf === fsTF || !fsCoin) return;
-    closeFsWS();
-    fsTF = tf;
-    renderFsTFBar();
+    closeFsWS(); fsTF = tf; renderFsTFBar();
     fsCandleS.setData([]);
     for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
     fsLastEMA = {};
-    await loadFsData();
-    connectFsWS();
+    await loadFsData(); connectFsWS();
 }
 
 async function loadFsData() {
@@ -513,16 +536,16 @@ function connectFsWS() {
         const b = msg.data[0];
         const confirmed = b.confirm === true || b.confirm === 'true';
         const candle = {
-            time:  Math.floor(parseInt(b.start) / 1000),
-            open:  parseFloat(b.open),  high: parseFloat(b.high),
-            low:   parseFloat(b.low),   close: parseFloat(b.close),
+            time: Math.floor(parseInt(b.start)/1000),
+            open: parseFloat(b.open), high: parseFloat(b.high),
+            low:  parseFloat(b.low),  close: parseFloat(b.close),
         };
         fsCandleS.update(candle);
         document.getElementById('fs-price').textContent = fmtPrice(candle.close);
         for (const {p} of EMA_CFG) {
             if (fsLastEMA[p] == null) continue;
-            const k = 2 / (p + 1);
-            const live = candle.close * k + fsLastEMA[p] * (1 - k);
+            const k = 2/(p+1);
+            const live = candle.close * k + fsLastEMA[p] * (1-k);
             fsEmaS[p].update({ time: candle.time, value: live });
             if (confirmed) fsLastEMA[p] = live;
         }
@@ -538,19 +561,16 @@ function closeFsWS() {
 
 function setFsWSDot(state) {
     const map = {
-        connecting: ['bg-yellow-500','','Conn...','text-gray-500'],
-        live:       ['bg-emerald-400','animate-pulse','Live','text-emerald-400'],
-        error:      ['bg-red-500','','Err','text-red-400'],
-        off:        ['bg-gray-500','','WS','text-gray-500'],
+        connecting:['bg-yellow-500','','Conn...','text-gray-500'],
+        live:      ['bg-emerald-400','animate-pulse','Live','text-emerald-400'],
+        error:     ['bg-red-500','','Err','text-red-400'],
+        off:       ['bg-gray-500','','WS','text-gray-500'],
     };
-    const [col,anim,label,tcol] = map[state] || map.off;
+    const [col,anim,label,tcol] = map[state]||map.off;
     document.getElementById('fs-ws-dot').innerHTML =
         `<div class="w-2 h-2 ${col} ${anim} rounded-full"></div>`+
         `<span class="text-xs ${tcol}">${label}</span>`;
 }
-
-// Esc to close fullscreen
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFullscreen(); });
 
 // ── grid WebSocket ─────────────────────────────────────────────────────────────
 function openWS() {
@@ -565,23 +585,23 @@ function openWS() {
     ws.onmessage = ev => {
         let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
         if (!msg.topic || !msg.topic.startsWith('kline.')) return;
-        const parts = msg.topic.split('.');
+        const parts   = msg.topic.split('.');
         const slotIdx = slots.findIndex(s => s.symbol === parts[2] && s.curTF === parts[1]);
         if (slotIdx === -1) return;
         const b = msg.data[0];
         const confirmed = b.confirm === true || b.confirm === 'true';
         const candle = {
-            time:  Math.floor(parseInt(b.start) / 1000),
-            open:  parseFloat(b.open),  high: parseFloat(b.high),
-            low:   parseFloat(b.low),   close: parseFloat(b.close),
+            time: Math.floor(parseInt(b.start)/1000),
+            open: parseFloat(b.open), high: parseFloat(b.high),
+            low:  parseFloat(b.low),  close: parseFloat(b.close),
         };
         const s = slots[slotIdx];
         s.candleS.update(candle);
         s.priceEl.textContent = fmtPrice(candle.close);
         for (const {p} of EMA_CFG) {
             if (s.lastEMA[p] === null) continue;
-            const k = 2 / (p + 1);
-            const live = candle.close * k + s.lastEMA[p] * (1 - k);
+            const k = 2/(p+1);
+            const live = candle.close * k + s.lastEMA[p] * (1-k);
             s.emaSeries[p].update({ time: candle.time, value: live });
             if (confirmed) s.lastEMA[p] = live;
         }
@@ -597,21 +617,33 @@ function closeWS() {
 
 function setWSDot(state) {
     const map = {
-        connecting: ['bg-yellow-500','','Conn...','text-gray-500'],
-        live:       ['bg-emerald-400','animate-pulse','Live','text-emerald-400'],
-        error:      ['bg-red-500','','Err','text-red-400'],
-        off:        ['bg-gray-500','','WS','text-gray-500'],
+        connecting:['bg-yellow-500','','Conn...','text-gray-500'],
+        live:      ['bg-emerald-400','animate-pulse','Live','text-emerald-400'],
+        error:     ['bg-red-500','','Err','text-red-400'],
+        off:       ['bg-gray-500','','WS','text-gray-500'],
     };
-    const [col,anim,label,tcol] = map[state] || map.off;
+    const [col,anim,label,tcol] = map[state]||map.off;
     document.getElementById('ws-dot').innerHTML =
         `<div class="w-2 h-2 ${col} ${anim} rounded-full"></div>`+
         `<span class="text-xs ${tcol}">${label}</span>`;
 }
 
 // ── navigation ─────────────────────────────────────────────────────────────────
-async function switchPage(page) {
-    if (page === curPage) return;
-    curPage = page; renderPageButtons(); await loadPage();
+async function prevPage() {
+    if (curPage === 0 || viewMode === '18') return;
+    curPage--; await loadPage();
+}
+
+async function nextPage() {
+    const maxPage = Math.ceil(allCoins.length / 9) - 1;
+    if (curPage >= maxPage || viewMode === '18') return;
+    curPage++; await loadPage();
+}
+
+async function toggleView() {
+    viewMode = viewMode === '9' ? '18' : '9';
+    curPage  = 0;
+    await loadPage();
 }
 
 async function switchTF(tf) {
@@ -622,13 +654,8 @@ async function switchTF(tf) {
 async function switchMode(mode) {
     if (mode === curMode) return;
     curMode = mode; curPage = 0;
-    renderModeButtons(); renderPageButtons();
+    renderModeButtons();
     await fetchCoins(); await loadPage();
-}
-
-function renderPageButtons() {
-    document.getElementById('btn-page-1').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${curPage===0?'btn-page-active':'btn-page-idle'}`;
-    document.getElementById('btn-page-2').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${curPage===1?'btn-page-active':'btn-page-idle'}`;
 }
 
 function renderModeButtons() {
@@ -661,10 +688,17 @@ async function fetchCoins() {
     setStatus('');
 }
 
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape')      closeFullscreen();
+    if (e.key === 'ArrowLeft')   prevPage();
+    if (e.key === 'ArrowRight')  nextPage();
+});
+
 // ── bootstrap ──────────────────────────────────────────────────────────────────
 async function init() {
-    renderTFBar(); renderModeButtons(); renderPageButtons();
-    buildGrid();
+    renderTFBar(); renderModeButtons();
+    buildGrid(); applyView();
     try { await fetchCoins(); } catch(e) { setStatus('Errore caricamento coin'); return; }
     await loadPage();
 }
