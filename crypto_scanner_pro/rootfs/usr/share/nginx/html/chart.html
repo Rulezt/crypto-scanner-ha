@@ -23,6 +23,12 @@
         .btn-tf-active { background: #2563EB; color: #fff; }
         .btn-tf-idle   { color: #6B7280; }
         .btn-tf-idle:hover { color: #9CA3AF; background: #1E2329; }
+        .btn-gain-active { background: #065f46; color: #34d399; }
+        .btn-gain-idle   { color: #6B7280; background: #1E2329; }
+        .btn-gain-idle:hover { color: #34d399; background: #064e3b; }
+        .btn-loss-active { background: #7f1d1d; color: #f87171; }
+        .btn-loss-idle   { color: #6B7280; background: #1E2329; }
+        .btn-loss-idle:hover { color: #f87171; background: #450a0a; }
     </style>
 </head>
 <body class="bg-dark-bg text-gray-100" style="height:100vh;display:flex;flex-direction:column;overflow:hidden;">
@@ -36,10 +42,18 @@
 
     <div class="w-px h-5 bg-dark-border"></div>
 
+    <!-- Mode buttons -->
+    <div class="flex gap-1">
+        <button id="btn-mode-gain" onclick="switchMode('gainers')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-gain-active">▲ Migliori</button>
+        <button id="btn-mode-loss" onclick="switchMode('losers')"  class="px-3 py-1 rounded text-xs font-medium transition-colors btn-loss-idle">▼ Peggiori</button>
+    </div>
+
+    <div class="w-px h-5 bg-dark-border"></div>
+
     <!-- Page buttons -->
     <div class="flex gap-1">
-        <button id="btn-page-1" onclick="switchPage(0)" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-page-active">Pagina 1</button>
-        <button id="btn-page-2" onclick="switchPage(1)" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-page-idle">Pagina 2</button>
+        <button id="btn-page-1" onclick="switchPage(0)" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-page-active">1-9</button>
+        <button id="btn-page-2" onclick="switchPage(1)" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-page-idle">10-18</button>
     </div>
 
     <div class="w-px h-5 bg-dark-border"></div>
@@ -80,6 +94,7 @@ const EMA_CFG     = [
 // ── state ─────────────────────────────────────────────────────────────────────
 let curTF    = '15';
 let curPage  = 0;
+let curMode  = 'gainers';
 let allCoins = [];
 let slots    = [];   // [{chart, candleS, emaSeries:{p:series}, lastEMA:{p:val}, titleEl, priceEl, symbol}]
 let ws = null, wsTimer = null;
@@ -115,7 +130,7 @@ function makeChart(el) {
         grid:    { vertLines:{color:'#1E2329'}, horzLines:{color:'#1E2329'} },
         crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
         rightPriceScale: { borderColor:'#2B3139', scaleMargins:{top:0.05, bottom:0.05} },
-        timeScale: { borderColor:'#2B3139', visible:true, timeVisible:true, secondsVisible:false, barSpacing:3 },
+        timeScale: { borderColor:'#2B3139', visible:true, timeVisible:true, secondsVisible:false, barSpacing:3, rightOffset:8 },
     });
 }
 
@@ -176,16 +191,21 @@ async function loadPage() {
     }
 
     setStatus('Caricamento grafici...');
-    await Promise.all(pageCoins.map((coin, i) => loadSlot(i, coin.symbol)));
+    await Promise.all(pageCoins.map((coin, i) => loadSlot(i, coin)));
     setStatus('');
 
     openWS(pageCoins.map(c => c.symbol));
 }
 
-async function loadSlot(idx, symbol) {
+async function loadSlot(idx, coin) {
     const s = slots[idx];
+    const symbol = coin.symbol;
     s.symbol = symbol;
-    s.titleEl.textContent = symbol.replace('USDT','');
+    const label = symbol.replace('USDT','');
+    const pct = coin.change_24h;
+    const pctStr = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+    const pctColor = pct >= 0 ? '#34d399' : '#f87171';
+    s.titleEl.innerHTML = `${label} <span style="color:${pctColor};font-weight:500;font-size:10px;">${pctStr}</span>`;
 
     try {
         const r = await fetch(`api/klines?symbol=${symbol}&interval=${curTF}`);
@@ -281,8 +301,7 @@ function setWSDot(state) {
 async function switchPage(page) {
     if (page === curPage) return;
     curPage = page;
-    document.getElementById('btn-page-1').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${page===0?'btn-page-active':'btn-page-idle'}`;
-    document.getElementById('btn-page-2').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${page===1?'btn-page-active':'btn-page-idle'}`;
+    renderPageButtons();
     await loadPage();
 }
 
@@ -291,6 +310,27 @@ async function switchTF(tf) {
     curTF = tf;
     renderTFBar();
     await loadPage();
+}
+
+async function switchMode(mode) {
+    if (mode === curMode) return;
+    curMode = mode;
+    curPage = 0;
+    renderModeButtons();
+    renderPageButtons();
+    await fetchCoins();
+    await loadPage();
+}
+
+function renderPageButtons() {
+    document.getElementById('btn-page-1').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${curPage===0?'btn-page-active':'btn-page-idle'}`;
+    document.getElementById('btn-page-2').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${curPage===1?'btn-page-active':'btn-page-idle'}`;
+}
+
+function renderModeButtons() {
+    const g = curMode === 'gainers';
+    document.getElementById('btn-mode-gain').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${g ? 'btn-gain-active' : 'btn-gain-idle'}`;
+    document.getElementById('btn-mode-loss').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${g ? 'btn-loss-idle' : 'btn-loss-active'}`;
 }
 
 function renderTFBar() {
@@ -302,17 +342,24 @@ function renderTFBar() {
 
 function setStatus(msg) { document.getElementById('status').textContent = msg; }
 
+async function fetchCoins() {
+    setStatus('Caricamento coin...');
+    const r = await fetch(`api/top-coins?limit=18&min_volume=10000000&sort=${curMode}`);
+    const j = await r.json();
+    if (!j.success) throw new Error('API error');
+    allCoins = j.data;
+    setStatus('');
+}
+
 // ── bootstrap ──────────────────────────────────────────────────────────────────
 async function init() {
     renderTFBar();
+    renderModeButtons();
+    renderPageButtons();
     buildGrid();
-    setStatus('Caricamento top 18 coin...');
 
     try {
-        const r = await fetch('api/top-coins?limit=18&min_volume=10000000');
-        const j = await r.json();
-        if (!j.success) throw new Error('API error');
-        allCoins = j.data;
+        await fetchCoins();
     } catch(e) {
         setStatus('Errore caricamento coin');
         console.error(e);

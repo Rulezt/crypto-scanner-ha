@@ -228,7 +228,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '2.5.0',
+        'version': '2.5.1',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -363,11 +363,12 @@ def get_recent_alerts():
 
 @app.route('/api/top-coins', methods=['GET'])
 def get_top_coins():
-    """Return top N coins by 24h volume with minimum volume filter"""
+    """Return top N coins sorted by 24h change % (gainers or losers), filtered by min volume"""
     import requests as req
     try:
         limit = min(int(request.args.get('limit', 18)), 50)
         min_vol = float(request.args.get('min_volume', 10_000_000))
+        sort = request.args.get('sort', 'gainers')  # 'gainers' | 'losers'
 
         url = 'https://api.bybit.com/v5/market/tickers'
         response = req.get(url, params={'category': 'linear'}, timeout=10)
@@ -391,7 +392,8 @@ def get_top_coins():
                 'volume_24h': vol_24h,
             })
 
-        coins.sort(key=lambda x: x['volume_24h'], reverse=True)
+        descending = (sort != 'losers')
+        coins.sort(key=lambda x: x['change_24h'], reverse=descending)
         return jsonify({'success': True, 'data': coins[:limit]})
     except Exception as e:
         logger.error(f"Error fetching top coins: {e}")
