@@ -85,7 +85,7 @@
         <span id="fs-title"  style="font-size:15px;font-weight:700;color:#E5E7EB;"></span>
         <span id="fs-change" style="font-size:12px;font-weight:500;"></span>
         <span style="color:#374151;font-size:11px;">|</span>
-        <span id="fs-vol"    style="font-size:11px;color:#6B7280;"></span>
+        <span id="fs-vol"    style="font-size:11px;color:#60a5fa;"></span>
         <span style="color:#374151;font-size:11px;">|</span>
         <div  id="fs-tf-bar" style="display:flex;gap:3px;align-items:center;"></div>
 
@@ -245,7 +245,7 @@ function buildGrid() {
         sep1.style.cssText = 'font-size:10px;color:#374151;';
 
         const volEl = document.createElement('span');
-        volEl.style.cssText = 'font-size:10px;color:#6B7280;white-space:nowrap;';
+        volEl.style.cssText = 'font-size:10px;color:#60a5fa;white-space:nowrap;';
 
         const sep2 = document.createElement('span');
         sep2.textContent = '|';
@@ -361,7 +361,7 @@ async function loadSlot(idx, coin) {
     s.symbol = coin.symbol; s.coin = coin;
     const pct = coin.change_24h;
     s.titleEl.textContent  = coin.symbol.replace('USDT','');
-    s.changeEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+    s.changeEl.textContent = '(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)';
     s.changeEl.style.color = pct >= 0 ? '#34d399' : '#f87171';
     s.volEl.textContent    = fmtVol(coin.volume_24h);
     const isFav = favoriteSymbols.has(coin.symbol);
@@ -414,7 +414,7 @@ async function openFullscreen(idx) {
     overlay.style.display = 'flex';
 
     const pct    = fsCoin.change_24h;
-    const pctStr = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+    const pctStr = '(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)';
     document.getElementById('fs-title').textContent  = fsCoin.symbol.replace('USDT','');
     document.getElementById('fs-change').textContent = pctStr;
     document.getElementById('fs-change').style.color = pct >= 0 ? '#34d399' : '#f87171';
