@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.9.1</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.9.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -70,6 +70,9 @@
     <div class="w-px h-5 bg-dark-border"></div>
 
     <div class="flex gap-1" id="tf-bar"></div>
+
+    <div class="w-px h-5 bg-dark-border"></div>
+    <button id="alerts-btn" onclick="openAlertsPanel()" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Alert attivi">🔔</button>
 
     <div class="flex-1"></div>
     <span id="status" class="text-xs text-gray-500 mr-2"></span>
@@ -145,6 +148,17 @@
     </div>
 </div>
 
+<!-- Alerts panel -->
+<div id="alerts-panel" style="display:none;position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.55);" onclick="closePanelOutside(event)">
+    <div style="position:absolute;top:56px;right:12px;width:340px;background:#161A1E;border:1px solid #2B3139;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);">
+        <div style="padding:11px 14px;border-bottom:1px solid #2B3139;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+            <span style="font-size:13px;font-weight:700;color:#E5E7EB;">🔔 Alert Attivi</span>
+            <button onclick="closeAlertsPanel()" style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
+        </div>
+        <div id="alerts-list" style="overflow-y:auto;flex:1;padding:4px 0;"></div>
+    </div>
+</div>
+
 <script>
 // ── constants ─────────────────────────────────────────────────────────────────
 const LC          = LightweightCharts;
@@ -176,6 +190,7 @@ let fsWs = null, fsWsTimer = null;
 // price alerts
 let pendingAlert = null;
 let notifyMode = 'both';
+let activeAlerts = [];
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function fmtPrice(p) {
@@ -236,6 +251,7 @@ async function confirmAlert(condition) {
         closeAlertPopover();
         if (j.success) {
             showToast('🔔 Alert impostato!');
+            if (j.alert) { activeAlerts.push(j.alert); updateAlertsBadge(); }
             if (slotIdx !== undefined && j.alert) addAlertLineToSlot(slotIdx, j.alert.id, price, condition);
         } else {
             showToast('❌ Errore alert');
@@ -271,7 +287,9 @@ async function pollTriggeredAlerts() {
                         s.alertLines.delete(a.id);
                     }
                 }
+                activeAlerts = activeAlerts.filter(x => x.id !== a.id);
             }
+            updateAlertsBadge();
         }
     } catch(e) {}
     setTimeout(pollTriggeredAlerts, 30000);
@@ -298,6 +316,8 @@ async function syncAllAlertLines() {
         const r = await fetch('api/price-alerts');
         const j = await r.json();
         if (!j.success) return;
+        activeAlerts = j.data;
+        updateAlertsBadge();
         for (let i = 0; i < slots.length; i++) {
             const s = slots[i];
             if (!s.symbol) continue;
@@ -307,6 +327,64 @@ async function syncAllAlertLines() {
             }
         }
     } catch(e) {}
+}
+
+function updateAlertsBadge() {
+    const btn = document.getElementById('alerts-btn');
+    if (!btn) return;
+    const n = activeAlerts.length;
+    btn.textContent = n > 0 ? `🔔 ${n}` : '🔔';
+    btn.style.color = n > 0 ? '#fbbf24' : '';
+}
+
+function openAlertsPanel() {
+    renderAlertsList();
+    document.getElementById('alerts-panel').style.display = 'block';
+}
+
+function closeAlertsPanel() {
+    document.getElementById('alerts-panel').style.display = 'none';
+}
+
+function closePanelOutside(e) {
+    if (e.target === document.getElementById('alerts-panel')) closeAlertsPanel();
+}
+
+function renderAlertsList() {
+    const list = document.getElementById('alerts-list');
+    if (!list) return;
+    if (activeAlerts.length === 0) {
+        list.innerHTML = '<div style="text-align:center;color:#6B7280;font-size:12px;padding:24px 0;">Nessun alert attivo</div>';
+        return;
+    }
+    list.innerHTML = activeAlerts.map(a => {
+        const coin = a.symbol.replace('USDT', '/USDT');
+        const dirColor = a.condition === 'above' ? '#34d399' : '#f87171';
+        const dirLabel = a.condition === 'above' ? '▲ Sopra' : '▼ Sotto';
+        const notifyIcon = a.notify === 'browser' ? '🖥' : '📱';
+        return `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #1E2329;">
+            <span style="font-size:11px;font-weight:700;color:#E5E7EB;min-width:76px;">${coin}</span>
+            <span style="font-size:11px;color:${dirColor};font-weight:600;min-width:52px;">${dirLabel}</span>
+            <span style="font-size:11px;font-family:monospace;color:#fbbf24;flex:1;">${fmtPrice(a.price)}</span>
+            <span style="font-size:12px;" title="${a.notify === 'browser' ? 'Solo PC' : 'Telegram + PC'}">${notifyIcon}</span>
+            <button onclick="deleteAlert('${a.id}')" style="background:#3f1515;color:#f87171;border:1px solid #7f1d1d;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;flex-shrink:0;" onmouseenter="this.style.background='#7f1d1d'" onmouseleave="this.style.background='#3f1515'">✕</button>
+        </div>`;
+    }).join('');
+}
+
+async function deleteAlert(id) {
+    try {
+        await fetch(`api/price-alerts/${id}`, { method: 'DELETE' });
+        for (const s of slots) {
+            if (s.alertLines.has(id)) {
+                try { s.candleS.removePriceLine(s.alertLines.get(id)); } catch(e) {}
+                s.alertLines.delete(id);
+            }
+        }
+        activeAlerts = activeAlerts.filter(a => a.id !== id);
+        updateAlertsBadge();
+        renderAlertsList();
+    } catch(e) { showToast('❌ Errore eliminazione'); }
 }
 
 function showToast(msg) {
