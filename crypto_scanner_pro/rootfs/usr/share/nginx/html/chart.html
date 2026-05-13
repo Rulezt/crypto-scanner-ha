@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.8.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -126,6 +126,18 @@
     </div>
 </div>
 
+<!-- Alert popover -->
+<div id="alert-popover" style="display:none;position:fixed;z-index:200;background:#161A1E;border:1px solid #2B3139;border-radius:8px;padding:14px 16px;min-width:230px;box-shadow:0 8px 32px rgba(0,0,0,.7);">
+    <div style="font-size:13px;font-weight:700;color:#E5E7EB;margin-bottom:6px;">🔔 Imposta Alert</div>
+    <div id="alert-pop-symbol" style="font-size:11px;color:#9CA3AF;margin-bottom:3px;"></div>
+    <div id="alert-pop-price"  style="font-size:17px;font-family:monospace;color:#fbbf24;margin-bottom:13px;"></div>
+    <div style="display:flex;gap:6px;">
+        <button onclick="confirmAlert('above')" style="flex:1;padding:7px 0;font-size:12px;background:#065f46;color:#34d399;border:none;border-radius:4px;cursor:pointer;font-weight:600;">↑ Sopra</button>
+        <button onclick="confirmAlert('below')" style="flex:1;padding:7px 0;font-size:12px;background:#7f1d1d;color:#f87171;border:none;border-radius:4px;cursor:pointer;font-weight:600;">↓ Sotto</button>
+        <button onclick="closeAlertPopover()" style="flex:1;padding:7px 0;font-size:12px;background:#1E2329;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;">✕</button>
+    </div>
+</div>
+
 <script>
 // ── constants ─────────────────────────────────────────────────────────────────
 const LC          = LightweightCharts;
@@ -154,6 +166,9 @@ let fsChart = null, fsCandleS = null, fsEmaS = {}, fsLastEMA = {};
 let fsTF = '30', fsCoin = null;
 let fsWs = null, fsWsTimer = null;
 
+// price alerts
+let pendingAlert = null;
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 function fmtPrice(p) {
     if (p >= 10000) return p.toLocaleString('en-US', {maximumFractionDigits:1});
@@ -167,6 +182,63 @@ function fmtVol(v) {
     if (v >= 1e6) return '$' + (v / 1e6).toFixed(0) + 'M';
     return '$' + (v / 1e3).toFixed(0) + 'K';
 }
+
+// ── price alert helpers ───────────────────────────────────────────────────────
+function updateAlertBtn(s) {
+    if (!s.alertBtn || s.lastPrice == null || !s.candleS) return;
+    try {
+        const y = s.candleS.priceToCoordinate(s.lastPrice);
+        if (y == null || y < 0) return;
+        s.alertBtn.style.top     = (y - 8) + 'px';
+        s.alertBtn.style.display = 'flex';
+    } catch(e) {}
+}
+
+function openAlertPopover(symbol, price, btn) {
+    pendingAlert = { symbol, price };
+    document.getElementById('alert-pop-symbol').textContent = symbol.replace('USDT','/USDT');
+    document.getElementById('alert-pop-price').textContent  = fmtPrice(price);
+    const pop  = document.getElementById('alert-popover');
+    const rect = btn.getBoundingClientRect();
+    const left = Math.max(4, Math.min(rect.left - 230, window.innerWidth - 250));
+    const top  = Math.max(60, rect.top - 130);
+    pop.style.left    = left + 'px';
+    pop.style.top     = top  + 'px';
+    pop.style.display = 'block';
+}
+
+function closeAlertPopover() {
+    document.getElementById('alert-popover').style.display = 'none';
+    pendingAlert = null;
+}
+
+async function confirmAlert(condition) {
+    if (!pendingAlert) return;
+    try {
+        const r = await fetch('api/price-alerts', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ symbol: pendingAlert.symbol, price: pendingAlert.price, condition }),
+        });
+        const j = await r.json();
+        closeAlertPopover();
+        showToast(j.success ? '🔔 Alert impostato!' : '❌ Errore alert');
+    } catch(e) { showToast('❌ Errore connessione'); }
+}
+
+function showToast(msg) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1E2329;color:#E5E7EB;padding:8px 18px;border-radius:6px;font-size:13px;z-index:300;border:1px solid #2B3139;pointer-events:none;opacity:1;transition:opacity .3s;';
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 2500);
+}
+
+document.addEventListener('click', e => {
+    const pop = document.getElementById('alert-popover');
+    if (pop && pop.style.display !== 'none' && !pop.contains(e.target) && !e.target.dataset.alertTrigger)
+        closeAlertPopover();
+});
 
 function calcEMA(bars, period) {
     const k = 2 / (period + 1);
@@ -304,6 +376,17 @@ function buildGrid() {
         const chartEl = document.createElement('div');
         chartEl.style.cssText = 'position:absolute;inset:0;';
         body.appendChild(chartEl);
+
+        const alertBtn = document.createElement('button');
+        alertBtn.innerHTML = '🔔';
+        alertBtn.title = 'Imposta alert prezzo';
+        alertBtn.dataset.alertTrigger = '1';
+        alertBtn.style.cssText = 'position:absolute;right:1px;width:16px;height:16px;font-size:9px;display:none;align-items:center;justify-content:center;background:rgba(22,26,30,0.85);border:none;border-radius:50%;cursor:pointer;z-index:10;padding:0;line-height:1;opacity:0.45;transition:opacity .15s;pointer-events:auto;';
+        alertBtn.onmouseenter = () => { alertBtn.style.opacity = '1'; alertBtn.style.background = 'rgba(43,49,57,0.95)'; };
+        alertBtn.onmouseleave = () => { alertBtn.style.opacity = '0.45'; alertBtn.style.background = 'rgba(22,26,30,0.85)'; };
+        alertBtn.onclick = (e) => { e.stopPropagation(); openAlertPopover(slots[i].symbol, slots[i].lastPrice, alertBtn); };
+        body.appendChild(alertBtn);
+
         cell.appendChild(body);
 
         grid.appendChild(cell);
@@ -318,11 +401,18 @@ function buildGrid() {
         for (const {p, color, width} of EMA_CFG)
             emaSeries[p] = addSeries(chart, 'LineSeries', {...lineBase, color, lineWidth:width});
 
+        chart.timeScale().subscribeVisibleLogicalRangeChange(() => updateAlertBtn(slots[i]));
+        chart.subscribeCrosshairMove(param => {
+            const ab = slots[i].alertBtn;
+            if (!ab) return;
+            ab.style.opacity = (param && param.point) ? '1' : '0.45';
+        });
+
         slots.push({
             cell, chart, candleS, emaSeries,
             lastEMA: {5:null, 10:null, 60:null, 223:null},
-            starEl, titleEl, changeEl, volEl, priceEl, tfEl, bybitEl,
-            symbol: null, coin: null, curTF,
+            starEl, titleEl, changeEl, volEl, priceEl, tfEl, bybitEl, alertBtn,
+            symbol: null, coin: null, curTF, lastPrice: null,
         });
     }
 }
@@ -395,6 +485,8 @@ async function loadPage() {
         s.titleEl.textContent = ''; s.changeEl.textContent = '';
         s.volEl.textContent = ''; s.priceEl.textContent = '';
         s.tfEl.innerHTML = ''; s.bybitEl.href = '#';
+        s.lastPrice = null;
+        if (s.alertBtn) s.alertBtn.style.display = 'none';
         s.candleS.setData([]);
         for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
         s.lastEMA = {5:null, 10:null, 60:null, 223:null};
@@ -438,7 +530,10 @@ async function loadSlotData(idx) {
             s.lastEMA[p] = ema[ema.length - 1].value;
         }
         s.chart.timeScale().fitContent();
-        s.priceEl.textContent = fmtPrice(klines[klines.length - 1].close);
+        const lastClose = klines[klines.length - 1].close;
+        s.priceEl.textContent = fmtPrice(lastClose);
+        s.lastPrice = lastClose;
+        requestAnimationFrame(() => updateAlertBtn(s));
     } catch(e) { console.error(`Error loading ${s.symbol}:`, e); }
 }
 
@@ -598,6 +693,8 @@ function openWS() {
         const s = slots[slotIdx];
         s.candleS.update(candle);
         s.priceEl.textContent = fmtPrice(candle.close);
+        s.lastPrice = candle.close;
+        updateAlertBtn(s);
         for (const {p} of EMA_CFG) {
             if (s.lastEMA[p] === null) continue;
             const k = 2/(p+1);

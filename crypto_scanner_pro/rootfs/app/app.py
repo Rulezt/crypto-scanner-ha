@@ -9,6 +9,7 @@ import json
 import threading
 import time
 import logging
+import uuid
 from scanners.ema_touch import EMAScanner
 from scanners.daily_flip import DailyFlipScanner
 from scanners.volume import VolumeScanner
@@ -219,6 +220,10 @@ def start_scanners():
             scanner_threads[name] = thread
             logger.info(f"✅ {name} thread started")
 
+    alert_thread = threading.Thread(target=check_price_alerts, daemon=True)
+    alert_thread.start()
+    logger.info("✅ price alert checker thread started")
+
 # ========== API ENDPOINTS ==========
 
 @app.route('/scanner-api/health', methods=['GET'])
@@ -228,7 +233,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '2.7.0',
+        'version': '2.8.0',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -467,6 +472,120 @@ def update_favorites():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+ALERTS_FILE = '/data/price_alerts.json'
+
+def _load_alerts():
+    try:
+        if os.path.exists(ALERTS_FILE):
+            with open(ALERTS_FILE, 'r') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return []
+
+def _save_alerts(alerts):
+    try:
+        os.makedirs('/data', exist_ok=True)
+        with open(ALERTS_FILE, 'w') as f:
+            json.dump(alerts, f)
+        return True
+    except Exception:
+        return False
+
+def send_telegram(text):
+    import requests as req
+    token = config['telegram']['token']
+    chat_id = config['telegram']['chat_id']
+    if not token or not chat_id:
+        logger.warning("Telegram not configured, skipping alert")
+        return
+    try:
+        req.post(
+            f'https://api.telegram.org/bot{token}/sendMessage',
+            json={'chat_id': chat_id, 'text': text, 'parse_mode': 'Markdown'},
+            timeout=10
+        )
+    except Exception as e:
+        logger.error(f"Telegram send error: {e}")
+
+def check_price_alerts():
+    import requests as req
+    while True:
+        time.sleep(60)
+        try:
+            alerts = _load_alerts()
+            active = [a for a in alerts if not a.get('triggered')]
+            if not active:
+                continue
+            response = req.get('https://api.bybit.com/v5/market/tickers',
+                               params={'category': 'linear'}, timeout=10)
+            data = response.json()
+            if data.get('retCode') != 0:
+                continue
+            price_map = {item['symbol']: float(item['lastPrice'])
+                         for item in data['result']['list']}
+            modified = False
+            for alert in alerts:
+                if alert.get('triggered'):
+                    continue
+                sym = alert['symbol']
+                if sym not in price_map:
+                    continue
+                cur_price = price_map[sym]
+                hit = (alert['condition'] == 'above' and cur_price >= alert['price']) or \
+                      (alert['condition'] == 'below' and cur_price <= alert['price'])
+                if hit:
+                    alert['triggered'] = True
+                    modified = True
+                    coin = sym.replace('USDT', '')
+                    direction = '📈' if alert['condition'] == 'above' else '📉'
+                    msg = (f"{direction} *Alert Prezzo Raggiunto*\n"
+                           f"*{coin}/USDT*\n"
+                           f"Prezzo attuale: `{cur_price}`\n"
+                           f"Target: `{alert['price']}` "
+                           f"({'sopra' if alert['condition'] == 'above' else 'sotto'})")
+                    send_telegram(msg)
+                    logger.info(f"Alert triggered: {sym} {alert['condition']} {alert['price']}")
+            if modified:
+                _save_alerts(alerts)
+        except Exception as e:
+            logger.error(f"Error in check_price_alerts: {e}")
+
+@app.route('/api/price-alerts', methods=['GET'])
+def get_price_alerts():
+    alerts = [a for a in _load_alerts() if not a.get('triggered')]
+    return jsonify({'success': True, 'data': alerts})
+
+@app.route('/api/price-alerts', methods=['POST'])
+def create_price_alert():
+    try:
+        body = request.get_json() or {}
+        symbol = str(body.get('symbol', ''))
+        price  = float(body.get('price', 0))
+        condition = str(body.get('condition', ''))
+        if not symbol or price <= 0 or condition not in ('above', 'below'):
+            return jsonify({'success': False, 'error': 'Invalid params'}), 400
+        alerts = _load_alerts()
+        alert = {
+            'id':         str(uuid.uuid4()),
+            'symbol':     symbol,
+            'price':      price,
+            'condition':  condition,
+            'created_at': time.time(),
+            'triggered':  False,
+        }
+        alerts.append(alert)
+        _save_alerts(alerts)
+        return jsonify({'success': True, 'alert': alert})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/price-alerts/<alert_id>', methods=['DELETE'])
+def delete_price_alert(alert_id):
+    alerts = [a for a in _load_alerts() if a.get('id') != alert_id]
+    _save_alerts(alerts)
+    return jsonify({'success': True})
 
 @app.route('/api/klines', methods=['GET'])
 def get_klines():
