@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.9.5</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.9.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -192,6 +192,7 @@ let fsChart = null, fsCandleS = null, fsEmaS = {}, fsLastEMA = {};
 let fsTF = '30', fsCoin = null;
 let fsWs = null, fsWsTimer = null;
 let fsDayHighLine = null, fsDayLowLine = null;
+let fsPrevHighLine = null, fsPrevLowLine = null;
 
 // price alerts
 let pendingAlert = null;
@@ -622,6 +623,7 @@ function buildGrid() {
             symbol: null, coin: null, curTF, lastPrice: null, crosshairPrice: null,
             alertLines: new Map(),
             dayHighLine: null, dayLowLine: null,
+            prevHighLine: null, prevLowLine: null,
         });
     }
 }
@@ -664,8 +666,10 @@ async function switchSlotTF(idx, tf) {
         ws.send(JSON.stringify({ op:'unsubscribe', args:[`kline.${s.curTF}.${s.symbol}`] }));
     s.curTF = tf;
     renderSlotTF(idx);
-    if (s.dayHighLine) { try { s.candleS.removePriceLine(s.dayHighLine); } catch(e) {} s.dayHighLine = null; }
-    if (s.dayLowLine)  { try { s.candleS.removePriceLine(s.dayLowLine);  } catch(e) {} s.dayLowLine  = null; }
+    if (s.dayHighLine)  { try { s.candleS.removePriceLine(s.dayHighLine);  } catch(e) {} s.dayHighLine  = null; }
+    if (s.dayLowLine)   { try { s.candleS.removePriceLine(s.dayLowLine);   } catch(e) {} s.dayLowLine   = null; }
+    if (s.prevHighLine) { try { s.candleS.removePriceLine(s.prevHighLine); } catch(e) {} s.prevHighLine = null; }
+    if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
     s.candleS.setData([]);
     for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
     s.lastEMA = {5:null, 10:null, 60:null, 223:null};
@@ -700,8 +704,10 @@ async function loadPage() {
         if (s.alertBtn) s.alertBtn.style.display = 'none';
         for (const pl of s.alertLines.values()) { try { s.candleS.removePriceLine(pl); } catch(e) {} }
         s.alertLines.clear();
-        if (s.dayHighLine) { try { s.candleS.removePriceLine(s.dayHighLine); } catch(e) {} s.dayHighLine = null; }
-        if (s.dayLowLine)  { try { s.candleS.removePriceLine(s.dayLowLine);  } catch(e) {} s.dayLowLine  = null; }
+        if (s.dayHighLine)  { try { s.candleS.removePriceLine(s.dayHighLine);  } catch(e) {} s.dayHighLine  = null; }
+        if (s.dayLowLine)   { try { s.candleS.removePriceLine(s.dayLowLine);   } catch(e) {} s.dayLowLine   = null; }
+        if (s.prevHighLine) { try { s.candleS.removePriceLine(s.prevHighLine); } catch(e) {} s.prevHighLine = null; }
+        if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
         s.candleS.setData([]);
         for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
         s.lastEMA = {5:null, 10:null, 60:null, 223:null};
@@ -751,12 +757,19 @@ async function loadSlotData(idx) {
         }
         s.chart.timeScale().fitContent();
         s.lastPrice = klines[klines.length - 1].close;
-        if (s.dayHighLine) { try { s.candleS.removePriceLine(s.dayHighLine); } catch(e) {} }
-        if (s.dayLowLine)  { try { s.candleS.removePriceLine(s.dayLowLine);  } catch(e) {} }
+        if (s.dayHighLine)  { try { s.candleS.removePriceLine(s.dayHighLine);  } catch(e) {} }
+        if (s.dayLowLine)   { try { s.candleS.removePriceLine(s.dayLowLine);   } catch(e) {} }
+        if (s.prevHighLine) { try { s.candleS.removePriceLine(s.prevHighLine); } catch(e) {} }
+        if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} }
         if (jd.success && jd.data && jd.data.length) {
             const today = jd.data[jd.data.length - 1];
-            s.dayHighLine = s.candleS.createPriceLine({ price: today.high, color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'H' });
-            s.dayLowLine  = s.candleS.createPriceLine({ price: today.low,  color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'L' });
+            s.dayHighLine  = s.candleS.createPriceLine({ price: today.high, color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'H' });
+            s.dayLowLine   = s.candleS.createPriceLine({ price: today.low,  color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'L' });
+            if (jd.data.length >= 2) {
+                const prev = jd.data[jd.data.length - 2];
+                s.prevHighLine = s.candleS.createPriceLine({ price: prev.high, color:'#22c55e', lineWidth:2, lineStyle:2, axisLabelVisible:true, title:'pH' });
+                s.prevLowLine  = s.candleS.createPriceLine({ price: prev.low,  color:'#ef4444', lineWidth:2, lineStyle:2, axisLabelVisible:true, title:'pL' });
+            }
         }
     } catch(e) { console.error(`Error loading ${s.symbol}:`, e); }
 }
@@ -814,8 +827,10 @@ function closeFullscreen() {
     document.getElementById('fs-overlay').style.display = 'none';
     closeFsWS();
     if (fsChart) {
-        if (fsDayHighLine) { try { fsCandleS.removePriceLine(fsDayHighLine); } catch(e) {} fsDayHighLine = null; }
-        if (fsDayLowLine)  { try { fsCandleS.removePriceLine(fsDayLowLine);  } catch(e) {} fsDayLowLine  = null; }
+        if (fsDayHighLine)  { try { fsCandleS.removePriceLine(fsDayHighLine);  } catch(e) {} fsDayHighLine  = null; }
+        if (fsDayLowLine)   { try { fsCandleS.removePriceLine(fsDayLowLine);   } catch(e) {} fsDayLowLine   = null; }
+        if (fsPrevHighLine) { try { fsCandleS.removePriceLine(fsPrevHighLine); } catch(e) {} fsPrevHighLine = null; }
+        if (fsPrevLowLine)  { try { fsCandleS.removePriceLine(fsPrevLowLine);  } catch(e) {} fsPrevLowLine  = null; }
         fsCandleS.setData([]);
         for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
         fsLastEMA = {};
@@ -835,8 +850,10 @@ function renderFsTFBar() {
 async function switchFsTF(tf) {
     if (tf === fsTF || !fsCoin) return;
     closeFsWS(); fsTF = tf; renderFsTFBar();
-    if (fsDayHighLine) { try { fsCandleS.removePriceLine(fsDayHighLine); } catch(e) {} fsDayHighLine = null; }
-    if (fsDayLowLine)  { try { fsCandleS.removePriceLine(fsDayLowLine);  } catch(e) {} fsDayLowLine  = null; }
+    if (fsDayHighLine)  { try { fsCandleS.removePriceLine(fsDayHighLine);  } catch(e) {} fsDayHighLine  = null; }
+    if (fsDayLowLine)   { try { fsCandleS.removePriceLine(fsDayLowLine);   } catch(e) {} fsDayLowLine   = null; }
+    if (fsPrevHighLine) { try { fsCandleS.removePriceLine(fsPrevHighLine); } catch(e) {} fsPrevHighLine = null; }
+    if (fsPrevLowLine)  { try { fsCandleS.removePriceLine(fsPrevLowLine);  } catch(e) {} fsPrevLowLine  = null; }
     fsCandleS.setData([]);
     for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
     fsLastEMA = {};
@@ -860,12 +877,19 @@ async function loadFsData() {
             fsLastEMA[p] = ema[ema.length - 1].value;
         }
         fsChart.timeScale().fitContent();
-        if (fsDayHighLine) { try { fsCandleS.removePriceLine(fsDayHighLine); } catch(e) {} }
-        if (fsDayLowLine)  { try { fsCandleS.removePriceLine(fsDayLowLine);  } catch(e) {} }
+        if (fsDayHighLine)  { try { fsCandleS.removePriceLine(fsDayHighLine);  } catch(e) {} }
+        if (fsDayLowLine)   { try { fsCandleS.removePriceLine(fsDayLowLine);   } catch(e) {} }
+        if (fsPrevHighLine) { try { fsCandleS.removePriceLine(fsPrevHighLine); } catch(e) {} }
+        if (fsPrevLowLine)  { try { fsCandleS.removePriceLine(fsPrevLowLine);  } catch(e) {} }
         if (jd.success && jd.data && jd.data.length) {
             const today = jd.data[jd.data.length - 1];
-            fsDayHighLine = fsCandleS.createPriceLine({ price: today.high, color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'H' });
-            fsDayLowLine  = fsCandleS.createPriceLine({ price: today.low,  color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'L' });
+            fsDayHighLine  = fsCandleS.createPriceLine({ price: today.high, color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'H' });
+            fsDayLowLine   = fsCandleS.createPriceLine({ price: today.low,  color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'L' });
+            if (jd.data.length >= 2) {
+                const prev = jd.data[jd.data.length - 2];
+                fsPrevHighLine = fsCandleS.createPriceLine({ price: prev.high, color:'#22c55e', lineWidth:2, lineStyle:2, axisLabelVisible:true, title:'pH' });
+                fsPrevLowLine  = fsCandleS.createPriceLine({ price: prev.low,  color:'#ef4444', lineWidth:2, lineStyle:2, axisLabelVisible:true, title:'pL' });
+            }
         }
     } catch(e) { console.error('FS load error:', e); }
 }
