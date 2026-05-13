@@ -228,7 +228,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '2.4.3',
+        'version': '2.5.0',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -360,6 +360,43 @@ def get_recent_alerts():
     except Exception as e:
         logger.error(f"❌ Error getting recent alerts: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/top-coins', methods=['GET'])
+def get_top_coins():
+    """Return top N coins by 24h volume with minimum volume filter"""
+    import requests as req
+    try:
+        limit = min(int(request.args.get('limit', 18)), 50)
+        min_vol = float(request.args.get('min_volume', 10_000_000))
+
+        url = 'https://api.bybit.com/v5/market/tickers'
+        response = req.get(url, params={'category': 'linear'}, timeout=10)
+        data = response.json()
+
+        if data.get('retCode') != 0:
+            return jsonify({'error': 'Bybit API error'}), 502
+
+        coins = []
+        for item in data['result']['list']:
+            if not item['symbol'].endswith('USDT'):
+                continue
+            last_price = float(item['lastPrice'])
+            vol_24h = float(item.get('volume24h', 0)) * last_price
+            if vol_24h < min_vol:
+                continue
+            coins.append({
+                'symbol': item['symbol'],
+                'price': last_price,
+                'change_24h': round(float(item.get('price24hPcnt', 0)) * 100, 2),
+                'volume_24h': vol_24h,
+            })
+
+        coins.sort(key=lambda x: x['volume_24h'], reverse=True)
+        return jsonify({'success': True, 'data': coins[:limit]})
+    except Exception as e:
+        logger.error(f"Error fetching top coins: {e}")
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/klines', methods=['GET'])
 def get_klines():
