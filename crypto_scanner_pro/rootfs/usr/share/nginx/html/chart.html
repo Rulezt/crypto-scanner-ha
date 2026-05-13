@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.8.2</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.8.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -189,7 +189,9 @@ function updateAlertBtn(s) {
     try {
         const y = s.candleS.priceToCoordinate(s.lastPrice);
         if (y == null || y < 0) return;
+        const axisW = s.chart.priceScale('right').width();
         s.alertBtn.style.top     = (y - 8) + 'px';
+        s.alertBtn.style.right   = (axisW + 2) + 'px';
         s.alertBtn.style.display = 'flex';
     } catch(e) {}
 }
@@ -378,12 +380,12 @@ function buildGrid() {
         body.appendChild(chartEl);
 
         const alertBtn = document.createElement('button');
-        alertBtn.textContent = '+';
+        alertBtn.innerHTML = '🔔';
         alertBtn.title = 'Imposta alert prezzo';
         alertBtn.dataset.alertTrigger = '1';
-        alertBtn.style.cssText = 'position:absolute;right:2px;width:15px;height:15px;font-size:13px;font-weight:700;display:none;align-items:center;justify-content:center;background:rgba(11,14,17,0.85);border:1px solid #374151;border-radius:50%;cursor:pointer;z-index:10;padding:0;line-height:1;color:#6B7280;transition:color .15s,border-color .15s;';
-        alertBtn.onmouseenter = () => { alertBtn.style.color = '#E5E7EB'; alertBtn.style.borderColor = '#9CA3AF'; };
-        alertBtn.onmouseleave = () => { alertBtn.style.color = '#6B7280'; alertBtn.style.borderColor = '#374151'; };
+        alertBtn.style.cssText = 'position:absolute;right:2px;width:16px;height:16px;font-size:10px;display:none;align-items:center;justify-content:center;background:rgba(11,14,17,0.85);border:none;border-radius:50%;cursor:pointer;z-index:10;padding:0;line-height:1;opacity:0.6;transition:opacity .15s;';
+        alertBtn.onmouseenter = () => { alertBtn.style.opacity = '1'; };
+        alertBtn.onmouseleave = () => { alertBtn.style.opacity = '0.6'; };
         alertBtn.onclick = (e) => { e.stopPropagation(); const s = slots[i]; const price = s.crosshairPrice || s.lastPrice; if (price) openAlertPopover(s.symbol, price, alertBtn); };
         body.appendChild(alertBtn);
 
@@ -410,7 +412,9 @@ function buildGrid() {
                     const price = s.candleS.coordinateToPrice(param.point.y);
                     if (price != null && price > 0) {
                         s.crosshairPrice = price;
-                        s.alertBtn.style.top = (param.point.y - 8) + 'px';
+                        const axisW = s.chart.priceScale('right').width();
+                        s.alertBtn.style.right = (axisW + 2) + 'px';
+                        s.alertBtn.style.top   = (param.point.y - 8) + 'px';
                     }
                 } catch(e) {}
             } else {
