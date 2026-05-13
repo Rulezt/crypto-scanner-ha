@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.9.0</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.9.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -192,8 +192,8 @@ function fmtVol(v) {
 }
 
 // ── price alert helpers ───────────────────────────────────────────────────────
-function openAlertPopover(symbol, price, btn) {
-    pendingAlert = { symbol, price };
+function openAlertPopover(symbol, price, btn, slotIdx) {
+    pendingAlert = { symbol, price, slotIdx };
     document.getElementById('alert-pop-symbol').textContent = symbol.replace('USDT','/USDT');
     document.getElementById('alert-pop-price').textContent  = fmtPrice(price);
     const pop  = document.getElementById('alert-popover');
@@ -225,16 +225,22 @@ function setNotifyMode(mode) {
 
 async function confirmAlert(condition) {
     if (!pendingAlert) return;
+    const { symbol, price, slotIdx } = pendingAlert;
     try {
         const r = await fetch('api/price-alerts', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ symbol: pendingAlert.symbol, price: pendingAlert.price, condition, notify: notifyMode }),
+            body: JSON.stringify({ symbol, price, condition, notify: notifyMode }),
         });
         const j = await r.json();
         closeAlertPopover();
-        showToast(j.success ? '🔔 Alert impostato!' : '❌ Errore alert');
-    } catch(e) { showToast('❌ Errore connessione'); }
+        if (j.success) {
+            showToast('🔔 Alert impostato!');
+            if (slotIdx !== undefined && j.alert) addAlertLineToSlot(slotIdx, j.alert.id, price, condition);
+        } else {
+            showToast('❌ Errore alert');
+        }
+    } catch(e) { closeAlertPopover(); showToast('❌ Errore connessione'); }
 }
 
 async function initNotifications() {
@@ -257,10 +263,50 @@ async function pollTriggeredAlerts() {
         const r = await fetch('api/price-alerts/recent-triggered');
         const j = await r.json();
         if (j.success && j.data && j.data.length) {
-            for (const a of j.data) fireBrowserNotification(a);
+            for (const a of j.data) {
+                fireBrowserNotification(a);
+                for (const s of slots) {
+                    if (s.symbol === a.symbol && s.alertLines.has(a.id)) {
+                        try { s.candleS.removePriceLine(s.alertLines.get(a.id)); } catch(e) {}
+                        s.alertLines.delete(a.id);
+                    }
+                }
+            }
         }
     } catch(e) {}
     setTimeout(pollTriggeredAlerts, 30000);
+}
+
+function addAlertLineToSlot(idx, alertId, price, condition) {
+    const s = slots[idx];
+    if (!s || !s.candleS) return;
+    try {
+        const pl = s.candleS.createPriceLine({
+            price,
+            color: condition === 'above' ? '#34d399' : '#f87171',
+            lineWidth: 1,
+            lineStyle: LC.LineStyle ? LC.LineStyle.Dashed : 2,
+            axisLabelVisible: true,
+            title: condition === 'above' ? '▲' : '▼',
+        });
+        s.alertLines.set(alertId, pl);
+    } catch(e) {}
+}
+
+async function syncAllAlertLines() {
+    try {
+        const r = await fetch('api/price-alerts');
+        const j = await r.json();
+        if (!j.success) return;
+        for (let i = 0; i < slots.length; i++) {
+            const s = slots[i];
+            if (!s.symbol) continue;
+            for (const a of j.data) {
+                if (a.symbol === s.symbol && !s.alertLines.has(a.id))
+                    addAlertLineToSlot(i, a.id, a.price, a.condition);
+            }
+        }
+    } catch(e) {}
 }
 
 function showToast(msg) {
@@ -274,13 +320,14 @@ function showToast(msg) {
 document.addEventListener('click', e => {
     const pop = document.getElementById('alert-popover');
     // Check if click lands on any alert button (pointer-events:none, so click passes through to chart)
-    for (const s of slots) {
+    for (let i = 0; i < slots.length; i++) {
+        const s = slots[i];
         if (!s.alertBtn || s.alertBtn.style.display === 'none') continue;
         const r = s.alertBtn.getBoundingClientRect();
         if (e.clientX >= r.left - 3 && e.clientX <= r.right  + 3 &&
             e.clientY >= r.top  - 3 && e.clientY <= r.bottom + 3) {
             const price = s.crosshairPrice || s.lastPrice;
-            if (price && s.symbol) openAlertPopover(s.symbol, price, s.alertBtn);
+            if (price && s.symbol) openAlertPopover(s.symbol, price, s.alertBtn, i);
             return;
         }
     }
@@ -470,6 +517,7 @@ function buildGrid() {
             lastEMA: {5:null, 10:null, 60:null, 223:null},
             starEl, titleEl, changeEl, volEl, priceEl, tfEl, bybitEl, alertBtn,
             symbol: null, coin: null, curTF, lastPrice: null, crosshairPrice: null,
+            alertLines: new Map(),
         });
     }
 }
@@ -544,6 +592,8 @@ async function loadPage() {
         s.tfEl.innerHTML = ''; s.bybitEl.href = '#';
         s.lastPrice = null; s.crosshairPrice = null;
         if (s.alertBtn) s.alertBtn.style.display = 'none';
+        for (const pl of s.alertLines.values()) { try { s.candleS.removePriceLine(pl); } catch(e) {} }
+        s.alertLines.clear();
         s.candleS.setData([]);
         for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
         s.lastEMA = {5:null, 10:null, 60:null, 223:null};
@@ -554,6 +604,7 @@ async function loadPage() {
         await Promise.all(pageCoins.map((coin, i) => loadSlot(i, coin)));
         setStatus('');
         openWS();
+        await syncAllAlertLines();
     }
 }
 
