@@ -53,11 +53,15 @@
                        class="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-sm font-medium text-white">
                         <span>Grafici</span>
                     </a>
+                    <button onclick="openConfigModal()" title="Configurazione"
+                        class="flex items-center justify-center w-9 h-9 rounded-lg bg-dark-hover hover:bg-dark-border transition-colors text-gray-400 hover:text-gray-200 text-lg">
+                        ⚙
+                    </button>
                     <div id="bot-status" class="flex items-center space-x-2 px-3 py-1.5 bg-dark-hover rounded-lg">
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500" id="version">v2.9.9</div>
+                    <div class="text-xs text-gray-500" id="version">v3.0.0</div>
                 </div>
             </div>
         </div>
@@ -261,234 +265,6 @@
                     </div>
                 </div>
 
-                <!-- Configuration Form -->
-                <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
-                    <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between">
-                        <h3 class="text-sm font-medium">⚙️ Configurazione</h3>
-                        <button onclick="toggleConfigForm()" id="toggle-form-btn" class="text-xs text-blue-400 hover:text-blue-300">
-                            Modifica
-                        </button>
-                    </div>
-
-                    <!-- View Mode -->
-                    <div id="config-view" class="p-4 space-y-3 text-xs">
-                        <!-- Telegram Config -->
-                        <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                            <div class="font-medium text-blue-400 mb-2">📱 Telegram</div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Token:</span>
-                                <span id="view-telegram-token" class="text-gray-300 font-mono text-xs">***</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Chat ID:</span>
-                                <span id="view-telegram-chat" class="text-gray-300 font-mono text-xs">-</span>
-                            </div>
-                        </div>
-
-                        <!-- EMA Touch Settings -->
-                        <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                            <div class="font-medium text-blue-400 mb-2">🎯 Tocco EMA</div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Soglia:</span>
-                                <span id="view-ema-threshold" class="text-gray-300">2.0%</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Periodo EMA:</span>
-                                <span id="view-ema-period" class="text-gray-300">60</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Intervallo:</span>
-                                <span id="view-ema-interval" class="text-gray-300">30 min</span>
-                            </div>
-                        </div>
-
-                        <!-- Daily Flip Settings -->
-                        <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                            <div class="font-medium text-purple-400 mb-2">🔄 Flip Giornaliero</div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Soglia:</span>
-                                <span id="view-flip-threshold" class="text-gray-300">2.0%</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Tipo:</span>
-                                <span id="view-flip-type" class="text-gray-300">Entrambi</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Intervallo:</span>
-                                <span id="view-flip-interval" class="text-gray-300">30 min</span>
-                            </div>
-                        </div>
-
-                        <!-- Volume Settings -->
-                        <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                            <div class="font-medium text-emerald-400 mb-2">📊 Scanner Volume</div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Soglia Rialzi:</span>
-                                <span id="view-gainers-threshold" class="text-emerald-300">10%</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Soglia Ribassi:</span>
-                                <span id="view-losers-threshold" class="text-red-300">10%</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Intervallo:</span>
-                                <span id="view-volume-interval" class="text-gray-300">30 min</span>
-                            </div>
-                        </div>
-
-                        <!-- ATH/ATL Settings -->
-                        <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                            <div class="font-medium text-amber-400 mb-2">🏆 Scanner ATH/ATL</div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Prossimità:</span>
-                                <span id="view-ath-proximity" class="text-gray-300">1.0%</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Storico:</span>
-                                <span id="view-ath-lookback" class="text-gray-300">365 giorni</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Intervallo:</span>
-                                <span id="view-ath-interval" class="text-gray-300">60 min</span>
-                            </div>
-                        </div>
-
-                        <!-- General Settings -->
-                        <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                            <div class="font-medium text-gray-400 mb-2">⚙️ Generali</div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Volume Min:</span>
-                                <span id="view-min-volume" class="text-gray-300">$10M</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Cooldown:</span>
-                                <span id="view-cooldown" class="text-gray-300">2h</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Max Coin/Alert:</span>
-                                <span id="view-max-coins" class="text-gray-300">10</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Edit Mode (Form) -->
-                    <form id="config-form" class="p-4 space-y-4 hidden">
-                        <!-- Telegram -->
-                        <div class="space-y-3">
-                            <div class="font-medium text-blue-400 text-sm">📱 Telegram</div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Token Bot:</label>
-                                <input type="text" id="input-telegram-token" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none" placeholder="123456:ABC-DEF1234">
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Chat ID:</label>
-                                <input type="text" id="input-telegram-chat" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none" placeholder="123456789">
-                            </div>
-                        </div>
-
-                        <!-- EMA Touch -->
-                        <div class="space-y-3">
-                            <div class="font-medium text-blue-400 text-sm">🎯 Tocco EMA</div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Soglia (%):</label>
-                                <input type="number" step="0.1" id="input-ema-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Periodo EMA:</label>
-                                <input type="number" id="input-ema-period" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Intervallo (min):</label>
-                                <input type="number" id="input-ema-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- Daily Flip -->
-                        <div class="space-y-3">
-                            <div class="font-medium text-purple-400 text-sm">🔄 Flip Giornaliero</div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Soglia (%):</label>
-                                <input type="number" step="0.1" id="input-flip-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Tipo Flip:</label>
-                                <select id="input-flip-type" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none">
-                                    <option value="both">Entrambi</option>
-                                    <option value="green_to_red">Verde → Rosso</option>
-                                    <option value="red_to_green">Rosso → Verde</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Intervallo (min):</label>
-                                <input type="number" id="input-flip-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- Volume -->
-                        <div class="space-y-3">
-                            <div class="font-medium text-emerald-400 text-sm">📊 Scanner Volume</div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Soglia Rialzi (%):</label>
-                                <input type="number" id="input-gainers-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Soglia Ribassi (%):</label>
-                                <input type="number" id="input-losers-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Intervallo (min):</label>
-                                <input type="number" id="input-volume-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- ATH/ATL -->
-                        <div class="space-y-3">
-                            <div class="font-medium text-amber-400 text-sm">🏆 Scanner ATH/ATL</div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Prossimità (%):</label>
-                                <input type="number" step="0.1" id="input-ath-proximity" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Storico (giorni):</label>
-                                <input type="number" id="input-ath-lookback" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Intervallo (min):</label>
-                                <input type="number" id="input-ath-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- General -->
-                        <div class="space-y-3">
-                            <div class="font-medium text-gray-400 text-sm">⚙️ Impostazioni Generali</div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Volume Minimo 24h ($):</label>
-                                <input type="number" id="input-min-volume" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Cooldown (ore):</label>
-                                <input type="number" id="input-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500 block mb-1">Max Coin per Alert:</label>
-                                <input type="number" id="input-max-coins" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none">
-                            </div>
-                        </div>
-
-                        <!-- Save Button -->
-                        <div class="flex gap-2 pt-4">
-                            <button type="button" onclick="saveConfiguration()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">
-                                💾 Salva Configurazione
-                            </button>
-                            <button type="button" onclick="toggleConfigForm()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors">
-                                Annulla
-                            </button>
-                        </div>
-
-                        <!-- Status Message -->
-                        <div id="save-status" class="hidden p-3 rounded text-sm"></div>
-                    </form>
-                </div>
 
                 <!-- Telegram Status -->
                 <div id="telegram-warning" class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 hidden">
@@ -501,6 +277,107 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Config Modal -->
+    <div id="config-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeConfigModalOutside(event)">
+        <div style="max-width:480px;margin:48px auto 48px;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
+            <!-- Modal header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #2B3139;">
+                <span style="font-size:14px;font-weight:700;color:#E5E7EB;">⚙️ Configurazione</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <button onclick="toggleConfigForm()" id="toggle-form-btn" style="font-size:12px;color:#60a5fa;background:none;border:none;cursor:pointer;padding:2px 8px;border-radius:4px;">Modifica</button>
+                    <button onclick="closeConfigModal()" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;padding:0;">✕</button>
+                </div>
+            </div>
+            <!-- View Mode -->
+            <div id="config-view" class="p-4 space-y-3 text-xs">
+                <div class="bg-dark-hover/50 rounded p-3 space-y-2">
+                    <div class="font-medium text-blue-400 mb-2">📱 Telegram</div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Token:</span><span id="view-telegram-token" class="text-gray-300 font-mono text-xs">***</span></div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Chat ID:</span><span id="view-telegram-chat" class="text-gray-300 font-mono text-xs">-</span></div>
+                </div>
+                <div class="bg-dark-hover/50 rounded p-3 space-y-2">
+                    <div class="font-medium text-blue-400 mb-2">🎯 Tocco EMA</div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Soglia:</span><span id="view-ema-threshold" class="text-gray-300">2.0%</span></div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Periodo EMA:</span><span id="view-ema-period" class="text-gray-300">60</span></div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Intervallo:</span><span id="view-ema-interval" class="text-gray-300">30 min</span></div>
+                </div>
+                <div class="bg-dark-hover/50 rounded p-3 space-y-2">
+                    <div class="font-medium text-purple-400 mb-2">🔄 Flip Giornaliero</div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Soglia:</span><span id="view-flip-threshold" class="text-gray-300">2.0%</span></div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Tipo:</span><span id="view-flip-type" class="text-gray-300">Entrambi</span></div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Intervallo:</span><span id="view-flip-interval" class="text-gray-300">30 min</span></div>
+                </div>
+                <div class="bg-dark-hover/50 rounded p-3 space-y-2">
+                    <div class="font-medium text-emerald-400 mb-2">📊 Scanner Volume</div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Soglia Rialzi:</span><span id="view-gainers-threshold" class="text-emerald-300">10%</span></div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Soglia Ribassi:</span><span id="view-losers-threshold" class="text-red-300">10%</span></div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Intervallo:</span><span id="view-volume-interval" class="text-gray-300">30 min</span></div>
+                </div>
+                <div class="bg-dark-hover/50 rounded p-3 space-y-2">
+                    <div class="font-medium text-amber-400 mb-2">🏆 Scanner ATH/ATL</div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Prossimità:</span><span id="view-ath-proximity" class="text-gray-300">1.0%</span></div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Storico:</span><span id="view-ath-lookback" class="text-gray-300">365 giorni</span></div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Intervallo:</span><span id="view-ath-interval" class="text-gray-300">60 min</span></div>
+                </div>
+                <div class="bg-dark-hover/50 rounded p-3 space-y-2">
+                    <div class="font-medium text-gray-400 mb-2">⚙️ Generali</div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Volume Min:</span><span id="view-min-volume" class="text-gray-300">$10M</span></div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Cooldown:</span><span id="view-cooldown" class="text-gray-300">2h</span></div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500">Max Coin/Alert:</span><span id="view-max-coins" class="text-gray-300">10</span></div>
+                </div>
+            </div>
+            <!-- Edit Mode -->
+            <form id="config-form" class="p-4 space-y-4 hidden">
+                <div class="space-y-3">
+                    <div class="font-medium text-blue-400 text-sm">📱 Telegram</div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Token Bot:</label><input type="text" id="input-telegram-token" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none" placeholder="123456:ABC-DEF1234"></div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Chat ID:</label><input type="text" id="input-telegram-chat" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none" placeholder="123456789"></div>
+                </div>
+                <div class="space-y-3">
+                    <div class="font-medium text-blue-400 text-sm">🎯 Tocco EMA</div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Soglia (%):</label><input type="number" step="0.1" id="input-ema-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none"></div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Periodo EMA:</label><input type="number" id="input-ema-period" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none"></div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Intervallo (min):</label><input type="number" id="input-ema-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none"></div>
+                </div>
+                <div class="space-y-3">
+                    <div class="font-medium text-purple-400 text-sm">🔄 Flip Giornaliero</div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Soglia (%):</label><input type="number" step="0.1" id="input-flip-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none"></div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Tipo Flip:</label>
+                        <select id="input-flip-type" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none">
+                            <option value="both">Entrambi</option>
+                            <option value="green_to_red">Verde → Rosso</option>
+                            <option value="red_to_green">Rosso → Verde</option>
+                        </select>
+                    </div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Intervallo (min):</label><input type="number" id="input-flip-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none"></div>
+                </div>
+                <div class="space-y-3">
+                    <div class="font-medium text-emerald-400 text-sm">📊 Scanner Volume</div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Soglia Rialzi (%):</label><input type="number" id="input-gainers-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"></div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Soglia Ribassi (%):</label><input type="number" id="input-losers-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"></div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Intervallo (min):</label><input type="number" id="input-volume-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"></div>
+                </div>
+                <div class="space-y-3">
+                    <div class="font-medium text-amber-400 text-sm">🏆 Scanner ATH/ATL</div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Prossimità (%):</label><input type="number" step="0.1" id="input-ath-proximity" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"></div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Storico (giorni):</label><input type="number" id="input-ath-lookback" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"></div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Intervallo (min):</label><input type="number" id="input-ath-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"></div>
+                </div>
+                <div class="space-y-3">
+                    <div class="font-medium text-gray-400 text-sm">⚙️ Impostazioni Generali</div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Volume Minimo 24h ($):</label><input type="number" id="input-min-volume" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none"></div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Cooldown (ore):</label><input type="number" id="input-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none"></div>
+                    <div><label class="text-xs text-gray-500 block mb-1">Max Coin per Alert:</label><input type="number" id="input-max-coins" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none"></div>
+                </div>
+                <div class="flex gap-2 pt-4">
+                    <button type="button" onclick="saveConfiguration()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva Configurazione</button>
+                    <button type="button" onclick="toggleConfigForm()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors">Annulla</button>
+                </div>
+                <div id="save-status" class="hidden p-3 rounded text-sm"></div>
+            </form>
         </div>
     </div>
 
@@ -610,21 +487,34 @@
             }
         }
 
+        // Config modal open/close
+        function openConfigModal() {
+            document.getElementById('config-modal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+        function closeConfigModal() {
+            document.getElementById('config-modal').style.display = 'none';
+            document.body.style.overflow = '';
+            if (isFormMode) toggleConfigForm();
+        }
+        function closeConfigModalOutside(e) {
+            if (e.target === document.getElementById('config-modal')) closeConfigModal();
+        }
+
         // Toggle between view and edit mode
         function toggleConfigForm() {
             isFormMode = !isFormMode;
-            const viewMode = document.getElementById('config-view');
-            const formMode = document.getElementById('config-form');
+            const viewEl   = document.getElementById('config-view');
+            const formEl   = document.getElementById('config-form');
             const toggleBtn = document.getElementById('toggle-form-btn');
-
             if (isFormMode) {
-                viewMode.classList.add('hidden');
-                formMode.classList.remove('hidden');
+                viewEl.classList.add('hidden');
+                formEl.classList.remove('hidden');
                 toggleBtn.textContent = 'Visualizza';
                 populateForm();
             } else {
-                viewMode.classList.remove('hidden');
-                formMode.classList.add('hidden');
+                viewEl.classList.remove('hidden');
+                formEl.classList.add('hidden');
                 toggleBtn.textContent = 'Modifica';
             }
         }
@@ -738,7 +628,7 @@
                     updateBotStatus();
 
                     setTimeout(() => {
-                        toggleConfigForm();
+                        closeConfigModal();
                         statusEl.classList.add('hidden');
                     }, 2000);
                 } else {
