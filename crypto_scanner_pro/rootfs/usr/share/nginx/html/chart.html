@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.9.3</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.9.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -119,8 +119,13 @@
         </div>
         <span id="fs-candle-pct" style="font-size:12px;font-family:monospace;min-width:58px;text-align:right;"></span>
         <span id="fs-price" style="font-size:13px;font-family:monospace;color:#E5E7EB;min-width:110px;text-align:right;"></span>
+        <button onclick="if(fsChart) fsChart.timeScale().fitContent()"
+            style="margin-left:8px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;"
+            title="Reset zoom">
+            ↺ Reset
+        </button>
         <button onclick="closeFullscreen()"
-            style="margin-left:8px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;">
+            style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;">
             ✕ Chiudi
         </button>
     </div>
@@ -536,6 +541,13 @@ function buildGrid() {
         const priceEl = document.createElement('span');
         priceEl.style.cssText = 'font-size:10px;font-family:monospace;color:#E5E7EB;white-space:nowrap;';
 
+        const resetEl = document.createElement('button');
+        resetEl.textContent = '↺'; resetEl.title = 'Reset zoom';
+        resetEl.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+        resetEl.onmouseenter = () => resetEl.style.color = '#9CA3AF';
+        resetEl.onmouseleave = () => resetEl.style.color = '#4B5563';
+        resetEl.onclick = () => { const s = slots[i]; if (s && s.chart) s.chart.timeScale().fitContent(); };
+
         const expandEl = document.createElement('button');
         expandEl.textContent = '⤢'; expandEl.title = 'Schermo intero';
         expandEl.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
@@ -543,7 +555,7 @@ function buildGrid() {
         expandEl.onmouseleave = () => expandEl.style.color = '#4B5563';
         expandEl.onclick = () => openFullscreen(i);
 
-        rightGroup.append(candlePctEl, priceEl, expandEl);
+        rightGroup.append(candlePctEl, priceEl, resetEl, expandEl);
         hdr.append(starEl, titleEl, changeEl, sep1, volEl, sep2, tfEl, sep3, bybitEl, rightGroup);
         cell.appendChild(hdr);
 
