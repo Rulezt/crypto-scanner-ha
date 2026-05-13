@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.8.5</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.8.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -184,18 +184,6 @@ function fmtVol(v) {
 }
 
 // ── price alert helpers ───────────────────────────────────────────────────────
-function updateAlertBtn(s) {
-    if (!s.alertBtn || s.lastPrice == null || !s.candleS) return;
-    try {
-        const y = s.candleS.priceToCoordinate(s.lastPrice);
-        if (y == null || y < 0) return;
-        const axisW = s.chart.priceScale('right').width();
-        s.alertBtn.style.top     = (y - 8) + 'px';
-        s.alertBtn.style.right   = (axisW + 2) + 'px';
-        s.alertBtn.style.display = 'flex';
-    } catch(e) {}
-}
-
 function openAlertPopover(symbol, price, btn) {
     pendingAlert = { symbol, price };
     document.getElementById('alert-pop-symbol').textContent = symbol.replace('USDT','/USDT');
@@ -410,7 +398,6 @@ function buildGrid() {
         for (const {p, color, width} of EMA_CFG)
             emaSeries[p] = addSeries(chart, 'LineSeries', {...lineBase, color, lineWidth:width});
 
-        chart.timeScale().subscribeVisibleLogicalRangeChange(() => updateAlertBtn(slots[i]));
         chart.subscribeCrosshairMove(param => {
             const s = slots[i];
             if (!s.alertBtn) return;
@@ -426,7 +413,7 @@ function buildGrid() {
                 } catch(e) {}
             } else {
                 s.crosshairPrice = null;
-                updateAlertBtn(s);
+                s.alertBtn.style.display = 'none';
             }
         });
 
@@ -555,7 +542,6 @@ async function loadSlotData(idx) {
         const lastClose = klines[klines.length - 1].close;
         s.priceEl.textContent = fmtPrice(lastClose);
         s.lastPrice = lastClose;
-        requestAnimationFrame(() => updateAlertBtn(s));
     } catch(e) { console.error(`Error loading ${s.symbol}:`, e); }
 }
 
@@ -716,7 +702,6 @@ function openWS() {
         s.candleS.update(candle);
         s.priceEl.textContent = fmtPrice(candle.close);
         s.lastPrice = candle.close;
-        updateAlertBtn(s);
         for (const {p} of EMA_CFG) {
             if (s.lastEMA[p] === null) continue;
             const k = 2/(p+1);
