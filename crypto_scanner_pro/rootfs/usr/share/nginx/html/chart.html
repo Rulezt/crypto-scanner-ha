@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.9.6</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.9.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -481,7 +481,7 @@ function makeChart(el, opts) {
         crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
         rightPriceScale: { borderColor:'#2B3139', scaleMargins:{top:0.05, bottom:0.05} },
         timeScale: { borderColor:'#2B3139', visible:true, timeVisible:true, secondsVisible:false,
-                     barSpacing: opts?.barSpacing || 3, rightOffset: opts?.rightOffset || 15 },
+                     barSpacing: opts?.barSpacing || 3, rightOffset: opts?.rightOffset || 30 },
     });
 }
 
@@ -777,7 +777,7 @@ async function loadSlotData(idx) {
 // ── fullscreen ─────────────────────────────────────────────────────────────────
 function initFsChart() {
     if (fsChart) return;
-    fsChart   = makeChart(document.getElementById('fs-chart-el'), { fontSize:11, barSpacing:6, rightOffset:20 });
+    fsChart   = makeChart(document.getElementById('fs-chart-el'), { fontSize:11, barSpacing:6, rightOffset:40 });
     fsCandleS = addSeries(fsChart, 'CandlestickSeries', {
         upColor:'#26a69a', downColor:'#ef5350',
         borderVisible:false, wickUpColor:'#26a69a', wickDownColor:'#ef5350',
