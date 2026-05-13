@@ -228,7 +228,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '2.5.2',
+        'version': '2.6.0',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -398,6 +398,74 @@ def get_top_coins():
     except Exception as e:
         logger.error(f"Error fetching top coins: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+FAVORITES_FILE = '/data/favorites.json'
+
+def _load_favorites():
+    try:
+        if os.path.exists(FAVORITES_FILE):
+            with open(FAVORITES_FILE, 'r') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return []
+
+def _save_favorites(symbols):
+    try:
+        os.makedirs(os.path.dirname(FAVORITES_FILE), exist_ok=True)
+        with open(FAVORITES_FILE, 'w') as f:
+            json.dump(symbols, f)
+        return True
+    except Exception:
+        return False
+
+@app.route('/api/favorites', methods=['GET'])
+def get_favorites():
+    """Return favorites list with live ticker data from Bybit"""
+    import requests as req
+    symbols = _load_favorites()
+    if not symbols:
+        return jsonify({'success': True, 'symbols': [], 'data': []})
+    try:
+        response = req.get('https://api.bybit.com/v5/market/tickers',
+                           params={'category': 'linear'}, timeout=10)
+        data = response.json()
+        if data.get('retCode') != 0:
+            return jsonify({'error': 'Bybit API error'}), 502
+        ticker_map = {item['symbol']: item for item in data['result']['list']}
+        result = []
+        for sym in symbols:
+            item = ticker_map.get(sym)
+            if not item:
+                continue
+            last_price = float(item['lastPrice'])
+            vol_24h = float(item.get('volume24h', 0)) * last_price
+            result.append({
+                'symbol': sym,
+                'price': last_price,
+                'change_24h': round(float(item.get('price24hPcnt', 0)) * 100, 2),
+                'volume_24h': vol_24h,
+            })
+        return jsonify({'success': True, 'symbols': symbols, 'data': result})
+    except Exception as e:
+        logger.error(f"Error fetching favorites data: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/favorites', methods=['POST'])
+def update_favorites():
+    """Save favorites list"""
+    try:
+        body = request.get_json() or {}
+        symbols = [
+            s for s in body.get('symbols', [])
+            if isinstance(s, str) and s.endswith('USDT') and len(s) <= 20
+        ]
+        if _save_favorites(symbols):
+            return jsonify({'success': True, 'count': len(symbols)})
+        return jsonify({'success': False, 'error': 'Save failed'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/klines', methods=['GET'])

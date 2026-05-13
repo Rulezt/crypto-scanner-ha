@@ -26,6 +26,9 @@
         .btn-loss-active  { background: #7f1d1d; color: #f87171; }
         .btn-loss-idle    { color: #6B7280; background: #1E2329; }
         .btn-loss-idle:hover { color: #f87171; background: #450a0a; }
+        .btn-fav-active   { background: #78350f; color: #fbbf24; }
+        .btn-fav-idle     { color: #6B7280; background: #1E2329; }
+        .btn-fav-idle:hover { color: #fbbf24; background: #451a03; }
     </style>
 </head>
 <body class="bg-dark-bg text-gray-100" style="height:100vh;display:flex;flex-direction:column;overflow:hidden;">
@@ -43,6 +46,7 @@
     <div class="flex gap-1">
         <button id="btn-mode-gain" onclick="switchMode('gainers')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-gain-active">▲ Migliori</button>
         <button id="btn-mode-loss" onclick="switchMode('losers')"  class="px-3 py-1 rounded text-xs font-medium transition-colors btn-loss-idle">▼ Peggiori</button>
+        <button id="btn-mode-fav"  onclick="switchMode('favorites')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-fav-idle">★ Preferiti</button>
     </div>
 
     <div class="w-px h-5 bg-dark-border"></div>
@@ -55,7 +59,7 @@
 
     <div class="w-px h-5 bg-dark-border"></div>
 
-    <!-- Global TF — applica a tutti i grafici -->
+    <!-- Global TF — applica a tutti -->
     <div class="flex gap-1" id="tf-bar"></div>
 
     <div class="flex-1"></div>
@@ -70,6 +74,13 @@
 
 <!-- ===== 3×3 GRID ===== -->
 <div id="grid" style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);overflow:hidden;min-height:0;"></div>
+
+<!-- Empty favorites notice (hidden by default) -->
+<div id="fav-empty" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+    <div style="font-size:48px;margin-bottom:12px;">★</div>
+    <div style="font-size:16px;color:#9CA3AF;">Nessun preferito</div>
+    <div style="font-size:12px;color:#6B7280;margin-top:6px;">Clicca ★ su qualsiasi grafico per aggiungerlo</div>
+</div>
 
 <script>
 // ── constants ─────────────────────────────────────────────────────────────────
@@ -89,6 +100,7 @@ let curTF   = '15';
 let curPage = 0;
 let curMode = 'gainers';
 let allCoins = [];
+let favoriteSymbols = new Set();
 let slots    = [];
 let ws = null, wsTimer = null;
 
@@ -115,6 +127,51 @@ function calcEMA(bars, period) {
     });
 }
 
+// ── favorites API ─────────────────────────────────────────────────────────────
+async function fetchFavoritesList() {
+    const r = await fetch('api/favorites');
+    const j = await r.json();
+    favoriteSymbols = new Set(j.symbols || []);
+    return j.data || [];
+}
+
+async function pushFavorites() {
+    await fetch('api/favorites', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ symbols: [...favoriteSymbols] }),
+    });
+}
+
+async function toggleFavorite(idx) {
+    const s = slots[idx];
+    if (!s.symbol) return;
+
+    if (favoriteSymbols.has(s.symbol)) {
+        favoriteSymbols.delete(s.symbol);
+    } else {
+        favoriteSymbols.add(s.symbol);
+    }
+
+    await pushFavorites();
+    updateAllStars();
+
+    // In favorites mode, removing a coin reloads the page
+    if (curMode === 'favorites' && !favoriteSymbols.has(s.symbol)) {
+        allCoins = allCoins.filter(c => c.symbol !== s.symbol);
+        await loadPage();
+    }
+}
+
+function updateAllStars() {
+    slots.forEach(s => {
+        if (!s.starEl || !s.symbol) return;
+        const isFav = favoriteSymbols.has(s.symbol);
+        s.starEl.textContent = isFav ? '★' : '☆';
+        s.starEl.style.color = isFav ? '#fbbf24' : '#4B5563';
+    });
+}
+
 // ── chart factory ─────────────────────────────────────────────────────────────
 function addSeries(chart, type, opts) {
     if (typeof chart.addSeries === 'function' && LC[type]) return chart.addSeries(LC[type], opts);
@@ -129,7 +186,7 @@ function makeChart(el) {
         grid:    { vertLines:{color:'#1E2329'}, horzLines:{color:'#1E2329'} },
         crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
         rightPriceScale: { borderColor:'#2B3139', scaleMargins:{top:0.05, bottom:0.05} },
-        timeScale: { borderColor:'#2B3139', visible:true, timeVisible:true, secondsVisible:false, barSpacing:3, rightOffset:8 },
+        timeScale: { borderColor:'#2B3139', visible:true, timeVisible:true, secondsVisible:false, barSpacing:3, rightOffset:15 },
     });
 }
 
@@ -140,7 +197,6 @@ function buildGrid() {
     slots = [];
 
     for (let i = 0; i < PER_PAGE; i++) {
-        // Cell wrapper — flex column
         const cell = document.createElement('div');
         cell.style.cssText = 'display:flex;flex-direction:column;border:1px solid #2B3139;overflow:hidden;';
 
@@ -151,6 +207,13 @@ function buildGrid() {
             'display:flex;align-items:center;gap:4px;padding:0 6px;',
             'background:#161A1E;border-bottom:1px solid #2B3139;',
         ].join('');
+
+        // Star button
+        const starEl = document.createElement('button');
+        starEl.textContent = '☆';
+        starEl.title = 'Aggiungi/rimuovi dai preferiti';
+        starEl.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0 2px 0 0;line-height:1;flex-shrink:0;';
+        starEl.onclick = () => toggleFavorite(i);
 
         const titleEl = document.createElement('span');
         titleEl.style.cssText = 'font-size:11px;font-weight:700;color:#E5E7EB;white-space:nowrap;';
@@ -175,13 +238,12 @@ function buildGrid() {
         const priceEl = document.createElement('span');
         priceEl.style.cssText = 'margin-left:auto;font-size:10px;font-family:monospace;color:#E5E7EB;white-space:nowrap;';
 
-        hdr.append(titleEl, changeEl, sep1, volEl, sep2, tfEl, priceEl);
+        hdr.append(starEl, titleEl, changeEl, sep1, volEl, sep2, tfEl, priceEl);
         cell.appendChild(hdr);
 
         // ── chart body ───────────────────────────────────────────────────────
         const body = document.createElement('div');
         body.style.cssText = 'flex:1;position:relative;min-height:0;';
-
         const chartEl = document.createElement('div');
         chartEl.style.cssText = 'position:absolute;inset:0;';
         body.appendChild(chartEl);
@@ -189,7 +251,6 @@ function buildGrid() {
 
         grid.appendChild(cell);
 
-        // Chart + series
         const chart = makeChart(chartEl);
         const candleS = addSeries(chart, 'CandlestickSeries', {
             upColor:'#26a69a', downColor:'#ef5350',
@@ -197,14 +258,13 @@ function buildGrid() {
         });
         const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
         const emaSeries = {};
-        for (const {p, color, width} of EMA_CFG) {
+        for (const {p, color, width} of EMA_CFG)
             emaSeries[p] = addSeries(chart, 'LineSeries', {...lineBase, color, lineWidth:width});
-        }
 
         slots.push({
             chart, candleS, emaSeries,
             lastEMA: {5:null, 10:null, 60:null, 223:null},
-            titleEl, changeEl, volEl, priceEl, tfEl,
+            starEl, titleEl, changeEl, volEl, priceEl, tfEl,
             symbol: null, coin: null,
             curTF: curTF,
         });
@@ -216,10 +276,8 @@ function renderSlotTF(idx) {
     const s = slots[idx];
     s.tfEl.innerHTML = TIMEFRAMES.map(tf => {
         const active = tf === s.curTF;
-        const bg    = active ? '#2563EB' : '#1E2329';
-        const color = active ? '#fff'    : '#6B7280';
         return `<button onclick="switchSlotTF(${idx},'${tf}')"
-            style="font-size:9px;padding:1px 4px;border-radius:2px;border:none;cursor:pointer;background:${bg};color:${color};"
+            style="font-size:9px;padding:1px 4px;border-radius:2px;border:none;cursor:pointer;background:${active?'#2563EB':'#1E2329'};color:${active?'#fff':'#6B7280'};"
             >${TF_LABEL[tf]}</button>`;
     }).join('');
 }
@@ -233,7 +291,6 @@ async function switchSlotTF(idx, tf) {
 
     s.curTF = tf;
     renderSlotTF(idx);
-
     s.candleS.setData([]);
     for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
     s.lastEMA = {5:null, 10:null, 60:null, 223:null};
@@ -248,8 +305,15 @@ async function loadPage() {
     closeWS();
     const pageCoins = allCoins.slice(curPage * PER_PAGE, curPage * PER_PAGE + PER_PAGE);
 
+    // Show/hide empty favorites notice
+    const isEmpty = curMode === 'favorites' && allCoins.length === 0;
+    document.getElementById('fav-empty').style.display = isEmpty ? 'block' : 'none';
+    document.getElementById('grid').style.opacity = isEmpty ? '0.15' : '1';
+
     for (const s of slots) {
         s.symbol = null; s.coin = null; s.curTF = curTF;
+        s.starEl.textContent = '☆';
+        s.starEl.style.color = '#4B5563';
         s.titleEl.textContent = '';
         s.changeEl.textContent = '';
         s.volEl.textContent = '';
@@ -260,10 +324,12 @@ async function loadPage() {
         s.lastEMA = {5:null, 10:null, 60:null, 223:null};
     }
 
-    setStatus('Caricamento grafici...');
-    await Promise.all(pageCoins.map((coin, i) => loadSlot(i, coin)));
-    setStatus('');
-    openWS();
+    if (!isEmpty) {
+        setStatus('Caricamento grafici...');
+        await Promise.all(pageCoins.map((coin, i) => loadSlot(i, coin)));
+        setStatus('');
+        openWS();
+    }
 }
 
 async function loadSlot(idx, coin) {
@@ -273,12 +339,16 @@ async function loadSlot(idx, coin) {
 
     const pct    = coin.change_24h;
     const pctStr = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-    s.titleEl.textContent    = coin.symbol.replace('USDT','');
-    s.changeEl.textContent   = pctStr;
-    s.changeEl.style.color   = pct >= 0 ? '#34d399' : '#f87171';
-    s.volEl.textContent      = fmtVol(coin.volume_24h);
-    renderSlotTF(idx);
+    s.titleEl.textContent  = coin.symbol.replace('USDT','');
+    s.changeEl.textContent = pctStr;
+    s.changeEl.style.color = pct >= 0 ? '#34d399' : '#f87171';
+    s.volEl.textContent    = fmtVol(coin.volume_24h);
 
+    const isFav = favoriteSymbols.has(coin.symbol);
+    s.starEl.textContent = isFav ? '★' : '☆';
+    s.starEl.style.color = isFav ? '#fbbf24' : '#4B5563';
+
+    renderSlotTF(idx);
     await loadSlotData(idx);
 }
 
@@ -291,13 +361,11 @@ async function loadSlotData(idx) {
 
         const klines = j.data;
         s.candleS.setData(klines);
-
         for (const {p} of EMA_CFG) {
             const ema = calcEMA(klines, p);
             s.emaSeries[p].setData(ema);
             s.lastEMA[p] = ema[ema.length - 1].value;
         }
-
         s.chart.timeScale().fitContent();
         s.priceEl.textContent = fmtPrice(klines[klines.length - 1].close);
     } catch(e) {
@@ -315,8 +383,7 @@ function openWS() {
 
     ws.onopen = () => {
         setWSDot('live');
-        const args = active.map(s => `kline.${s.curTF}.${s.symbol}`);
-        ws.send(JSON.stringify({ op:'subscribe', args }));
+        ws.send(JSON.stringify({ op:'subscribe', args: active.map(s => `kline.${s.curTF}.${s.symbol}`) }));
     };
 
     ws.onmessage = ev => {
@@ -341,7 +408,6 @@ function openWS() {
         const s = slots[slotIdx];
         s.candleS.update(candle);
         s.priceEl.textContent = fmtPrice(candle.close);
-
         for (const {p} of EMA_CFG) {
             if (s.lastEMA[p] === null) continue;
             const k = 2 / (p + 1);
@@ -407,9 +473,10 @@ function renderPageButtons() {
 }
 
 function renderModeButtons() {
-    const g = curMode === 'gainers';
+    const g = curMode === 'gainers', l = curMode === 'losers', f = curMode === 'favorites';
     document.getElementById('btn-mode-gain').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${g?'btn-gain-active':'btn-gain-idle'}`;
-    document.getElementById('btn-mode-loss').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${g?'btn-loss-idle':'btn-loss-active'}`;
+    document.getElementById('btn-mode-loss').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${l?'btn-loss-active':'btn-loss-idle'}`;
+    document.getElementById('btn-mode-fav').className  = `px-3 py-1 rounded text-xs font-medium transition-colors ${f?'btn-fav-active':'btn-fav-idle'}`;
 }
 
 function renderTFBar() {
@@ -423,10 +490,15 @@ function setStatus(msg) { document.getElementById('status').textContent = msg; }
 
 async function fetchCoins() {
     setStatus('Caricamento coin...');
-    const r = await fetch(`api/top-coins?limit=18&min_volume=10000000&sort=${curMode}`);
-    const j = await r.json();
-    if (!j.success) throw new Error('API error');
-    allCoins = j.data;
+    if (curMode === 'favorites') {
+        allCoins = await fetchFavoritesList();
+    } else {
+        const r = await fetch(`api/top-coins?limit=18&min_volume=10000000&sort=${curMode}`);
+        const j = await r.json();
+        if (!j.success) throw new Error('API error');
+        allCoins = j.data;
+        await fetchFavoritesList();
+    }
     setStatus('');
 }
 
