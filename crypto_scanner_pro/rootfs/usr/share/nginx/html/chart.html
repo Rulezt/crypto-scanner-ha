@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.9.8</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.9.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -63,8 +63,8 @@
     <div class="flex gap-1">
         <button id="btn-mode-gain" onclick="switchMode('gainers')"   class="px-3 py-1 rounded text-xs font-medium transition-colors btn-gain-active">▲ Migliori</button>
         <button id="btn-mode-loss" onclick="switchMode('losers')"    class="px-3 py-1 rounded text-xs font-medium transition-colors btn-loss-idle">▼ Peggiori</button>
-        <button id="btn-mode-fav"  onclick="switchMode('favorites')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-fav-idle">★ Preferiti</button>
         <button id="btn-mode-ico"  onclick="switchMode('ico')"       class="px-3 py-1 rounded text-xs font-medium transition-colors btn-ico-idle">◆ ICO</button>
+        <button id="btn-mode-fav"  onclick="switchMode('favorites')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-fav-idle">★ Preferiti</button>
     </div>
 
     <div class="w-px h-5 bg-dark-border"></div>
@@ -182,7 +182,7 @@ const EMA_CFG     = [
 ];
 
 // ── state ─────────────────────────────────────────────────────────────────────
-let curTF    = '30';
+let curTF    = 'D';
 let curPage  = 0;
 let curMode  = 'gainers';
 let viewMode = '9';      // '9' | '18'
