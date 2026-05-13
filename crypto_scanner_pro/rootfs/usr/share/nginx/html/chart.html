@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.8.0</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.8.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -184,16 +184,6 @@ function fmtVol(v) {
 }
 
 // ── price alert helpers ───────────────────────────────────────────────────────
-function updateAlertBtn(s) {
-    if (!s.alertBtn || s.lastPrice == null || !s.candleS) return;
-    try {
-        const y = s.candleS.priceToCoordinate(s.lastPrice);
-        if (y == null || y < 0) return;
-        s.alertBtn.style.top     = (y - 8) + 'px';
-        s.alertBtn.style.display = 'flex';
-    } catch(e) {}
-}
-
 function openAlertPopover(symbol, price, btn) {
     pendingAlert = { symbol, price };
     document.getElementById('alert-pop-symbol').textContent = symbol.replace('USDT','/USDT');
@@ -384,7 +374,7 @@ function buildGrid() {
         alertBtn.style.cssText = 'position:absolute;right:1px;width:16px;height:16px;font-size:9px;display:none;align-items:center;justify-content:center;background:rgba(22,26,30,0.85);border:none;border-radius:50%;cursor:pointer;z-index:10;padding:0;line-height:1;opacity:0.45;transition:opacity .15s;pointer-events:auto;';
         alertBtn.onmouseenter = () => { alertBtn.style.opacity = '1'; alertBtn.style.background = 'rgba(43,49,57,0.95)'; };
         alertBtn.onmouseleave = () => { alertBtn.style.opacity = '0.45'; alertBtn.style.background = 'rgba(22,26,30,0.85)'; };
-        alertBtn.onclick = (e) => { e.stopPropagation(); openAlertPopover(slots[i].symbol, slots[i].lastPrice, alertBtn); };
+        alertBtn.onclick = (e) => { e.stopPropagation(); const s = slots[i]; if (s.crosshairPrice) openAlertPopover(s.symbol, s.crosshairPrice, alertBtn); };
         body.appendChild(alertBtn);
 
         cell.appendChild(body);
@@ -401,18 +391,30 @@ function buildGrid() {
         for (const {p, color, width} of EMA_CFG)
             emaSeries[p] = addSeries(chart, 'LineSeries', {...lineBase, color, lineWidth:width});
 
-        chart.timeScale().subscribeVisibleLogicalRangeChange(() => updateAlertBtn(slots[i]));
         chart.subscribeCrosshairMove(param => {
-            const ab = slots[i].alertBtn;
-            if (!ab) return;
-            ab.style.opacity = (param && param.point) ? '1' : '0.45';
+            const s = slots[i];
+            if (!s.alertBtn) return;
+            if (param && param.point && param.point.y > 0 && s.candleS) {
+                try {
+                    const price = s.candleS.coordinateToPrice(param.point.y);
+                    if (price != null && price > 0) {
+                        s.crosshairPrice = price;
+                        s.alertBtn.style.top     = (param.point.y - 8) + 'px';
+                        s.alertBtn.style.display = 'flex';
+                        s.alertBtn.style.opacity = '1';
+                    }
+                } catch(e) {}
+            } else {
+                s.alertBtn.style.display = 'none';
+                s.crosshairPrice = null;
+            }
         });
 
         slots.push({
             cell, chart, candleS, emaSeries,
             lastEMA: {5:null, 10:null, 60:null, 223:null},
             starEl, titleEl, changeEl, volEl, priceEl, tfEl, bybitEl, alertBtn,
-            symbol: null, coin: null, curTF, lastPrice: null,
+            symbol: null, coin: null, curTF, lastPrice: null, crosshairPrice: null,
         });
     }
 }
@@ -485,7 +487,7 @@ async function loadPage() {
         s.titleEl.textContent = ''; s.changeEl.textContent = '';
         s.volEl.textContent = ''; s.priceEl.textContent = '';
         s.tfEl.innerHTML = ''; s.bybitEl.href = '#';
-        s.lastPrice = null;
+        s.lastPrice = null; s.crosshairPrice = null;
         if (s.alertBtn) s.alertBtn.style.display = 'none';
         s.candleS.setData([]);
         for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
@@ -533,7 +535,6 @@ async function loadSlotData(idx) {
         const lastClose = klines[klines.length - 1].close;
         s.priceEl.textContent = fmtPrice(lastClose);
         s.lastPrice = lastClose;
-        requestAnimationFrame(() => updateAlertBtn(s));
     } catch(e) { console.error(`Error loading ${s.symbol}:`, e); }
 }
 
@@ -694,7 +695,6 @@ function openWS() {
         s.candleS.update(candle);
         s.priceEl.textContent = fmtPrice(candle.close);
         s.lastPrice = candle.close;
-        updateAlertBtn(s);
         for (const {p} of EMA_CFG) {
             if (s.lastEMA[p] === null) continue;
             const k = 2/(p+1);
