@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.9.4</title>
+    <title>Multi-Chart - Crypto Scanner Pro v2.9.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -118,7 +118,6 @@
             <span class="text-xs text-gray-500">WS</span>
         </div>
         <span id="fs-candle-pct" style="font-size:12px;font-family:monospace;min-width:58px;text-align:right;"></span>
-        <span id="fs-price" style="font-size:13px;font-family:monospace;color:#E5E7EB;min-width:110px;text-align:right;"></span>
         <button onclick="if(fsChart) fsChart.timeScale().fitContent()"
             style="margin-left:8px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;"
             title="Reset zoom">
@@ -192,6 +191,7 @@ let ws = null, wsTimer = null;
 let fsChart = null, fsCandleS = null, fsEmaS = {}, fsLastEMA = {};
 let fsTF = '30', fsCoin = null;
 let fsWs = null, fsWsTimer = null;
+let fsDayHighLine = null, fsDayLowLine = null;
 
 // price alerts
 let pendingAlert = null;
@@ -538,9 +538,6 @@ function buildGrid() {
         const candlePctEl = document.createElement('span');
         candlePctEl.style.cssText = 'font-size:10px;font-family:monospace;min-width:48px;text-align:right;white-space:nowrap;';
 
-        const priceEl = document.createElement('span');
-        priceEl.style.cssText = 'font-size:10px;font-family:monospace;color:#E5E7EB;white-space:nowrap;';
-
         const resetEl = document.createElement('button');
         resetEl.textContent = '↺'; resetEl.title = 'Reset zoom';
         resetEl.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
@@ -555,7 +552,7 @@ function buildGrid() {
         expandEl.onmouseleave = () => expandEl.style.color = '#4B5563';
         expandEl.onclick = () => openFullscreen(i);
 
-        rightGroup.append(candlePctEl, priceEl, resetEl, expandEl);
+        rightGroup.append(candlePctEl, resetEl, expandEl);
         hdr.append(starEl, titleEl, changeEl, sep1, volEl, sep2, tfEl, sep3, bybitEl, rightGroup);
         cell.appendChild(hdr);
 
@@ -621,9 +618,10 @@ function buildGrid() {
         slots.push({
             cell, chart, candleS, emaSeries,
             lastEMA: {5:null, 10:null, 60:null, 223:null},
-            starEl, titleEl, changeEl, volEl, priceEl, candlePctEl, tfEl, bybitEl, alertBtn,
+            starEl, titleEl, changeEl, volEl, candlePctEl, tfEl, bybitEl, alertBtn,
             symbol: null, coin: null, curTF, lastPrice: null, crosshairPrice: null,
             alertLines: new Map(),
+            dayHighLine: null, dayLowLine: null,
         });
     }
 }
@@ -666,6 +664,8 @@ async function switchSlotTF(idx, tf) {
         ws.send(JSON.stringify({ op:'unsubscribe', args:[`kline.${s.curTF}.${s.symbol}`] }));
     s.curTF = tf;
     renderSlotTF(idx);
+    if (s.dayHighLine) { try { s.candleS.removePriceLine(s.dayHighLine); } catch(e) {} s.dayHighLine = null; }
+    if (s.dayLowLine)  { try { s.candleS.removePriceLine(s.dayLowLine);  } catch(e) {} s.dayLowLine  = null; }
     s.candleS.setData([]);
     for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
     s.lastEMA = {5:null, 10:null, 60:null, 223:null};
@@ -694,12 +694,14 @@ async function loadPage() {
         s.symbol = null; s.coin = null; s.curTF = curTF;
         s.starEl.textContent = '☆'; s.starEl.style.color = '#4B5563';
         s.titleEl.textContent = ''; s.changeEl.textContent = '';
-        s.volEl.textContent = ''; s.priceEl.textContent = '';
+        s.volEl.textContent = '';
         s.tfEl.innerHTML = ''; s.bybitEl.href = '#';
         s.lastPrice = null; s.crosshairPrice = null;
         if (s.alertBtn) s.alertBtn.style.display = 'none';
         for (const pl of s.alertLines.values()) { try { s.candleS.removePriceLine(pl); } catch(e) {} }
         s.alertLines.clear();
+        if (s.dayHighLine) { try { s.candleS.removePriceLine(s.dayHighLine); } catch(e) {} s.dayHighLine = null; }
+        if (s.dayLowLine)  { try { s.candleS.removePriceLine(s.dayLowLine);  } catch(e) {} s.dayLowLine  = null; }
         s.candleS.setData([]);
         for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
         s.lastEMA = {5:null, 10:null, 60:null, 223:null};
@@ -733,8 +735,12 @@ async function loadSlot(idx, coin) {
 async function loadSlotData(idx) {
     const s = slots[idx];
     try {
-        const r = await fetch(`api/klines?symbol=${s.symbol}&interval=${s.curTF}`);
-        const j = await r.json();
+        const [r, rd] = await Promise.all([
+            fetch(`api/klines?symbol=${s.symbol}&interval=${s.curTF}`),
+            fetch(`api/klines?symbol=${s.symbol}&interval=D`),
+        ]);
+        const j  = await r.json();
+        const jd = await rd.json();
         if (!j.success) return;
         const klines = j.data;
         s.candleS.setData(klines);
@@ -744,9 +750,14 @@ async function loadSlotData(idx) {
             s.lastEMA[p] = ema[ema.length - 1].value;
         }
         s.chart.timeScale().fitContent();
-        const lastClose = klines[klines.length - 1].close;
-        s.priceEl.textContent = fmtPrice(lastClose);
-        s.lastPrice = lastClose;
+        s.lastPrice = klines[klines.length - 1].close;
+        if (s.dayHighLine) { try { s.candleS.removePriceLine(s.dayHighLine); } catch(e) {} }
+        if (s.dayLowLine)  { try { s.candleS.removePriceLine(s.dayLowLine);  } catch(e) {} }
+        if (jd.success && jd.data && jd.data.length) {
+            const today = jd.data[jd.data.length - 1];
+            s.dayHighLine = s.candleS.createPriceLine({ price: today.high, color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'H' });
+            s.dayLowLine  = s.candleS.createPriceLine({ price: today.low,  color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'L' });
+        }
     } catch(e) { console.error(`Error loading ${s.symbol}:`, e); }
 }
 
@@ -792,7 +803,6 @@ async function openFullscreen(idx) {
     document.getElementById('fs-change').style.color = pct >= 0 ? '#34d399' : '#f87171';
     document.getElementById('fs-vol').textContent    = fmtVol(fsCoin.volume_24h);
     document.getElementById('fs-bybit-link').href   = `https://www.bybit.com/trade/usdt/${fsCoin.symbol}`;
-    document.getElementById('fs-price').textContent  = '';
 
     initFsChart();
     renderFsTFBar();
@@ -804,6 +814,8 @@ function closeFullscreen() {
     document.getElementById('fs-overlay').style.display = 'none';
     closeFsWS();
     if (fsChart) {
+        if (fsDayHighLine) { try { fsCandleS.removePriceLine(fsDayHighLine); } catch(e) {} fsDayHighLine = null; }
+        if (fsDayLowLine)  { try { fsCandleS.removePriceLine(fsDayLowLine);  } catch(e) {} fsDayLowLine  = null; }
         fsCandleS.setData([]);
         for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
         fsLastEMA = {};
@@ -823,6 +835,8 @@ function renderFsTFBar() {
 async function switchFsTF(tf) {
     if (tf === fsTF || !fsCoin) return;
     closeFsWS(); fsTF = tf; renderFsTFBar();
+    if (fsDayHighLine) { try { fsCandleS.removePriceLine(fsDayHighLine); } catch(e) {} fsDayHighLine = null; }
+    if (fsDayLowLine)  { try { fsCandleS.removePriceLine(fsDayLowLine);  } catch(e) {} fsDayLowLine  = null; }
     fsCandleS.setData([]);
     for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
     fsLastEMA = {};
@@ -831,8 +845,12 @@ async function switchFsTF(tf) {
 
 async function loadFsData() {
     try {
-        const r = await fetch(`api/klines?symbol=${fsCoin.symbol}&interval=${fsTF}`);
-        const j = await r.json();
+        const [r, rd] = await Promise.all([
+            fetch(`api/klines?symbol=${fsCoin.symbol}&interval=${fsTF}`),
+            fetch(`api/klines?symbol=${fsCoin.symbol}&interval=D`),
+        ]);
+        const j  = await r.json();
+        const jd = await rd.json();
         if (!j.success) return;
         const klines = j.data;
         fsCandleS.setData(klines);
@@ -842,7 +860,13 @@ async function loadFsData() {
             fsLastEMA[p] = ema[ema.length - 1].value;
         }
         fsChart.timeScale().fitContent();
-        document.getElementById('fs-price').textContent = fmtPrice(klines[klines.length - 1].close);
+        if (fsDayHighLine) { try { fsCandleS.removePriceLine(fsDayHighLine); } catch(e) {} }
+        if (fsDayLowLine)  { try { fsCandleS.removePriceLine(fsDayLowLine);  } catch(e) {} }
+        if (jd.success && jd.data && jd.data.length) {
+            const today = jd.data[jd.data.length - 1];
+            fsDayHighLine = fsCandleS.createPriceLine({ price: today.high, color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'H' });
+            fsDayLowLine  = fsCandleS.createPriceLine({ price: today.low,  color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'L' });
+        }
     } catch(e) { console.error('FS load error:', e); }
 }
 
@@ -866,7 +890,6 @@ function connectFsWS() {
             low:  parseFloat(b.low),  close: parseFloat(b.close),
         };
         fsCandleS.update(candle);
-        document.getElementById('fs-price').textContent = fmtPrice(candle.close);
         for (const {p} of EMA_CFG) {
             if (fsLastEMA[p] == null) continue;
             const k = 2/(p+1);
@@ -922,7 +945,6 @@ function openWS() {
         };
         const s = slots[slotIdx];
         s.candleS.update(candle);
-        s.priceEl.textContent = fmtPrice(candle.close);
         s.lastPrice = candle.close;
         for (const {p} of EMA_CFG) {
             if (s.lastEMA[p] === null) continue;
