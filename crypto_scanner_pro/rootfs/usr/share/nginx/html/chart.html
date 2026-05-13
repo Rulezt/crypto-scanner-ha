@@ -14,26 +14,23 @@
     </script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-        .chart-cell { position: relative; overflow: hidden; border: 1px solid #2B3139; }
-        .chart-title { position: absolute; top: 4px; left: 6px; z-index: 10; font-size: 12px; font-weight: 700; color: #E5E7EB; pointer-events: none; letter-spacing: 0.02em; }
-        .chart-price { position: absolute; top: 4px; right: 6px; z-index: 10; font-size: 11px; font-family: monospace; color: #9CA3AF; pointer-events: none; }
-        .btn-page-active { background: #2563EB; color: #fff; }
-        .btn-page-idle   { color: #6B7280; background: #1E2329; }
+        .btn-page-active  { background: #2563EB; color: #fff; }
+        .btn-page-idle    { color: #6B7280; background: #1E2329; }
         .btn-page-idle:hover { color: #9CA3AF; background: #2B3139; }
-        .btn-tf-active { background: #2563EB; color: #fff; }
-        .btn-tf-idle   { color: #6B7280; }
+        .btn-tf-active    { background: #2563EB; color: #fff; }
+        .btn-tf-idle      { color: #6B7280; }
         .btn-tf-idle:hover { color: #9CA3AF; background: #1E2329; }
-        .btn-gain-active { background: #065f46; color: #34d399; }
-        .btn-gain-idle   { color: #6B7280; background: #1E2329; }
+        .btn-gain-active  { background: #065f46; color: #34d399; }
+        .btn-gain-idle    { color: #6B7280; background: #1E2329; }
         .btn-gain-idle:hover { color: #34d399; background: #064e3b; }
-        .btn-loss-active { background: #7f1d1d; color: #f87171; }
-        .btn-loss-idle   { color: #6B7280; background: #1E2329; }
+        .btn-loss-active  { background: #7f1d1d; color: #f87171; }
+        .btn-loss-idle    { color: #6B7280; background: #1E2329; }
         .btn-loss-idle:hover { color: #f87171; background: #450a0a; }
     </style>
 </head>
 <body class="bg-dark-bg text-gray-100" style="height:100vh;display:flex;flex-direction:column;overflow:hidden;">
 
-<!-- ===== HEADER ===== -->
+<!-- ===== MAIN HEADER ===== -->
 <header class="bg-dark-card border-b border-dark-border flex items-center gap-2 px-3 flex-shrink-0" style="height:48px;">
 
     <a href="./" class="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded hover:bg-dark-hover transition-colors whitespace-nowrap">
@@ -42,7 +39,7 @@
 
     <div class="w-px h-5 bg-dark-border"></div>
 
-    <!-- Mode buttons -->
+    <!-- Mode -->
     <div class="flex gap-1">
         <button id="btn-mode-gain" onclick="switchMode('gainers')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-gain-active">▲ Migliori</button>
         <button id="btn-mode-loss" onclick="switchMode('losers')"  class="px-3 py-1 rounded text-xs font-medium transition-colors btn-loss-idle">▼ Peggiori</button>
@@ -50,25 +47,21 @@
 
     <div class="w-px h-5 bg-dark-border"></div>
 
-    <!-- Page buttons -->
+    <!-- Page -->
     <div class="flex gap-1">
-        <button id="btn-page-1" onclick="switchPage(0)" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-page-active">1-9</button>
-        <button id="btn-page-2" onclick="switchPage(1)" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-page-idle">10-18</button>
+        <button id="btn-page-1" onclick="switchPage(0)" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-page-active">1–9</button>
+        <button id="btn-page-2" onclick="switchPage(1)" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-page-idle">10–18</button>
     </div>
 
     <div class="w-px h-5 bg-dark-border"></div>
 
-    <!-- Timeframe -->
+    <!-- Global TF — applica a tutti i grafici -->
     <div class="flex gap-1" id="tf-bar"></div>
-
-    <div class="w-px h-5 bg-dark-border"></div>
-
-    <!-- Status text -->
-    <span id="status" class="text-xs text-gray-500"></span>
 
     <div class="flex-1"></div>
 
-    <!-- WS indicator -->
+    <span id="status" class="text-xs text-gray-500 mr-2"></span>
+
     <div id="ws-dot" class="flex items-center gap-1.5">
         <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
         <span class="text-xs text-gray-500">WS</span>
@@ -80,11 +73,11 @@
 
 <script>
 // ── constants ─────────────────────────────────────────────────────────────────
-const LC          = LightweightCharts;
-const TIMEFRAMES  = ['1','5','15','60','240','D'];
-const TF_LABEL    = {'1':'1m','5':'5m','15':'15m','60':'1h','240':'4h','D':'1D'};
-const PER_PAGE    = 9;
-const EMA_CFG     = [
+const LC         = LightweightCharts;
+const TIMEFRAMES = ['1','5','15','60','240','D'];
+const TF_LABEL   = {'1':'1m','5':'5m','15':'15m','60':'1h','240':'4h','D':'1D'};
+const PER_PAGE   = 9;
+const EMA_CFG    = [
     {p:5,   color:'#ef4444', width:2},
     {p:10,  color:'#fbbf24', width:2},
     {p:60,  color:'#3b82f6', width:3},
@@ -92,11 +85,11 @@ const EMA_CFG     = [
 ];
 
 // ── state ─────────────────────────────────────────────────────────────────────
-let curTF    = '15';
-let curPage  = 0;
-let curMode  = 'gainers';
+let curTF   = '15';
+let curPage = 0;
+let curMode = 'gainers';
 let allCoins = [];
-let slots    = [];   // [{chart, candleS, emaSeries:{p:series}, lastEMA:{p:val}, titleEl, priceEl, symbol}]
+let slots    = [];
 let ws = null, wsTimer = null;
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -105,6 +98,12 @@ function fmtPrice(p) {
     if (p >= 1)     return p.toFixed(3);
     if (p >= 0.01)  return p.toFixed(5);
     return p.toFixed(7);
+}
+
+function fmtVol(v) {
+    if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B';
+    if (v >= 1e6) return '$' + (v / 1e6).toFixed(0) + 'M';
+    return '$' + (v / 1e3).toFixed(0) + 'K';
 }
 
 function calcEMA(bars, period) {
@@ -141,38 +140,107 @@ function buildGrid() {
     slots = [];
 
     for (let i = 0; i < PER_PAGE; i++) {
+        // Cell wrapper — flex column
         const cell = document.createElement('div');
-        cell.className = 'chart-cell';
+        cell.style.cssText = 'display:flex;flex-direction:column;border:1px solid #2B3139;overflow:hidden;';
 
-        const titleEl = document.createElement('div');
-        titleEl.className = 'chart-title';
-        cell.appendChild(titleEl);
+        // ── cell header ──────────────────────────────────────────────────────
+        const hdr = document.createElement('div');
+        hdr.style.cssText = [
+            'height:24px;flex-shrink:0;',
+            'display:flex;align-items:center;gap:4px;padding:0 6px;',
+            'background:#161A1E;border-bottom:1px solid #2B3139;',
+        ].join('');
 
-        const priceEl = document.createElement('div');
-        priceEl.className = 'chart-price';
-        cell.appendChild(priceEl);
+        const titleEl = document.createElement('span');
+        titleEl.style.cssText = 'font-size:11px;font-weight:700;color:#E5E7EB;white-space:nowrap;';
+
+        const changeEl = document.createElement('span');
+        changeEl.style.cssText = 'font-size:10px;font-weight:500;white-space:nowrap;';
+
+        const sep1 = document.createElement('span');
+        sep1.textContent = '|';
+        sep1.style.cssText = 'font-size:10px;color:#374151;';
+
+        const volEl = document.createElement('span');
+        volEl.style.cssText = 'font-size:10px;color:#6B7280;white-space:nowrap;';
+
+        const sep2 = document.createElement('span');
+        sep2.textContent = '|';
+        sep2.style.cssText = 'font-size:10px;color:#374151;';
+
+        const tfEl = document.createElement('div');
+        tfEl.style.cssText = 'display:flex;gap:2px;align-items:center;';
+
+        const priceEl = document.createElement('span');
+        priceEl.style.cssText = 'margin-left:auto;font-size:10px;font-family:monospace;color:#E5E7EB;white-space:nowrap;';
+
+        hdr.append(titleEl, changeEl, sep1, volEl, sep2, tfEl, priceEl);
+        cell.appendChild(hdr);
+
+        // ── chart body ───────────────────────────────────────────────────────
+        const body = document.createElement('div');
+        body.style.cssText = 'flex:1;position:relative;min-height:0;';
 
         const chartEl = document.createElement('div');
         chartEl.style.cssText = 'position:absolute;inset:0;';
-        cell.appendChild(chartEl);
+        body.appendChild(chartEl);
+        cell.appendChild(body);
 
         grid.appendChild(cell);
 
+        // Chart + series
         const chart = makeChart(chartEl);
-
         const candleS = addSeries(chart, 'CandlestickSeries', {
             upColor:'#26a69a', downColor:'#ef5350',
             borderVisible:false, wickUpColor:'#26a69a', wickDownColor:'#ef5350',
         });
-
         const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
         const emaSeries = {};
         for (const {p, color, width} of EMA_CFG) {
             emaSeries[p] = addSeries(chart, 'LineSeries', {...lineBase, color, lineWidth:width});
         }
 
-        slots.push({ chart, candleS, emaSeries, lastEMA:{5:null,10:null,60:null,223:null}, titleEl, priceEl, symbol:null });
+        slots.push({
+            chart, candleS, emaSeries,
+            lastEMA: {5:null, 10:null, 60:null, 223:null},
+            titleEl, changeEl, volEl, priceEl, tfEl,
+            symbol: null, coin: null,
+            curTF: curTF,
+        });
     }
+}
+
+// ── per-slot TF bar ───────────────────────────────────────────────────────────
+function renderSlotTF(idx) {
+    const s = slots[idx];
+    s.tfEl.innerHTML = TIMEFRAMES.map(tf => {
+        const active = tf === s.curTF;
+        const bg    = active ? '#2563EB' : '#1E2329';
+        const color = active ? '#fff'    : '#6B7280';
+        return `<button onclick="switchSlotTF(${idx},'${tf}')"
+            style="font-size:9px;padding:1px 4px;border-radius:2px;border:none;cursor:pointer;background:${bg};color:${color};"
+            >${TF_LABEL[tf]}</button>`;
+    }).join('');
+}
+
+async function switchSlotTF(idx, tf) {
+    const s = slots[idx];
+    if (tf === s.curTF || !s.coin) return;
+
+    if (ws && ws.readyState === WebSocket.OPEN)
+        ws.send(JSON.stringify({ op:'unsubscribe', args:[`kline.${s.curTF}.${s.symbol}`] }));
+
+    s.curTF = tf;
+    renderSlotTF(idx);
+
+    s.candleS.setData([]);
+    for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
+    s.lastEMA = {5:null, 10:null, 60:null, 223:null};
+    await loadSlotData(idx);
+
+    if (ws && ws.readyState === WebSocket.OPEN)
+        ws.send(JSON.stringify({ op:'subscribe', args:[`kline.${tf}.${s.symbol}`] }));
 }
 
 // ── load page ──────────────────────────────────────────────────────────────────
@@ -180,35 +248,44 @@ async function loadPage() {
     closeWS();
     const pageCoins = allCoins.slice(curPage * PER_PAGE, curPage * PER_PAGE + PER_PAGE);
 
-    // Reset all slots
     for (const s of slots) {
-        s.symbol = null;
+        s.symbol = null; s.coin = null; s.curTF = curTF;
         s.titleEl.textContent = '';
+        s.changeEl.textContent = '';
+        s.volEl.textContent = '';
         s.priceEl.textContent = '';
+        s.tfEl.innerHTML = '';
         s.candleS.setData([]);
         for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
-        s.lastEMA = {5:null,10:null,60:null,223:null};
+        s.lastEMA = {5:null, 10:null, 60:null, 223:null};
     }
 
     setStatus('Caricamento grafici...');
     await Promise.all(pageCoins.map((coin, i) => loadSlot(i, coin)));
     setStatus('');
-
-    openWS(pageCoins.map(c => c.symbol));
+    openWS();
 }
 
 async function loadSlot(idx, coin) {
     const s = slots[idx];
-    const symbol = coin.symbol;
-    s.symbol = symbol;
-    const label = symbol.replace('USDT','');
-    const pct = coin.change_24h;
-    const pctStr = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-    const pctColor = pct >= 0 ? '#34d399' : '#f87171';
-    s.titleEl.innerHTML = `${label} <span style="color:${pctColor};font-weight:500;font-size:10px;">${pctStr}</span>`;
+    s.symbol = coin.symbol;
+    s.coin   = coin;
 
+    const pct    = coin.change_24h;
+    const pctStr = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+    s.titleEl.textContent    = coin.symbol.replace('USDT','');
+    s.changeEl.textContent   = pctStr;
+    s.changeEl.style.color   = pct >= 0 ? '#34d399' : '#f87171';
+    s.volEl.textContent      = fmtVol(coin.volume_24h);
+    renderSlotTF(idx);
+
+    await loadSlotData(idx);
+}
+
+async function loadSlotData(idx) {
+    const s = slots[idx];
     try {
-        const r = await fetch(`api/klines?symbol=${symbol}&interval=${curTF}`);
+        const r = await fetch(`api/klines?symbol=${s.symbol}&interval=${s.curTF}`);
         const j = await r.json();
         if (!j.success) return;
 
@@ -224,19 +301,22 @@ async function loadSlot(idx, coin) {
         s.chart.timeScale().fitContent();
         s.priceEl.textContent = fmtPrice(klines[klines.length - 1].close);
     } catch(e) {
-        console.error(`Error loading ${symbol}:`, e);
+        console.error(`Error loading ${s.symbol}:`, e);
     }
 }
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
-function openWS(symbols) {
-    if (!symbols.length) return;
+function openWS() {
+    const active = slots.filter(s => s.symbol);
+    if (!active.length) return;
     setWSDot('connecting');
+
     ws = new WebSocket('wss://stream.bybit.com/v5/public/linear');
 
     ws.onopen = () => {
         setWSDot('live');
-        ws.send(JSON.stringify({ op:'subscribe', args: symbols.map(s => `kline.${curTF}.${s}`) }));
+        const args = active.map(s => `kline.${s.curTF}.${s.symbol}`);
+        ws.send(JSON.stringify({ op:'subscribe', args }));
     };
 
     ws.onmessage = ev => {
@@ -244,19 +324,18 @@ function openWS(symbols) {
         try { msg = JSON.parse(ev.data); } catch(e) { return; }
         if (!msg.topic || !msg.topic.startsWith('kline.')) return;
 
-        // topic format: kline.15.BTCUSDT
-        const symbol = msg.topic.split('.')[2];
-        const slotIdx = slots.findIndex(s => s.symbol === symbol);
+        const parts   = msg.topic.split('.');
+        const msgTF   = parts[1];
+        const symbol  = parts[2];
+        const slotIdx = slots.findIndex(s => s.symbol === symbol && s.curTF === msgTF);
         if (slotIdx === -1) return;
 
         const b = msg.data[0];
         const confirmed = b.confirm === true || b.confirm === 'true';
         const candle = {
             time:  Math.floor(parseInt(b.start) / 1000),
-            open:  parseFloat(b.open),
-            high:  parseFloat(b.high),
-            low:   parseFloat(b.low),
-            close: parseFloat(b.close),
+            open:  parseFloat(b.open),  high: parseFloat(b.high),
+            low:   parseFloat(b.low),   close: parseFloat(b.close),
         };
 
         const s = slots[slotIdx];
@@ -275,7 +354,7 @@ function openWS(symbols) {
     ws.onerror = () => setWSDot('error');
     ws.onclose = () => {
         setWSDot('off');
-        wsTimer = setTimeout(() => openWS(symbols), 5000);
+        wsTimer = setTimeout(openWS, 5000);
     };
 }
 
@@ -329,8 +408,8 @@ function renderPageButtons() {
 
 function renderModeButtons() {
     const g = curMode === 'gainers';
-    document.getElementById('btn-mode-gain').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${g ? 'btn-gain-active' : 'btn-gain-idle'}`;
-    document.getElementById('btn-mode-loss').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${g ? 'btn-loss-idle' : 'btn-loss-active'}`;
+    document.getElementById('btn-mode-gain').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${g?'btn-gain-active':'btn-gain-idle'}`;
+    document.getElementById('btn-mode-loss').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${g?'btn-loss-idle':'btn-loss-active'}`;
 }
 
 function renderTFBar() {
