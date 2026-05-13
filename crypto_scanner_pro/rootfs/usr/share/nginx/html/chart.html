@@ -88,6 +88,11 @@
         <span id="fs-vol"    style="font-size:11px;color:#60a5fa;"></span>
         <span style="color:#374151;font-size:11px;">|</span>
         <div  id="fs-tf-bar" style="display:flex;gap:3px;align-items:center;"></div>
+        <span style="color:#374151;font-size:11px;">|</span>
+        <a id="fs-bybit-link" href="#" target="_blank" rel="noopener noreferrer"
+           style="font-size:11px;color:#f7a600;text-decoration:none;padding:2px 7px;border-radius:3px;background:#1E2329;white-space:nowrap;">
+            Bybit ↗
+        </a>
 
         <div style="flex:1;"></div>
 
@@ -254,6 +259,19 @@ function buildGrid() {
         const tfEl = document.createElement('div');
         tfEl.style.cssText = 'display:flex;gap:2px;align-items:center;';
 
+        const sep3 = document.createElement('span');
+        sep3.textContent = '|';
+        sep3.style.cssText = 'font-size:10px;color:#374151;';
+
+        const bybitEl = document.createElement('a');
+        bybitEl.textContent = 'Bybit ↗';
+        bybitEl.target = '_blank';
+        bybitEl.rel = 'noopener noreferrer';
+        bybitEl.href = '#';
+        bybitEl.style.cssText = 'font-size:9px;color:#f7a600;text-decoration:none;padding:1px 5px;border-radius:2px;background:#1E2329;white-space:nowrap;';
+        bybitEl.onmouseenter = () => bybitEl.style.background = '#2B3139';
+        bybitEl.onmouseleave = () => bybitEl.style.background = '#1E2329';
+
         // right group: price + expand
         const rightGroup = document.createElement('div');
         rightGroup.style.cssText = 'margin-left:auto;display:flex;align-items:center;gap:4px;';
@@ -270,7 +288,7 @@ function buildGrid() {
         expandEl.onclick = () => openFullscreen(i);
 
         rightGroup.append(priceEl, expandEl);
-        hdr.append(starEl, titleEl, changeEl, sep1, volEl, sep2, tfEl, rightGroup);
+        hdr.append(starEl, titleEl, changeEl, sep1, volEl, sep2, tfEl, sep3, bybitEl, rightGroup);
         cell.appendChild(hdr);
 
         // ── chart body ───────────────────────────────────────────────────────
@@ -296,7 +314,7 @@ function buildGrid() {
         slots.push({
             chart, candleS, emaSeries,
             lastEMA: {5:null, 10:null, 60:null, 223:null},
-            starEl, titleEl, changeEl, volEl, priceEl, tfEl,
+            starEl, titleEl, changeEl, volEl, priceEl, tfEl, bybitEl,
             symbol: null, coin: null, curTF,
         });
     }
@@ -364,6 +382,7 @@ async function loadSlot(idx, coin) {
     s.changeEl.textContent = '(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)';
     s.changeEl.style.color = pct >= 0 ? '#34d399' : '#f87171';
     s.volEl.textContent    = fmtVol(coin.volume_24h);
+    s.bybitEl.href = `https://www.bybit.com/trade/usdt/${coin.symbol}`;
     const isFav = favoriteSymbols.has(coin.symbol);
     s.starEl.textContent = isFav ? '★' : '☆';
     s.starEl.style.color = isFav ? '#fbbf24' : '#4B5563';
@@ -419,6 +438,7 @@ async function openFullscreen(idx) {
     document.getElementById('fs-change').textContent = pctStr;
     document.getElementById('fs-change').style.color = pct >= 0 ? '#34d399' : '#f87171';
     document.getElementById('fs-vol').textContent    = fmtVol(fsCoin.volume_24h);
+    document.getElementById('fs-bybit-link').href   = `https://www.bybit.com/trade/usdt/${fsCoin.symbol}`;
     document.getElementById('fs-price').textContent  = '';
 
     initFsChart();
