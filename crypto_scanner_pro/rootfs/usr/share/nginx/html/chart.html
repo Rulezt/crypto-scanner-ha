@@ -569,7 +569,8 @@ function buildGrid() {
         expandEl.onmouseleave = () => expandEl.style.color = '#4B5563';
         expandEl.onclick = () => openFullscreen(i);
 
-        rightGroup.append(candlePctEl, resetEl, mtfEl, expandEl);
+        const sep = () => { const s = document.createElement('span'); s.textContent='|'; s.style.cssText='font-size:10px;color:#374151;'; return s; };
+        rightGroup.append(candlePctEl, sep(), resetEl, sep(), mtfEl, sep(), expandEl);
         hdr.append(starEl, titleEl, changeEl, sep1, volEl, sep2, tfEl, sep3, bybitEl, rightGroup);
         cell.appendChild(hdr);
 
