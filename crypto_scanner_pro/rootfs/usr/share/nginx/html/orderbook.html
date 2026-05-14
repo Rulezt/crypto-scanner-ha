@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Book</title>
+    <link rel="stylesheet" href="orderbook-styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
+    <script defer src="orderbook.js"></script>
+    <style>
+        /* ===== CVD PANEL ===== */
+        .cvd-panel {
+            display: flex;
+            flex-direction: column;
+            width: 180px;
+            min-width: 180px;
+            background: #0a0a0b;
+            border-left: 1px solid rgba(255,255,255,0.06);
+            overflow: hidden;
+        }
+
+        .cvd-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 8px;
+            background: #111;
+            border-bottom: 1px solid #1e1e1e;
+            font-size: 0.65rem;
+            color: #6b7280;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .cvd-signal {
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 8px;
+        }
+        .cvd-signal.bull    { background: rgba(16,185,129,0.2); color: #10b981; }
+        .cvd-signal.bear    { background: rgba(239,68,68,0.2);  color: #ef4444; }
+        .cvd-signal.neutral { background: rgba(148,163,184,0.1); color: #6b7280; }
+
+        /* Canvas chart */
+        .cvd-chart-wrap {
+            padding: 4px 4px 0;
+        }
+        #cvd-canvas {
+            width: 100%;
+            height: 110px;
+            display: block;
+            border-radius: 3px;
+        }
+
+        /* Stats grid */
+        .cvd-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            padding: 4px 6px;
+        }
+        .cvd-stat {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+        .cvd-stat-label {
+            font-size: 0.58rem;
+            color: #4b5563;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .cvd-stat-value {
+            font-size: 0.72rem;
+            font-family: 'Monaco','Consolas',monospace;
+            font-weight: 600;
+        }
+        .cvd-stat-value.green { color: #10b981; }
+        .cvd-stat-value.red   { color: #ef4444; }
+        .cvd-stat-value.gray  { color: #9ca3af; }
+
+        /* Buy/Sell bar */
+        .cvd-ratio-bar {
+            margin: 2px 6px;
+            height: 5px;
+            border-radius: 3px;
+            background: #1a1a1a;
+            overflow: hidden;
+            display: flex;
+        }
+        .cvd-ratio-buy  { background: #10b981; transition: width 0.4s; }
+        .cvd-ratio-sell { background: #ef4444; flex: 1; }
+
+        /* Large trades */
+        .cvd-large-label {
+            font-size: 0.58rem;
+            color: #4b5563;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 3px 6px 1px;
+        }
+        .cvd-trades {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 4px 4px;
+            scrollbar-width: none;
+        }
+        .cvd-trades::-webkit-scrollbar { display: none; }
+        .cvd-trade-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin-bottom: 1px;
+            font-size: 0.65rem;
+            font-family: 'Monaco','Consolas',monospace;
+            animation: flash-in 0.3s ease;
+        }
+        @keyframes flash-in {
+            from { opacity: 0; transform: translateX(6px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        .cvd-trade-row.buy  { background: rgba(16,185,129,0.08); }
+        .cvd-trade-row.sell { background: rgba(239,68,68,0.08); }
+        .trade-side { font-weight: 700; font-size: 0.6rem; }
+        .trade-side.buy  { color: #10b981; }
+        .trade-side.sell { color: #ef4444; }
+        .trade-usd  { color: #d1d5db; }
+        .trade-time { color: #4b5563; font-size: 0.58rem; }
+
+        .cvd-empty {
+            font-size: 0.65rem;
+            color: #374151;
+            text-align: center;
+            padding: 8px 4px;
+        }
+    </style>
+</head>
+<body class="orderbook-page">
+    <div id="app">
+        <div class="orderbook-standalone">
+            <div class="orderbook-header">
+                <h2>{{ symbol }} Order Book</h2>
+                <div class="header-controls">
+                    <div class="max-level-info">
+                        <span class="max-ask-dist">🔴 -{{ maxLevelDistance.askPercent }}%</span>
+                        <span class="max-bid-dist">🟢 -{{ maxLevelDistance.bidPercent }}%</span>
+                    </div>
+                    <div class="control-item">
+                        <label>Livelli:</label>
+                        <select v-model="displayLevels" @change="updateDisplay">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                    <div class="control-item">
+                        <label>Raggruppa:</label>
+                        <select v-model="grouping" @change="updateDisplay">
+                            <option v-for="opt in groupingOptions" :key="opt" :value="opt">{{ opt }}</option>
+                        </select>
+                    </div>
+                    <button @click="showImbalance = !showImbalance"
+                            :class="['imbalance-toggle', showImbalance ? 'active' : '']">
+                        IMB
+                    </button>
+                    <button @click="showCVD = !showCVD"
+                            :class="['imbalance-toggle', showCVD ? 'active' : '']">
+                        CVD
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div v-if="loading" class="orderbook-loading">
+                <div class="spinner"></div>
+                <p>Caricamento Order Book...</p>
+            </div>
+
+            <!-- Error -->
+            <div v-else-if="error" class="orderbook-error">
+                <p>{{ error }}</p>
+                <button @click="fetchOrderBook" class="retry-btn">Riprova</button>
+            </div>
+
+            <!-- Main Content -->
+            <div v-else class="orderbook-wrapper">
+
+                <!-- Imbalance Bar -->
+                <div v-if="showImbalance" class="imbalance-sidebar" :class="imbalance.signal">
+                    <div class="imbalance-label-top">
+                        <span class="side-percent ask-pct">{{ (100 - imbalance.percent).toFixed(1) }}%</span>
+                        <span class="side-total">🔴 {{ imbalance.askTotal }}</span>
+                    </div>
+                    <div class="imbalance-bar-full">
+                        <div class="imbalance-ask-fill" :style="{ height: (100 - imbalance.percent) + '%' }"></div>
+                        <div class="imbalance-bid-fill" :style="{ height: imbalance.percent + '%' }"></div>
+                    </div>
+                    <div class="imbalance-label-bottom">
+                        <span class="side-total">🟢 {{ imbalance.bidTotal }}</span>
+                        <span class="side-percent bid-pct">{{ imbalance.percent }}%</span>
+                    </div>
+                    <div class="imbalance-info">
+                        <span class="imbalance-direction">{{ imbalance.direction }}</span>
+                        <span class="imbalance-ratio">{{ imbalance.ratio }}x</span>
+                    </div>
+                </div>
+
+                <!-- Order Book -->
+                <div class="orderbook-container"
+                     @mousedown="isPaused = true"
+                     @mouseup="isPaused = false"
+                     @mouseleave="isPaused = false"
+                     :class="{ 'paused': isPaused }">
+                    <div class="orderbook-side">
+                        <div v-for="(ask, index) in displayAsks" :key="'ask-'+index"
+                             class="book-row"
+                             :class="{ 'max-level': ask.isMaxLevel, 'empty-level': ask.isEmpty }">
+                            <div class="depth-bar ask-bar">
+                                <div class="depth-filler" :style="{ width: ask.depthPercent + '%' }"></div>
+                            </div>
+                            <div class="price-cell ask-price">{{ ask.price }}</div>
+                            <div class="amount-cell">{{ ask.amount }}</div>
+                            <div class="total-cell">{{ ask.total }}</div>
+                        </div>
+                    </div>
+
+                    <div class="current-price-box">
+                        <div class="price-value" :style="{ color: priceColor }">{{ currentPrice }}</div>
+                        <div class="spread-value">Spread: {{ spread }}</div>
+                    </div>
+
+                    <div class="orderbook-side">
+                        <div v-for="(bid, index) in displayBids" :key="'bid-'+index"
+                             class="book-row"
+                             :class="{ 'max-level': bid.isMaxLevel }">
+                            <div class="depth-bar bid-bar">
+                                <div class="depth-filler" :style="{ width: bid.depthPercent + '%' }"></div>
+                            </div>
+                            <div class="price-cell bid-price">{{ bid.price }}</div>
+                            <div class="amount-cell">{{ bid.amount }}</div>
+                            <div class="total-cell">{{ bid.total }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CVD PANEL -->
+                <div v-if="showCVD" class="cvd-panel">
+
+                    <!-- Header -->
+                    <div class="cvd-header">
+                        <span>CVD · Delta</span>
+                        <span :class="['cvd-signal', cvdData.signal]">
+                            {{ cvdData.signal === 'bull' ? '▲ BUY' : cvdData.signal === 'bear' ? '▼ SELL' : '— NEU' }}
+                        </span>
+                    </div>
+
+                    <!-- Chart canvas -->
+                    <div class="cvd-chart-wrap">
+                        <canvas id="cvd-canvas" width="172" height="110"></canvas>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="cvd-stats">
+                        <div class="cvd-stat">
+                            <span class="cvd-stat-label">CVD</span>
+                            <span :class="['cvd-stat-value', cvdData.cvd >= 0 ? 'green' : 'red']">
+                                {{ cvdData.cvd >= 1e6
+                                    ? (cvdData.cvd/1e6).toFixed(2)+'M'
+                                    : cvdData.cvd >= 1e3
+                                        ? (cvdData.cvd/1e3).toFixed(1)+'K'
+                                        : cvdData.cvd.toFixed(0) }}
+                            </span>
+                        </div>
+                        <div class="cvd-stat">
+                            <span class="cvd-stat-label">Δ 1s</span>
+                            <span :class="['cvd-stat-value', cvdData.delta1m >= 0 ? 'green' : 'red']">
+                                {{ cvdData.delta1m >= 1e6
+                                    ? (cvdData.delta1m/1e6).toFixed(2)+'M'
+                                    : cvdData.delta1m >= 1e3
+                                        ? (cvdData.delta1m/1e3).toFixed(1)+'K'
+                                        : cvdData.delta1m.toFixed(0) }}
+                            </span>
+                        </div>
+                        <div class="cvd-stat">
+                            <span class="cvd-stat-label">Buy Vol</span>
+                            <span class="cvd-stat-value green">
+                                {{ cvdData.buyVol >= 1e6
+                                    ? (cvdData.buyVol/1e6).toFixed(1)+'M'
+                                    : (cvdData.buyVol/1e3).toFixed(1)+'K' }}
+                            </span>
+                        </div>
+                        <div class="cvd-stat">
+                            <span class="cvd-stat-label">Sell Vol</span>
+                            <span class="cvd-stat-value red">
+                                {{ cvdData.sellVol >= 1e6
+                                    ? (cvdData.sellVol/1e6).toFixed(1)+'M'
+                                    : (cvdData.sellVol/1e3).toFixed(1)+'K' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Buy/Sell ratio bar -->
+                    <div class="cvd-ratio-bar">
+                        <div class="cvd-ratio-buy"
+                             :style="{ width: (cvdData.buyVol / (cvdData.buyVol + cvdData.sellVol + 0.001) * 100) + '%' }">
+                        </div>
+                        <div class="cvd-ratio-sell"></div>
+                    </div>
+
+                    <!-- Large trades -->
+                    <div class="cvd-large-label">Large Trades</div>
+                    <div class="cvd-trades">
+                        <div v-if="cvdData.lastTrades.length === 0" class="cvd-empty">
+                            In attesa...
+                        </div>
+                        <div v-for="(t, i) in cvdData.lastTrades" :key="i"
+                             :class="['cvd-trade-row', t.side.toLowerCase()]">
+                            <span :class="['trade-side', t.side.toLowerCase()]">
+                                {{ t.side === 'Buy' ? '▲' : '▼' }}
+                            </span>
+                            <span class="trade-usd">{{ t.usd }}</span>
+                            <span class="trade-time">{{ t.time }}</span>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- END CVD PANEL -->
+
+            </div>
+        </div>
+    </div>
+</body>
+</html>

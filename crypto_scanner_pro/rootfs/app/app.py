@@ -252,7 +252,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.6.0',
+        'version': '3.7.0',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -800,6 +800,12 @@ def mtf_page():
 def screenshot_page():
     """Serve single-chart screenshot page (used by Selenium for alert images)."""
     return send_file('/usr/share/nginx/html/screenshot.html')
+
+
+@app.route('/orderbook', methods=['GET'])
+def orderbook_page():
+    """Serve order book page."""
+    return send_file('/usr/share/nginx/html/orderbook.html')
 
 
 @app.route('/', methods=['GET'])
