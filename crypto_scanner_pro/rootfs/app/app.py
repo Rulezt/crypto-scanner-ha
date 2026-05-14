@@ -15,6 +15,7 @@ from scanners.ema_touch import EMAScanner
 from scanners.daily_flip import DailyFlipScanner
 from scanners.volume import VolumeScanner
 from scanners.ath_atl_scanner import ATHATLScanner
+from scanners.ico_levels_scanner import ICOLevelsScanner
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -64,6 +65,12 @@ DEFAULT_CONFIG = {
         'proximity_threshold': 1.0,
         'lookback_days': 365,
         'scan_interval_minutes': 60
+    },
+    'ico_levels': {
+        'enabled': True,
+        'ico_levels_threshold': 2.0,
+        'ico_levels_tf': 'D',
+        'scan_interval_minutes': 60,
     },
     'general': {
         'min_volume_24h': 10000000,
@@ -130,6 +137,14 @@ def load_config():
                         config['ath_atl']['proximity_threshold'] = float(ath_atl_threshold)
                         logger.info(f"✅ ATH/ATL threshold loaded from add-on config: {ath_atl_threshold}%")
 
+                    # Get ICO levels settings from add-on (if set)
+                    ico_thr = addon_options.get('ico_levels_threshold')
+                    if ico_thr is not None:
+                        config['ico_levels']['ico_levels_threshold'] = float(ico_thr)
+                    ico_tf = addon_options.get('ico_levels_tf')
+                    if ico_tf:
+                        config['ico_levels']['ico_levels_tf'] = str(ico_tf)
+
             except Exception as e:
                 logger.warning(f"⚠️ Could not load add-on options: {e}")
                 
@@ -192,6 +207,12 @@ def init_scanners():
             **config['general']
         )
 
+        scanners['ico_levels'] = ICOLevelsScanner(
+            telegram_config=telegram_config,
+            **config['ico_levels'],
+            **config['general']
+        )
+
         logger.info("✅ Scanners initialized")
     except Exception as e:
         logger.error(f"❌ Error initializing scanners: {e}")
@@ -216,7 +237,8 @@ def start_scanners():
         ('ema_touch', scanners.get('ema'), config['ema_touch']['scan_interval_minutes']),
         ('daily_flip', scanners.get('flip'), config['daily_flip']['scan_interval_minutes']),
         ('volume_scanner', scanners.get('volume'), config['volume_scanner']['scan_interval_minutes']),
-        ('ath_atl', scanners.get('ath_atl'), config['ath_atl']['scan_interval_minutes'])
+        ('ath_atl', scanners.get('ath_atl'), config['ath_atl']['scan_interval_minutes']),
+        ('ico_levels', scanners.get('ico_levels'), config['ico_levels']['scan_interval_minutes']),
     ]
     
     for name, scanner, interval in threads_config:
@@ -243,7 +265,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.3.6',
+        'version': '3.4.0',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
