@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MTF View</title>
+<script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0B0E11; color:#9CA3AF;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    height:100vh; display:flex; flex-direction:column; overflow:hidden;
+  }
+  #hdr {
+    height:44px; flex-shrink:0;
+    background:#161A1E; border-bottom:1px solid #2B3139;
+    display:flex; align-items:center; gap:8px; padding:0 14px;
+  }
+  #grid {
+    flex:1; display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: 1fr 1fr;
+    overflow:hidden; min-height:0;
+  }
+  .cell {
+    display:flex; flex-direction:column;
+    border:1px solid #2B3139; overflow:hidden;
+  }
+  .cell-hdr {
+    height:26px; flex-shrink:0;
+    display:flex; align-items:center; gap:5px;
+    padding:0 7px; background:#161A1E;
+    border-bottom:1px solid #2B3139;
+  }
+  .cell-body { flex:1; position:relative; min-height:0; }
+  .chart-el  { position:absolute; inset:0; }
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <button onclick="window.close()"
+    style="font-size:11px;color:#9CA3AF;background:#2B3139;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;">
+    ✕
+  </button>
+  <div style="width:1px;height:22px;background:#2B3139;flex-shrink:0;"></div>
+  <span id="hdr-coin"   style="font-size:15px;font-weight:700;color:#E5E7EB;white-space:nowrap;"></span>
+  <span id="hdr-change" style="font-size:12px;font-weight:600;white-space:nowrap;"></span>
+  <span style="color:#374151;font-size:11px;">|</span>
+  <span id="hdr-vol"    style="font-size:11px;color:#60a5fa;white-space:nowrap;"></span>
+  <div style="flex:1;"></div>
+  <span style="font-size:9px;color:#4B5563;letter-spacing:.8px;text-transform:uppercase;">Multi Timeframe</span>
+  <div style="width:1px;height:22px;background:#2B3139;margin-left:8px;flex-shrink:0;"></div>
+  <div id="ws-dot" style="display:flex;align-items:center;gap:5px;">
+    <div style="width:7px;height:7px;background:#6B7280;border-radius:50%;transition:background .3s;" id="ws-circle"></div>
+    <span style="font-size:10px;color:#6B7280;" id="ws-label">WS</span>
+  </div>
+</div>
+
+<div id="grid"></div>
+
+<script>
+// ── constants ──────────────────────────────────────────────────────────────────
+const LC  = LightweightCharts;
+const SYM = new URLSearchParams(location.search).get('symbol') || 'BTCUSDT';
+
+// Layout: top row = 4 slots (1 col each), bottom row = 2 slots (2 cols each)
+// Order from right as specified: top [30m][1h][4h][1D], bottom [1m][5m]
+const TF_SLOTS = [
+  { tf:'30',  label:'30m', col:'1',       row:'1' },
+  { tf:'60',  label:'1h',  col:'2',       row:'1' },
+  { tf:'240', label:'4h',  col:'3',       row:'1' },
+  { tf:'D',   label:'1D',  col:'4',       row:'1' },
+  { tf:'1',   label:'1m',  col:'1/span 2',row:'2' },
+  { tf:'5',   label:'5m',  col:'3/span 2',row:'2' },
+];
+
+const EMA_CFG = [
+  {p:5,   color:'#ef4444', width:2},
+  {p:10,  color:'#fbbf24', width:2},
+  {p:60,  color:'#3b82f6', width:3},
+  {p:223, color:'#a855f7', width:2.5},
+];
+
+let slots   = [];
+let ws      = null;
+let wsTimer = null;
+
+// ── helpers ────────────────────────────────────────────────────────────────────
+function calcEMA(bars, period) {
+  const k = 2/(period+1); let v = bars[0].close;
+  return bars.map((b,i) => { if(i>0) v=b.close*k+v*(1-k); return {time:b.time,value:v}; });
+}
+
+function addS(chart, type, opts) {
+  if (typeof chart.addSeries==='function' && LC[type]) return chart.addSeries(LC[type], opts);
+  const m = {CandlestickSeries:'addCandlestickSeries',LineSeries:'addLineSeries'};
+  return chart[m[type]](opts);
+}
+
+function makeChart(el, bigSlot) {
+  return LC.createChart(el, {
+    autoSize: true,
+    layout: { background:{color:'#0B0E11'}, textColor:'#9CA3AF', fontSize: bigSlot ? 11 : 10 },
+    grid:   { vertLines:{color:'#1E2329'}, horzLines:{color:'#1E2329'} },
+    crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
+    rightPriceScale: { borderColor:'#2B3139', scaleMargins:{top:0.05,bottom:0.05} },
+    timeScale: {
+      borderColor:'#2B3139', visible:true, timeVisible:true, secondsVisible:false,
+      barSpacing: bigSlot ? 4 : 3, rightOffset: bigSlot ? 20 : 15,
+    },
+  });
+}
+
+function fmtPrice(p) {
+  if (p>=10000) return p.toLocaleString('en-US',{maximumFractionDigits:1});
+  if (p>=1)     return p.toFixed(3);
+  if (p>=0.01)  return p.toFixed(5);
+  return p.toFixed(7);
+}
+
+function fmtVol(v) {
+  if (v>=1e9) return '$'+(v/1e9).toFixed(1)+'B';
+  if (v>=1e6) return '$'+(v/1e6).toFixed(0)+'M';
+  return '$'+(v/1e3).toFixed(0)+'K';
+}
+
+// ── build grid ─────────────────────────────────────────────────────────────────
+function buildGrid() {
+  const grid = document.getElementById('grid');
+
+  TF_SLOTS.forEach((cfg, i) => {
+    const isBig = cfg.row === '2';   // bottom row: wider slot
+
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.style.gridColumn = cfg.col;
+    cell.style.gridRow    = cfg.row;
+
+    // ── slot header ────────────────────────────────────────────────────────
+    const hdr = document.createElement('div');
+    hdr.className = 'cell-hdr';
+
+    const tfLbl = document.createElement('span');
+    tfLbl.textContent = cfg.label;
+    tfLbl.style.cssText = 'font-size:10px;font-weight:700;color:#60a5fa;background:#1E2329;padding:1px 6px;border-radius:2px;flex-shrink:0;';
+
+    const priceEl = document.createElement('span');
+    priceEl.style.cssText = 'font-size:10px;font-family:monospace;color:#E5E7EB;white-space:nowrap;';
+
+    const spacer = document.createElement('div');
+    spacer.style.flex = '1';
+
+    const pctEl = document.createElement('span');
+    pctEl.style.cssText = 'font-size:10px;font-family:monospace;min-width:52px;text-align:right;white-space:nowrap;';
+
+    const resetBtn = document.createElement('button');
+    resetBtn.textContent = '↺'; resetBtn.title = 'Reset zoom';
+    resetBtn.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+    resetBtn.onmouseenter = () => resetBtn.style.color = '#9CA3AF';
+    resetBtn.onmouseleave = () => resetBtn.style.color = '#4B5563';
+    resetBtn.onclick = () => { const s = slots[i]; if(s && s.chart) s.chart.timeScale().fitContent(); };
+
+    hdr.append(tfLbl, priceEl, spacer, pctEl, resetBtn);
+    cell.appendChild(hdr);
+
+    // ── chart body ─────────────────────────────────────────────────────────
+    const body = document.createElement('div');
+    body.className = 'cell-body';
+    const chartEl = document.createElement('div');
+    chartEl.className = 'chart-el';
+    body.appendChild(chartEl);
+    cell.appendChild(body);
+    grid.appendChild(cell);
+
+    // ── create chart ───────────────────────────────────────────────────────
+    const chart   = makeChart(chartEl, isBig);
+    const candleS = addS(chart, 'CandlestickSeries', {
+      upColor:'#26a69a', downColor:'#ef5350',
+      borderVisible:false, wickUpColor:'#26a69a', wickDownColor:'#ef5350',
+    });
+    const lineBase = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
+    const emaS = {};
+    for (const {p,color,width} of EMA_CFG)
+      emaS[p] = addS(chart, 'LineSeries', {...lineBase, color, lineWidth:width});
+
+    // Crosshair → candle % change
+    chart.subscribeCrosshairMove(param => {
+      if (!param || !param.seriesData) { pctEl.textContent = ''; return; }
+      const cd = param.seriesData.get(candleS);
+      if (cd && cd.open != null) {
+        const pct = ((cd.close - cd.open) / cd.open) * 100;
+        pctEl.textContent = (pct>=0?'+':'')+pct.toFixed(2)+'%';
+        pctEl.style.color = pct>=0 ? '#34d399' : '#f87171';
+      } else {
+        pctEl.textContent = '';
+      }
+    });
+
+    slots.push({
+      cfg, chart, candleS, emaS, priceEl,
+      lastEMA: {5:null,10:null,60:null,223:null},
+      dayHighLine:null, dayLowLine:null,
+      prevHighLine:null, prevLowLine:null,
+    });
+  });
+}
+
+// ── data loading ───────────────────────────────────────────────────────────────
+async function loadAll() {
+  // Header ticker
+  try {
+    const rt = await fetch(`api/ticker?symbol=${SYM}`);
+    const jt = await rt.json();
+    const coin = SYM.replace('USDT','');
+    document.getElementById('hdr-coin').textContent = coin + '/USDT';
+    if (jt.success) {
+      const pct = jt.change_24h;
+      const el  = document.getElementById('hdr-change');
+      el.textContent = (pct>=0?'+':'')+pct.toFixed(2)+'%';
+      el.style.color = pct>=0 ? '#34d399' : '#f87171';
+      document.getElementById('hdr-vol').textContent = fmtVol(jt.volume_24h);
+    }
+  } catch(e) {
+    document.getElementById('hdr-coin').textContent = SYM.replace('USDT','/USDT');
+  }
+
+  // Daily H/L for all charts
+  let dailyData = null;
+  try {
+    const rd = await fetch(`api/klines?symbol=${SYM}&interval=D`);
+    const jd = await rd.json();
+    if (jd.success && jd.data && jd.data.length >= 2)
+      dailyData = { today: jd.data[jd.data.length-1], prev: jd.data[jd.data.length-2] };
+  } catch(e) {}
+
+  // Load all slots in parallel
+  await Promise.all(slots.map((_, i) => loadSlot(i, dailyData)));
+  openWS();
+}
+
+async function loadSlot(idx, dailyData) {
+  const s = slots[idx];
+  try {
+    const r = await fetch(`api/klines?symbol=${SYM}&interval=${s.cfg.tf}`);
+    const j = await r.json();
+    if (!j.success) return;
+    const klines = j.data;
+    s.candleS.setData(klines);
+    for (const {p} of EMA_CFG) {
+      const ema = calcEMA(klines, p);
+      s.emaS[p].setData(ema);
+      s.lastEMA[p] = ema[ema.length-1].value;
+    }
+    s.chart.timeScale().fitContent();
+    if (klines.length)
+      s.priceEl.textContent = fmtPrice(klines[klines.length-1].close);
+
+    // H / L / pH / pL lines
+    if (dailyData) {
+      const {today, prev} = dailyData;
+      s.dayHighLine  = s.candleS.createPriceLine({price:today.high,color:'#22c55e',lineWidth:1,lineStyle:0,axisLabelVisible:true,title:'H'});
+      s.dayLowLine   = s.candleS.createPriceLine({price:today.low, color:'#ef4444',lineWidth:1,lineStyle:0,axisLabelVisible:true,title:'L'});
+      s.prevHighLine = s.candleS.createPriceLine({price:prev.high, color:'#22c55e',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'pH'});
+      s.prevLowLine  = s.candleS.createPriceLine({price:prev.low,  color:'#ef4444',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'pL'});
+    }
+  } catch(e) {
+    console.error(`MTF load ${s.cfg.label} error:`, e);
+  }
+}
+
+// ── WebSocket ──────────────────────────────────────────────────────────────────
+function openWS() {
+  closeWS();
+  setWSDot('connecting');
+  ws = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+  ws.onopen = () => {
+    setWSDot('live');
+    ws.send(JSON.stringify({
+      op: 'subscribe',
+      args: TF_SLOTS.map(s => `kline.${s.tf}.${SYM}`),
+    }));
+  };
+  ws.onmessage = ev => {
+    let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
+    if (!msg.topic || !msg.topic.startsWith('kline.')) return;
+    const tf    = msg.topic.split('.')[1];
+    const idx   = slots.findIndex(s => s.cfg.tf === tf);
+    if (idx === -1) return;
+    const b = msg.data[0];
+    const confirmed = b.confirm === true || b.confirm === 'true';
+    const candle = {
+      time:  Math.floor(parseInt(b.start)/1000),
+      open:  parseFloat(b.open),
+      high:  parseFloat(b.high),
+      low:   parseFloat(b.low),
+      close: parseFloat(b.close),
+    };
+    const s = slots[idx];
+    s.candleS.update(candle);
+    s.priceEl.textContent = fmtPrice(candle.close);
+    for (const {p} of EMA_CFG) {
+      if (s.lastEMA[p] === null) continue;
+      const k    = 2/(p+1);
+      const live = candle.close * k + s.lastEMA[p] * (1-k);
+      s.emaS[p].update({time: candle.time, value: live});
+      if (confirmed) s.lastEMA[p] = live;
+    }
+  };
+  ws.onerror = () => setWSDot('error');
+  ws.onclose = () => { setWSDot('off'); wsTimer = setTimeout(openWS, 5000); };
+}
+
+function closeWS() {
+  clearTimeout(wsTimer);
+  if (ws) { try { ws.close(); } catch(e) {} ws = null; }
+}
+
+function setWSDot(state) {
+  const m = {
+    connecting: ['#eab308', 'Conn...', '#9CA3AF'],
+    live:       ['#34d399', 'Live',    '#34d399'],
+    error:      ['#ef4444', 'Err',     '#ef4444'],
+    off:        ['#6B7280', 'WS',      '#6B7280'],
+  };
+  const [bg, label, tc] = m[state] || m.off;
+  const c = document.getElementById('ws-circle');
+  const l = document.getElementById('ws-label');
+  if (c) c.style.background = bg;
+  if (l) { l.textContent = label; l.style.color = tc; }
+}
+
+window.addEventListener('beforeunload', closeWS);
+
+buildGrid();
+loadAll();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v2.9.9</title>
+    <title>Multi-Chart - Crypto Scanner Pro v3.3.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -122,8 +122,13 @@
             <span class="text-xs text-gray-500">WS</span>
         </div>
         <span id="fs-candle-pct" style="font-size:12px;font-family:monospace;min-width:58px;text-align:right;"></span>
-        <button onclick="if(fsChart) fsChart.timeScale().fitContent()"
+        <button onclick="if(fsCoin) window.open('mtf?symbol='+fsCoin.symbol, '_blank')"
             style="margin-left:8px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;"
+            title="Multi Timeframe">
+            ⊞ MTF
+        </button>
+        <button onclick="if(fsChart) fsChart.timeScale().fitContent()"
+            style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;"
             title="Reset zoom">
             ↺ Reset
         </button>
@@ -550,6 +555,13 @@ function buildGrid() {
         resetEl.onmouseleave = () => resetEl.style.color = '#4B5563';
         resetEl.onclick = () => { const s = slots[i]; if (s && s.chart) s.chart.timeScale().fitContent(); };
 
+        const mtfEl = document.createElement('button');
+        mtfEl.textContent = '⊞'; mtfEl.title = 'Multi Timeframe';
+        mtfEl.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+        mtfEl.onmouseenter = () => mtfEl.style.color = '#9CA3AF';
+        mtfEl.onmouseleave = () => mtfEl.style.color = '#4B5563';
+        mtfEl.onclick = () => { const s = slots[i]; if (s && s.symbol) window.open(`mtf?symbol=${s.symbol}`, '_blank'); };
+
         const expandEl = document.createElement('button');
         expandEl.textContent = '⤢'; expandEl.title = 'Schermo intero';
         expandEl.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
@@ -557,7 +569,7 @@ function buildGrid() {
         expandEl.onmouseleave = () => expandEl.style.color = '#4B5563';
         expandEl.onclick = () => openFullscreen(i);
 
-        rightGroup.append(candlePctEl, resetEl, expandEl);
+        rightGroup.append(candlePctEl, resetEl, mtfEl, expandEl);
         hdr.append(starEl, titleEl, changeEl, sep1, volEl, sep2, tfEl, sep3, bybitEl, rightGroup);
         cell.appendChild(hdr);
 
