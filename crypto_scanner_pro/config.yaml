@@ -1,5 +1,5 @@
 name: "Crypto Scanner Pro"
-version: "3.7.3"
+version: "3.7.4"
 slug: "crypto_scanner_pro"
 description: "Scanner crypto avanzato con EMA touch, volume, daily flip e ATH/ATL via Telegram"
 url: "https://github.com/Rulezt/crypto-scanner-ha"
