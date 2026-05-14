@@ -1127,7 +1127,7 @@ function openOBModal(symbol) {
     if (!symbol) return;
     const modal = document.getElementById('ob-modal');
     const iframe = document.getElementById('ob-iframe');
-    iframe.src = `orderbook.html?symbol=${symbol}`;
+    iframe.src = `orderbook?symbol=${symbol}`;
     modal.style.display = 'flex';
 }
 

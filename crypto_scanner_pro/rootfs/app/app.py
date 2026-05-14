@@ -258,7 +258,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.7.0',
+        'version': '3.7.2',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -809,9 +809,20 @@ def screenshot_page():
 
 
 @app.route('/orderbook', methods=['GET'])
+@app.route('/orderbook.html', methods=['GET'])
 def orderbook_page():
     """Serve order book page."""
     return send_file('/usr/share/nginx/html/orderbook.html')
+
+
+@app.route('/orderbook.js', methods=['GET'])
+def orderbook_js():
+    return send_file('/usr/share/nginx/html/orderbook.js', mimetype='application/javascript')
+
+
+@app.route('/orderbook-styles.css', methods=['GET'])
+def orderbook_css():
+    return send_file('/usr/share/nginx/html/orderbook-styles.css', mimetype='text/css')
 
 
 @app.route('/', methods=['GET'])

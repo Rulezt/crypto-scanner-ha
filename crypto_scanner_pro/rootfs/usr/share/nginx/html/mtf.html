@@ -343,7 +343,7 @@ window.addEventListener('beforeunload', closeWS);
 function openOBModal() {
     const modal = document.getElementById('ob-modal');
     const iframe = document.getElementById('ob-iframe');
-    iframe.src = `orderbook.html?symbol=${SYM}`;
+    iframe.src = `orderbook?symbol=${SYM}`;
     modal.style.display = 'flex';
 }
 
