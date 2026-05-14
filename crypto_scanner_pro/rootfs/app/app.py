@@ -16,6 +16,7 @@ from scanners.daily_flip import DailyFlipScanner
 from scanners.volume import VolumeScanner
 from scanners.ath_atl_scanner import ATHATLScanner
 from scanners.ico_levels_scanner import ICOLevelsScanner
+from ws_manager import BybitWSManager
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -85,6 +86,7 @@ DEFAULT_CONFIG = {
 config = DEFAULT_CONFIG.copy()
 scanners = {}
 scanner_threads = {}
+ws_manager = BybitWSManager()
 
 _triggered_lock = threading.Lock()
 _recently_triggered = []
@@ -165,30 +167,35 @@ def init_scanners():
     try:
         scanners['ema'] = EMAScanner(
             telegram_config=telegram_config,
+            ws_manager=ws_manager,
             **config['ema_touch'],
             **config['general']
         )
-        
+
         scanners['flip'] = DailyFlipScanner(
             telegram_config=telegram_config,
+            ws_manager=ws_manager,
             **config['daily_flip'],
             **config['general']
         )
-        
+
         scanners['volume'] = VolumeScanner(
             telegram_config=telegram_config,
+            ws_manager=ws_manager,
             **config['volume_scanner'],
             **config['general']
         )
 
         scanners['ath_atl'] = ATHATLScanner(
             telegram_config=telegram_config,
+            ws_manager=ws_manager,
             **config['ath_atl'],
             **config['general']
         )
 
         scanners['ico_levels'] = ICOLevelsScanner(
             telegram_config=telegram_config,
+            ws_manager=ws_manager,
             **config['ico_levels'],
             **config['general']
         )
@@ -245,15 +252,18 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.5.0',
+        'version': '3.6.0',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
+        'ws_connected': ws_manager.ready.is_set(),
+        'ws_tickers': len(ws_manager.get_all_tickers()),
         'scanners': {
             'ema_touch': config['ema_touch']['enabled'],
             'daily_flip': config['daily_flip']['enabled'],
             'volume_scanner': config['volume_scanner']['enabled'],
-            'ath_atl': config['ath_atl']['enabled']
+            'ath_atl': config['ath_atl']['enabled'],
+            'ico_levels': config['ico_levels']['enabled'],
         }
     })
 
@@ -799,16 +809,20 @@ def index():
 
 if __name__ == '__main__':
     logger.info("🚀 Crypto Scanner Professional Starting...")
-    
+
     # Load config
     load_config()
-    
-    # Initialize scanners
+
+    # Start WebSocket manager (real-time ticker feed)
+    ws_manager.start()
+    logger.info("✅ WebSocket manager started")
+
+    # Initialize scanners (pass ws_manager)
     init_scanners()
-    
-    # Start scanner threads
+
+    # Start polling threads (fallback / manual scan)
     start_scanners()
-    
+
     # Start Flask app
     logger.info("✅ Starting Flask on port 8080...")
     app.run(host='0.0.0.0', port=8080, debug=False, threaded=True)

@@ -29,7 +29,8 @@ RUN pip3 install --break-system-packages --no-cache-dir \
     schedule==1.2.1 \
     matplotlib==3.8.4 \
     pandas==2.2.1 \
-    numpy==1.26.4
+    numpy==1.26.4 \
+    websocket-client==1.7.0
 
 # Copy root filesystem
 COPY rootfs /
