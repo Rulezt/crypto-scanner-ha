@@ -93,6 +93,17 @@ let slots   = [];
 let ws      = null;
 let wsTimer = null;
 
+// OB fullscreen
+const OB_TFS = [
+  {tf:'1',label:'1m'},{tf:'5',label:'5m'},{tf:'30',label:'30m'},
+  {tf:'60',label:'1h'},{tf:'240',label:'4h'},{tf:'D',label:'1D'},
+];
+let obChart = null, obCandleS = null, obEmaS = {}, obLastEMA = {};
+let obTF = '30', obWS = null, obWsTimer = null;
+let obBidLine = null, obAskLine = null;
+let obDayHighLine = null, obDayLowLine = null;
+let obPrevHighLine = null, obPrevLowLine = null;
+
 // ── helpers ────────────────────────────────────────────────────────────────────
 function calcEMA(bars, period) {
   const k = 2/(period+1); let v = bars[0].close;
@@ -339,27 +350,143 @@ function setWSDot(state) {
 
 window.addEventListener('beforeunload', closeWS);
 
-// ── Order Book modal ──────────────────────────────────────────────────────────
-function openOBModal() {
-    const modal = document.getElementById('ob-modal');
-    const iframe = document.getElementById('ob-iframe');
-    iframe.src = `orderbook?symbol=${SYM}`;
-    modal.style.display = 'flex';
+// ── Order Book fullscreen ─────────────────────────────────────────────────────
+function initOBChart() {
+    if (obChart) return;
+    obChart   = makeChart(document.getElementById('ob-chart-el'), true);
+    obCandleS = addS(obChart, 'CandlestickSeries', {
+        upColor:'#26a69a', downColor:'#ef5350',
+        borderVisible:false, wickUpColor:'#26a69a', wickDownColor:'#ef5350',
+    });
+    const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
+    for (const {p, color, width} of EMA_CFG)
+        obEmaS[p] = addS(obChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
 }
 
-function closeOBModal(e) {
-    if (e && e.target !== document.getElementById('ob-modal')) return;
+function renderOBTFBar() {
+    document.getElementById('ob-tf-bar').innerHTML = OB_TFS.map(({tf, label}) => {
+        const active = tf === obTF;
+        return `<button onclick="switchOBTF('${tf}')" style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:${active?'#2563EB':'#2B3139'};color:${active?'#fff':'#9CA3AF'};">${label}</button>`;
+    }).join('');
+}
+
+async function switchOBTF(tf) {
+    if (tf === obTF) return;
+    closeOBWS(); obTF = tf; renderOBTFBar();
+    _clearOBLines();
+    obCandleS.setData([]);
+    for (const {p} of EMA_CFG) obEmaS[p].setData([]);
+    obLastEMA = {};
+    await loadOBData(); connectOBWS();
+}
+
+function _clearOBLines() {
+    for (const ref of [obBidLine, obAskLine, obDayHighLine, obDayLowLine, obPrevHighLine, obPrevLowLine])
+        if (ref) try { obCandleS.removePriceLine(ref); } catch(e) {}
+    obBidLine = obAskLine = null;
+    obDayHighLine = obDayLowLine = null;
+    obPrevHighLine = obPrevLowLine = null;
+}
+
+async function loadOBData() {
+    try {
+        const [r, rd] = await Promise.all([
+            fetch(`api/klines?symbol=${SYM}&interval=${obTF}`),
+            fetch(`api/klines?symbol=${SYM}&interval=D`),
+        ]);
+        const j = await r.json(); const jd = await rd.json();
+        if (!j.success) return;
+        const klines = j.data;
+        obCandleS.setData(klines);
+        for (const {p} of EMA_CFG) {
+            const ema = calcEMA(klines, p);
+            obEmaS[p].setData(ema);
+            obLastEMA[p] = ema[ema.length - 1].value;
+        }
+        obChart.timeScale().fitContent();
+        if (obDayHighLine)  { try { obCandleS.removePriceLine(obDayHighLine);  } catch(e) {} obDayHighLine  = null; }
+        if (obDayLowLine)   { try { obCandleS.removePriceLine(obDayLowLine);   } catch(e) {} obDayLowLine   = null; }
+        if (obPrevHighLine) { try { obCandleS.removePriceLine(obPrevHighLine); } catch(e) {} obPrevHighLine = null; }
+        if (obPrevLowLine)  { try { obCandleS.removePriceLine(obPrevLowLine);  } catch(e) {} obPrevLowLine  = null; }
+        if (jd.success && jd.data && jd.data.length) {
+            const today = jd.data[jd.data.length - 1];
+            obDayHighLine  = obCandleS.createPriceLine({ price: today.high,  color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
+            obDayLowLine   = obCandleS.createPriceLine({ price: today.low,   color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
+            if (jd.data.length >= 2) {
+                const prev = jd.data[jd.data.length - 2];
+                obPrevHighLine = obCandleS.createPriceLine({ price: prev.high, color:'#22c55e', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
+                obPrevLowLine  = obCandleS.createPriceLine({ price: prev.low,  color:'#ef4444', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
+            }
+        }
+    } catch(e) { console.error('OB chart load error:', e); }
+}
+
+function connectOBWS() {
+    closeOBWS();
+    obWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+    obWS.onopen = () => obWS.send(JSON.stringify({ op:'subscribe', args:[`kline.${obTF}.${SYM}`] }));
+    obWS.onmessage = ev => {
+        let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
+        if (!msg.topic || !msg.topic.startsWith('kline.')) return;
+        const b = msg.data[0];
+        const confirmed = b.confirm === true || b.confirm === 'true';
+        const candle = { time: Math.floor(parseInt(b.start)/1000), open: parseFloat(b.open), high: parseFloat(b.high), low: parseFloat(b.low), close: parseFloat(b.close) };
+        obCandleS.update(candle);
+        for (const {p} of EMA_CFG) {
+            if (obLastEMA[p] == null) continue;
+            const k = 2/(p+1);
+            const live = candle.close * k + obLastEMA[p] * (1-k);
+            obEmaS[p].update({ time: candle.time, value: live });
+            if (confirmed) obLastEMA[p] = live;
+        }
+    };
+    obWS.onerror = () => {};
+    obWS.onclose = () => { obWsTimer = setTimeout(connectOBWS, 5000); };
+}
+
+function closeOBWS() {
+    clearTimeout(obWsTimer);
+    if (obWS) { try { obWS.close(); } catch(e) {} obWS = null; }
+}
+
+function openOBModal() {
+    document.getElementById('ob-chart-sym').textContent = SYM.replace('USDT','');
+    document.getElementById('ob-iframe').src = `orderbook?symbol=${SYM}`;
+    document.getElementById('ob-modal').style.display = 'flex';
+    initOBChart();
+    renderOBTFBar();
+    if (!obLastEMA[5]) {
+        loadOBData().then(() => connectOBWS());
+    } else if (!obWS || obWS.readyState !== WebSocket.OPEN) {
+        connectOBWS();
+    }
+}
+
+function closeOBModal() {
     document.getElementById('ob-modal').style.display = 'none';
     document.getElementById('ob-iframe').src = '';
+    closeOBWS();
+    if (obCandleS) {
+        _clearOBLines();
+        obCandleS.setData([]);
+        for (const {p} of EMA_CFG) obEmaS[p].setData([]);
+        obLastEMA = {};
+    }
 }
+
+window.addEventListener('message', e => {
+    if (!e.data || e.data.type !== 'ob_levels' || !obCandleS) return;
+    const { bid, ask } = e.data;
+    if (obBidLine) { try { obCandleS.removePriceLine(obBidLine); } catch(e) {} obBidLine = null; }
+    if (obAskLine) { try { obCandleS.removePriceLine(obAskLine); } catch(e) {} obAskLine = null; }
+    if (bid != null) obBidLine = obCandleS.createPriceLine({ price: bid, color:'#10b981', lineWidth:2, lineStyle:1, axisLabelVisible:true, title:'Bid' });
+    if (ask != null) obAskLine = obCandleS.createPriceLine({ price: ask, color:'#ef4444', lineWidth:2, lineStyle:1, axisLabelVisible:true, title:'Ask' });
+});
 
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
         const m = document.getElementById('ob-modal');
-        if (m && m.style.display !== 'none') {
-            m.style.display = 'none';
-            document.getElementById('ob-iframe').src = '';
-        }
+        if (m && m.style.display !== 'none') { closeOBModal(); return; }
     }
 });
 
@@ -367,17 +494,22 @@ buildGrid();
 loadAll();
 </script>
 
-<!-- Order Book modal -->
+<!-- Order Book fullscreen modal -->
 <div id="ob-modal"
-     onclick="closeOBModal(event)"
-     style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.65);justify-content:flex-end;align-items:stretch;">
-    <div style="width:640px;max-width:100vw;height:100%;background:#111;box-shadow:-6px 0 24px rgba(0,0,0,0.9);display:flex;flex-direction:column;">
-        <div style="height:36px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2B3139;display:flex;align-items:center;padding:0 10px;gap:8px;">
-            <span style="font-size:11px;font-weight:600;color:#9CA3AF;flex:1;">Order Book · <span id="ob-sym"></span></span>
-            <button onclick="document.getElementById('ob-modal').style.display='none';document.getElementById('ob-iframe').src='';"
-                    style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
+     style="display:none;position:fixed;inset:0;z-index:500;flex-direction:row;background:#0B0E11;">
+    <!-- Left: chart -->
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;border-right:1px solid #2B3139;">
+        <div style="height:36px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2B3139;display:flex;align-items:center;padding:0 10px;gap:10px;">
+            <span id="ob-chart-sym" style="font-size:13px;font-weight:700;color:#E5E7EB;min-width:60px;"></span>
+            <div id="ob-tf-bar" style="display:flex;gap:4px;"></div>
+            <div style="flex:1;"></div>
+            <button onclick="closeOBModal()" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
         </div>
-        <iframe id="ob-iframe" src="" style="flex:1;border:none;width:100%;"></iframe>
+        <div id="ob-chart-el" style="flex:1;min-height:0;"></div>
+    </div>
+    <!-- Right: order book -->
+    <div style="width:360px;flex-shrink:0;display:flex;flex-direction:column;background:#0B0E11;">
+        <iframe id="ob-iframe" src="" style="flex:1;border:none;width:100%;height:100%;"></iframe>
     </div>
 </div>
 

@@ -160,6 +160,14 @@ createApp({
                     maxLevelDistance.value.bidPrice = maxBidLevel[0];
                     maxLevelDistance.value.bidPercent = (((midPrice - maxBidLevel[0]) / midPrice) * 100).toFixed(2);
                 }
+                // Send strongest bid/ask levels to parent chart
+                if (window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'ob_levels',
+                        bid: maxBidLevel ? maxBidLevel[0] : null,
+                        ask: maxAskLevel ? maxAskLevel[0] : null,
+                    }, '*');
+                }
             }
 
             displayAsks.value = [...asksArray].reverse().map(([price, amount]) => ({
