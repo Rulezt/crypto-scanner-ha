@@ -125,26 +125,6 @@ def load_config():
                     if ha_url:
                         config['telegram']['ha_url'] = ha_url
 
-                    # Get EMA Touch threshold from add-on (if set)
-                    ema_touch_threshold = addon_options.get('ema_touch_threshold')
-                    if ema_touch_threshold is not None:
-                        config['ema_touch']['ema_touch_threshold'] = float(ema_touch_threshold)
-                        logger.info(f"✅ EMA touch threshold loaded from add-on config: {ema_touch_threshold}%")
-
-                    # Get ATH/ATL threshold from add-on (if set)
-                    ath_atl_threshold = addon_options.get('ath_atl_threshold')
-                    if ath_atl_threshold is not None:
-                        config['ath_atl']['proximity_threshold'] = float(ath_atl_threshold)
-                        logger.info(f"✅ ATH/ATL threshold loaded from add-on config: {ath_atl_threshold}%")
-
-                    # Get ICO levels settings from add-on (if set)
-                    ico_thr = addon_options.get('ico_levels_threshold')
-                    if ico_thr is not None:
-                        config['ico_levels']['ico_levels_threshold'] = float(ico_thr)
-                    ico_tf = addon_options.get('ico_levels_tf')
-                    if ico_tf:
-                        config['ico_levels']['ico_levels_tf'] = str(ico_tf)
-
             except Exception as e:
                 logger.warning(f"⚠️ Could not load add-on options: {e}")
                 
@@ -265,7 +245,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.4.1',
+        'version': '3.5.0',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
