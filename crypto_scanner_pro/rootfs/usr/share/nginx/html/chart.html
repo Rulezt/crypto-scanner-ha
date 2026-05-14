@@ -786,12 +786,12 @@ async function loadSlotData(idx) {
         if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} }
         if (jd.success && jd.data && jd.data.length) {
             const today = jd.data[jd.data.length - 1];
-            s.dayHighLine  = s.candleS.createPriceLine({ price: today.high, color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'H' });
-            s.dayLowLine   = s.candleS.createPriceLine({ price: today.low,  color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'L' });
+            s.dayHighLine  = s.candleS.createPriceLine({ price: today.high, color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
+            s.dayLowLine   = s.candleS.createPriceLine({ price: today.low,  color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
             if (jd.data.length >= 2) {
                 const prev = jd.data[jd.data.length - 2];
-                s.prevHighLine = s.candleS.createPriceLine({ price: prev.high, color:'#22c55e', lineWidth:2, lineStyle:2, axisLabelVisible:true, title:'pH' });
-                s.prevLowLine  = s.candleS.createPriceLine({ price: prev.low,  color:'#ef4444', lineWidth:2, lineStyle:2, axisLabelVisible:true, title:'pL' });
+                s.prevHighLine = s.candleS.createPriceLine({ price: prev.high, color:'#22c55e', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
+                s.prevLowLine  = s.candleS.createPriceLine({ price: prev.low,  color:'#ef4444', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
             }
         }
     } catch(e) { console.error(`Error loading ${s.symbol}:`, e); }
@@ -906,12 +906,12 @@ async function loadFsData() {
         if (fsPrevLowLine)  { try { fsCandleS.removePriceLine(fsPrevLowLine);  } catch(e) {} }
         if (jd.success && jd.data && jd.data.length) {
             const today = jd.data[jd.data.length - 1];
-            fsDayHighLine  = fsCandleS.createPriceLine({ price: today.high, color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'H' });
-            fsDayLowLine   = fsCandleS.createPriceLine({ price: today.low,  color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'L' });
+            fsDayHighLine  = fsCandleS.createPriceLine({ price: today.high, color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
+            fsDayLowLine   = fsCandleS.createPriceLine({ price: today.low,  color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
             if (jd.data.length >= 2) {
                 const prev = jd.data[jd.data.length - 2];
-                fsPrevHighLine = fsCandleS.createPriceLine({ price: prev.high, color:'#22c55e', lineWidth:2, lineStyle:2, axisLabelVisible:true, title:'pH' });
-                fsPrevLowLine  = fsCandleS.createPriceLine({ price: prev.low,  color:'#ef4444', lineWidth:2, lineStyle:2, axisLabelVisible:true, title:'pL' });
+                fsPrevHighLine = fsCandleS.createPriceLine({ price: prev.high, color:'#22c55e', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
+                fsPrevLowLine  = fsCandleS.createPriceLine({ price: prev.low,  color:'#ef4444', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
             }
         }
     } catch(e) { console.error('FS load error:', e); }

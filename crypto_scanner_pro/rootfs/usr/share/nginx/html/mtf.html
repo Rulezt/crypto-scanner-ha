@@ -260,10 +260,10 @@ async function loadSlot(idx, dailyData) {
     // H / L / pH / pL lines
     if (dailyData) {
       const {today, prev} = dailyData;
-      s.dayHighLine  = s.candleS.createPriceLine({price:today.high,color:'#22c55e',lineWidth:1,lineStyle:0,axisLabelVisible:true,title:'H'});
-      s.dayLowLine   = s.candleS.createPriceLine({price:today.low, color:'#ef4444',lineWidth:1,lineStyle:0,axisLabelVisible:true,title:'L'});
-      s.prevHighLine = s.candleS.createPriceLine({price:prev.high, color:'#22c55e',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'pH'});
-      s.prevLowLine  = s.candleS.createPriceLine({price:prev.low,  color:'#ef4444',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'pL'});
+      s.dayHighLine  = s.candleS.createPriceLine({price:today.high,color:'#22c55e',lineWidth:1,lineStyle:0,axisLabelVisible:false,title:''});
+      s.dayLowLine   = s.candleS.createPriceLine({price:today.low, color:'#ef4444',lineWidth:1,lineStyle:0,axisLabelVisible:false,title:''});
+      s.prevHighLine = s.candleS.createPriceLine({price:prev.high, color:'#22c55e',lineWidth:1,lineStyle:2,axisLabelVisible:false,title:''});
+      s.prevLowLine  = s.candleS.createPriceLine({price:prev.low,  color:'#ef4444',lineWidth:1,lineStyle:2,axisLabelVisible:false,title:''});
     }
   } catch(e) {
     console.error(`MTF load ${s.cfg.label} error:`, e);
