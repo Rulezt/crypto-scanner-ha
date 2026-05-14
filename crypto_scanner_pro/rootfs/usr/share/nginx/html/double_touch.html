@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terzo Tocco Scanner</title>
+    <link rel="icon" type="image/x-icon" href="https://www.bitcoin.com/static/favicon.ico">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0b; color: #f0f0f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 8px; padding: 10px 16px;
+            background: #111; border-bottom: 1px solid #2a2a2a;
+            position: sticky; top: 0; z-index: 100;
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .header h1 { font-size: 1rem; color: #f9fafb; white-space: nowrap; }
+        .status { color: #6b7280; font-size: 0.75rem; }
+        .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        select, input[type="number"] {
+            background: #1f2937; color: #f9fafb;
+            border: 1px solid #374151; border-radius: 4px;
+            padding: 5px 8px; font-size: 0.8rem; cursor: pointer;
+        }
+        input[type="number"] { width: 65px; }
+        label { font-size: 0.75rem; color: #9ca3af; white-space: nowrap; }
+        .control-group { display: flex; align-items: center; gap: 6px; }
+        .btn {
+            background: #374151; color: #f9fafb;
+            border: 1px solid #4b5563; padding: 6px 12px;
+            border-radius: 4px; cursor: pointer; font-size: 0.8rem;
+            white-space: nowrap; transition: background 0.15s; text-decoration: none;
+        }
+        .btn:hover { background: #4b5563; }
+        .btn.primary { background: #7c3aed; border-color: #7c3aed; }
+        .btn.primary:hover { background: #6d28d9; }
+        .btn.danger { background: #7f1d1d; border-color: #991b1b; }
+        .btn.danger:hover { background: #991b1b; }
+
+        /* ===== PROGRESS ===== */
+        .progress-wrap { height: 3px; background: #1a1a1a; }
+        .progress-fill { height: 100%; background: #7c3aed; transition: width 0.3s; }
+
+        /* ===== FILTER BAR ===== */
+        .filter-bar {
+            display: flex; gap: 8px; padding: 7px 16px;
+            background: #0e0e0f; border-bottom: 1px solid #1a1a1a;
+            flex-wrap: wrap; align-items: center;
+        }
+        .filter-label { font-size: 0.7rem; color: #6b7280; }
+        .filt-btn {
+            font-size: 0.7rem; padding: 2px 10px; border-radius: 10px;
+            cursor: pointer; border: 1px solid #374151;
+            background: transparent; color: #9ca3af; transition: all 0.15s;
+        }
+        .filt-btn:hover { background: #1f2937; }
+        .filt-btn.active { background: #374151; color: #f9fafb; border-color: #4b5563; }
+        .filt-btn.res.active { background: rgba(16,185,129,0.2); border-color: #10b981; color: #34d399; }
+        .filt-btn.sup.active { background: rgba(239,68,68,0.2); border-color: #ef4444; color: #f87171; }
+        .divider { width: 1px; height: 18px; background: #2a2a2a; }
+        .count-chip {
+            margin-left: auto; font-size: 0.68rem; color: #4b5563;
+            background: #111; border: 1px solid #1f1f1f;
+            padding: 2px 8px; border-radius: 8px;
+        }
+
+        /* ===== TABLE ===== */
+        .table-wrap { overflow-x: auto; padding-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        thead { position: sticky; top: 0; z-index: 10; }
+        thead th {
+            background: #111; color: #6b7280; font-weight: 600;
+            font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.04em;
+            padding: 8px 10px; border-bottom: 1px solid #222;
+            white-space: nowrap; cursor: pointer; user-select: none;
+        }
+        thead th:hover { color: #d1d5db; }
+        .sa { margin-left: 3px; color: #4b5563; }
+        thead th.sorted .sa { color: #7c3aed; }
+
+        tbody tr { border-bottom: 1px solid #141414; transition: background 0.1s; }
+        tbody tr:hover { background: rgba(255,255,255,0.025); }
+        td { padding: 7px 10px; white-space: nowrap; }
+
+        .td-rank { color: #4b5563; font-size: 0.7rem; text-align: center; width: 32px; }
+        .td-sym { font-weight: 700; }
+        .td-sym a { color: #f9fafb; text-decoration: none; }
+        .td-sym a:hover { color: #a5b4fc; }
+        .td-num { text-align: right; font-family: 'Monaco','Consolas',monospace; font-size: 0.78rem; }
+        .td-center { text-align: center; }
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .muted { color: #6b7280; }
+
+        /* Type badge */
+        .type-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 10px;
+            font-size: 0.63rem; font-weight: 700; letter-spacing: 0.04em;
+        }
+        .type-res { background: rgba(16,185,129,0.18); color: #34d399; }
+        .type-sup { background: rgba(239,68,68,0.18); color: #f87171; }
+
+        /* Level cell */
+        .level-cell {
+            display: flex; align-items: center; gap: 6px;
+            justify-content: flex-end;
+        }
+        .level-price {
+            font-family: 'Monaco','Consolas',monospace; font-size: 0.78rem; color: #d1d5db;
+        }
+        .level-bar-wrap {
+            width: 50px; height: 5px; background: #1f2937; border-radius: 3px; overflow: hidden;
+        }
+        .level-bar-fill { height: 100%; border-radius: 3px; }
+
+        /* Freshness indicator */
+        .fresh-badge {
+            display: inline-block; font-size: 0.6rem; font-weight: 700;
+            padding: 1px 5px; border-radius: 3px;
+        }
+        .fresh-1 { background: rgba(251,191,36,0.25); color: #fbbf24; }
+        .fresh-2 { background: rgba(251,191,36,0.15); color: #d97706; }
+        .fresh-3 { background: rgba(148,163,184,0.15); color: #94a3b8; }
+
+        /* Gap between touches */
+        .gap-badge {
+            font-size: 0.72rem; font-family: monospace; color: #9ca3af;
+        }
+
+        /* ===== LOADING ===== */
+        .loading-overlay {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; padding: 80px 20px; gap: 14px; color: #6b7280;
+        }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid rgba(255,255,255,0.08);
+            border-top-color: #7c3aed; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== LWC POPUP ===== */
+        .lwc-popup {
+            position: fixed; z-index: 9999; background: #0f0f10;
+            border: 1px solid #2a2a2a; border-radius: 8px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.85);
+            overflow: hidden; pointer-events: none;
+            opacity: 0; transform: scale(0.97);
+            transition: opacity 0.13s ease, transform 0.13s ease;
+            width: 600px; height: 340px;
+        }
+        .lwc-popup.visible { opacity: 1; transform: scale(1); pointer-events: auto; }
+        .lwc-popup.visible .lwc-popup-chart { cursor: crosshair; }
+        .lwc-popup-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 5px 10px; background: #111; border-bottom: 1px solid #1e1e1e;
+        }
+        .lwc-popup-title { font-size: 0.72rem; font-weight: 700; color: #f9fafb; }
+        .lwc-popup-emas { display: flex; gap: 7px; font-size: 0.6rem; font-weight: 600; }
+        .lwc-popup-tf { display: flex; gap: 3px; }
+        .lwc-popup-tf button {
+            background: transparent; border: 1px solid #374151; color: #9ca3af;
+            padding: 1px 6px; border-radius: 3px; font-size: 0.62rem;
+            cursor: pointer; pointer-events: auto; transition: all 0.1s;
+        }
+        .lwc-popup-tf button.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+        .lwc-popup-chart { width: 100%; height: calc(100% - 30px); }
+
+        /* ===== LEGEND ===== */
+        .legend {
+            display: flex; gap: 14px; padding: 6px 16px;
+            background: #0e0e0f; border-top: 1px solid #1a1a1a; flex-wrap: wrap;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: #6b7280; }
+        .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+        /* ===== DRAG & DROP COLUMNS ===== */
+        .draggable-th { cursor: grab; user-select: none; }
+        .draggable-th:active { cursor: grabbing; }
+        .draggable-th.drag-over { background: rgba(99,102,241,0.25) !important; border-left: 2px solid #6366f1; }
+    </style>
+</head>
+<body>
+<div id="app">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <h1>🔁 Terzo Tocco Scanner</h1>
+            <span class="status">{{ statusMsg }}</span>
+        </div>
+        <div class="controls">
+            <div class="control-group">
+                <label>Min Vol</label>
+                <select v-model="minVolume">
+                    <option :value="0">Nessun minimo</option>
+                    <option :value="10e6">10M</option>
+                    <option :value="20e6">20M</option>
+                    <option :value="50e6">50M</option>
+                    <option :value="100e6">100M</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Timeframe</label>
+                <select v-model="scanTf">
+                    <option value="D">Daily</option>
+                    <option value="240">4h</option>
+                    <option value="60">1h</option>
+                    <option value="30">30m</option>
+                    <option value="5">5m</option>
+                    <option value="1">1m</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Tolleranza %</label>
+                <input type="number" v-model.number="tolerance" min="0.1" max="2" step="0.1">
+            </div>
+            <div class="control-group">
+                    <label>Prossimità %</label>
+                    <input type="number" v-model.number="proximity" min="0.1" max="10" step="0.1" style="width:60px">
+                </div>
+                <button @click="startScan" :disabled="scanning" class="btn primary">
+                {{ scanning ? '⏳ Scansione...' : '🔍 Avvia Scan' }}
+            </button>
+            <button v-if="scanning" @click="stopScan" class="btn danger">⏹ Stop</button>
+            <a href="./" class="btn">← Dashboard</a>
+        </div>
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="progress-wrap">
+        <div class="progress-fill" :style="{ width: progressPct + '%' }"></div>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar" v-if="results.length > 0">
+        <span class="filter-label">Tipo:</span>
+        <button @click="typeFilter='all'" :class="['filt-btn', typeFilter==='all' ? 'active':'']">Tutti</button>
+        <button @click="typeFilter='resistance'" :class="['filt-btn res', typeFilter==='resistance' ? 'active':'']">
+            🟢 Long ({{ countRes }})
+        </button>
+        <button @click="typeFilter='support'" :class="['filt-btn sup', typeFilter==='support' ? 'active':'']">
+            🔴 Short ({{ countSup }})
+        </button>
+        <div class="divider"></div>
+        <span class="filter-label">Ordina:</span>
+        <button @click="setSortBy('freshness')" :class="['filt-btn', sortBy==='freshness' ? 'active':'']">Freschezza</button>
+        <button @click="setSortBy('gap')"       :class="['filt-btn', sortBy==='gap'       ? 'active':'']">Gap candele</button>
+        <button @click="setSortBy('volume')"    :class="['filt-btn', sortBy==='volume'    ? 'active':'']">Volume</button>
+        <button @click="setSortBy('precision')" :class="['filt-btn', sortBy==='precision' ? 'active':'']">Precisione</button>
+        <div class="count-chip">{{ filteredResults.length }} pattern trovati</div>
+    </div>
+
+    <!-- LOADING -->
+    <div v-if="scanning && results.length === 0" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Analisi Terzo Tocco in corso...</p>
+        <p style="font-size:0.72rem;color:#374151">{{ progressDone }}/{{ progressTotal }} coin analizzate</p>
+    </div>
+
+    <!-- INITIAL -->
+    <div v-if="!scanning && results.length === 0 && !initialDone" class="loading-overlay">
+        <div style="font-size:2.5rem">🔁</div>
+        <p style="font-weight:600">Terzo Tocco Pattern Scanner</p>
+        <p style="font-size:0.78rem;color:#4b5563;max-width:420px;text-align:center;line-height:1.6">
+            Individua coin con due tocchi precisi dello stesso livello di prezzo (High o Low) su daily,
+            senza violazione del livello tra i due tocchi — setup ideale per anticipare un breakout al terzo tocco.
+        </p>
+        <button @click="startScan" class="btn primary" style="margin-top:8px">🔍 Avvia Scan</button>
+    </div>
+
+    <!-- EMPTY AFTER SCAN -->
+    <div v-if="!scanning && results.length === 0 && initialDone" class="loading-overlay">
+        <div style="font-size:2rem">🔎</div>
+        <p>Nessun pattern trovato con i parametri attuali.</p>
+        <p style="font-size:0.75rem;color:#4b5563;margin-top:6px">Prova ad aumentare la tolleranza o il numero di coin analizzate.</p>
+    </div>
+
+    <!-- IN PROGRESS LABEL -->
+    <div v-if="scanning && results.length > 0"
+         style="padding:6px 16px;font-size:0.7rem;color:#4b5563;border-bottom:1px solid #111">
+        ⏳ Analisi in corso… {{ progressDone }}/{{ progressTotal }} — {{ results.length }} pattern trovati finora
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap" v-if="filteredResults.length > 0">
+        <table>
+            <thead>
+                <tr>
+                    <th class="td-rank">#</th>
+                    <th v-for="col in columns" :key="col.key"
+                        :class="['draggable-th', dragOver === col.key ? 'drag-over' : '', sortBy === col.key ? 'sorted' : '']"
+                        :style="col.align ? `text-align:${col.align}` : ''"
+                        draggable="true"
+                        @dragstart="onDragStart(col.key)"
+                        @dragover.prevent="onDragOver(col.key)"
+                        @drop="onDrop(col.key)"
+                        @dragend="onDragEnd"
+                        @click="col.sortKey ? setSortBy(col.sortKey) : null">
+                        {{ col.label }} <span v-if="col.sortKey" class="sa">{{ sa(col.sortKey) }}</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="(r, i) in filteredResults" :key="r.symbol + r.type + r.level"
+                    @mouseenter="showPopup($event, r)"
+                    @mouseleave="hidePopup">
+                    <td class="td-rank">{{ i + 1 }}</td>
+                    <td v-for="col in columns" :key="col.key"
+                        :class="col.tdClass ? col.tdClass(r) : 'td-num'">
+                        <template v-if="col.key === 'symbol'">
+                            <a :href="`https://it.tradingview.com/chart/KDtSSRjB/?symbol=BYBIT:${r.symbol}.P`" target="_blank">
+                                {{ r.symbol.replace('USDT','') }}
+                            </a>
+                        </template>
+                        <template v-else-if="col.key === 'segnale'">
+                            <span :class="['type-badge', r.type === 'resistance' ? 'type-res' : 'type-sup']">
+                                {{ r.type === 'resistance' ? '🟢 Long' : '🔴 Short' }}
+                            </span>
+                        </template>
+                        <template v-else-if="col.key === 'volume'">{{ formatVolume(r.volume) }}</template>
+                        <template v-else-if="col.key === 'avgCandlePct'">
+                            <span :class="r.avgCandlePct >= 2 ? 'positive' : r.avgCandlePct >= 1 ? '' : 'muted'">
+                                {{ r.avgCandlePct ? r.avgCandlePct.toFixed(2) + '%' : '—' }}
+                            </span>
+                        </template>
+                        <template v-else-if="col.key === 'precision'">
+                            <span :class="r.precision <= 0.1 ? 'positive' : r.precision <= 0.3 ? '' : 'muted'">
+                                {{ r.precision.toFixed(3) }}%
+                            </span>
+                        </template>
+                        <template v-else-if="col.key === 'gap'">
+                            <span class="gap-badge">{{ r.gap }} candele</span>
+                        </template>
+                        <template v-else-if="col.key === 'freshness'">
+                            <span :class="['fresh-badge', r.freshness === 1 ? 'fresh-1' : r.freshness <= 2 ? 'fresh-2' : 'fresh-3']">
+                                {{ r.freshness === 1 ? '🔥 Ultima' : `${r.freshness}g fa` }}
+                            </span>
+                        </template>
+                        <template v-else-if="col.key === 'currentPrice'">{{ formatPrice(r.currentPrice) }}</template>
+                        <template v-else-if="col.key === 'distFromCurrent'">
+                            <span :class="r.distFromCurrent > 0 ? 'positive' : 'negative'">
+                                {{ r.distFromCurrent > 0 ? '+' : '' }}{{ r.distFromCurrent.toFixed(2) }}%
+                            </span>
+                        </template>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- LWC POPUP -->
+    <div id="lwc-popup" class="lwc-popup">
+        <div class="lwc-popup-header">
+            <span class="lwc-popup-title" id="lwc-popup-title">—</span>
+            <div class="lwc-popup-tf" id="lwc-popup-tf">
+                <button data-tf="1"  >1m</button>
+                <button data-tf="5"  >5m</button>
+                <button data-tf="30" >30m</button>
+                <button data-tf="60" >1h</button>
+                <button data-tf="240">4h</button>
+                <button data-tf="D"  class="active">D</button>
+            </div>
+        </div>
+        <div class="lwc-popup-chart" id="lwc-popup-chart"></div>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="legend" v-if="results.length > 0">
+        <div class="legend-item"><span class="legend-dot" style="background:#10b981"></span> Long — due High allo stesso livello (breakout rialzista atteso al terzo tocco)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> Short — due Low allo stesso livello (breakout ribassista atteso al terzo tocco)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#7c3aed"></span> Linea livello sul grafico</div>
+        <div class="legend-item" style="margin-left:auto;color:#374151">Tolleranza: {{ tolerance }}% · {{ results.length }} pattern</div>
+    </div>
+
+</div>
+<script>
+const { createApp, ref, computed, onMounted } = Vue;
+
+createApp({
+    setup() {
+        const minVolume   = ref(10e6);
+        const topN        = ref(9999);
+        const tolerance   = ref(0.5);
+        const maxFreshness= 30;
+        const scanTf      = ref('D');
+        const proximity   = ref(2);
+        const scanning    = ref(false);
+        const stopFlag    = ref(false);
+        const statusMsg   = ref('Pronto. Configura e premi Avvia Scan.');
+        const initialDone = ref(false);
+
+        const results       = ref([]);
+        const progressDone  = ref(0);
+        const progressTotal = ref(0);
+        const progressPct   = computed(() =>
+            progressTotal.value === 0 ? 0 : Math.round(progressDone.value / progressTotal.value * 100)
+        );
+
+        // ============================
+        //  COLUMNS (drag & drop)
+        // ============================
+        const STORAGE_KEY_DT = 'dt_columns_order';
+        const defaultOrder = ['symbol','segnale','volume','avgCandlePct','precision','gap','freshness','currentPrice','distFromCurrent'];
+
+        const savedOrder = (() => {
+            try { return JSON.parse(localStorage.getItem(STORAGE_KEY_DT)); } catch { return null; }
+        })();
+
+        const columnsDef = [
+            { key: 'symbol',         label: 'Symbol',       sortKey: 'symbol',       align: 'left',   tdClass: () => 'td-sym' },
+            { key: 'segnale',        label: 'Segnale',      sortKey: null,           align: 'center', tdClass: () => 'td-center' },
+            { key: 'volume',         label: 'Vol 24h',      sortKey: 'volume',       align: 'right',  tdClass: () => 'td-num muted' },
+            { key: 'avgCandlePct',   label: '% Candela',    sortKey: 'avgCandlePct', align: 'right',  tdClass: () => 'td-num' },
+            { key: 'precision',      label: 'Diff tocchi',  sortKey: 'precision',    align: 'right',  tdClass: () => 'td-num' },
+            { key: 'gap',            label: 'Gap candele',  sortKey: 'gap',          align: 'center', tdClass: () => 'td-center' },
+            { key: 'freshness',      label: 'Freschezza',   sortKey: 'freshness',    align: 'center', tdClass: () => 'td-center' },
+            { key: 'currentPrice',   label: 'Prezzo att.',  sortKey: null,           align: 'right',  tdClass: () => 'td-num' },
+            { key: 'distFromCurrent',label: 'Dist. livello',sortKey: null,           align: 'right',  tdClass: (r) => r.distFromCurrent > 0 ? 'td-num positive' : 'td-num negative' },
+        ];
+
+        const sortedCols = savedOrder
+            ? savedOrder.map(k => columnsDef.find(c => c.key === k)).filter(Boolean)
+            : columnsDef;
+
+        const columns = ref(sortedCols);
+
+        let dragKey = null;
+        const dragOver = ref(null);
+
+        const onDragStart = (key) => { dragKey = key; };
+        const onDragOver  = (key) => { dragOver.value = key; };
+        const onDragEnd   = ()    => { dragKey = null; dragOver.value = null; };
+        const onDrop      = (targetKey) => {
+            if (!dragKey || dragKey === targetKey) { onDragEnd(); return; }
+            const cols = columns.value;
+            const fromIdx = cols.findIndex(c => c.key === dragKey);
+            const toIdx   = cols.findIndex(c => c.key === targetKey);
+            if (fromIdx === -1 || toIdx === -1) { onDragEnd(); return; }
+            const moved = cols.splice(fromIdx, 1)[0];
+            cols.splice(toIdx, 0, moved);
+            try { localStorage.setItem(STORAGE_KEY_DT, JSON.stringify(cols.map(c => c.key))); } catch {}
+            onDragEnd();
+        };
+
+        // ============================
+        //  FILTER & SORT
+        // ============================
+        const typeFilter = ref('all');
+        const sortBy     = ref('freshness');
+        const sortDir    = ref(1);
+
+        const setSortBy = (key) => {
+            if (sortBy.value === key) sortDir.value *= -1;
+            else {
+                sortBy.value = key;
+                sortDir.value = (key === 'freshness' || key === 'precision') ? 1 : -1;
+            }
+        };
+        const sa = (key) => {
+            if (sortBy.value !== key) return '↕';
+            return sortDir.value === 1 ? '↑' : '↓';
+        };
+
+        const countRes = computed(() => results.value.filter(r => r.type === 'resistance').length);
+        const countSup = computed(() => results.value.filter(r => r.type === 'support').length);
+
+        const filteredResults = computed(() => {
+            let list = [...results.value];
+            if (typeFilter.value !== 'all') list = list.filter(r => r.type === typeFilter.value);
+
+            list.sort((a, b) => {
+                let va, vb;
+                switch(sortBy.value) {
+                    case 'freshness':    va = a.freshness;       vb = b.freshness;       break;
+                    case 'gap':          va = a.gap;              vb = b.gap;             break;
+                    case 'volume':       va = a.volume;           vb = b.volume;          break;
+                    case 'precision':    va = a.precision;        vb = b.precision;       break;
+                    case 'avgCandlePct': va = a.avgCandlePct||0;  vb = b.avgCandlePct||0; break;
+                    case 'symbol':       return a.symbol.localeCompare(b.symbol) * sortDir.value;
+                    default: va = a.freshness; vb = b.freshness;
+                }
+                return (va - vb) * sortDir.value;
+            });
+            return list;
+        });
+
+        // ============================
+        //  CORE ALGORITHM
+        // ============================
+        const findDoubleTouches = (candles, tol, freshN, currentPrice) => {
+            const patterns = [];
+            const n = candles.length;
+            const tolFrac     = tol / 100;
+
+            for (let j = Math.max(1, n - freshN); j < n; j++) {
+                const hJ = candles[j].high;
+                const cJ = candles[j].close;
+
+                if (cJ >= hJ) continue;
+
+                for (let i = 5; i < j - 2; i++) {
+                    const hI = candles[i].high;
+                    const cI = candles[i].close;
+                    if (cI >= hI) continue;
+
+                    const diff = Math.abs(hI - hJ) / Math.max(hI, hJ);
+                    if (diff > tolFrac) continue;
+
+                    const level      = (hI + hJ) / 2;
+                    if (cI >= level) continue;
+                    if (cJ >= level) continue;
+
+                    const gap = j - i;
+                    if (gap < 3 || gap > 60) continue;
+
+                    let violated = false;
+                    for (let k = 0; k < j; k++) {
+                        if (k === i) continue;
+                        const c = candles[k];
+                        if (c.high  >= level) { violated = true; break; }
+                        if (c.close >  level) { violated = true; break; }
+                    }
+                    if (violated) continue;
+
+                    if (currentPrice >= level) continue;
+
+                    let postViolated = false;
+                    for (let k = j + 1; k < n; k++) {
+                        if (candles[k].close > level) { postViolated = true; break; }
+                        if (candles[k].high  > level) { postViolated = true; break; }
+                    }
+                    if (postViolated) continue;
+
+                    const freshness = n - 1 - j;
+                    patterns.push({
+                        type:      'resistance',
+                        level,
+                        precision: diff * 100,
+                        gap,
+                        freshness:  Math.max(1, freshness + 1),
+                        touchA:     i,
+                        touchB:     j,
+                        touchATime: candles[i].time,
+                        touchBTime: candles[j].time,
+                        distFromCurrent: ((currentPrice - level) / level) * 100,
+                    });
+                }
+            }
+
+            for (let j = Math.max(1, n - freshN); j < n; j++) {
+                const lJ = candles[j].low;
+                const cJ = candles[j].close;
+
+                if (cJ <= lJ) continue;
+
+                for (let i = 5; i < j - 2; i++) {
+                    const lI = candles[i].low;
+                    const cI = candles[i].close;
+                    if (cI <= lI) continue;
+
+                    const diff = Math.abs(lI - lJ) / Math.min(lI, lJ);
+                    if (diff > tolFrac) continue;
+
+                    const level     = (lI + lJ) / 2;
+
+                    if (cI <= level) continue;
+                    if (cJ <= level) continue;
+
+                    const gap = j - i;
+                    if (gap < 3 || gap > 60) continue;
+
+                    let violated = false;
+                    for (let k = 0; k < j; k++) {
+                        if (k === i) continue;
+                        const c = candles[k];
+                        if (c.low   <= level) { violated = true; break; }
+                        if (c.close <  level) { violated = true; break; }
+                    }
+                    if (violated) continue;
+
+                    if (currentPrice <= level) continue;
+
+                    let postViolated = false;
+                    for (let k = j + 1; k < n; k++) {
+                        if (candles[k].close < level) { postViolated = true; break; }
+                        if (candles[k].low   < level) { postViolated = true; break; }
+                    }
+                    if (postViolated) continue;
+
+                    const freshness = n - 1 - j;
+                    patterns.push({
+                        type:      'support',
+                        level,
+                        precision: diff * 100,
+                        gap,
+                        freshness:  Math.max(1, freshness + 1),
+                        touchA:     i,
+                        touchB:     j,
+                        touchATime: candles[i].time,
+                        touchBTime: candles[j].time,
+                        distFromCurrent: ((currentPrice - level) / level) * 100,
+                    });
+                }
+            }
+
+            const best = {};
+            for (const p of patterns) {
+                const key = p.type;
+                if (!best[key]) { best[key] = p; continue; }
+                const b = best[key];
+                if (p.freshness < b.freshness)                                               { best[key] = p; continue; }
+                if (p.freshness === b.freshness && p.precision < b.precision)                { best[key] = p; continue; }
+                if (p.freshness === b.freshness && p.precision === b.precision && p.gap > b.gap) { best[key] = p; }
+            }
+            return Object.values(best);
+        };
+
+        // ============================
+        //  SCAN
+        // ============================
+        const stopScan = () => { stopFlag.value = true; };
+
+        const startScan = async () => {
+            if (scanning.value) return;
+            scanning.value  = true;
+            stopFlag.value  = false;
+            initialDone.value = false;
+            results.value   = [];
+            progressDone.value  = 0;
+            progressTotal.value = 0;
+            statusMsg.value = '🔄 Fetch ticker Bybit...';
+
+            try {
+                const resp = await fetch('https://api.bybit.com/v5/market/tickers?category=linear');
+                const data = await resp.json();
+                if (data.retCode !== 0) throw new Error(data.retMsg);
+
+                const tickers = data.result.list
+                    .filter(t => t.symbol.endsWith('USDT') && !t.symbol.includes('-'))
+                    .map(t => ({
+                        symbol:  t.symbol,
+                        price:   parseFloat(t.lastPrice)   || 0,
+                        volume:  parseFloat(t.turnover24h) || 0,
+                    }))
+                    .filter(t => minVolume.value === 0 || t.volume >= minVolume.value)
+                    .filter(t => t.price > 0)
+                    .sort((a, b) => b.volume - a.volume)
+                    .slice(0, topN.value);
+
+                progressTotal.value = tickers.length;
+                statusMsg.value = `🔍 Analisi ${tickers.length} coin su ${scanTf.value}...`;
+
+                const BATCH = 5;
+                for (let i = 0; i < tickers.length; i += BATCH) {
+                    if (stopFlag.value) { statusMsg.value = '⏹ Interrotto.'; break; }
+
+                    const batch = tickers.slice(i, i + BATCH);
+                    await Promise.all(batch.map(async (ticker) => {
+                        try {
+                            const url = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${ticker.symbol}&interval=${scanTf.value}&limit=100`;
+                            const res  = await fetch(url);
+                            const json = await res.json();
+                            if (json.retCode !== 0 || !json.result?.list?.length) return;
+
+                            const candles = json.result.list
+                                .slice(1)
+                                .reverse()
+                                .map(c => ({
+                                    time:  Math.floor(parseInt(c[0]) / 1000),
+                                    open:  parseFloat(c[1]),
+                                    high:  parseFloat(c[2]),
+                                    low:   parseFloat(c[3]),
+                                    close: parseFloat(c[4]),
+                                }))
+                                .filter(c => isFinite(c.high) && isFinite(c.low));
+
+                            if (candles.length < 10) return;
+
+                            const avgCandlePct = candles.reduce((sum, c) =>
+                                sum + (c.low > 0 ? ((c.high - c.low) / c.low) * 100 : 0), 0
+                            ) / candles.length;
+
+                            const patterns = findDoubleTouches(
+                                candles,
+                                tolerance.value,
+                                maxFreshness,
+                                ticker.price
+                            );
+
+                            for (const p of patterns) {
+                                if (Math.abs(p.distFromCurrent) > proximity.value) continue;
+                                results.value.push({
+                                    symbol:       ticker.symbol,
+                                    currentPrice: ticker.price,
+                                    volume:       ticker.volume,
+                                    avgCandlePct,
+                                    ...p,
+                                });
+                            }
+                        } catch(e) { /* skip */ }
+                        finally { progressDone.value++; }
+                    }));
+
+                    if (i + BATCH < tickers.length && !stopFlag.value) {
+                        await new Promise(r => setTimeout(r, 200));
+                    }
+                }
+
+                statusMsg.value = `✅ ${results.value.length} pattern trovati su ${progressDone.value} coin · ${new Date().toLocaleTimeString('it-IT')}`;
+                initialDone.value = true;
+
+            } catch(err) {
+                statusMsg.value = '❌ ' + err.message;
+                console.error(err);
+            } finally {
+                scanning.value = false;
+            }
+        };
+
+        // ============================
+        //  LWC POPUP
+        // ============================
+        const EMA_CONFIG = [
+            { period: 5,   color: '#ef4444', width: 2   },
+            { period: 10,  color: '#fbbf24', width: 2   },
+            { period: 60,  color: '#3b82f6', width: 3   },
+            { period: 223, color: '#a855f7', width: 2.5 },
+        ];
+
+        const calcEMALine = (klines, period) => {
+            if (!klines?.length) return [];
+            const k = 2 / (period + 1);
+            const result = [];
+            if (klines.length >= period) {
+                let ema = 0;
+                for (let i = 0; i < period; i++) ema += klines[i].close;
+                ema /= period;
+                result.push({ time: klines[period - 1].time, value: ema });
+                for (let i = period; i < klines.length; i++) {
+                    ema = klines[i].close * k + ema * (1 - k);
+                    result.push({ time: klines[i].time, value: ema });
+                }
+            } else {
+                let ema = klines[0].close;
+                for (let i = 1; i < klines.length; i++) {
+                    ema = klines[i].close * k + ema * (1 - k);
+                    result.push({ time: klines[i].time, value: ema });
+                }
+            }
+            return result;
+        };
+
+        let popupChart   = null;
+        let popupSymbol  = null;
+        let popupTf      = scanTf.value;
+        let popupResult  = null;
+        let hideTimer    = null;
+        let popupLocked  = false;
+        let buildSession = 0;
+
+        const destroyPopupChart = () => {
+            if (popupChart) { try { popupChart.remove(); } catch(e) {} popupChart = null; }
+            const el = document.getElementById('lwc-popup-chart');
+            if (el) el.innerHTML = '';
+        };
+
+        const buildPopupChart = async (result, tf) => {
+            const session = ++buildSession;
+            destroyPopupChart();
+
+            const container = document.getElementById('lwc-popup-chart');
+            if (!container || typeof LightweightCharts === 'undefined') return;
+
+            const { width, height } = container.getBoundingClientRect();
+            const chart = LightweightCharts.createChart(container, {
+                width: width || 600, height: height || 310,
+                layout: { background: { color: '#0f0f10' }, textColor: '#d1d5db' },
+                grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                handleScroll: true, handleScale: true,
+                rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },
+                timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 5, barSpacing: tf === 'D' ? 10 : 6 },
+                localization: { locale: 'it-IT' },
+            });
+
+            if (session !== buildSession) { try { chart.remove(); } catch(e) {} return; }
+            popupChart = chart;
+
+            try {
+                const limit = tf === 'D' ? 80 : tf === '1' ? 100 : tf === '240' ? 150 : tf === '30' ? 150 : tf === '5' ? 150 : 300;
+                const url = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${result.symbol}&interval=${tf}&limit=${limit}`;
+                const res  = await fetch(url);
+                const data = await res.json();
+                if (data.retCode !== 0 || !data.result?.list?.length) return;
+
+                if (session !== buildSession) return;
+
+                const seen = new Set();
+                const klines = data.result.list.map(c => ({
+                    time:  Math.floor(parseInt(c[0]) / 1000),
+                    open:  parseFloat(c[1]),
+                    high:  parseFloat(c[2]),
+                    low:   parseFloat(c[3]),
+                    close: parseFloat(c[4]),
+                })).reverse().filter(c => {
+                    if (seen.has(c.time)) return false;
+                    seen.add(c.time);
+                    return isFinite(c.open) && isFinite(c.close) && c.high >= c.low;
+                });
+
+                if (!klines.length || !popupChart || session !== buildSession) return;
+
+                const cs = chart.addCandlestickSeries({
+                    upColor: '#10b981', downColor: '#ef4444',
+                    borderVisible: false, wickUpColor: '#10b981', wickDownColor: '#ef4444',
+                });
+                cs.setData(klines);
+
+                if (result.level && result.touchATime && klines.length > 0) {
+                    const timeStep = klines.length > 1
+                        ? klines[klines.length - 1].time - klines[klines.length - 2].time
+                        : 86400;
+
+                    const touchATimeSec = result.touchATime;
+                    const touchBTimeSec = result.touchBTime;
+
+                    const hasA = klines.some(k => k.time === touchATimeSec);
+
+                    const lastTime   = klines[klines.length - 1].time;
+                    const futureTime = lastTime + timeStep * 20;
+
+                    const startTime = hasA ? touchATimeSec : klines[0].time;
+
+                    const projSeries = chart.addLineSeries({
+                        color: result.type === 'resistance' ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)',
+                        lineWidth: 2, lineStyle: 0,
+                        priceLineVisible: false, lastValueVisible: false,
+                        crosshairMarkerVisible: false, title: '',
+                    });
+                    projSeries.setData([
+                        { time: startTime,  value: result.level },
+                        { time: futureTime, value: result.level },
+                    ]);
+                }
+
+                for (const cfg of EMA_CONFIG) {
+                    const line = calcEMALine(klines, cfg.period);
+                    if (!line.length || !popupChart) continue;
+                    const s = chart.addLineSeries({
+                        color: cfg.color, lineWidth: cfg.width,
+                        priceLineVisible: false, lastValueVisible: false,
+                        crosshairMarkerVisible: false, title: '',
+                    });
+                    s.setData(line);
+                }
+
+                chart.timeScale().fitContent();
+                chart.timeScale().scrollToPosition(5, false);
+            } catch(e) { console.error(e); }
+        };
+
+        const TF_LABEL = { '1': '1m', '5': '5m', '30': '30m', '60': '1h', '240': '4h', 'D': 'Daily' };
+
+        const positionPopup = (event) => {
+            const popup = document.getElementById('lwc-popup');
+            if (!popup) return;
+            const M=14, PW=600, PH=340;
+            let x = event.clientX + M, y = event.clientY + M;
+            if (x + PW > window.innerWidth  - M) x = event.clientX - PW - M;
+            if (y + PH > window.innerHeight - M) y = event.clientY - PH - M;
+            popup.style.left = Math.max(M, x) + 'px';
+            popup.style.top  = Math.max(M, y) + 'px';
+        };
+
+        const showPopup = async (event, result) => {
+            clearTimeout(hideTimer);
+            const popup = document.getElementById('lwc-popup');
+            if (!popup) return;
+
+            popupTf = scanTf.value;
+            const tfBar = document.getElementById('lwc-popup-tf');
+            if (tfBar) {
+                tfBar.querySelectorAll('button').forEach(b => {
+                    b.classList.toggle('active', b.dataset.tf === popupTf);
+                });
+            }
+            document.getElementById('lwc-popup-title').textContent =
+                result.symbol.replace('USDT','') + ' · ' + (TF_LABEL[popupTf]||popupTf) +
+                ' · ' + formatPrice(result.level) +
+                ' · Vol ' + formatVolume(result.volume);
+            positionPopup(event);
+            popup.classList.add('visible');
+            if (popupSymbol !== result.symbol || popupResult?.type !== result.type) {
+                popupSymbol = result.symbol;
+                popupResult = result;
+                await buildPopupChart(result, popupTf);
+            }
+        };
+
+        const hidePopup = () => {
+            hideTimer = setTimeout(() => {
+                if (popupLocked) return;
+                document.getElementById('lwc-popup')?.classList.remove('visible');
+            }, 150);
+        };
+
+        const initPopup = () => {
+            const popup = document.getElementById('lwc-popup');
+            if (!popup) { setTimeout(initPopup, 100); return; }
+            popup.addEventListener('mouseenter', () => { popupLocked = true; clearTimeout(hideTimer); });
+            popup.addEventListener('mouseleave', () => { popupLocked = false; hidePopup(); });
+            const tfBar = document.getElementById('lwc-popup-tf');
+            if (!tfBar) return;
+            tfBar.addEventListener('click', async (e) => {
+                const btn = e.target.closest('button');
+                if (!btn) return;
+                popupTf = btn.dataset.tf;
+                tfBar.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (popupResult) {
+                    document.getElementById('lwc-popup-title').textContent =
+                        (popupResult.symbol || '').replace('USDT','') + ' · ' + (TF_LABEL[popupTf]||popupTf) +
+                        ' · ' + formatPrice(popupResult.level) +
+                        ' · Vol ' + formatVolume(popupResult.volume);
+                    await buildPopupChart(popupResult, popupTf);
+                }
+            });
+        };
+        initPopup();
+
+        // ============================
+        //  HELPERS
+        // ============================
+        const formatPrice = (p) => {
+            if (!p) return '—';
+            if (p >= 1000) return p.toFixed(2);
+            if (p >= 1)    return p.toFixed(4);
+            if (p >= 0.01) return p.toFixed(6);
+            return p.toFixed(8);
+        };
+        const formatVolume = (v) => {
+            if (!v) return '—';
+            if (v >= 1e9) return (v/1e9).toFixed(2)+'B';
+            if (v >= 1e6) return (v/1e6).toFixed(2)+'M';
+            if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+            return v.toFixed(0);
+        };
+
+        return {
+            minVolume, tolerance, scanTf, proximity,
+            columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
+            scanning, stopFlag, statusMsg, initialDone,
+            results, filteredResults, progressDone, progressTotal, progressPct,
+            typeFilter, sortBy, sortDir, countRes, countSup,
+            setSortBy, sa,
+            startScan, stopScan,
+            showPopup, hidePopup,
+            formatPrice, formatVolume,
+        };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>

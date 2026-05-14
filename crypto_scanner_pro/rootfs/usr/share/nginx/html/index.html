@@ -65,7 +65,7 @@
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <!-- Scanner Cards Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-6">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
             <!-- EMA Scanner -->
             <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-blue-500 transition-all">
                 <div class="flex items-center justify-between mb-2">
@@ -159,6 +159,26 @@
                 <div class="text-2xl font-bold" id="ico-count">-</div>
                 <div class="text-xs text-gray-500 mt-1">Listing Recenti</div>
                 <div class="text-xs text-gray-600 mt-1 leading-tight">Nuove coin vicino al prezzo di listing iniziale</div>
+            </div>
+
+            <!-- Terzo Tocco Scanner -->
+            <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-cyan-500 transition-all">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-cyan-400 text-sm font-medium">🔁 Terzo Tocco</div>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="openScannerModal('dt')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
+                        <span class="text-gray-700 text-xs">|</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="dt-toggle" class="sr-only peer" checked onchange="toggleScanner('double_touch')">
+                            <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-cyan-600"></div>
+                        </label>
+                        <div id="dt-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                    </div>
+                </div>
+                <div class="text-2xl font-bold" id="dt-count">-</div>
+                <div class="text-xs text-gray-500 mt-1">Pattern Daily</div>
+                <div class="text-xs text-gray-600 mt-1 leading-tight">Due tocchi identici H/L — breakout atteso al terzo</div>
+                <a href="double-touch" class="mt-2 block text-xs text-cyan-500 hover:text-cyan-300">→ Scanner visuale</a>
             </div>
         </div>
 
@@ -429,6 +449,35 @@
         </div>
     </div>
 
+    <!-- Terzo Tocco Scanner Modal -->
+    <div id="scanner-modal-dt" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('dt',event)">
+        <div style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
+                <span style="font-size:13px;font-weight:700;color:#67E8F9;">🔁 Terzo Tocco Scanner</span>
+                <button onclick="closeScannerModal('dt')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
+            </div>
+            <div class="p-4 space-y-3">
+                <div><label class="text-xs text-gray-500 block mb-1">Tolleranza tocchi (%):</label><input type="number" step="0.1" id="dt-cfg-tolerance" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1">Prossimità al livello (%):</label><input type="number" step="0.1" id="dt-cfg-proximity" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1">Timeframe:</label>
+                    <select id="dt-cfg-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none">
+                        <option value="D">Daily (1D)</option>
+                        <option value="240">4h</option>
+                        <option value="60">1h</option>
+                        <option value="30">30m</option>
+                    </select>
+                </div>
+                <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="dt-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1">Cooldown alert (ore):</label><input type="number" id="dt-cfg-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
+            </div>
+            <div class="px-4 pb-3 flex gap-2">
+                <button onclick="saveScannerConfig('dt')" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
+                <button onclick="closeScannerModal('dt')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors">Annulla</button>
+            </div>
+            <div id="dt-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
+        </div>
+    </div>
+
     <script>
         const API_URL = '.';
         let currentConfig = {};
@@ -485,6 +534,7 @@
                 if (currentConfig.volume_scanner) document.getElementById('volume-toggle').checked = currentConfig.volume_scanner.enabled;
                 if (currentConfig.ath_atl)        document.getElementById('ath-toggle').checked    = currentConfig.ath_atl.enabled;
                 if (currentConfig.ico_levels)     document.getElementById('ico-toggle').checked    = currentConfig.ico_levels.enabled;
+                if (currentConfig.double_touch)   document.getElementById('dt-toggle').checked     = currentConfig.double_touch.enabled;
 
                 updateDashboardInfo();
                 updateBotStatus();
@@ -622,6 +672,12 @@
                 document.getElementById('ico-cfg-tf').value        = cfg.ico_levels?.ico_levels_tf ?? 'D';
                 document.getElementById('ico-cfg-days').value      = cfg.general?.new_listing_days ?? 30;
                 document.getElementById('ico-cfg-interval').value  = cfg.ico_levels?.scan_interval_minutes ?? 60;
+            } else if (name === 'dt') {
+                document.getElementById('dt-cfg-tolerance').value = cfg.double_touch?.tolerance ?? 0.5;
+                document.getElementById('dt-cfg-proximity').value = cfg.double_touch?.proximity ?? 2.0;
+                document.getElementById('dt-cfg-tf').value        = cfg.double_touch?.scan_tf ?? 'D';
+                document.getElementById('dt-cfg-interval').value  = cfg.double_touch?.scan_interval_minutes ?? 240;
+                document.getElementById('dt-cfg-cooldown').value  = cfg.double_touch?.cooldown_hours ?? 12;
             }
             const statusEl = document.getElementById(`${name}-cfg-status`);
             if (statusEl) statusEl.className = 'hidden';
@@ -682,6 +738,15 @@
                         ...currentConfig.general,
                         new_listing_days: parseInt(document.getElementById('ico-cfg-days').value) || 30,
                     };
+                } else if (name === 'dt') {
+                    updates.double_touch = {
+                        ...currentConfig.double_touch,
+                        tolerance:             parseFloat(document.getElementById('dt-cfg-tolerance').value) || 0.5,
+                        proximity:             parseFloat(document.getElementById('dt-cfg-proximity').value) || 2.0,
+                        scan_tf:               document.getElementById('dt-cfg-tf').value || 'D',
+                        scan_interval_minutes: parseInt(document.getElementById('dt-cfg-interval').value) || 240,
+                        cooldown_hours:        parseInt(document.getElementById('dt-cfg-cooldown').value) || 12,
+                    };
                 }
 
                 const newConfig = { ...currentConfig, ...updates };
@@ -718,6 +783,7 @@
             'volume_scanner': 'volume-toggle',
             'ath_atl':        'ath-toggle',
             'ico_levels':     'ico-toggle',
+            'double_touch':   'dt-toggle',
         };
 
         async function toggleScanner(scannerName) {
@@ -753,6 +819,7 @@
                 'volume-status': currentConfig.volume_scanner?.enabled,
                 'ath-status':    currentConfig.ath_atl?.enabled,
                 'ico-status':    currentConfig.ico_levels?.enabled,
+                'dt-status':     currentConfig.double_touch?.enabled,
             };
             Object.entries(scanners).forEach(([id, enabled]) => {
                 const el = document.getElementById(id);

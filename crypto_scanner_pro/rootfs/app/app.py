@@ -16,6 +16,7 @@ from scanners.daily_flip import DailyFlipScanner
 from scanners.volume import VolumeScanner
 from scanners.ath_atl_scanner import ATHATLScanner
 from scanners.ico_levels_scanner import ICOLevelsScanner
+from scanners.double_touch import DoubleTouchScanner
 from ws_manager import BybitWSManager
 
 # Setup logging
@@ -72,6 +73,14 @@ DEFAULT_CONFIG = {
         'ico_levels_threshold': 2.0,
         'ico_levels_tf': 'D',
         'scan_interval_minutes': 60,
+    },
+    'double_touch': {
+        'enabled': True,
+        'tolerance': 0.5,
+        'proximity': 2.0,
+        'scan_tf': 'D',
+        'scan_interval_minutes': 240,
+        'cooldown_hours': 12,
     },
     'general': {
         'min_volume_24h': 10000000,
@@ -205,6 +214,12 @@ def init_scanners():
             **config['general']
         )
 
+        scanners['double_touch'] = DoubleTouchScanner(
+            telegram_config=telegram_config,
+            **config['double_touch'],
+            **{k: v for k, v in config['general'].items() if k in ('min_volume_24h', 'max_coins_per_alert')}
+        )
+
         logger.info("✅ Scanners initialized")
     except Exception as e:
         logger.error(f"❌ Error initializing scanners: {e}")
@@ -232,7 +247,8 @@ def start_scanners():
         ('daily_flip',     'flip',       config['daily_flip']['scan_interval_minutes']),
         ('volume_scanner', 'volume',     config['volume_scanner']['scan_interval_minutes']),
         ('ath_atl',        'ath_atl',    config['ath_atl']['scan_interval_minutes']),
-        ('ico_levels',     'ico_levels', config['ico_levels']['scan_interval_minutes']),
+        ('ico_levels',     'ico_levels',    config['ico_levels']['scan_interval_minutes']),
+        ('double_touch',   'double_touch',  config['double_touch']['scan_interval_minutes']),
     ]
 
     for config_name, scanner_key, interval in threads_config:
@@ -258,7 +274,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.7.6',
+        'version': '3.7.7',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -270,6 +286,7 @@ def health():
             'volume_scanner': config['volume_scanner']['enabled'],
             'ath_atl': config['ath_atl']['enabled'],
             'ico_levels': config['ico_levels']['enabled'],
+            'double_touch': config['double_touch']['enabled'],
         }
     })
 
@@ -388,12 +405,13 @@ def get_recent_alerts():
         ema_path = next((p for p in ema_candidates if os.path.exists(p)), None)
 
         sources = [
-            (ema_path,                      'EMA Touch',  '🎯'),
-            ('/data/flip_cooldown.json',    'Daily Flip', '🔄'),
-            ('/data/gainers_cooldown.json', 'Gainer',     '📈'),
-            ('/data/losers_cooldown.json',  'Loser',      '📉'),
-            ('/data/ath_cooldown.json',     'ATH',        '🏆'),
-            ('/data/atl_cooldown.json',     'ATL',        '⬇️'),
+            (ema_path,                            'EMA Touch',    '🎯'),
+            ('/data/flip_cooldown.json',          'Daily Flip',   '🔄'),
+            ('/data/gainers_cooldown.json',       'Gainer',       '📈'),
+            ('/data/losers_cooldown.json',        'Loser',        '📉'),
+            ('/data/ath_cooldown.json',           'ATH',          '🏆'),
+            ('/data/atl_cooldown.json',           'ATL',          '⬇️'),
+            ('/data/double_touch_cooldown.json',  'Terzo Tocco',  '🔁'),
         ]
 
         recent_alerts = []
@@ -835,6 +853,13 @@ def mtf_page():
 def screenshot_page():
     """Serve single-chart screenshot page (used by Selenium for alert images)."""
     return send_file('/usr/share/nginx/html/screenshot.html')
+
+
+@app.route('/double-touch', methods=['GET'])
+@app.route('/double-touch.html', methods=['GET'])
+def double_touch_page():
+    """Serve Terzo Tocco scanner page."""
+    return send_file('/usr/share/nginx/html/double_touch.html')
 
 
 @app.route('/orderbook', methods=['GET'])
