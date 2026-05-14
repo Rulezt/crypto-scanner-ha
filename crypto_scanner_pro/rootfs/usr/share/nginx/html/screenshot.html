@@ -136,10 +136,10 @@ async function init() {
       if (jd.success && jd.data && jd.data.length >= 2) {
         const today = jd.data[jd.data.length-1];
         const prev  = jd.data[jd.data.length-2];
-        candleS.createPriceLine({price:today.high,color:'#22c55e',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:'H'});
-        candleS.createPriceLine({price:today.low, color:'#ef4444',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:'L'});
-        candleS.createPriceLine({price:prev.high, color:'#22c55e',lineWidth:2,lineStyle:2,axisLabelVisible:true,title:'pH'});
-        candleS.createPriceLine({price:prev.low,  color:'#ef4444',lineWidth:2,lineStyle:2,axisLabelVisible:true,title:'pL'});
+        candleS.createPriceLine({price:today.high,color:'#22c55e',lineWidth:2,lineStyle:0,axisLabelVisible:false,title:''});
+        candleS.createPriceLine({price:today.low, color:'#ef4444',lineWidth:2,lineStyle:0,axisLabelVisible:false,title:''});
+        candleS.createPriceLine({price:prev.high, color:'#22c55e',lineWidth:2,lineStyle:2,axisLabelVisible:false,title:''});
+        candleS.createPriceLine({price:prev.low,  color:'#ef4444',lineWidth:2,lineStyle:2,axisLabelVisible:false,title:''});
       }
 
       if (SIG === 'price' && SIG_PRICE > 0) {
