@@ -23,7 +23,7 @@ class ICOLevelsScanner:
     def __init__(self, telegram_config, enabled=True,
                  ico_levels_threshold=2.0, ico_levels_tf='D',
                  new_listing_days=30, cooldown_hours=2,
-                 scan_interval_minutes=60,
+                 scan_interval_minutes=60, screenshot_tf=None,
                  ws_manager=None, **kwargs):
         self.telegram_token   = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
@@ -31,6 +31,7 @@ class ICOLevelsScanner:
         self.enabled          = enabled
         self.threshold        = ico_levels_threshold
         self.tf               = ico_levels_tf
+        self.screenshot_tf    = screenshot_tf if screenshot_tf else ico_levels_tf
         self.new_listing_days = new_listing_days
         self.cooldown_hours   = cooldown_hours
 
@@ -287,7 +288,7 @@ class ICOLevelsScanner:
         sig_type = 'ath' if side == 'high' else 'atl'
         caption  = (f"{mtf_link(sym, self.ha_url)}  ICO Level\n"
                     f"vicino al {side_str} prima candela: {dist:.2f}%")
-        img = get_chart(sym, interval=self.tf, signal={'type': sig_type})
+        img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
         else:

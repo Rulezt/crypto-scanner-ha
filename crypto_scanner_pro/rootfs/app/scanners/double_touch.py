@@ -18,7 +18,8 @@ class DoubleTouchScanner:
                  tolerance=0.5, proximity=2.0,
                  scan_tf='D', min_volume_24h=10_000_000,
                  scan_interval_minutes=240, cooldown_hours=12,
-                 max_coins_per_alert=5, ws_manager=None, **kwargs):
+                 max_coins_per_alert=5, screenshot_tf=None,
+                 ws_manager=None, **kwargs):
 
         self.telegram_token   = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
@@ -27,6 +28,7 @@ class DoubleTouchScanner:
         self.tolerance        = float(tolerance)
         self.proximity        = float(proximity)
         self.scan_tf          = scan_tf
+        self.screenshot_tf    = screenshot_tf if screenshot_tf else scan_tf
         self.min_volume_24h   = min_volume_24h
         self.max_coins_per_alert = max_coins_per_alert
         self.cooldown_hours   = cooldown_hours
@@ -283,7 +285,7 @@ class DoubleTouchScanner:
                        f"{sign_str}\n"
                        f"dist: {sign_dist} · gap: {p['gap']} · fresh: {p['freshness']}\n"
                        f"vol: {_fmt(p['volume'])}")
-            img = get_chart(sym, interval=self.scan_tf, signal={'type': 'ema'})
+            img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ema'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:

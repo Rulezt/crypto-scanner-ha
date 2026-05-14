@@ -18,7 +18,7 @@ class VolumeScanner:
                  losers_enabled=True,  losers_threshold=10,
                  scan_interval_minutes=30, min_volume_24h=10000000,
                  max_coins_per_alert=10, cooldown_hours=2,
-                 ws_manager=None, **kwargs):
+                 screenshot_tf='240', ws_manager=None, **kwargs):
 
         self.telegram_token  = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
@@ -31,6 +31,7 @@ class VolumeScanner:
         self.max_coins       = max_coins_per_alert
         self.min_volume_24h  = min_volume_24h
         self.cooldown_hours  = cooldown_hours
+        self.screenshot_tf   = screenshot_tf
 
         self.last_gainers = self._load_cooldown(GAINERS_COOLDOWN_FILE)
         self.last_losers  = self._load_cooldown(LOSERS_COOLDOWN_FILE)
@@ -123,7 +124,7 @@ class VolumeScanner:
             caption = (f"{mtf_link(sym, self.ha_url)}  {coin['change_pct']:.2f}% (24h)\n"
                        f"Vol: {_vol(coin['volume_24h_usd'])}")
             sig_type = 'loser'
-        img = get_chart(sym, interval='240', signal={'type': sig_type})
+        img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
         else:
@@ -215,7 +216,7 @@ class VolumeScanner:
             sym     = coin['symbol']
             caption = (f"{mtf_link(sym, self.ha_url)}  +{coin['change_pct']:.2f}% (24h)\n"
                        f"Vol: {_vol(coin['volume_24h_usd'])}")
-            img = get_chart(sym, interval='240', signal={'type': 'gainer'})
+            img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'gainer'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
@@ -225,7 +226,7 @@ class VolumeScanner:
             sym     = coin['symbol']
             caption = (f"{mtf_link(sym, self.ha_url)}  {coin['change_pct']:.2f}% (24h)\n"
                        f"Vol: {_vol(coin['volume_24h_usd'])}")
-            img = get_chart(sym, interval='240', signal={'type': 'loser'})
+            img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'loser'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:

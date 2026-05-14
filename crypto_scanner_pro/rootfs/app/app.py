@@ -42,14 +42,16 @@ DEFAULT_CONFIG = {
         'ema_period': 60,
         'ema_touch_candles': 3,
         'ema_touch_threshold': 2.0,
-        'scan_interval_minutes': 30
+        'scan_interval_minutes': 30,
+        'screenshot_tf': '30',
     },
     'daily_flip': {
         'enabled': True,
         'flip_threshold': 2.0,
         'flip_type': 'both',
         'scan_interval_minutes': 30,
-        'max_coins': 20
+        'max_coins': 20,
+        'screenshot_tf': '240',
     },
     'volume_scanner': {
         'enabled': True,
@@ -58,7 +60,8 @@ DEFAULT_CONFIG = {
         'gainers_threshold': 10,
         'losers_enabled': True,
         'losers_threshold': 10,
-        'scan_interval_minutes': 30
+        'scan_interval_minutes': 30,
+        'screenshot_tf': '240',
     },
     'ath_atl': {
         'enabled': True,
@@ -66,13 +69,15 @@ DEFAULT_CONFIG = {
         'atl_enabled': True,
         'proximity_threshold': 1.0,
         'lookback_days': 365,
-        'scan_interval_minutes': 60
+        'scan_interval_minutes': 60,
+        'screenshot_tf': 'D',
     },
     'ico_levels': {
         'enabled': True,
         'ico_levels_threshold': 2.0,
         'ico_levels_tf': 'D',
         'scan_interval_minutes': 60,
+        'screenshot_tf': 'D',
     },
     'double_touch': {
         'enabled': True,
@@ -81,6 +86,7 @@ DEFAULT_CONFIG = {
         'scan_tf': 'D',
         'scan_interval_minutes': 240,
         'cooldown_hours': 12,
+        'screenshot_tf': 'D',
     },
     'general': {
         'min_volume_24h': 10000000,
@@ -274,7 +280,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.7.7',
+        'version': '3.7.8',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),

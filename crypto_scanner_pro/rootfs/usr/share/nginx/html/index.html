@@ -345,6 +345,7 @@
                 <div><label class="text-xs text-gray-500 block mb-1">Soglia (%):</label><input type="number" step="0.1" id="ema-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none"></div>
                 <div><label class="text-xs text-gray-500 block mb-1">Periodo EMA:</label><input type="number" id="ema-cfg-period" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none"></div>
                 <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="ema-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="ema-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
             </div>
             <div class="px-4 pb-3 flex gap-2">
                 <button onclick="saveScannerConfig('ema')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
@@ -371,6 +372,7 @@
                     </select>
                 </div>
                 <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="flip-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="flip-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
             </div>
             <div class="px-4 pb-3 flex gap-2">
                 <button onclick="saveScannerConfig('flip')" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
@@ -391,6 +393,7 @@
                 <div><label class="text-xs text-gray-500 block mb-1">Soglia Rialzi (%):</label><input type="number" id="volume-cfg-gainers" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"></div>
                 <div><label class="text-xs text-gray-500 block mb-1">Soglia Ribassi (%):</label><input type="number" id="volume-cfg-losers" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"></div>
                 <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="volume-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="volume-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
             </div>
             <div class="px-4 pb-3 flex gap-2">
                 <button onclick="saveScannerConfig('volume')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
@@ -411,6 +414,7 @@
                 <div><label class="text-xs text-gray-500 block mb-1">Prossimità (%):</label><input type="number" step="0.1" id="ath-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"></div>
                 <div><label class="text-xs text-gray-500 block mb-1">Storico (giorni):</label><input type="number" id="ath-cfg-lookback" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"></div>
                 <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="ath-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="ath-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
             </div>
             <div class="px-4 pb-3 flex gap-2">
                 <button onclick="saveScannerConfig('ath')" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
@@ -440,6 +444,7 @@
                 </div>
                 <div><label class="text-xs text-gray-500 block mb-1">Giorni listing recenti:</label><input type="number" id="ico-cfg-days" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"></div>
                 <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="ico-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="ico-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
             </div>
             <div class="px-4 pb-3 flex gap-2">
                 <button onclick="saveScannerConfig('ico')" class="flex-1 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
@@ -469,6 +474,7 @@
                 </div>
                 <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="dt-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
                 <div><label class="text-xs text-gray-500 block mb-1">Cooldown alert (ore):</label><input type="number" id="dt-cfg-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="dt-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
             </div>
             <div class="px-4 pb-3 flex gap-2">
                 <button onclick="saveScannerConfig('dt')" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
@@ -652,32 +658,38 @@
         function openScannerModal(name) {
             const cfg = currentConfig;
             if (name === 'ema') {
-                document.getElementById('ema-cfg-threshold').value = cfg.ema_touch?.ema_touch_threshold ?? 2.0;
-                document.getElementById('ema-cfg-period').value    = cfg.ema_touch?.ema_period ?? 60;
-                document.getElementById('ema-cfg-interval').value  = cfg.ema_touch?.scan_interval_minutes ?? 30;
+                document.getElementById('ema-cfg-threshold').value    = cfg.ema_touch?.ema_touch_threshold ?? 2.0;
+                document.getElementById('ema-cfg-period').value       = cfg.ema_touch?.ema_period ?? 60;
+                document.getElementById('ema-cfg-interval').value     = cfg.ema_touch?.scan_interval_minutes ?? 30;
+                document.getElementById('ema-cfg-screenshot-tf').value = cfg.ema_touch?.screenshot_tf ?? '30';
             } else if (name === 'flip') {
-                document.getElementById('flip-cfg-threshold').value = cfg.daily_flip?.flip_threshold ?? 2.0;
-                document.getElementById('flip-cfg-type').value      = cfg.daily_flip?.flip_type ?? 'both';
-                document.getElementById('flip-cfg-interval').value  = cfg.daily_flip?.scan_interval_minutes ?? 30;
+                document.getElementById('flip-cfg-threshold').value    = cfg.daily_flip?.flip_threshold ?? 2.0;
+                document.getElementById('flip-cfg-type').value         = cfg.daily_flip?.flip_type ?? 'both';
+                document.getElementById('flip-cfg-interval').value     = cfg.daily_flip?.scan_interval_minutes ?? 30;
+                document.getElementById('flip-cfg-screenshot-tf').value = cfg.daily_flip?.screenshot_tf ?? '240';
             } else if (name === 'volume') {
-                document.getElementById('volume-cfg-gainers').value  = cfg.volume_scanner?.gainers_threshold ?? 10;
-                document.getElementById('volume-cfg-losers').value   = cfg.volume_scanner?.losers_threshold ?? 10;
-                document.getElementById('volume-cfg-interval').value = cfg.volume_scanner?.scan_interval_minutes ?? 30;
+                document.getElementById('volume-cfg-gainers').value     = cfg.volume_scanner?.gainers_threshold ?? 10;
+                document.getElementById('volume-cfg-losers').value      = cfg.volume_scanner?.losers_threshold ?? 10;
+                document.getElementById('volume-cfg-interval').value    = cfg.volume_scanner?.scan_interval_minutes ?? 30;
+                document.getElementById('volume-cfg-screenshot-tf').value = cfg.volume_scanner?.screenshot_tf ?? '240';
             } else if (name === 'ath') {
-                document.getElementById('ath-cfg-threshold').value = cfg.ath_atl?.proximity_threshold ?? 1.0;
-                document.getElementById('ath-cfg-lookback').value  = cfg.ath_atl?.lookback_days ?? 365;
-                document.getElementById('ath-cfg-interval').value  = cfg.ath_atl?.scan_interval_minutes ?? 60;
+                document.getElementById('ath-cfg-threshold').value     = cfg.ath_atl?.proximity_threshold ?? 1.0;
+                document.getElementById('ath-cfg-lookback').value      = cfg.ath_atl?.lookback_days ?? 365;
+                document.getElementById('ath-cfg-interval').value      = cfg.ath_atl?.scan_interval_minutes ?? 60;
+                document.getElementById('ath-cfg-screenshot-tf').value  = cfg.ath_atl?.screenshot_tf ?? 'D';
             } else if (name === 'ico') {
-                document.getElementById('ico-cfg-threshold').value = cfg.ico_levels?.ico_levels_threshold ?? 2.0;
-                document.getElementById('ico-cfg-tf').value        = cfg.ico_levels?.ico_levels_tf ?? 'D';
-                document.getElementById('ico-cfg-days').value      = cfg.general?.new_listing_days ?? 30;
-                document.getElementById('ico-cfg-interval').value  = cfg.ico_levels?.scan_interval_minutes ?? 60;
+                document.getElementById('ico-cfg-threshold').value     = cfg.ico_levels?.ico_levels_threshold ?? 2.0;
+                document.getElementById('ico-cfg-tf').value            = cfg.ico_levels?.ico_levels_tf ?? 'D';
+                document.getElementById('ico-cfg-days').value          = cfg.general?.new_listing_days ?? 30;
+                document.getElementById('ico-cfg-interval').value      = cfg.ico_levels?.scan_interval_minutes ?? 60;
+                document.getElementById('ico-cfg-screenshot-tf').value  = cfg.ico_levels?.screenshot_tf ?? 'D';
             } else if (name === 'dt') {
-                document.getElementById('dt-cfg-tolerance').value = cfg.double_touch?.tolerance ?? 0.5;
-                document.getElementById('dt-cfg-proximity').value = cfg.double_touch?.proximity ?? 2.0;
-                document.getElementById('dt-cfg-tf').value        = cfg.double_touch?.scan_tf ?? 'D';
-                document.getElementById('dt-cfg-interval').value  = cfg.double_touch?.scan_interval_minutes ?? 240;
-                document.getElementById('dt-cfg-cooldown').value  = cfg.double_touch?.cooldown_hours ?? 12;
+                document.getElementById('dt-cfg-tolerance').value      = cfg.double_touch?.tolerance ?? 0.5;
+                document.getElementById('dt-cfg-proximity').value      = cfg.double_touch?.proximity ?? 2.0;
+                document.getElementById('dt-cfg-tf').value             = cfg.double_touch?.scan_tf ?? 'D';
+                document.getElementById('dt-cfg-interval').value       = cfg.double_touch?.scan_interval_minutes ?? 240;
+                document.getElementById('dt-cfg-cooldown').value       = cfg.double_touch?.cooldown_hours ?? 12;
+                document.getElementById('dt-cfg-screenshot-tf').value   = cfg.double_touch?.screenshot_tf ?? 'D';
             }
             const statusEl = document.getElementById(`${name}-cfg-status`);
             if (statusEl) statusEl.className = 'hidden';
@@ -705,6 +717,7 @@
                         ema_touch_threshold:    parseFloat(document.getElementById('ema-cfg-threshold').value) || 2.0,
                         ema_period:             parseInt(document.getElementById('ema-cfg-period').value) || 60,
                         scan_interval_minutes:  parseInt(document.getElementById('ema-cfg-interval').value) || 30,
+                        screenshot_tf:          document.getElementById('ema-cfg-screenshot-tf').value || '30',
                     };
                 } else if (name === 'flip') {
                     updates.daily_flip = {
@@ -712,6 +725,7 @@
                         flip_threshold:        parseFloat(document.getElementById('flip-cfg-threshold').value) || 2.0,
                         flip_type:             document.getElementById('flip-cfg-type').value || 'both',
                         scan_interval_minutes: parseInt(document.getElementById('flip-cfg-interval').value) || 30,
+                        screenshot_tf:         document.getElementById('flip-cfg-screenshot-tf').value || '240',
                     };
                 } else if (name === 'volume') {
                     updates.volume_scanner = {
@@ -719,6 +733,7 @@
                         gainers_threshold:     parseInt(document.getElementById('volume-cfg-gainers').value) || 10,
                         losers_threshold:      parseInt(document.getElementById('volume-cfg-losers').value) || 10,
                         scan_interval_minutes: parseInt(document.getElementById('volume-cfg-interval').value) || 30,
+                        screenshot_tf:         document.getElementById('volume-cfg-screenshot-tf').value || '240',
                     };
                 } else if (name === 'ath') {
                     updates.ath_atl = {
@@ -726,6 +741,7 @@
                         proximity_threshold:   parseFloat(document.getElementById('ath-cfg-threshold').value) || 1.0,
                         lookback_days:         parseInt(document.getElementById('ath-cfg-lookback').value) || 365,
                         scan_interval_minutes: parseInt(document.getElementById('ath-cfg-interval').value) || 60,
+                        screenshot_tf:         document.getElementById('ath-cfg-screenshot-tf').value || 'D',
                     };
                 } else if (name === 'ico') {
                     updates.ico_levels = {
@@ -733,6 +749,7 @@
                         ico_levels_threshold:  parseFloat(document.getElementById('ico-cfg-threshold').value) || 2.0,
                         ico_levels_tf:         document.getElementById('ico-cfg-tf').value || 'D',
                         scan_interval_minutes: parseInt(document.getElementById('ico-cfg-interval').value) || 60,
+                        screenshot_tf:         document.getElementById('ico-cfg-screenshot-tf').value || 'D',
                     };
                     updates.general = {
                         ...currentConfig.general,
@@ -746,6 +763,7 @@
                         scan_tf:               document.getElementById('dt-cfg-tf').value || 'D',
                         scan_interval_minutes: parseInt(document.getElementById('dt-cfg-interval').value) || 240,
                         cooldown_hours:        parseInt(document.getElementById('dt-cfg-cooldown').value) || 12,
+                        screenshot_tf:         document.getElementById('dt-cfg-screenshot-tf').value || 'D',
                     };
                 }
 

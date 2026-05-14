@@ -15,7 +15,7 @@ class DailyFlipScanner:
     def __init__(self, telegram_config, enabled=True, flip_threshold=2.0,
                  flip_type='both', scan_interval_minutes=30, max_coins=20,
                  min_volume_24h=10000000, cooldown_hours=2,
-                 ws_manager=None, **kwargs):
+                 screenshot_tf='240', ws_manager=None, **kwargs):
 
         self.telegram_token   = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
@@ -26,6 +26,7 @@ class DailyFlipScanner:
         self.max_coins        = max_coins
         self.min_volume_24h   = min_volume_24h
         self.cooldown_hours   = cooldown_hours
+        self.screenshot_tf    = screenshot_tf
 
         self.last_alerts = self._load_cooldown()
         self._lock       = threading.Lock()
@@ -99,7 +100,7 @@ class DailyFlipScanner:
         sign    = '+' if coin['change_pct'] >= 0 else ''
         caption = (f"{mtf_link(sym, self.ha_url)}  Daily Flip\n"
                    f"var 24h: {sign}{coin['change_pct']:.2f}%")
-        img = get_chart(sym, interval='240', signal={'type': 'flip'})
+        img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'flip'})
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
         else:
@@ -183,7 +184,7 @@ class DailyFlipScanner:
             sign    = '+' if coin['change_pct'] >= 0 else ''
             caption = (f"{mtf_link(sym, self.ha_url)}  Daily Flip\n"
                        f"var 24h: {sign}{coin['change_pct']:.2f}%")
-            img = get_chart(sym, interval='240', signal={'type': 'flip'})
+            img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'flip'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:

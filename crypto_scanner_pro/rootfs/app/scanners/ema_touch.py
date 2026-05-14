@@ -19,7 +19,8 @@ KLINE_SUB_REFRESH = 4 * 3600
 class EMAScanner:
     def __init__(self, telegram_config, enabled=True, ema_touch_threshold=2.0,
                  scan_interval_minutes=30, min_volume_24h=10000000,
-                 max_coins_per_alert=10, ws_manager=None, **kwargs):
+                 max_coins_per_alert=10, screenshot_tf='30',
+                 ws_manager=None, **kwargs):
 
         self.telegram_token   = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
@@ -28,6 +29,7 @@ class EMAScanner:
         self.ema_touch_threshold = ema_touch_threshold
         self.min_volume_24h   = min_volume_24h
         self.max_coins_per_alert = max_coins_per_alert
+        self.screenshot_tf    = screenshot_tf
 
         self._setup_cooldown_path()
         self.last_alerts = self._load_cooldown()
@@ -273,7 +275,7 @@ class EMAScanner:
             dir_str = 'da sotto' if 'below' in coin['approach'] else 'da sopra'
             caption = (f"{mtf_link(sym, self.ha_url)}  EMA60 Touch · 30m\n"
                        f"distanza: {coin['distance_pct']:.2f}% {dir_str}")
-            img = get_chart(sym, interval='30', signal={'type': 'ema'})
+            img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ema'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
