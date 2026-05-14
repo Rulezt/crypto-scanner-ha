@@ -68,10 +68,10 @@ const SYM = new URLSearchParams(location.search).get('symbol') || 'BTCUSDT';
 // Layout: top row = 4 slots (1 col each), bottom row = 2 slots (2 cols each)
 // Order from right as specified: top [30m][1h][4h][1D], bottom [1m][5m]
 const TF_SLOTS = [
-  { tf:'30',  label:'30m', col:'1',       row:'1' },
-  { tf:'60',  label:'1h',  col:'2',       row:'1' },
-  { tf:'240', label:'4h',  col:'3',       row:'1' },
-  { tf:'D',   label:'1D',  col:'4',       row:'1' },
+  { tf:'D',   label:'1D',  col:'1',       row:'1' },
+  { tf:'240', label:'4h',  col:'2',       row:'1' },
+  { tf:'60',  label:'1h',  col:'3',       row:'1' },
+  { tf:'30',  label:'30m', col:'4',       row:'1' },
   { tf:'1',   label:'1m',  col:'1/span 2',row:'2' },
   { tf:'5',   label:'5m',  col:'3/span 2',row:'2' },
 ];
