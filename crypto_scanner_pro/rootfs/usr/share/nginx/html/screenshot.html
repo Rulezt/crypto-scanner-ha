@@ -8,15 +8,13 @@
     background:#0B0E11; color:#9CA3AF;
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
     width:1280px; height:720px; overflow:hidden;
-    display:flex; flex-direction:column;
   }
   #hdr {
-    height:40px; flex-shrink:0;
+    height:40px;
     background:#161A1E; border-bottom:1px solid #2B3139;
     display:flex; align-items:center; gap:10px; padding:0 16px;
   }
-  #chart-wrap { flex:1; position:relative; min-height:0; }
-  #chart      { position:absolute; inset:0; }
+  #chart { width:1280px; height:680px; overflow:hidden; }
 </style>
 <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
 </head>
@@ -35,7 +33,7 @@
   <span id="h-time"   style="font-size:10px;color:#6B7280;"></span>
 </div>
 
-<div id="chart-wrap"><div id="chart"></div></div>
+<div id="chart"></div>
 
 <script>
 const LC  = LightweightCharts;
@@ -88,7 +86,8 @@ async function init() {
     now.getUTCMinutes().toString().padStart(2,'0') + ' UTC';
 
   const chart = LC.createChart(document.getElementById('chart'), {
-    autoSize: true,
+    width: 1280,
+    height: 680,
     layout: { background:{color:'#0B0E11'}, textColor:'#9CA3AF', fontSize:11 },
     grid:   { vertLines:{color:'#1E2329'}, horzLines:{color:'#1E2329'} },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
