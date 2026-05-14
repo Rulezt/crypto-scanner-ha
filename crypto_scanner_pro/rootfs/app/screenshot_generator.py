@@ -28,7 +28,7 @@ def take_screenshot(symbol, interval='30', signal_type=None, signal_price=None,
         opts.add_argument('--no-sandbox')
         opts.add_argument('--disable-dev-shm-usage')
         opts.add_argument('--disable-gpu')
-        opts.add_argument('--window-size=1280,720')
+        opts.add_argument('--window-size=1280,760')
         opts.add_argument('--hide-scrollbars')
         opts.add_argument('--force-device-scale-factor=1')
         opts.binary_location = '/usr/bin/chromium-browser'

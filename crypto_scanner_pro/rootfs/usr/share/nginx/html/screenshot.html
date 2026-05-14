@@ -7,14 +7,14 @@
   body {
     background:#0B0E11; color:#9CA3AF;
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-    width:1280px; height:720px; overflow:hidden;
+    width:1280px; height:760px; overflow:hidden;
   }
   #hdr {
     height:40px;
     background:#161A1E; border-bottom:1px solid #2B3139;
     display:flex; align-items:center; gap:10px; padding:0 16px;
   }
-  #chart { width:1280px; height:680px; overflow:hidden; }
+  #chart { width:1280px; height:720px; }
 </style>
 <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
 </head>
@@ -87,7 +87,7 @@ async function init() {
 
   const chart = LC.createChart(document.getElementById('chart'), {
     width: 1280,
-    height: 680,
+    height: 720,
     layout: { background:{color:'#0B0E11'}, textColor:'#9CA3AF', fontSize:11 },
     grid:   { vertLines:{color:'#1E2329'}, horzLines:{color:'#1E2329'} },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
