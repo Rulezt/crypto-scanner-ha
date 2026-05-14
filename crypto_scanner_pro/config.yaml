@@ -1,5 +1,5 @@
 name: "Crypto Scanner Pro"
-version: "3.3.5"
+version: "3.3.6"
 slug: "crypto_scanner_pro"
 description: "Scanner crypto avanzato con EMA touch, volume, daily flip e ATH/ATL via Telegram"
 url: "https://github.com/Rulezt/crypto-scanner-ha"
@@ -16,11 +16,13 @@ options:
   telegram_chat_id: ""
   ema_touch_threshold: 2.0
   ath_atl_threshold: 1.0
+  ha_url: ""
 schema:
   telegram_token: str
   telegram_chat_id: str
   ema_touch_threshold: float
   ath_atl_threshold: float
+  ha_url: str
 ingress: true
 ingress_port: 8080
 ingress_entry: /

@@ -41,6 +41,7 @@ class ATHATLScanner:
 
         self.telegram_token = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
+        self.ha_url = telegram_config.get('ha_url', '')
         self.enabled = enabled
         self.ath_enabled = ath_enabled
         self.atl_enabled = atl_enabled
@@ -339,27 +340,19 @@ class ATHATLScanner:
             return
 
         try:
-            from alert_utils import fmt_price, utc_time, send_photo, send_text, get_chart
+            from alert_utils import send_photo, send_text, get_chart, mtf_link
         except ImportError as e:
             print(f"Cannot import alert_utils: {e}")
             return
 
         for coin in result.get('ath', [])[:3]:
-            sym  = coin['symbol']
-            name = sym.replace('USDT', '/USDT')
+            sym     = coin['symbol']
             if coin['is_new_ath']:
-                caption = (
-                    f"{name}  Nuovo ATH!\n"
-                    f"Prezzo: {fmt_price(coin['price'])}  "
-                    f"(prec ATH: {fmt_price(coin['ath'])})\n"
-                    f"{utc_time()}"
-                )
+                caption = f"{mtf_link(sym, self.ha_url)}  Nuovo ATH!"
             else:
                 caption = (
-                    f"{name}  Vicino ATH\n"
-                    f"distanza: {coin['distance_pct']:.2f}%  ATH: {fmt_price(coin['ath'])}\n"
-                    f"Prezzo: {fmt_price(coin['price'])}\n"
-                    f"{utc_time()}"
+                    f"{mtf_link(sym, self.ha_url)}  Vicino ATH\n"
+                    f"distanza: {coin['distance_pct']:.2f}%"
                 )
             img = get_chart(sym, interval='D', signal={'type': 'ath'})
             if img:
@@ -369,21 +362,13 @@ class ATHATLScanner:
             print(f"ATH alert inviato: {sym}")
 
         for coin in result.get('atl', [])[:3]:
-            sym  = coin['symbol']
-            name = sym.replace('USDT', '/USDT')
+            sym     = coin['symbol']
             if coin['is_new_atl']:
-                caption = (
-                    f"{name}  Nuovo ATL!\n"
-                    f"Prezzo: {fmt_price(coin['price'])}  "
-                    f"(prec ATL: {fmt_price(coin['atl'])})\n"
-                    f"{utc_time()}"
-                )
+                caption = f"{mtf_link(sym, self.ha_url)}  Nuovo ATL!"
             else:
                 caption = (
-                    f"{name}  Vicino ATL\n"
-                    f"distanza: {coin['distance_pct']:.2f}%  ATL: {fmt_price(coin['atl'])}\n"
-                    f"Prezzo: {fmt_price(coin['price'])}\n"
-                    f"{utc_time()}"
+                    f"{mtf_link(sym, self.ha_url)}  Vicino ATL\n"
+                    f"distanza: {coin['distance_pct']:.2f}%"
                 )
             img = get_chart(sym, interval='D', signal={'type': 'atl'})
             if img:

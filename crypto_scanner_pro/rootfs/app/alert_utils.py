@@ -13,17 +13,22 @@ def fmt_price(p):
     return f'{p:.7f}'
 
 
-def utc_time():
-    return datetime.utcnow().strftime('%H:%M UTC')
+def mtf_link(symbol, ha_url=''):
+    """Return HTML link to MTF page if ha_url is set, else plain name."""
+    name = symbol.replace('USDT', '/USDT')
+    if ha_url:
+        url = ha_url.rstrip('/') + f'/mtf?symbol={symbol}'
+        return f'<a href="{url}">{name}</a>'
+    return name
 
 
 def send_photo(token, chat_id, image_bytes, caption):
-    """Send a Telegram photo with caption (no Markdown)."""
+    """Send a Telegram photo with HTML caption."""
     try:
         requests.post(
             f'https://api.telegram.org/bot{token}/sendPhoto',
             files={'photo': ('chart.png', image_bytes, 'image/png')},
-            data={'chat_id': chat_id, 'caption': caption},
+            data={'chat_id': chat_id, 'caption': caption, 'parse_mode': 'HTML'},
             timeout=30,
         )
     except Exception as e:
@@ -31,11 +36,11 @@ def send_photo(token, chat_id, image_bytes, caption):
 
 
 def send_text(token, chat_id, text):
-    """Send a plain-text Telegram message."""
+    """Send an HTML Telegram message."""
     try:
         requests.post(
             f'https://api.telegram.org/bot{token}/sendMessage',
-            json={'chat_id': chat_id, 'text': text},
+            json={'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'},
             timeout=10,
         )
     except Exception as e:

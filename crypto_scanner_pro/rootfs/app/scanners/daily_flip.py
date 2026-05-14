@@ -23,6 +23,7 @@ class DailyFlipScanner:
         
         self.telegram_token = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
+        self.ha_url = telegram_config.get('ha_url', '')
         self.enabled = enabled
         self.flip_threshold = flip_threshold / 100
         self.flip_type = flip_type
@@ -176,20 +177,17 @@ class DailyFlipScanner:
             return
 
         try:
-            from alert_utils import fmt_price, utc_time, send_photo, send_text, get_chart
+            from alert_utils import send_photo, send_text, get_chart, mtf_link
         except ImportError as e:
             print(f"Cannot import alert_utils: {e}")
             return
 
         for coin in coins[:2]:
             sym     = coin['symbol']
-            name    = sym.replace('USDT', '/USDT')
             sign    = '+' if coin['change_pct'] >= 0 else ''
             caption = (
-                f"{name}  Daily Flip\n"
-                f"var 24h: {sign}{coin['change_pct']:.2f}%\n"
-                f"Prezzo: {fmt_price(coin['price'])}\n"
-                f"{utc_time()}"
+                f"{mtf_link(sym, self.ha_url)}  Daily Flip\n"
+                f"var 24h: {sign}{coin['change_pct']:.2f}%"
             )
             img = get_chart(sym, interval='240', signal={'type': 'flip'})
             if img:

@@ -31,7 +31,8 @@ DEFAULT_CONFIG = {
     'telegram': {
         'token': os.getenv('TELEGRAM_TOKEN', ''),
         'chat_id': os.getenv('TELEGRAM_CHAT_ID', ''),
-        'enabled': True
+        'enabled': True,
+        'ha_url': '',
     },
     'ema_touch': {
         'enabled': True,
@@ -108,10 +109,14 @@ def load_config():
                     if telegram_token:
                         config['telegram']['token'] = telegram_token
                         logger.info("✅ Telegram token loaded from add-on config")
-                    
+
                     if telegram_chat_id:
                         config['telegram']['chat_id'] = telegram_chat_id
                         logger.info("✅ Telegram chat_id loaded from add-on config")
+
+                    ha_url = addon_options.get('ha_url', '')
+                    if ha_url:
+                        config['telegram']['ha_url'] = ha_url
 
                     # Get EMA Touch threshold from add-on (if set)
                     ema_touch_threshold = addon_options.get('ema_touch_threshold')
@@ -149,7 +154,8 @@ def init_scanners():
     
     telegram_config = {
         'token': config['telegram']['token'],
-        'chat_id': config['telegram']['chat_id']
+        'chat_id': config['telegram']['chat_id'],
+        'ha_url': config['telegram'].get('ha_url', ''),
     }
     
     # Check if Telegram is configured
@@ -237,7 +243,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.3.5',
+        'version': '3.3.6',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -586,7 +592,7 @@ def send_telegram_photo(image_bytes, caption):
         req.post(
             f'https://api.telegram.org/bot{token}/sendPhoto',
             files={'photo': ('chart.png', image_bytes, 'image/png')},
-            data={'chat_id': chat_id, 'caption': caption},
+            data={'chat_id': chat_id, 'caption': caption, 'parse_mode': 'HTML'},
             timeout=30,
         )
     except Exception as e:
@@ -627,11 +633,9 @@ def check_price_alerts():
 
                     coin      = sym.replace('USDT', '')
                     dir_word  = 'Sopra' if alert['condition'] == 'above' else 'Sotto'
-                    caption   = (
-                        f"{coin}/USDT  {dir_word} {_fmt_price(alert['price'])}\n"
-                        f"Prezzo attuale: {_fmt_price(cur_price)}\n"
-                        f"{datetime.utcnow().strftime('%H:%M UTC')}"
-                    )
+                    ha_url    = config['telegram'].get('ha_url', '').rstrip('/')
+                    link      = f'<a href="{ha_url}/mtf?symbol={sym}">{coin}/USDT</a>' if ha_url else f'{coin}/USDT'
+                    caption   = f"{link}  {dir_word} {_fmt_price(alert['price'])}"
 
                     if alert.get('notify', 'both') != 'browser':
                         img = None

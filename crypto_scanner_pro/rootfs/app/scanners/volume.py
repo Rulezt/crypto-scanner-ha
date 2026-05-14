@@ -26,6 +26,7 @@ class VolumeScanner:
         
         self.telegram_token = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
+        self.ha_url = telegram_config.get('ha_url', '')
         self.enabled = enabled
         self.volume_spike_threshold = volume_spike_threshold
         self.gainers_enabled = gainers_enabled
@@ -196,7 +197,7 @@ class VolumeScanner:
             return
 
         try:
-            from alert_utils import fmt_price, utc_time, send_photo, send_text, get_chart
+            from alert_utils import send_photo, send_text, get_chart, mtf_link
         except ImportError as e:
             print(f"Cannot import alert_utils: {e}")
             return
@@ -208,11 +209,9 @@ class VolumeScanner:
 
         for coin in result.get('gainers', [])[:2]:
             sym     = coin['symbol']
-            name    = sym.replace('USDT', '/USDT')
             caption = (
-                f"{name}  +{coin['change_pct']:.2f}% (24h)\n"
-                f"Vol: {_vol_str(coin['volume_24h_usd'])}  Prezzo: {fmt_price(coin['price'])}\n"
-                f"{utc_time()}"
+                f"{mtf_link(sym, self.ha_url)}  +{coin['change_pct']:.2f}% (24h)\n"
+                f"Vol: {_vol_str(coin['volume_24h_usd'])}"
             )
             img = get_chart(sym, interval='240', signal={'type': 'gainer'})
             if img:
@@ -223,11 +222,9 @@ class VolumeScanner:
 
         for coin in result.get('losers', [])[:2]:
             sym     = coin['symbol']
-            name    = sym.replace('USDT', '/USDT')
             caption = (
-                f"{name}  {coin['change_pct']:.2f}% (24h)\n"
-                f"Vol: {_vol_str(coin['volume_24h_usd'])}  Prezzo: {fmt_price(coin['price'])}\n"
-                f"{utc_time()}"
+                f"{mtf_link(sym, self.ha_url)}  {coin['change_pct']:.2f}% (24h)\n"
+                f"Vol: {_vol_str(coin['volume_24h_usd'])}"
             )
             img = get_chart(sym, interval='240', signal={'type': 'loser'})
             if img:

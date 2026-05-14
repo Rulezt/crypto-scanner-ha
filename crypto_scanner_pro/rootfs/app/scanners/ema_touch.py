@@ -35,6 +35,7 @@ class EMAScanner:
 
         self.telegram_token = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
+        self.ha_url = telegram_config.get('ha_url', '')
         self.enabled = enabled
         self.ema_touch_threshold = ema_touch_threshold  # Configurable threshold
         self.min_volume_24h = min_volume_24h
@@ -395,20 +396,17 @@ class EMAScanner:
             return
 
         try:
-            from alert_utils import fmt_price, utc_time, send_photo, send_text, get_chart
+            from alert_utils import send_photo, send_text, get_chart, mtf_link
         except ImportError as e:
             print(f"Cannot import alert_utils: {e}")
             return
 
         for coin in coins[:3]:
-            sym      = coin['symbol']
-            name     = sym.replace('USDT', '/USDT')
-            dir_str  = 'da sotto' if 'below' in coin['approach'] else 'da sopra'
-            caption  = (
-                f"{name}  EMA60 Touch · 30m\n"
-                f"distanza: {coin['distance_pct']:.2f}% {dir_str}\n"
-                f"Prezzo: {fmt_price(coin['price'])}  EMA60: {fmt_price(coin['ema60'])}\n"
-                f"{utc_time()}"
+            sym     = coin['symbol']
+            dir_str = 'da sotto' if 'below' in coin['approach'] else 'da sopra'
+            caption = (
+                f"{mtf_link(sym, self.ha_url)}  EMA60 Touch · 30m\n"
+                f"distanza: {coin['distance_pct']:.2f}% {dir_str}"
             )
             img = get_chart(sym, interval='30', signal={'type': 'ema'})
             if img:
