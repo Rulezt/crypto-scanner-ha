@@ -177,22 +177,19 @@ class VolumeScanner:
                     for p in top_gainers:
                         if p['change_pct'] > self.gainers_threshold and \
                                 not self.is_in_cooldown(p['symbol'], 'gainer'):
+                            self.mark_alerted(p['symbol'], 'gainer')
                             gainers.append(p)
                 if self.losers_enabled:
                     for p in top_losers:
                         if p['change_pct'] < -self.losers_threshold and \
                                 not self.is_in_cooldown(p['symbol'], 'loser'):
+                            self.mark_alerted(p['symbol'], 'loser')
                             losers.append(p)
 
             gainers = gainers[:self.max_coins]
             losers  = losers[:self.max_coins]
 
             if gainers or losers:
-                with self._lock:
-                    for c in gainers:
-                        self.mark_alerted(c['symbol'], 'gainer')
-                    for c in losers:
-                        self.mark_alerted(c['symbol'], 'loser')
                 self.send_alert({'gainers': gainers, 'losers': losers, 'volume_spikes': []})
 
             return {'gainers': gainers, 'losers': losers, 'volume_spikes': []}

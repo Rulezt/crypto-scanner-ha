@@ -58,6 +58,11 @@ class BybitWSManager:
     def add_kline_callback(self, fn):
         self._kline_callbacks.append(fn)
 
+    def clear_callbacks(self):
+        """Remove all registered callbacks — call before reinitialising scanners."""
+        self._tick_callbacks.clear()
+        self._kline_callbacks.clear()
+
     def subscribe_klines(self, symbols, intervals=('30',)):
         """Subscribe to kline streams and pre-seed cache from REST."""
         new_topics = []

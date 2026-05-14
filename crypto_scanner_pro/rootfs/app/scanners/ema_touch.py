@@ -241,6 +241,7 @@ class EMAScanner:
                 if ema_data['distance_pct'] < self.ema_touch_threshold:
                     with self._lock:
                         if not self.is_in_cooldown(symbol):
+                            self.mark_alerted(symbol)
                             found.append({
                                 'symbol': symbol,
                                 'price': ema_data['current_price'],
@@ -252,9 +253,6 @@ class EMAScanner:
 
             found = found[:self.max_coins_per_alert]
             if found:
-                with self._lock:
-                    for c in found:
-                        self.mark_alerted(c['symbol'])
                 self.send_alert(found)
 
             return found

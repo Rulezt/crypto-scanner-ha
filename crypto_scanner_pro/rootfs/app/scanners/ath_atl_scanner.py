@@ -296,6 +296,7 @@ class ATHATLScanner:
                 with self._lock:
                     if self.ath_enabled and aa_data['ath_distance_pct'] <= self.proximity_threshold \
                             and not self.is_in_cooldown(symbol, 'ath'):
+                        self.mark_alerted(symbol, 'ath')
                         ath_coins.append({'symbol': symbol, 'price': price,
                                           'ath': aa_data['ath'],
                                           'distance_pct': aa_data['ath_distance_pct'],
@@ -304,6 +305,7 @@ class ATHATLScanner:
 
                     if self.atl_enabled and 0 <= aa_data['atl_distance_pct'] <= self.proximity_threshold \
                             and not self.is_in_cooldown(symbol, 'atl'):
+                        self.mark_alerted(symbol, 'atl')
                         atl_coins.append({'symbol': symbol, 'price': price,
                                           'atl': aa_data['atl'],
                                           'distance_pct': aa_data['atl_distance_pct'],
@@ -315,11 +317,6 @@ class ATHATLScanner:
             result    = {'ath': ath_coins, 'atl': atl_coins}
 
             if ath_coins or atl_coins:
-                with self._lock:
-                    for c in ath_coins:
-                        self.mark_alerted(c['symbol'], 'ath')
-                    for c in atl_coins:
-                        self.mark_alerted(c['symbol'], 'atl')
                 self.send_alert(result)
 
             return result

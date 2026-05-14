@@ -148,7 +148,12 @@ def save_config():
 def init_scanners():
     """Initialize all scanners"""
     global scanners
-    
+
+    # Remove all old WS callbacks before registering new ones.
+    # Without this, every config save accumulates additional callbacks and
+    # causes duplicate alerts even when a scanner is toggled off.
+    ws_manager.clear_callbacks()
+
     telegram_config = {
         'token': config['telegram']['token'],
         'chat_id': config['telegram']['chat_id'],
@@ -204,40 +209,41 @@ def init_scanners():
     except Exception as e:
         logger.error(f"❌ Error initializing scanners: {e}")
 
-def run_scanner(name, scanner, interval_minutes):
-    """Run scanner in loop"""
+def run_scanner(config_name, scanner_key, interval_minutes):
+    """Run scanner in loop — looks up scanner dynamically so reinit is picked up."""
     while True:
         try:
-            if config.get(name, {}).get('enabled', True):
-                logger.info(f"🔄 Running {name} scanner...")
+            scanner = scanners.get(scanner_key)
+            if scanner and config.get(config_name, {}).get('enabled', True):
+                logger.info(f"🔄 Running {config_name} scanner...")
                 scanner.scan()
         except Exception as e:
-            logger.error(f"❌ Error in {name} scanner: {e}")
-        
+            logger.error(f"❌ Error in {config_name} scanner: {e}")
+
         time.sleep(interval_minutes * 60)
 
 def start_scanners():
     """Start all scanner threads"""
     global scanner_threads
-    
+
+    # (config_name, scanner_key, interval)
     threads_config = [
-        ('ema_touch', scanners.get('ema'), config['ema_touch']['scan_interval_minutes']),
-        ('daily_flip', scanners.get('flip'), config['daily_flip']['scan_interval_minutes']),
-        ('volume_scanner', scanners.get('volume'), config['volume_scanner']['scan_interval_minutes']),
-        ('ath_atl', scanners.get('ath_atl'), config['ath_atl']['scan_interval_minutes']),
-        ('ico_levels', scanners.get('ico_levels'), config['ico_levels']['scan_interval_minutes']),
+        ('ema_touch',      'ema',        config['ema_touch']['scan_interval_minutes']),
+        ('daily_flip',     'flip',       config['daily_flip']['scan_interval_minutes']),
+        ('volume_scanner', 'volume',     config['volume_scanner']['scan_interval_minutes']),
+        ('ath_atl',        'ath_atl',    config['ath_atl']['scan_interval_minutes']),
+        ('ico_levels',     'ico_levels', config['ico_levels']['scan_interval_minutes']),
     ]
-    
-    for name, scanner, interval in threads_config:
-        if scanner and config[name]['enabled']:
-            thread = threading.Thread(
-                target=run_scanner,
-                args=(name, scanner, interval),
-                daemon=True
-            )
-            thread.start()
-            scanner_threads[name] = thread
-            logger.info(f"✅ {name} thread started")
+
+    for config_name, scanner_key, interval in threads_config:
+        thread = threading.Thread(
+            target=run_scanner,
+            args=(config_name, scanner_key, interval),
+            daemon=True
+        )
+        thread.start()
+        scanner_threads[config_name] = thread
+        logger.info(f"✅ {config_name} thread started")
 
     alert_thread = threading.Thread(target=check_price_alerts, daemon=True)
     alert_thread.start()

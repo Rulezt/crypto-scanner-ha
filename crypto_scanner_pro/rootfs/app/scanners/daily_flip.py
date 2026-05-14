@@ -157,14 +157,12 @@ class DailyFlipScanner:
                     if self.flip_type not in ('both', direction):
                         continue
                     if not self.is_in_cooldown(p['symbol']):
+                        self.mark_alerted(p['symbol'])
                         found.append({'symbol': p['symbol'], 'price': p['last_price'],
                                       'change_pct': change,
                                       'flip_direction': '🟢➡️🔴' if change > 0 else '🔴➡️🟢'})
 
             if found:
-                with self._lock:
-                    for c in found:
-                        self.mark_alerted(c['symbol'])
                 self.send_alert(found)
 
             return found
