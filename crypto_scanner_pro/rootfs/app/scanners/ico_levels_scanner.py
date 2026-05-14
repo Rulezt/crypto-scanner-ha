@@ -131,11 +131,15 @@ class ICOLevelsScanner:
             first_low     = klines[0]['low']
             current_price = klines[-1]['close']
 
-            # Discard if price has already broken out of first-candle range
-            if current_price > first_high or current_price < first_low:
+            # Discard if ANY candle from day 2 onwards ever broke first-candle range
+            ever_broke = any(
+                c['high'] > first_high or c['low'] < first_low
+                for c in klines[1:]
+            )
+            if ever_broke:
                 discarded.add(sym)
                 modified = True
-                logger.info(f'ICO levels: {sym} discarded (price broke first candle range)')
+                logger.info(f'ICO levels: {sym} discarded (range broken in past candles)')
                 continue
 
             dist_high = (first_high - current_price) / first_high * 100
