@@ -1,6 +1,7 @@
 """Screenshot generator - uses headless Chromium + Selenium to capture chart.html-style charts."""
 import logging
 import time
+import base64
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,8 @@ try:
 except ImportError:
     _SELENIUM_OK = False
     logger.warning("Selenium not available - screenshots disabled, fallback to matplotlib")
+
+PAGE_W, PAGE_H = 1280, 760
 
 
 def take_screenshot(symbol, interval='30', signal_type=None, signal_price=None,
@@ -28,7 +31,7 @@ def take_screenshot(symbol, interval='30', signal_type=None, signal_price=None,
         opts.add_argument('--no-sandbox')
         opts.add_argument('--disable-dev-shm-usage')
         opts.add_argument('--disable-gpu')
-        opts.add_argument('--window-size=1280,760')
+        opts.add_argument(f'--window-size={PAGE_W},{PAGE_H}')
         opts.add_argument('--hide-scrollbars')
         opts.add_argument('--force-device-scale-factor=1')
         opts.binary_location = '/usr/bin/chromium-browser'
@@ -37,6 +40,9 @@ def take_screenshot(symbol, interval='30', signal_type=None, signal_price=None,
             service=Service('/usr/bin/chromedriver'), options=opts
         )
         try:
+            # Belt-and-suspenders: set window size after init too
+            driver.set_window_size(PAGE_W, PAGE_H)
+
             url = (f'http://localhost:{port}/screenshot'
                    f'?symbol={symbol}&interval={interval}')
             if signal_type:
@@ -60,8 +66,25 @@ def take_screenshot(symbol, interval='30', signal_type=None, signal_price=None,
                     pass
                 time.sleep(0.25)
 
-            time.sleep(0.4)
-            png = driver.get_screenshot_as_png()
+            # Extra sleep so canvas finishes painting
+            time.sleep(1.0)
+
+            # Use CDP to capture exactly PAGE_W x PAGE_H regardless of viewport quirks
+            try:
+                result = driver.execute_cdp_cmd('Page.captureScreenshot', {
+                    'format': 'png',
+                    'captureBeyondViewport': True,
+                    'clip': {
+                        'x': 0, 'y': 0,
+                        'width': PAGE_W, 'height': PAGE_H,
+                        'scale': 1,
+                    },
+                })
+                png = base64.b64decode(result['data'])
+            except Exception as cdp_err:
+                logger.warning(f"CDP screenshot failed ({cdp_err}), fallback to viewport")
+                png = driver.get_screenshot_as_png()
+
             logger.info(f"Screenshot OK: {symbol} {interval}")
             return png
         finally:
