@@ -57,7 +57,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500" id="version">v3.6.0</div>
+                    <div class="text-xs text-gray-500" id="version">v3.7.10</div>
                 </div>
             </div>
         </div>
@@ -912,6 +912,7 @@
                 const warning = document.getElementById('telegram-warning');
                 if (!health.telegram_configured) warning.classList.remove('hidden');
                 else warning.classList.add('hidden');
+                if (health.version) document.getElementById('version').textContent = 'v' + health.version;
             } catch (e) {
                 console.error('Error checking Telegram:', e);
             }
