@@ -152,7 +152,8 @@ async function init() {
         });
       }
 
-      chart.timeScale().fitContent();
+      const len = klines.length;
+      chart.timeScale().setVisibleLogicalRange({ from: len - 80, to: len + 8 });
     }
   } catch(e) {
     console.error('Chart init error:', e);
