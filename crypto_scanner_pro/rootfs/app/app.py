@@ -258,7 +258,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.7.4',
+        'version': '3.7.5',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -378,17 +378,46 @@ def get_ath_atl_status():
 
 @app.route('/scanner-api/alerts/recent', methods=['GET'])
 def get_recent_alerts():
-    """Get recent alerts from all scanners"""
+    """Get recent alerts by reading cooldown files from all scanners"""
     try:
-        from datetime import datetime
+        from datetime import timedelta
+        cutoff = datetime.now() - timedelta(hours=24)
+
+        # EMA scanner may write to /config, /share, or /data
+        ema_candidates = ['/config/ema_cooldown.json', '/share/ema_cooldown.json', '/data/ema_cooldown.json']
+        ema_path = next((p for p in ema_candidates if os.path.exists(p)), None)
+
+        sources = [
+            (ema_path,                      'EMA Touch',  '🎯'),
+            ('/data/flip_cooldown.json',    'Daily Flip', '🔄'),
+            ('/data/gainers_cooldown.json', 'Gainer',     '📈'),
+            ('/data/losers_cooldown.json',  'Loser',      '📉'),
+            ('/data/ath_cooldown.json',     'ATH',        '🏆'),
+            ('/data/atl_cooldown.json',     'ATL',        '⬇️'),
+        ]
 
         recent_alerts = []
+        for filepath, label, emoji in sources:
+            if not filepath or not os.path.exists(filepath):
+                continue
+            try:
+                with open(filepath, 'r') as f:
+                    data = json.load(f)
+                for symbol, ts_str in data.items():
+                    ts = datetime.fromisoformat(ts_str)
+                    if ts >= cutoff:
+                        recent_alerts.append({
+                            'symbol':    symbol,
+                            'type':      label,
+                            'emoji':     emoji,
+                            'time':      ts.isoformat(),
+                            'timestamp': ts.timestamp(),
+                        })
+            except Exception:
+                continue
 
-        return jsonify({
-            'success': True,
-            'alerts': recent_alerts,
-            'count': len(recent_alerts)
-        })
+        recent_alerts.sort(key=lambda x: x['timestamp'], reverse=True)
+        return jsonify({'success': True, 'alerts': recent_alerts[:50], 'count': len(recent_alerts)})
 
     except Exception as e:
         logger.error(f"❌ Error getting recent alerts: {e}")
