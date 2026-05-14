@@ -191,68 +191,47 @@ class VolumeScanner:
             return {}
     
     def send_alert(self, result):
-        """Send Telegram alert - text + optional chart images"""
+        """Send Telegram alert: one photo per coin (max 2 gainers + 2 losers) with clean caption."""
         if not self.telegram_token or not self.telegram_chat_id:
             return
 
-        # Always send text message first
         try:
-            message = "📊 *Volume & Movers Alert!*\n\n"
-            if result['gainers']:
-                message += "🚀 *Top Gainers:*\n"
-                for coin in result['gainers'][:5]:
-                    message += f"   {coin['symbol']}: +{coin['change_pct']:.2f}%\n"
-                message += "\n"
-            if result['losers']:
-                message += "📉 *Top Losers:*\n"
-                for coin in result['losers'][:5]:
-                    message += f"   {coin['symbol']}: {coin['change_pct']:.2f}%\n"
-                message += "\n"
-            message += f"🕐 {datetime.now().strftime('%H:%M:%S')}"
+            from alert_utils import fmt_price, utc_time, send_photo, send_text, get_chart
+        except ImportError as e:
+            print(f"Cannot import alert_utils: {e}")
+            return
 
-            url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-            payload = {'chat_id': self.telegram_chat_id, 'text': message, 'parse_mode': 'Markdown'}
-            requests.post(url, json=payload, timeout=10)
-            print("✅ Volume text alert sent")
-        except Exception as e:
-            print(f"❌ Error sending text alert: {e}")
+        def _vol_str(v):
+            if v >= 1e9: return f'${v/1e9:.1f}B'
+            if v >= 1e6: return f'${v/1e6:.0f}M'
+            return f'${v/1e3:.0f}K'
 
-        # Send chart images if matplotlib is available
-        if CHARTS_AVAILABLE:
-            print("📊 Sending chart images")
-            charts_to_send = []
-            if result['gainers']:
-                charts_to_send.append(result['gainers'][0])
-            if result['losers']:
-                charts_to_send.append(result['losers'][0])
-            if charts_to_send:
-                self.send_charts(charts_to_send)
-    
-    def send_charts(self, coins):
-        """Send chart images"""
-        for coin in coins:
-            try:
-                chart_bytes = generate_chart_for_coin(coin['symbol'], ema_period=20)
-                if chart_bytes:
-                    # Link TradingView con .P per perpetual
-                    tv_symbol = coin['symbol'].replace('USDT', 'USDT.P')
-                    tv_link = f"https://it.tradingview.com/chart/KDtSSRjB/?symbol=BYBIT:{tv_symbol}"
-                    
-                    url = f"https://api.telegram.org/bot{self.telegram_token}/sendPhoto"
-                    files = {'photo': ('chart.png', chart_bytes, 'image/png')}
-                    
-                    # Caption con nome coin come link
-                    if coin['change_pct'] > 0:
-                        caption = f"[{coin['symbol']}]({tv_link}) 🚀 +{coin['change_pct']:.2f}%"
-                    else:
-                        caption = f"[{coin['symbol']}]({tv_link}) 📉 {coin['change_pct']:.2f}%"
-                    
-                    data = {
-                        'chat_id': self.telegram_chat_id, 
-                        'caption': caption,
-                        'parse_mode': 'Markdown'
-                    }
-                    requests.post(url, files=files, data=data, timeout=30)
-                    print(f"✅ Chart sent for {coin['symbol']}")
-            except Exception as e:
-                print(f"❌ Error sending chart: {e}")
+        for coin in result.get('gainers', [])[:2]:
+            sym     = coin['symbol']
+            name    = sym.replace('USDT', '/USDT')
+            caption = (
+                f"{name}  +{coin['change_pct']:.2f}% (24h)\n"
+                f"Vol: {_vol_str(coin['volume_24h_usd'])}  Prezzo: {fmt_price(coin['price'])}\n"
+                f"{utc_time()}"
+            )
+            img = get_chart(sym, interval='240', signal={'type': 'gainer'})
+            if img:
+                send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
+            else:
+                send_text(self.telegram_token, self.telegram_chat_id, caption)
+            print(f"Gainer alert inviato: {sym}")
+
+        for coin in result.get('losers', [])[:2]:
+            sym     = coin['symbol']
+            name    = sym.replace('USDT', '/USDT')
+            caption = (
+                f"{name}  {coin['change_pct']:.2f}% (24h)\n"
+                f"Vol: {_vol_str(coin['volume_24h_usd'])}  Prezzo: {fmt_price(coin['price'])}\n"
+                f"{utc_time()}"
+            )
+            img = get_chart(sym, interval='240', signal={'type': 'loser'})
+            if img:
+                send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
+            else:
+                send_text(self.telegram_token, self.telegram_chat_id, caption)
+            print(f"Loser alert inviato: {sym}")

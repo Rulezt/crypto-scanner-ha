@@ -4,6 +4,7 @@ Flask API + Scanners integrati + Dashboard
 """
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
+from datetime import datetime
 import os
 import json
 import threading
@@ -236,7 +237,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.1.0',
+        'version': '3.2.0',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -551,6 +552,13 @@ def _save_alerts(alerts):
     except Exception:
         return False
 
+def _fmt_price(p):
+    if p >= 10000: return f'{p:,.0f}'
+    if p >= 1:     return f'{p:.3f}'
+    if p >= 0.01:  return f'{p:.5f}'
+    return f'{p:.7f}'
+
+
 def send_telegram(text):
     import requests as req
     token = config['telegram']['token']
@@ -561,11 +569,29 @@ def send_telegram(text):
     try:
         req.post(
             f'https://api.telegram.org/bot{token}/sendMessage',
-            json={'chat_id': chat_id, 'text': text, 'parse_mode': 'Markdown'},
-            timeout=10
+            json={'chat_id': chat_id, 'text': text},
+            timeout=10,
         )
     except Exception as e:
         logger.error(f"Telegram send error: {e}")
+
+
+def send_telegram_photo(image_bytes, caption):
+    import requests as req
+    token = config['telegram']['token']
+    chat_id = config['telegram']['chat_id']
+    if not token or not chat_id:
+        return
+    try:
+        req.post(
+            f'https://api.telegram.org/bot{token}/sendPhoto',
+            files={'photo': ('chart.png', image_bytes, 'image/png')},
+            data={'chat_id': chat_id, 'caption': caption},
+            timeout=30,
+        )
+    except Exception as e:
+        logger.error(f"Telegram photo error: {e}")
+
 
 def check_price_alerts():
     import requests as req
@@ -598,15 +624,31 @@ def check_price_alerts():
                     modified = True
                     with _triggered_lock:
                         _recently_triggered.append(dict(alert))
-                    coin = sym.replace('USDT', '')
-                    direction = '📈' if alert['condition'] == 'above' else '📉'
-                    msg = (f"{direction} *Alert Prezzo Raggiunto*\n"
-                           f"*{coin}/USDT*\n"
-                           f"Prezzo attuale: `{cur_price}`\n"
-                           f"Target: `{alert['price']}` "
-                           f"({'sopra' if alert['condition'] == 'above' else 'sotto'})")
+
+                    coin      = sym.replace('USDT', '')
+                    dir_word  = 'Sopra' if alert['condition'] == 'above' else 'Sotto'
+                    caption   = (
+                        f"{coin}/USDT  {dir_word} {_fmt_price(alert['price'])}\n"
+                        f"Prezzo attuale: {_fmt_price(cur_price)}\n"
+                        f"{datetime.utcnow().strftime('%H:%M UTC')}"
+                    )
+
                     if alert.get('notify', 'both') != 'browser':
-                        send_telegram(msg)
+                        img = None
+                        try:
+                            from alert_utils import get_chart
+                            img = get_chart(sym, interval='60', signal={
+                                'type':      'price',
+                                'price':     alert['price'],
+                                'condition': alert['condition'],
+                            })
+                        except Exception as ce:
+                            logger.error(f"Chart error for price alert {sym}: {ce}")
+                        if img:
+                            send_telegram_photo(img, caption)
+                        else:
+                            send_telegram(caption)
+
                     logger.info(f"Alert triggered: {sym} {alert['condition']} {alert['price']}")
             if modified:
                 _save_alerts(alerts)
@@ -701,10 +743,41 @@ def get_klines():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/ticker', methods=['GET'])
+def get_ticker():
+    """Get ticker data for a single USDT symbol."""
+    import requests as req
+    symbol = request.args.get('symbol', '').upper()
+    if not symbol.endswith('USDT') or len(symbol) > 20:
+        return jsonify({'error': 'Invalid symbol'}), 400
+    try:
+        r = req.get('https://api.bybit.com/v5/market/tickers',
+                    params={'category': 'linear', 'symbol': symbol},
+                    timeout=6)
+        d = r.json()
+        if d.get('retCode') != 0 or not d['result']['list']:
+            return jsonify({'error': 'Symbol not found'}), 404
+        t = d['result']['list'][0]
+        last_price = float(t['lastPrice'])
+        change_pct = round(float(t.get('price24hPcnt', 0)) * 100, 2)
+        vol_24h    = float(t.get('volume24h', 0)) * last_price
+        return jsonify({'success': True, 'symbol': symbol,
+                        'price': last_price, 'change_24h': change_pct,
+                        'volume_24h': vol_24h})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/chart', methods=['GET'])
 def chart_page():
     """Serve realtime chart page"""
     return send_file('/usr/share/nginx/html/chart.html')
+
+
+@app.route('/screenshot', methods=['GET'])
+def screenshot_page():
+    """Serve single-chart screenshot page (used by Selenium for alert images)."""
+    return send_file('/usr/share/nginx/html/screenshot.html')
 
 
 @app.route('/', methods=['GET'])

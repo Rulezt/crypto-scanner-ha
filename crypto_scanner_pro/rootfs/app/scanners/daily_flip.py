@@ -171,51 +171,31 @@ class DailyFlipScanner:
             return []
     
     def send_alert(self, coins):
-        """Send Telegram alert - text + optional chart images"""
+        """Send Telegram alert: one photo per coin (max 2) with clean caption."""
         if not self.telegram_token or not self.telegram_chat_id:
             return
 
-        # Always send text message first
         try:
-            message = "🔄 *Daily Flip Alert!*\n\n"
-            message += f"Found {len(coins)} near flip:\n\n"
-            for coin in coins:
-                message += f"{coin['flip_direction']} *{coin['symbol']}*\n"
-                message += f"   Change: {coin['change_pct']:.2f}%\n\n"
-            message += f"🕐 {datetime.now().strftime('%H:%M:%S')}"
+            from alert_utils import fmt_price, utc_time, send_photo, send_text, get_chart
+        except ImportError as e:
+            print(f"Cannot import alert_utils: {e}")
+            return
 
-            url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-            payload = {'chat_id': self.telegram_chat_id, 'text': message, 'parse_mode': 'Markdown'}
-            requests.post(url, json=payload, timeout=10)
-            print("✅ Flip text alert sent")
-        except Exception as e:
-            print(f"❌ Error sending text alert: {e}")
-
-        # Send chart images if matplotlib is available
-        if CHARTS_AVAILABLE and len(coins) > 0:
-            print("📊 Sending chart images")
-            self.send_charts(coins[:2])
-    
-    def send_charts(self, coins):
-        """Send chart images"""
-        for coin in coins:
-            try:
-                chart_bytes = generate_chart_for_coin(coin['symbol'], ema_period=20)
-                if chart_bytes:
-                    # Link TradingView con .P per perpetual
-                    tv_symbol = coin['symbol'].replace('USDT', 'USDT.P')
-                    tv_link = f"https://it.tradingview.com/chart/KDtSSRjB/?symbol=BYBIT:{tv_symbol}"
-                    
-                    url = f"https://api.telegram.org/bot{self.telegram_token}/sendPhoto"
-                    files = {'photo': ('chart.png', chart_bytes, 'image/png')}
-                    data = {
-                        'chat_id': self.telegram_chat_id,
-                        'caption': f"[{coin['symbol']}]({tv_link}) Daily Flip",
-                        'parse_mode': 'Markdown'
-                    }
-                    requests.post(url, files=files, data=data, timeout=30)
-                    print(f"✅ Chart sent for {coin['symbol']}")
-            except Exception as e:
-                print(f"❌ Error sending chart: {e}")
+        for coin in coins[:2]:
+            sym     = coin['symbol']
+            name    = sym.replace('USDT', '/USDT')
+            sign    = '+' if coin['change_pct'] >= 0 else ''
+            caption = (
+                f"{name}  Daily Flip\n"
+                f"var 24h: {sign}{coin['change_pct']:.2f}%\n"
+                f"Prezzo: {fmt_price(coin['price'])}\n"
+                f"{utc_time()}"
+            )
+            img = get_chart(sym, interval='240', signal={'type': 'flip'})
+            if img:
+                send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
+            else:
+                send_text(self.telegram_token, self.telegram_chat_id, caption)
+            print(f"Flip alert inviato: {sym}")
 
 

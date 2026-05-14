@@ -389,68 +389,31 @@ class EMAScanner:
             return []
 
     def send_alert(self, coins):
-        """Send Telegram alert - text + optional chart images"""
+        """Send Telegram alert: one photo per coin (max 3) with clean caption."""
         if not self.telegram_token or not self.telegram_chat_id:
-            print("⚠️ Telegram not configured")
+            print("Telegram not configured")
             return
 
-        # Always send text message first
         try:
-            message = "🎯 *EMA 60 Touch Alert!*\n\n"
-            for coin in coins:
-                direction = "⬆️" if "from below" in coin['approach'] else "⬇️"
-                message += f"{direction} *{coin['symbol']}*\n"
-                message += f"   Distanza EMA60: {coin['distance_pct']:.2f}%\n\n"
-            message += f"🕐 {datetime.utcnow().strftime('%H:%M UTC')}"
+            from alert_utils import fmt_price, utc_time, send_photo, send_text, get_chart
+        except ImportError as e:
+            print(f"Cannot import alert_utils: {e}")
+            return
 
-            url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-            payload = {'chat_id': self.telegram_chat_id, 'text': message, 'parse_mode': 'Markdown'}
-            resp = requests.post(url, json=payload, timeout=10)
-            if resp.ok:
-                print("✅ EMA Touch text alert sent")
+        for coin in coins[:3]:
+            sym      = coin['symbol']
+            name     = sym.replace('USDT', '/USDT')
+            dir_str  = 'da sotto' if 'below' in coin['approach'] else 'da sopra'
+            caption  = (
+                f"{name}  EMA60 Touch · 30m\n"
+                f"distanza: {coin['distance_pct']:.2f}% {dir_str}\n"
+                f"Prezzo: {fmt_price(coin['price'])}  EMA60: {fmt_price(coin['ema60'])}\n"
+                f"{utc_time()}"
+            )
+            img = get_chart(sym, interval='30', signal={'type': 'ema'})
+            if img:
+                send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
+                print(f"Alert foto inviato: {sym}")
             else:
-                print(f"❌ Text alert failed: {resp.text}")
-        except Exception as e:
-            print(f"❌ Error sending text alert: {e}")
-
-        # Send chart images if matplotlib is available
-        if CHARTS_AVAILABLE and len(coins) > 0:
-            print(f"📊 Sending chart images for {len(coins[:3])} coins")
-            self.send_charts(coins[:3])
-
-    def send_charts(self, coins):
-        """Send chart images for coins"""
-        for coin in coins:
-            try:
-                print(f"📊 Generating 30m chart for {coin['symbol']}...")
-                chart_bytes = generate_chart_for_coin(coin['symbol'], ema_period=60)
-
-                if chart_bytes:
-                    # Link TradingView con .P per perpetual
-                    tv_symbol = coin['symbol'].replace('USDT', 'USDT.P')
-                    tv_link = f"https://it.tradingview.com/chart/KDtSSRjB/?symbol=BYBIT:{tv_symbol}"
-
-                    # Caption con distanza
-                    caption = f"[{coin['symbol']}]({tv_link}) - EMA 60\n"
-                    caption += f"Distanza: {coin['distance_pct']:.2f}%"
-
-                    # Send photo to Telegram
-                    url = f"https://api.telegram.org/bot{self.telegram_token}/sendPhoto"
-                    files = {'photo': ('chart.png', chart_bytes, 'image/png')}
-                    data = {
-                        'chat_id': self.telegram_chat_id,
-                        'caption': caption,
-                        'parse_mode': 'Markdown'
-                    }
-
-                    response = requests.post(url, files=files, data=data, timeout=30)
-
-                    if response.ok:
-                        print(f"✅ Chart sent for {coin['symbol']}")
-                    else:
-                        print(f"❌ Failed to send chart: {response.text}")
-                else:
-                    print(f"⚠️ No chart generated for {coin['symbol']}")
-
-            except Exception as e:
-                print(f"❌ Error sending chart for {coin['symbol']}: {e}")
+                send_text(self.telegram_token, self.telegram_chat_id, caption)
+                print(f"Alert testo inviato: {sym}")

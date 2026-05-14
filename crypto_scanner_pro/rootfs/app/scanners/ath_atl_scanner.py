@@ -333,99 +333,61 @@ class ATHATLScanner:
             return {}
 
     def send_alert(self, result):
-        """Send Telegram alert - text + optional chart images"""
+        """Send Telegram alert: one photo per coin (max 3 ATH + 3 ATL) with clean caption."""
         if not self.telegram_token or not self.telegram_chat_id:
-            print("⚠️ Telegram not configured")
+            print("Telegram not configured")
             return
 
-        # Always send text message first
         try:
-            message = "🏆 *ATH/ATL Alert!*\n\n"
-            if result['ath']:
-                message += "📈 *Near ATH:*\n"
-                for coin in result['ath'][:5]:
-                    status = "🚀 NUOVO ATH!" if coin['is_new_ath'] else f"Dist: {coin['distance_pct']:.2f}%"
-                    message += f"   *{coin['symbol']}*: {status}\n"
-                message += "\n"
-            if result['atl']:
-                message += "📉 *Near ATL:*\n"
-                for coin in result['atl'][:5]:
-                    status = "💥 NUOVO ATL!" if coin['is_new_atl'] else f"Dist: {coin['distance_pct']:.2f}%"
-                    message += f"   *{coin['symbol']}*: {status}\n"
-                message += "\n"
-            message += f"🕐 {datetime.now().strftime('%H:%M:%S')}"
+            from alert_utils import fmt_price, utc_time, send_photo, send_text, get_chart
+        except ImportError as e:
+            print(f"Cannot import alert_utils: {e}")
+            return
 
-            url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-            payload = {'chat_id': self.telegram_chat_id, 'text': message, 'parse_mode': 'Markdown'}
-            resp = requests.post(url, json=payload, timeout=10)
-            if resp.ok:
-                print("✅ ATH/ATL text alert sent")
+        for coin in result.get('ath', [])[:3]:
+            sym  = coin['symbol']
+            name = sym.replace('USDT', '/USDT')
+            if coin['is_new_ath']:
+                caption = (
+                    f"{name}  Nuovo ATH!\n"
+                    f"Prezzo: {fmt_price(coin['price'])}  "
+                    f"(prec ATH: {fmt_price(coin['ath'])})\n"
+                    f"{utc_time()}"
+                )
             else:
-                print(f"❌ Text alert failed: {resp.text}")
-        except Exception as e:
-            print(f"❌ Error sending text alert: {e}")
+                caption = (
+                    f"{name}  Vicino ATH\n"
+                    f"distanza: {coin['distance_pct']:.2f}%  ATH: {fmt_price(coin['ath'])}\n"
+                    f"Prezzo: {fmt_price(coin['price'])}\n"
+                    f"{utc_time()}"
+                )
+            img = get_chart(sym, interval='D', signal={'type': 'ath'})
+            if img:
+                send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
+            else:
+                send_text(self.telegram_token, self.telegram_chat_id, caption)
+            print(f"ATH alert inviato: {sym}")
 
-        # Send chart images if matplotlib is available
-        if CHARTS_AVAILABLE:
-            print("📊 Sending ATH/ATL chart images")
-            charts_to_send = []
-            for coin in result['ath'][:3]:
-                charts_to_send.append({'coin': coin, 'type': 'ath'})
-            for coin in result['atl'][:3]:
-                charts_to_send.append({'coin': coin, 'type': 'atl'})
-            if charts_to_send:
-                self.send_charts(charts_to_send)
-
-    def send_charts(self, chart_data):
-        """Send chart images"""
-        for item in chart_data:
-            try:
-                coin = item['coin']
-                alert_type = item['type']
-
-                print(f"📊 Generating chart for {coin['symbol']}...")
-                chart_bytes = generate_chart_for_coin(coin['symbol'], ema_period=20)
-
-                if chart_bytes:
-                    # Link TradingView con .P per perpetual
-                    tv_symbol = coin['symbol'].replace('USDT', 'USDT.P')
-                    tv_link = f"https://it.tradingview.com/chart/KDtSSRjB/?symbol=BYBIT:{tv_symbol}"
-
-                    # Build caption
-                    if alert_type == 'ath':
-                        if coin['is_new_ath']:
-                            caption = f"[{coin['symbol']}]({tv_link}) 🚀 NUOVO ATH!\n"
-                            caption += f"Prezzo: ${coin['price']:.6f}"
-                        else:
-                            caption = f"[{coin['symbol']}]({tv_link}) 📈 Vicino ATH\n"
-                            caption += f"Distanza: {coin['distance_pct']:.2f}%\n"
-                            caption += f"ATH: ${coin['ath']:.6f}"
-                    else:  # atl
-                        if coin['is_new_atl']:
-                            caption = f"[{coin['symbol']}]({tv_link}) 💥 NUOVO ATL!\n"
-                            caption += f"Prezzo: ${coin['price']:.6f}"
-                        else:
-                            caption = f"[{coin['symbol']}]({tv_link}) 📉 Vicino ATL\n"
-                            caption += f"Distanza: {coin['distance_pct']:.2f}%\n"
-                            caption += f"ATL: ${coin['atl']:.6f}"
-
-                    # Send photo to Telegram
-                    url = f"https://api.telegram.org/bot{self.telegram_token}/sendPhoto"
-                    files = {'photo': ('chart.png', chart_bytes, 'image/png')}
-                    data = {
-                        'chat_id': self.telegram_chat_id,
-                        'caption': caption,
-                        'parse_mode': 'Markdown'
-                    }
-
-                    response = requests.post(url, files=files, data=data, timeout=30)
-
-                    if response.ok:
-                        print(f"✅ Chart sent for {coin['symbol']}")
-                    else:
-                        print(f"❌ Failed to send chart: {response.text}")
-                else:
-                    print(f"⚠️ No chart generated for {coin['symbol']}")
-
-            except Exception as e:
-                print(f"❌ Error sending chart for {coin['symbol']}: {e}")
+        for coin in result.get('atl', [])[:3]:
+            sym  = coin['symbol']
+            name = sym.replace('USDT', '/USDT')
+            if coin['is_new_atl']:
+                caption = (
+                    f"{name}  Nuovo ATL!\n"
+                    f"Prezzo: {fmt_price(coin['price'])}  "
+                    f"(prec ATL: {fmt_price(coin['atl'])})\n"
+                    f"{utc_time()}"
+                )
+            else:
+                caption = (
+                    f"{name}  Vicino ATL\n"
+                    f"distanza: {coin['distance_pct']:.2f}%  ATL: {fmt_price(coin['atl'])}\n"
+                    f"Prezzo: {fmt_price(coin['price'])}\n"
+                    f"{utc_time()}"
+                )
+            img = get_chart(sym, interval='D', signal={'type': 'atl'})
+            if img:
+                send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
+            else:
+                send_text(self.telegram_token, self.telegram_chat_id, caption)
+            print(f"ATL alert inviato: {sym}")
