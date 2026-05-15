@@ -695,7 +695,7 @@ function buildGrid() {
             prevHighLine: null, prevLowLine: null,
         });
         const _s = slots[slots.length - 1];
-        chart.subscribeVisibleTimeRangeChange(() => {
+        chart.timeScale().subscribeVisibleTimeRangeChange(() => {
             setTimeout(() => refreshMidLines(_s.chartEl, _s.candleS, _s.midLines), 60);
         });
     }
@@ -866,7 +866,7 @@ function initFsChart() {
     for (const {p, color, width} of EMA_CFG)
         fsEmaS[p] = addSeries(fsChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
 
-    fsChart.subscribeVisibleTimeRangeChange(() => {
+    fsChart.timeScale().subscribeVisibleTimeRangeChange(() => {
         setTimeout(() => refreshMidLines(document.getElementById('fs-chart-el'), fsCandleS, fsMidLines), 60);
     });
     fsChart.subscribeCrosshairMove(param => {
@@ -1181,7 +1181,7 @@ function initOBChart() {
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
     for (const {p, color, width} of EMA_CFG)
         obEmaS[p] = addSeries(obChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
-    obChart.subscribeVisibleTimeRangeChange(() => {
+    obChart.timeScale().subscribeVisibleTimeRangeChange(() => {
         setTimeout(() => refreshMidLines(document.getElementById('ob-chart-el'), obCandleS, obMidLines), 60);
     });
 }
