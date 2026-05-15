@@ -1308,14 +1308,16 @@ function toggleOBBook(force) {
     if (obChart) obChart.timeScale().fitContent();
 }
 
-// OB modal panel resize — overlay prevents iframe from swallowing mouse events
+// OB modal panel resize — event delegation (ob-panel-resize è sotto nello stesso script block)
 let _obRes = false, _obResX = 0, _obResW = 0;
-document.getElementById('ob-panel-resize').addEventListener('mousedown', e => {
+document.addEventListener('mousedown', e => {
+    if (e.target.id !== 'ob-panel-resize') return;
     _obRes = true;
     _obResX = e.clientX;
     _obResW = document.getElementById('ob-chart-panel').getBoundingClientRect().width;
     document.body.style.userSelect = 'none';
-    document.getElementById('ob-panel-resize').style.background = 'rgba(59,130,246,0.4)';
+    e.target.style.background = 'rgba(59,130,246,0.4)';
+    // overlay trasparente per bloccare capture dell'iframe durante drag
     const ov = document.createElement('div');
     ov.id = 'ob-drag-ov';
     ov.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:col-resize;';
@@ -1334,7 +1336,8 @@ document.addEventListener('mouseup', () => {
     if (!_obRes) return;
     _obRes = false;
     document.body.style.userSelect = '';
-    document.getElementById('ob-panel-resize').style.background = 'transparent';
+    const h = document.getElementById('ob-panel-resize');
+    if (h) h.style.background = 'transparent';
     const ov = document.getElementById('ob-drag-ov');
     if (ov) ov.remove();
 });
