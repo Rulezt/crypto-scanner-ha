@@ -19,6 +19,9 @@ createApp({
         const showImbalance = ref(true);
         const isPaused = ref(false);
         const showCVD = ref(true);
+        const showBook = ref(true);
+        const cvdWidth = ref(180);
+        const isResizing = ref(false);
 
         const maxLevelDistance = ref({
             askPrice: 0, askPercent: '0.00',
@@ -495,6 +498,36 @@ createApp({
         };
 
         // ============================
+        //  CVD PANEL RESIZE
+        // ============================
+        let resizeStartX = 0;
+        let resizeStartWidth = 0;
+
+        const onResize = (e) => {
+            const diff = resizeStartX - e.clientX;
+            cvdWidth.value = Math.max(140, Math.min(520, resizeStartWidth + diff));
+            const canvas = document.getElementById('cvd-canvas');
+            if (canvas) {
+                canvas.width = cvdWidth.value - 8;
+                drawCVDChart();
+            }
+        };
+
+        const stopResize = () => {
+            isResizing.value = false;
+            document.removeEventListener('mousemove', onResize);
+            document.removeEventListener('mouseup', stopResize);
+        };
+
+        const startResize = (e) => {
+            isResizing.value = true;
+            resizeStartX = e.clientX;
+            resizeStartWidth = cvdWidth.value;
+            document.addEventListener('mousemove', onResize);
+            document.addEventListener('mouseup', stopResize);
+        };
+
+        // ============================
         //  CLEANUP
         // ============================
         const cleanup = () => {
@@ -503,6 +536,8 @@ createApp({
             if (reconnectTimer) clearTimeout(reconnectTimer);
             if (tradeReconnectTimer) clearTimeout(tradeReconnectTimer);
             if (bucketTimer) clearInterval(bucketTimer);
+            document.removeEventListener('mousemove', onResize);
+            document.removeEventListener('mouseup', stopResize);
             asksMap.clear();
             bidsMap.clear();
         };
@@ -524,6 +559,8 @@ createApp({
             imbalance, showImbalance, isPaused,
             maxLevelDistance,
             cvdData, cvdHistory, showCVD,
+            showBook, cvdWidth, isResizing,
+            startResize,
             fetchOrderBook, updateDisplay,
         };
     }

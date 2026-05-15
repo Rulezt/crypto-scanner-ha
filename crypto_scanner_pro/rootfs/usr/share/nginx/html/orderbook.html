@@ -170,6 +170,10 @@
                             :class="['imbalance-toggle', showCVD ? 'active' : '']">
                         CVD
                     </button>
+                    <button @click="showBook = !showBook"
+                            :class="['imbalance-toggle', showBook ? 'active' : '']">
+                        BOOK
+                    </button>
                 </div>
             </div>
 
@@ -209,7 +213,7 @@
                 </div>
 
                 <!-- Order Book -->
-                <div class="orderbook-container"
+                <div v-show="showBook" class="orderbook-container"
                      @mousedown="isPaused = true"
                      @mouseup="isPaused = false"
                      @mouseleave="isPaused = false"
@@ -246,8 +250,11 @@
                     </div>
                 </div>
 
+                <!-- Resize handle CVD -->
+                <div v-if="showCVD" class="resize-handle" :class="{ resizing: isResizing }" @mousedown.prevent="startResize"></div>
+
                 <!-- CVD PANEL -->
-                <div v-if="showCVD" class="cvd-panel">
+                <div v-if="showCVD" class="cvd-panel" :style="{ width: cvdWidth + 'px', minWidth: cvdWidth + 'px' }">
 
                     <!-- Header -->
                     <div class="cvd-header">
