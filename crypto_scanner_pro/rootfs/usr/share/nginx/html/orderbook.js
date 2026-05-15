@@ -1,5 +1,5 @@
 // Order Book Standalone Vue App
-const { createApp, ref, onMounted, onUnmounted, computed } = Vue;
+const { createApp, ref, onMounted, onUnmounted, computed, watch } = Vue;
 
 createApp({
     setup() {
@@ -541,6 +541,13 @@ createApp({
             asksMap.clear();
             bidsMap.clear();
         };
+
+        // Notify parent when book section visibility changes
+        watch(showBook, val => {
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'ob_book_toggle', visible: val }, '*');
+            }
+        });
 
         onMounted(() => {
             fetchOrderBook();

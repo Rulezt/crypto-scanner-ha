@@ -1238,6 +1238,8 @@ function openOBModal(symbol) {
     document.getElementById('ob-chart-sym').textContent = symbol.replace('USDT','');
     document.getElementById('ob-iframe').src = `orderbook?symbol=${symbol}`;
     document.getElementById('ob-modal').style.display = 'flex';
+    // Reset book panel to visible state
+    toggleOBBook(true);
     initOBChart();
     renderOBTFBar();
     if (changed) {
@@ -1265,9 +1267,11 @@ function closeOBModal() {
     obSymbolName = null;
 }
 
-// Receive strongest bid/ask from OB iframe → draw on chart
+// Receive messages from OB iframe
 window.addEventListener('message', e => {
-    if (!e.data || e.data.type !== 'ob_levels' || !obCandleS) return;
+    if (!e.data) return;
+    if (e.data.type === 'ob_book_toggle') { toggleOBBook(e.data.visible); return; }
+    if (e.data.type !== 'ob_levels' || !obCandleS) return;
     const { bid, ask } = e.data;
     if (obBidLine) { try { obCandleS.removePriceLine(obBidLine); } catch(e) {} obBidLine = null; }
     if (obAskLine) { try { obCandleS.removePriceLine(obAskLine); } catch(e) {} obAskLine = null; }
@@ -1282,7 +1286,29 @@ document.addEventListener('keydown', e => {
     }
 }, true);
 
-// OB modal panel resize
+// OB book panel toggle (triggered by BOOK btn inside iframe via postMessage, or by header btn)
+let _obBookVisible = true;
+function toggleOBBook(force) {
+    _obBookVisible = (force !== undefined) ? force : !_obBookVisible;
+    const panel  = document.getElementById('ob-book-panel');
+    const handle = document.getElementById('ob-panel-resize');
+    const btn    = document.getElementById('ob-book-btn');
+    if (_obBookVisible) {
+        panel.style.display  = 'flex';
+        handle.style.display = '';
+        document.getElementById('ob-chart-panel').style.flexBasis = '50%';
+        panel.style.flexBasis = '50%';
+        if (btn) { btn.style.background = '#1d4ed8'; btn.style.color = '#fff'; }
+    } else {
+        panel.style.display  = 'none';
+        handle.style.display = 'none';
+        document.getElementById('ob-chart-panel').style.flexBasis = '100%';
+        if (btn) { btn.style.background = 'transparent'; btn.style.color = '#6B7280'; }
+    }
+    if (obChart) obChart.timeScale().fitContent();
+}
+
+// OB modal panel resize — overlay prevents iframe from swallowing mouse events
 let _obRes = false, _obResX = 0, _obResW = 0;
 document.getElementById('ob-panel-resize').addEventListener('mousedown', e => {
     _obRes = true;
@@ -1290,12 +1316,15 @@ document.getElementById('ob-panel-resize').addEventListener('mousedown', e => {
     _obResW = document.getElementById('ob-chart-panel').getBoundingClientRect().width;
     document.body.style.userSelect = 'none';
     document.getElementById('ob-panel-resize').style.background = 'rgba(59,130,246,0.4)';
+    const ov = document.createElement('div');
+    ov.id = 'ob-drag-ov';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:col-resize;';
+    document.body.appendChild(ov);
     e.preventDefault();
 });
 document.addEventListener('mousemove', e => {
     if (!_obRes) return;
-    const modal = document.getElementById('ob-modal');
-    const totalW = modal.getBoundingClientRect().width - 5; // 5px = handle width
+    const totalW = document.getElementById('ob-modal').getBoundingClientRect().width - 5;
     const newW = Math.max(200, Math.min(totalW - 200, _obResW + (e.clientX - _obResX)));
     document.getElementById('ob-chart-panel').style.flexBasis = newW + 'px';
     document.getElementById('ob-book-panel').style.flexBasis = (totalW - newW) + 'px';
@@ -1306,6 +1335,8 @@ document.addEventListener('mouseup', () => {
     _obRes = false;
     document.body.style.userSelect = '';
     document.getElementById('ob-panel-resize').style.background = 'transparent';
+    const ov = document.getElementById('ob-drag-ov');
+    if (ov) ov.remove();
 });
 </script>
 
@@ -1318,6 +1349,7 @@ document.addEventListener('mouseup', () => {
             <span id="ob-chart-sym" style="font-size:13px;font-weight:700;color:#E5E7EB;min-width:60px;"></span>
             <div id="ob-tf-bar" style="display:flex;gap:4px;"></div>
             <div style="flex:1;"></div>
+            <button id="ob-book-btn" onclick="toggleOBBook()" style="background:#1d4ed8;color:#fff;border:1px solid #2563eb;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;">BOOK</button>
             <button onclick="closeOBModal()" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
         </div>
         <div id="ob-chart-el" style="flex:1;min-height:0;"></div>
