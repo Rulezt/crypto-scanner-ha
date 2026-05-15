@@ -133,6 +133,11 @@
             title="Order Book">
             📖 OB
         </button>
+        <button id="fs-ob-lvl-btn" onclick="toggleFsOBLevels()"
+            style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;"
+            title="Livelli bid/ask">
+            OB Lvl
+        </button>
         <button onclick="if(fsChart) fsChart.timeScale().fitContent()"
             style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;"
             title="Reset zoom">
@@ -226,6 +231,7 @@ let obBidLine = null, obAskLine = null;
 let obDayHighLine = null, obDayLowLine = null;
 let obPrevHighLine = null, obPrevLowLine = null;
 let fsMidLines = [], obMidLines = [];
+let fsObActive = false, fsObBidLine = null, fsObAskLine = null, fsObTimer = null;
 
 // price alerts
 let pendingAlert = null;
@@ -548,6 +554,82 @@ function refreshMidLines(chartEl, series, midLines) {
     }
 }
 
+// ── OB Levels (bid/ask wall) per slot e fullscreen ────────────────────────────
+async function _fetchOBLevels(symbol) {
+    const r = await fetch(`https://api.bybit.com/v5/market/orderbook?category=linear&symbol=${symbol}&limit=200`);
+    const d = await r.json();
+    if (d.retCode !== 0 || !d.result) return null;
+    const asks = d.result.a.map(([p,v]) => [parseFloat(p), parseFloat(v)]);
+    const bids = d.result.b.map(([p,v]) => [parseFloat(p), parseFloat(v)]);
+    if (!asks.length || !bids.length) return null;
+    return {
+        ask: asks.reduce((m,x) => x[1]>m[1]?x:m)[0],
+        bid: bids.reduce((m,x) => x[1]>m[1]?x:m)[0],
+    };
+}
+
+async function fetchSlotOBLevels(idx) {
+    const s = slots[idx];
+    if (!s || !s.symbol || !s.candleS || !s.obActive) return;
+    try {
+        const lv = await _fetchOBLevels(s.symbol);
+        if (!lv) return;
+        if (s.obBidLine) { try { s.candleS.removePriceLine(s.obBidLine); } catch(e) {} }
+        if (s.obAskLine) { try { s.candleS.removePriceLine(s.obAskLine); } catch(e) {} }
+        s.obBidLine = s.candleS.createPriceLine({ price: lv.bid, color:'#10b981', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'Bid' });
+        s.obAskLine = s.candleS.createPriceLine({ price: lv.ask, color:'#ef4444', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'Ask' });
+    } catch(e) {}
+}
+
+function _clearSlotOBLines(s) {
+    if (s.obBidLine) { try { s.candleS.removePriceLine(s.obBidLine); } catch(e) {} s.obBidLine = null; }
+    if (s.obAskLine) { try { s.candleS.removePriceLine(s.obAskLine); } catch(e) {} s.obAskLine = null; }
+}
+
+function toggleSlotOBLevels(idx) {
+    const s = slots[idx];
+    if (!s) return;
+    s.obActive = !s.obActive;
+    if (s.obActive) {
+        s.obEl.style.color = '#10b981';
+        if (s.symbol) {
+            fetchSlotOBLevels(idx);
+            s.obTimer = setInterval(() => fetchSlotOBLevels(idx), 15000);
+        }
+    } else {
+        clearInterval(s.obTimer); s.obTimer = null;
+        _clearSlotOBLines(s);
+        s.obEl.style.color = '#4B5563';
+    }
+}
+
+async function fetchFsOBLevels() {
+    if (!fsCoin || !fsCandleS || !fsObActive) return;
+    try {
+        const lv = await _fetchOBLevels(fsCoin.symbol);
+        if (!lv) return;
+        if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} }
+        if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} }
+        fsObBidLine = fsCandleS.createPriceLine({ price: lv.bid, color:'#10b981', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'Bid' });
+        fsObAskLine = fsCandleS.createPriceLine({ price: lv.ask, color:'#ef4444', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'Ask' });
+    } catch(e) {}
+}
+
+function toggleFsOBLevels() {
+    fsObActive = !fsObActive;
+    const btn = document.getElementById('fs-ob-lvl-btn');
+    if (fsObActive) {
+        if (btn) { btn.style.color = '#10b981'; btn.style.background = 'rgba(16,185,129,0.15)'; }
+        fetchFsOBLevels();
+        fsObTimer = setInterval(fetchFsOBLevels, 15000);
+    } else {
+        clearInterval(fsObTimer); fsObTimer = null;
+        if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} fsObBidLine = null; }
+        if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} fsObAskLine = null; }
+        if (btn) { btn.style.color = '#9CA3AF'; btn.style.background = '#2B3139'; }
+    }
+}
+
 // ── build grid (once — 18 slots) ──────────────────────────────────────────────
 function buildGrid() {
     const grid = document.getElementById('grid');
@@ -617,11 +699,11 @@ function buildGrid() {
         mtfEl.onclick = () => { const s = slots[i]; if (s && s.symbol) window.open(`mtf?symbol=${s.symbol}`, '_blank'); };
 
         const obEl = document.createElement('button');
-        obEl.textContent = '📖'; obEl.title = 'Order Book';
-        obEl.style.cssText = 'font-size:11px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
-        obEl.onmouseenter = () => obEl.style.color = '#9CA3AF';
-        obEl.onmouseleave = () => obEl.style.color = '#4B5563';
-        obEl.onclick = () => { const s = slots[i]; if (s && s.symbol) openOBModal(s.symbol); };
+        obEl.textContent = 'OB'; obEl.title = 'Livelli bid/ask';
+        obEl.style.cssText = 'font-size:10px;font-weight:600;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+        obEl.onmouseenter = () => { if (!slots[i]?.obActive) obEl.style.color = '#9CA3AF'; };
+        obEl.onmouseleave = () => { if (!slots[i]?.obActive) obEl.style.color = '#4B5563'; };
+        obEl.onclick = () => toggleSlotOBLevels(i);
 
         const expandEl = document.createElement('button');
         expandEl.textContent = '⤢'; expandEl.title = 'Schermo intero';
@@ -697,11 +779,12 @@ function buildGrid() {
         slots.push({
             cell, chart, candleS, emaSeries, chartEl, midLines: [],
             lastEMA: {5:null, 10:null, 60:null, 223:null},
-            starEl, titleEl, changeEl, volEl, candlePctEl, tfEl, bybitEl, alertBtn,
+            starEl, titleEl, changeEl, volEl, candlePctEl, tfEl, bybitEl, alertBtn, obEl,
             symbol: null, coin: null, curTF, lastPrice: null, crosshairPrice: null,
             alertLines: new Map(),
             dayHighLine: null, dayLowLine: null,
             prevHighLine: null, prevLowLine: null,
+            obActive: false, obBidLine: null, obAskLine: null, obTimer: null,
         });
         const _s = slots[slots.length - 1];
         chart.timeScale().subscribeVisibleTimeRangeChange(() => {
@@ -796,6 +879,7 @@ async function loadPage() {
         if (s.dayLowLine)   { try { s.candleS.removePriceLine(s.dayLowLine);   } catch(e) {} s.dayLowLine   = null; }
         if (s.prevHighLine) { try { s.candleS.removePriceLine(s.prevHighLine); } catch(e) {} s.prevHighLine = null; }
         if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
+        clearInterval(s.obTimer); s.obTimer = null; _clearSlotOBLines(s);
         s.candleS.setData([]);
         for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
         s.lastEMA = {5:null, 10:null, 60:null, 223:null};
@@ -824,6 +908,11 @@ async function loadSlot(idx, coin) {
     s.starEl.style.color = isFav ? '#fbbf24' : '#4B5563';
     renderSlotTF(idx);
     await loadSlotData(idx);
+    if (s.obActive) {
+        clearInterval(s.obTimer); s.obTimer = null;
+        fetchSlotOBLevels(idx);
+        s.obTimer = setInterval(() => fetchSlotOBLevels(idx), 15000);
+    }
 }
 
 async function loadSlotData(idx) {
@@ -914,16 +1003,37 @@ async function openFullscreen(idx) {
     renderFsTFBar();
     await loadFsData();
     connectFsWS();
+
+    // Sync OB levels state from the slot
+    const fsObBtn = document.getElementById('fs-ob-lvl-btn');
+    clearInterval(fsObTimer); fsObTimer = null;
+    if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} fsObBidLine = null; }
+    if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} fsObAskLine = null; }
+    if (s.obActive) {
+        fsObActive = true;
+        if (fsObBtn) { fsObBtn.style.color = '#10b981'; fsObBtn.style.background = 'rgba(16,185,129,0.15)'; }
+        fetchFsOBLevels();
+        fsObTimer = setInterval(fetchFsOBLevels, 15000);
+    } else {
+        fsObActive = false;
+        if (fsObBtn) { fsObBtn.style.color = '#9CA3AF'; fsObBtn.style.background = '#2B3139'; }
+    }
 }
 
 function closeFullscreen() {
     document.getElementById('fs-overlay').style.display = 'none';
     closeFsWS();
+    clearInterval(fsObTimer); fsObTimer = null;
+    fsObActive = false;
+    const fsObBtn = document.getElementById('fs-ob-lvl-btn');
+    if (fsObBtn) { fsObBtn.style.color = '#9CA3AF'; fsObBtn.style.background = '#2B3139'; }
     if (fsChart) {
         if (fsDayHighLine)  { try { fsCandleS.removePriceLine(fsDayHighLine);  } catch(e) {} fsDayHighLine  = null; }
         if (fsDayLowLine)   { try { fsCandleS.removePriceLine(fsDayLowLine);   } catch(e) {} fsDayLowLine   = null; }
         if (fsPrevHighLine) { try { fsCandleS.removePriceLine(fsPrevHighLine); } catch(e) {} fsPrevHighLine = null; }
         if (fsPrevLowLine)  { try { fsCandleS.removePriceLine(fsPrevLowLine);  } catch(e) {} fsPrevLowLine  = null; }
+        if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} fsObBidLine = null; }
+        if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} fsObAskLine = null; }
         fsCandleS.setData([]);
         for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
         fsLastEMA = {};
