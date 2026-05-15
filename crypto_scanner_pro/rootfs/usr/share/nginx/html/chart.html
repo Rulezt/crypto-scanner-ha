@@ -192,6 +192,15 @@ const EMA_CFG     = [
     {p:223, color:'#a855f7', width:2.5},
 ];
 
+const DEFAULT_CANDLES = {'1':100,'5':100,'30':80,'60':80,'240':60,'D':50};
+function getCandlesForTF(tf) {
+    try {
+        const s = JSON.parse(localStorage.getItem('chart_candles_per_tf'));
+        if (s && s[tf]) return Math.max(20, Math.min(500, parseInt(s[tf])));
+    } catch(e) {}
+    return DEFAULT_CANDLES[tf] || 80;
+}
+
 // ── state ─────────────────────────────────────────────────────────────────────
 let curTF    = 'D';
 let curPage  = 0;
@@ -834,7 +843,8 @@ async function loadSlotData(idx) {
             s.emaSeries[p].setData(ema);
             s.lastEMA[p] = ema[ema.length - 1].value;
         }
-        s.chart.timeScale().fitContent();
+        const _n = getCandlesForTF(s.curTF);
+        s.chart.timeScale().setVisibleLogicalRange({ from: klines.length - _n, to: klines.length + 3 });
         setTimeout(() => refreshMidLines(s.chartEl, s.candleS, s.midLines), 100);
         s.lastPrice = klines[klines.length - 1].close;
         if (s.dayHighLine)  { try { s.candleS.removePriceLine(s.dayHighLine);  } catch(e) {} }
@@ -959,7 +969,8 @@ async function loadFsData() {
             fsEmaS[p].setData(ema);
             fsLastEMA[p] = ema[ema.length - 1].value;
         }
-        fsChart.timeScale().fitContent();
+        const _fn = getCandlesForTF(fsTF);
+        fsChart.timeScale().setVisibleLogicalRange({ from: klines.length - _fn, to: klines.length + 3 });
         setTimeout(() => refreshMidLines(document.getElementById('fs-chart-el'), fsCandleS, fsMidLines), 100);
         if (fsDayHighLine)  { try { fsCandleS.removePriceLine(fsDayHighLine);  } catch(e) {} }
         if (fsDayLowLine)   { try { fsCandleS.removePriceLine(fsDayLowLine);   } catch(e) {} }
@@ -1227,7 +1238,8 @@ async function loadOBData() {
             obEmaS[p].setData(ema);
             obLastEMA[p] = ema[ema.length - 1].value;
         }
-        obChart.timeScale().fitContent();
+        const _on = getCandlesForTF(obTF);
+        obChart.timeScale().setVisibleLogicalRange({ from: klines.length - _on, to: klines.length + 3 });
         setTimeout(() => refreshMidLines(document.getElementById('ob-chart-el'), obCandleS, obMidLines), 100);
         if (obDayHighLine)  { try { obCandleS.removePriceLine(obDayHighLine);  } catch(e) {} obDayHighLine  = null; }
         if (obDayLowLine)   { try { obCandleS.removePriceLine(obDayLowLine);   } catch(e) {} obDayLowLine   = null; }
