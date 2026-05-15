@@ -1281,13 +1281,39 @@ document.addEventListener('keydown', e => {
         if (obModal && obModal.style.display !== 'none') { closeOBModal(); return; }
     }
 }, true);
+
+// OB modal panel resize
+let _obRes = false, _obResX = 0, _obResW = 0;
+document.getElementById('ob-panel-resize').addEventListener('mousedown', e => {
+    _obRes = true;
+    _obResX = e.clientX;
+    _obResW = document.getElementById('ob-chart-panel').getBoundingClientRect().width;
+    document.body.style.userSelect = 'none';
+    document.getElementById('ob-panel-resize').style.background = 'rgba(59,130,246,0.4)';
+    e.preventDefault();
+});
+document.addEventListener('mousemove', e => {
+    if (!_obRes) return;
+    const modal = document.getElementById('ob-modal');
+    const totalW = modal.getBoundingClientRect().width - 5; // 5px = handle width
+    const newW = Math.max(200, Math.min(totalW - 200, _obResW + (e.clientX - _obResX)));
+    document.getElementById('ob-chart-panel').style.flexBasis = newW + 'px';
+    document.getElementById('ob-book-panel').style.flexBasis = (totalW - newW) + 'px';
+    if (obChart) obChart.applyOptions({});
+});
+document.addEventListener('mouseup', () => {
+    if (!_obRes) return;
+    _obRes = false;
+    document.body.style.userSelect = '';
+    document.getElementById('ob-panel-resize').style.background = 'transparent';
+});
 </script>
 
 <!-- Order Book fullscreen modal -->
 <div id="ob-modal"
      style="display:none;position:fixed;inset:0;z-index:500;flex-direction:row;background:#0B0E11;">
     <!-- Left: chart -->
-    <div style="flex:1;min-width:0;display:flex;flex-direction:column;border-right:1px solid #2B3139;">
+    <div id="ob-chart-panel" style="flex-basis:50%;min-width:200px;display:flex;flex-direction:column;">
         <div style="height:36px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2B3139;display:flex;align-items:center;padding:0 10px;gap:10px;">
             <span id="ob-chart-sym" style="font-size:13px;font-weight:700;color:#E5E7EB;min-width:60px;"></span>
             <div id="ob-tf-bar" style="display:flex;gap:4px;"></div>
@@ -1296,8 +1322,11 @@ document.addEventListener('keydown', e => {
         </div>
         <div id="ob-chart-el" style="flex:1;min-height:0;"></div>
     </div>
+    <!-- Resize handle -->
+    <div id="ob-panel-resize" style="width:5px;flex-shrink:0;cursor:col-resize;background:transparent;border-left:1px solid #2B3139;transition:background 0.15s;"
+         onmouseenter="this.style.background='rgba(59,130,246,0.35)'" onmouseleave="if(!_obRes)this.style.background='transparent'"></div>
     <!-- Right: order book -->
-    <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:#0B0E11;">
+    <div id="ob-book-panel" style="flex-basis:50%;min-width:200px;display:flex;flex-direction:column;background:#0B0E11;">
         <iframe id="ob-iframe" src="" style="flex:1;border:none;width:100%;height:100%;"></iframe>
     </div>
 </div>

@@ -193,7 +193,7 @@
             <div v-else class="orderbook-wrapper">
 
                 <!-- Imbalance Bar -->
-                <div v-if="showImbalance" class="imbalance-sidebar" :class="imbalance.signal">
+                <div v-if="showBook && showImbalance" class="imbalance-sidebar" :class="imbalance.signal">
                     <div class="imbalance-label-top">
                         <span class="side-percent ask-pct">{{ (100 - imbalance.percent).toFixed(1) }}%</span>
                         <span class="side-total">🔴 {{ imbalance.askTotal }}</span>
@@ -251,10 +251,10 @@
                 </div>
 
                 <!-- Resize handle CVD -->
-                <div v-if="showCVD" class="resize-handle" :class="{ resizing: isResizing }" @mousedown.prevent="startResize"></div>
+                <div v-if="showBook && showCVD" class="resize-handle" :class="{ resizing: isResizing }" @mousedown.prevent="startResize"></div>
 
                 <!-- CVD PANEL -->
-                <div v-if="showCVD" class="cvd-panel" :style="{ width: cvdWidth + 'px', minWidth: cvdWidth + 'px' }">
+                <div v-if="showBook && showCVD" class="cvd-panel" :style="{ width: cvdWidth + 'px', minWidth: cvdWidth + 'px' }">
 
                     <!-- Header -->
                     <div class="cvd-header">
