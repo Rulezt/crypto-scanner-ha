@@ -216,6 +216,7 @@ let obWS = null, obWsTimer = null;
 let obBidLine = null, obAskLine = null;
 let obDayHighLine = null, obDayLowLine = null;
 let obPrevHighLine = null, obPrevLowLine = null;
+let fsMidLines = [], obMidLines = [];
 
 // price alerts
 let pendingAlert = null;
@@ -508,6 +509,36 @@ function makeChart(el, opts) {
     });
 }
 
+// ── Mid grid lines (intermediate horizontal lines tra le linee principali) ────
+function niceGridStep(range) {
+    if (range <= 0) return 1;
+    const rough = range / 5;
+    const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+    const x = rough / mag;
+    const f = x < 1.5 ? 1 : x < 3.5 ? 2 : x < 7.5 ? 5 : 10;
+    return f * mag;
+}
+
+function refreshMidLines(chartEl, series, midLines) {
+    midLines.forEach(l => { try { series.removePriceLine(l); } catch(e) {} });
+    midLines.length = 0;
+    const h = chartEl.clientHeight;
+    if (!h || !series) return;
+    const topP = series.coordinateToPrice(0);
+    const botP = series.coordinateToPrice(h);
+    if (topP == null || botP == null) return;
+    const [lo, hi] = topP < botP ? [topP, botP] : [botP, topP];
+    const step = niceGridStep(hi - lo);
+    for (let n = Math.floor(lo / step) - 1; n * step <= hi + step; n++) {
+        const midP = n * step + step / 2;
+        if (midP < lo || midP > hi) continue;
+        midLines.push(series.createPriceLine({
+            price: midP, color: '#1E2329', lineWidth: 1,
+            lineStyle: 2, axisLabelVisible: false, title: '',
+        }));
+    }
+}
+
 // ── build grid (once — 18 slots) ──────────────────────────────────────────────
 function buildGrid() {
     const grid = document.getElementById('grid');
@@ -655,13 +686,17 @@ function buildGrid() {
         });
 
         slots.push({
-            cell, chart, candleS, emaSeries,
+            cell, chart, candleS, emaSeries, chartEl, midLines: [],
             lastEMA: {5:null, 10:null, 60:null, 223:null},
             starEl, titleEl, changeEl, volEl, candlePctEl, tfEl, bybitEl, alertBtn,
             symbol: null, coin: null, curTF, lastPrice: null, crosshairPrice: null,
             alertLines: new Map(),
             dayHighLine: null, dayLowLine: null,
             prevHighLine: null, prevLowLine: null,
+        });
+        const _s = slots[slots.length - 1];
+        chart.subscribeVisibleTimeRangeChange(() => {
+            setTimeout(() => refreshMidLines(_s.chartEl, _s.candleS, _s.midLines), 60);
         });
     }
 }
@@ -800,6 +835,7 @@ async function loadSlotData(idx) {
             s.lastEMA[p] = ema[ema.length - 1].value;
         }
         s.chart.timeScale().fitContent();
+        setTimeout(() => refreshMidLines(s.chartEl, s.candleS, s.midLines), 100);
         s.lastPrice = klines[klines.length - 1].close;
         if (s.dayHighLine)  { try { s.candleS.removePriceLine(s.dayHighLine);  } catch(e) {} }
         if (s.dayLowLine)   { try { s.candleS.removePriceLine(s.dayLowLine);   } catch(e) {} }
@@ -830,6 +866,9 @@ function initFsChart() {
     for (const {p, color, width} of EMA_CFG)
         fsEmaS[p] = addSeries(fsChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
 
+    fsChart.subscribeVisibleTimeRangeChange(() => {
+        setTimeout(() => refreshMidLines(document.getElementById('fs-chart-el'), fsCandleS, fsMidLines), 60);
+    });
     fsChart.subscribeCrosshairMove(param => {
         const el = document.getElementById('fs-candle-pct');
         if (!el) return;
@@ -921,6 +960,7 @@ async function loadFsData() {
             fsLastEMA[p] = ema[ema.length - 1].value;
         }
         fsChart.timeScale().fitContent();
+        setTimeout(() => refreshMidLines(document.getElementById('fs-chart-el'), fsCandleS, fsMidLines), 100);
         if (fsDayHighLine)  { try { fsCandleS.removePriceLine(fsDayHighLine);  } catch(e) {} }
         if (fsDayLowLine)   { try { fsCandleS.removePriceLine(fsDayLowLine);   } catch(e) {} }
         if (fsPrevHighLine) { try { fsCandleS.removePriceLine(fsPrevHighLine); } catch(e) {} }
@@ -1141,6 +1181,9 @@ function initOBChart() {
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
     for (const {p, color, width} of EMA_CFG)
         obEmaS[p] = addSeries(obChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
+    obChart.subscribeVisibleTimeRangeChange(() => {
+        setTimeout(() => refreshMidLines(document.getElementById('ob-chart-el'), obCandleS, obMidLines), 60);
+    });
 }
 
 function renderOBTFBar() {
@@ -1185,6 +1228,7 @@ async function loadOBData() {
             obLastEMA[p] = ema[ema.length - 1].value;
         }
         obChart.timeScale().fitContent();
+        setTimeout(() => refreshMidLines(document.getElementById('ob-chart-el'), obCandleS, obMidLines), 100);
         if (obDayHighLine)  { try { obCandleS.removePriceLine(obDayHighLine);  } catch(e) {} obDayHighLine  = null; }
         if (obDayLowLine)   { try { obCandleS.removePriceLine(obDayLowLine);   } catch(e) {} obDayLowLine   = null; }
         if (obPrevHighLine) { try { obCandleS.removePriceLine(obPrevHighLine); } catch(e) {} obPrevHighLine = null; }
