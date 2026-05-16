@@ -81,6 +81,57 @@
                 border-bottom: 1px solid #2B3139;
             }
             #ob-modal > div:last-child { flex: 0 0 50% !important; }
+
+            /* Grid portrait: 1 grafico per volta, scroll verticale snap */
+            #grid {
+                grid-template-columns: 1fr !important;
+                grid-template-rows: unset !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                scroll-snap-type: y mandatory;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            #grid::-webkit-scrollbar { display: none; }
+            #grid > div {
+                height: calc(100vh - 48px) !important;
+                min-height: calc(100vh - 48px) !important;
+                scroll-snap-align: start;
+            }
+            /* Frecce pagina: sposta in basso per raggiungibilità con pollice */
+            .side-nav {
+                top: auto !important;
+                bottom: 72px !important;
+                transform: none !important;
+                padding: 18px 14px !important;
+                font-size: 20px;
+            }
+            /* Nascondi il bottone 9/18 (non ha senso su mobile) */
+            #btn-view { display: none !important; }
+        }
+
+        /* Grid landscape mobile: 1 grafico per volta, scroll orizzontale snap */
+        @media (max-height: 500px) and (orientation: landscape) {
+            #grid {
+                display: flex !important;
+                flex-direction: row !important;
+                grid-template-columns: unset !important;
+                grid-template-rows: unset !important;
+                overflow-x: auto !important;
+                overflow-y: hidden !important;
+                scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            #grid::-webkit-scrollbar { display: none; }
+            #grid > div {
+                min-width: 100vw !important;
+                width: 100vw !important;
+                height: 100% !important;
+                flex-shrink: 0 !important;
+                scroll-snap-align: start;
+            }
+            #btn-view { display: none !important; }
         }
     </style>
 </head>
