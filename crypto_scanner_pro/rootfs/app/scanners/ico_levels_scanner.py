@@ -286,7 +286,7 @@ class ICOLevelsScanner:
 
         side_str = 'massimo' if side == 'high' else 'minimo'
         sig_type = 'ath' if side == 'high' else 'atl'
-        caption  = (f"{mtf_link(sym, self.ha_url)}  ICO Level\n"
+        caption  = (f"ICO Level  {mtf_link(sym, self.ha_url)}\n"
                     f"vicino al {side_str} prima candela: {dist:.2f}%")
         img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
         if img:

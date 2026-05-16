@@ -117,11 +117,11 @@ class VolumeScanner:
             if v >= 1e6: return f'${v/1e6:.0f}M'
             return f'${v/1e3:.0f}K'
         if alert_type == 'gainer':
-            caption = (f"{mtf_link(sym, self.ha_url)}  +{coin['change_pct']:.2f}% (24h)\n"
+            caption = (f"+{coin['change_pct']:.2f}% (24h)  {mtf_link(sym, self.ha_url)}\n"
                        f"Vol: {_vol(coin['volume_24h_usd'])}")
             sig_type = 'gainer'
         else:
-            caption = (f"{mtf_link(sym, self.ha_url)}  {coin['change_pct']:.2f}% (24h)\n"
+            caption = (f"{coin['change_pct']:.2f}% (24h)  {mtf_link(sym, self.ha_url)}\n"
                        f"Vol: {_vol(coin['volume_24h_usd'])}")
             sig_type = 'loser'
         img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
@@ -214,7 +214,7 @@ class VolumeScanner:
 
         for coin in result.get('gainers', [])[:2]:
             sym     = coin['symbol']
-            caption = (f"{mtf_link(sym, self.ha_url)}  +{coin['change_pct']:.2f}% (24h)\n"
+            caption = (f"+{coin['change_pct']:.2f}% (24h)  {mtf_link(sym, self.ha_url)}\n"
                        f"Vol: {_vol(coin['volume_24h_usd'])}")
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'gainer'})
             if img:
@@ -224,7 +224,7 @@ class VolumeScanner:
 
         for coin in result.get('losers', [])[:2]:
             sym     = coin['symbol']
-            caption = (f"{mtf_link(sym, self.ha_url)}  {coin['change_pct']:.2f}% (24h)\n"
+            caption = (f"{coin['change_pct']:.2f}% (24h)  {mtf_link(sym, self.ha_url)}\n"
                        f"Vol: {_vol(coin['volume_24h_usd'])}")
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'loser'})
             if img:

@@ -15,7 +15,7 @@ def fmt_price(p):
 
 def mtf_link(symbol, ha_url=''):
     """Return HTML link to MTF page if ha_url is set, else plain name."""
-    name = symbol.replace('USDT', '/USDT')
+    name = symbol.replace('USDT', '')
     if ha_url:
         url = ha_url.rstrip('/') + f'/mtf?symbol={symbol}'
         return f'<a href="{url}">{name}</a>'

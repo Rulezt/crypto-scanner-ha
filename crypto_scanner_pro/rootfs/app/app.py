@@ -308,7 +308,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.8.0',
+        'version': '3.8.1',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -733,8 +733,8 @@ def check_price_alerts():
                     coin      = sym.replace('USDT', '')
                     dir_word  = 'Sopra' if alert['condition'] == 'above' else 'Sotto'
                     ha_url    = config['telegram'].get('ha_url', '').rstrip('/')
-                    link      = f'<a href="{ha_url}/mtf?symbol={sym}">{coin}/USDT</a>' if ha_url else f'{coin}/USDT'
-                    caption   = f"{link}  {dir_word} {_fmt_price(alert['price'])}"
+                    link      = f'<a href="{ha_url}/mtf?symbol={sym}">{coin}</a>' if ha_url else coin
+                    caption   = f"{dir_word} {_fmt_price(alert['price'])}  {link}"
 
                     if alert.get('notify', 'both') != 'browser':
                         img = None

@@ -273,7 +273,7 @@ class EMAScanner:
         for coin in coins[:3]:
             sym     = coin['symbol']
             dir_str = 'da sotto' if 'below' in coin['approach'] else 'da sopra'
-            caption = (f"{mtf_link(sym, self.ha_url)}  EMA60 Touch · 30m\n"
+            caption = (f"EMA60 Touch · 30m  {mtf_link(sym, self.ha_url)}\n"
                        f"distanza: {coin['distance_pct']:.2f}% {dir_str}")
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ema'})
             if img:

@@ -281,7 +281,7 @@ class DoubleTouchScanner:
                 if v >= 1e9: return f'${v/1e9:.1f}B'
                 if v >= 1e6: return f'${v/1e6:.0f}M'
                 return f'${v/1e3:.0f}K'
-            caption = (f"{mtf_link(sym, self.ha_url)}  Terzo Tocco · {self.scan_tf}\n"
+            caption = (f"Terzo Tocco · {self.scan_tf}  {mtf_link(sym, self.ha_url)}\n"
                        f"{sign_str}\n"
                        f"dist: {sign_dist} · gap: {p['gap']} · fresh: {p['freshness']}\n"
                        f"vol: {_fmt(p['volume'])}")

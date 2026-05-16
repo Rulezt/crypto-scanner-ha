@@ -184,12 +184,12 @@ class ATHATLScanner:
             return
         sym = coin['symbol']
         if alert_type == 'ath':
-            caption = (f"{mtf_link(sym, self.ha_url)}  Nuovo ATH!" if coin['is_new_ath']
-                       else f"{mtf_link(sym, self.ha_url)}  Vicino ATH\ndistanza: {coin['distance_pct']:.2f}%")
+            caption = (f"Nuovo ATH!  {mtf_link(sym, self.ha_url)}" if coin['is_new_ath']
+                       else f"Vicino ATH  {mtf_link(sym, self.ha_url)}\ndistanza: {coin['distance_pct']:.2f}%")
             sig_type = 'ath'
         else:
-            caption = (f"{mtf_link(sym, self.ha_url)}  Nuovo ATL!" if coin['is_new_atl']
-                       else f"{mtf_link(sym, self.ha_url)}  Vicino ATL\ndistanza: {coin['distance_pct']:.2f}%")
+            caption = (f"Nuovo ATL!  {mtf_link(sym, self.ha_url)}" if coin['is_new_atl']
+                       else f"Vicino ATL  {mtf_link(sym, self.ha_url)}\ndistanza: {coin['distance_pct']:.2f}%")
             sig_type = 'atl'
         img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
         if img:
@@ -336,8 +336,8 @@ class ATHATLScanner:
 
         for coin in result.get('ath', [])[:3]:
             sym     = coin['symbol']
-            caption = (f"{mtf_link(sym, self.ha_url)}  Nuovo ATH!" if coin['is_new_ath']
-                       else f"{mtf_link(sym, self.ha_url)}  Vicino ATH\ndistanza: {coin['distance_pct']:.2f}%")
+            caption = (f"Nuovo ATH!  {mtf_link(sym, self.ha_url)}" if coin['is_new_ath']
+                       else f"Vicino ATH  {mtf_link(sym, self.ha_url)}\ndistanza: {coin['distance_pct']:.2f}%")
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ath'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
@@ -346,8 +346,8 @@ class ATHATLScanner:
 
         for coin in result.get('atl', [])[:3]:
             sym     = coin['symbol']
-            caption = (f"{mtf_link(sym, self.ha_url)}  Nuovo ATL!" if coin['is_new_atl']
-                       else f"{mtf_link(sym, self.ha_url)}  Vicino ATL\ndistanza: {coin['distance_pct']:.2f}%")
+            caption = (f"Nuovo ATL!  {mtf_link(sym, self.ha_url)}" if coin['is_new_atl']
+                       else f"Vicino ATL  {mtf_link(sym, self.ha_url)}\ndistanza: {coin['distance_pct']:.2f}%")
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'atl'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
