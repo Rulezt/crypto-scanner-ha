@@ -228,6 +228,8 @@
                      @mousedown="isPaused = true"
                      @mouseup="isPaused = false"
                      @mouseleave="isPaused = false"
+                     @touchstart="isPaused = true"
+                     @touchend="isPaused = false"
                      :class="{ 'paused': isPaused }">
                     <div class="orderbook-side">
                         <div v-for="(ask, index) in displayAsks" :key="'ask-'+index"

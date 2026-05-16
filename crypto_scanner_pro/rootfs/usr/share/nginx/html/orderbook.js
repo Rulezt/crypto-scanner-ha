@@ -1,6 +1,8 @@
 // Order Book Standalone Vue App
 const { createApp, ref, onMounted, onUnmounted, computed, watch } = Vue;
 
+const isMobile = window.innerWidth < 640;
+
 createApp({
     setup() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -16,9 +18,9 @@ createApp({
         const priceColor = ref('#9ca3af');
         const loading = ref(true);
         const error = ref('');
-        const showImbalance = ref(true);
+        const showImbalance = ref(!isMobile);
         const isPaused = ref(false);
-        const showCVD = ref(true);
+        const showCVD = ref(!isMobile);
         const showBook = ref(true);
         const cvdWidth = ref(180);
         const isResizing = ref(false);
@@ -406,6 +408,10 @@ createApp({
         const drawCVDChart = () => {
             const canvas = document.getElementById('cvd-canvas');
             if (!canvas) return;
+            if (canvas.offsetWidth > 0 && canvas.width !== canvas.offsetWidth)
+                canvas.width = canvas.offsetWidth;
+            if (canvas.offsetHeight > 0 && canvas.height !== canvas.offsetHeight)
+                canvas.height = canvas.offsetHeight;
             const ctx = canvas.getContext('2d');
             const W = canvas.width;
             const H = canvas.height;
@@ -549,13 +555,38 @@ createApp({
             }
         });
 
+        // Resize canvas when CVD panel becomes visible
+        watch(showCVD, val => {
+            if (val) {
+                setTimeout(() => {
+                    const canvas = document.getElementById('cvd-canvas');
+                    if (canvas && canvas.offsetWidth > 0) {
+                        canvas.width = canvas.offsetWidth;
+                        drawCVDChart();
+                    }
+                }, 60);
+            }
+        });
+
+        const onWindowResize = () => {
+            const canvas = document.getElementById('cvd-canvas');
+            if (canvas && showCVD.value && canvas.offsetWidth > 0) {
+                canvas.width = canvas.offsetWidth;
+                drawCVDChart();
+            }
+        };
+
         onMounted(() => {
             fetchOrderBook();
             connectTradesWS();
             document.title = `${symbol.value} Order Book`;
+            window.addEventListener('resize', onWindowResize);
         });
 
-        onUnmounted(() => { cleanup(); });
+        onUnmounted(() => {
+            window.removeEventListener('resize', onWindowResize);
+            cleanup();
+        });
 
         return {
             symbol,
