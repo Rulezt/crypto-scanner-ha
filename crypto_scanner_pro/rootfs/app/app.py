@@ -4,7 +4,7 @@ Flask API + Scanners integrati + Dashboard
 """
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import json
 import threading
@@ -93,7 +93,10 @@ DEFAULT_CONFIG = {
         'new_listing_days': 30,
         'cooldown_hours': 2,
         'send_screenshots': True,
-        'max_coins_per_alert': 10
+        'max_coins_per_alert': 10,
+        'utc_offset': 2,
+        'schedule_start': '',
+        'schedule_end': '',
     }
 }
 
@@ -230,14 +233,39 @@ def init_scanners():
     except Exception as e:
         logger.error(f"❌ Error initializing scanners: {e}")
 
+def _is_in_schedule():
+    """Return True if current local time (UTC+offset) is within the configured window."""
+    start_str = config['general'].get('schedule_start', '')
+    end_str   = config['general'].get('schedule_end', '')
+    if not start_str or not end_str:
+        return True
+    try:
+        utc_offset = int(config['general'].get('utc_offset', 0))
+        now = datetime.utcnow() + timedelta(hours=utc_offset)
+        sh, sm = map(int, start_str.split(':'))
+        eh, em = map(int, end_str.split(':'))
+        now_m   = now.hour * 60 + now.minute
+        start_m = sh * 60 + sm
+        end_m   = eh * 60 + em
+        if start_m <= end_m:
+            return start_m <= now_m <= end_m
+        # overnight window e.g. 22:00 → 06:00
+        return now_m >= start_m or now_m <= end_m
+    except Exception:
+        return True
+
+
 def run_scanner(config_name, scanner_key, interval_minutes):
     """Run scanner in loop — looks up scanner dynamically so reinit is picked up."""
     while True:
         try:
             scanner = scanners.get(scanner_key)
             if scanner and config.get(config_name, {}).get('enabled', True):
-                logger.info(f"🔄 Running {config_name} scanner...")
-                scanner.scan()
+                if _is_in_schedule():
+                    logger.info(f"🔄 Running {config_name} scanner...")
+                    scanner.scan()
+                else:
+                    logger.info(f"⏸ {config_name} fuori orario, skip")
         except Exception as e:
             logger.error(f"❌ Error in {config_name} scanner: {e}")
 
@@ -280,7 +308,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.7.20',
+        'version': '3.8.0',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
