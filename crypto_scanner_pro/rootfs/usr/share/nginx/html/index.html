@@ -28,36 +28,40 @@
         }
         .glow-green { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
         .glow-red   { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+        @media (max-width: 639px) {
+            .modal-inner         { width: calc(100% - 24px) !important; margin: 12px auto !important; }
+            .modal-scanner-inner { width: calc(100% - 24px) !important; margin: 48px auto !important; }
+        }
     </style>
 </head>
 <body class="bg-dark-bg text-gray-100">
     <!-- Header -->
     <header class="bg-dark-card border-b border-dark-border sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center space-x-3">
-                    <div class="text-2xl">📊</div>
+            <div class="flex justify-between items-center h-14 sm:h-16">
+                <div class="flex items-center space-x-2 sm:space-x-3">
+                    <div class="text-xl sm:text-2xl">📊</div>
                     <div>
-                        <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                        <h1 class="text-base sm:text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent leading-tight">
                             Crypto Scanner Pro
                         </h1>
-                        <p class="text-xs text-gray-500">Dashboard Trading Professionale</p>
+                        <p class="text-xs text-gray-500 hidden sm:block">Dashboard Trading Professionale</p>
                     </div>
                 </div>
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 sm:space-x-4">
                     <a href="chart?symbol=BTCUSDT"
-                       class="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-sm font-medium text-white">
+                       class="flex items-center px-2.5 sm:px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-sm font-medium text-white">
                         <span>Grafici</span>
                     </a>
                     <button onclick="openConfigModal()" title="Configurazione"
-                        class="flex items-center justify-center w-9 h-9 rounded-lg bg-dark-hover hover:bg-dark-border transition-colors text-gray-400 hover:text-gray-200 text-lg">
+                        class="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-dark-hover hover:bg-dark-border transition-colors text-gray-400 hover:text-gray-200 text-lg">
                         ⚙
                     </button>
-                    <div id="bot-status" class="flex items-center space-x-2 px-3 py-1.5 bg-dark-hover rounded-lg">
+                    <div id="bot-status" class="flex items-center space-x-1.5 px-2 sm:px-3 py-1.5 bg-dark-hover rounded-lg">
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
-                        <span class="text-sm text-gray-400">Caricamento...</span>
+                        <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500" id="version">v3.8.1</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v3.8.2</div>
                 </div>
             </div>
         </div>
@@ -65,11 +69,11 @@
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <!-- Scanner Cards Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div class="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4 mb-6">
             <!-- EMA Scanner -->
-            <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-blue-500 transition-all">
+            <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-blue-500 transition-all">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-blue-400 text-sm font-medium">🎯 EMA</div>
+                    <div class="text-blue-400 text-xs sm:text-sm font-medium">🎯 EMA</div>
                     <div class="flex items-center gap-1.5">
                         <button onclick="openScannerModal('ema')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
                         <span class="text-gray-700 text-xs">|</span>
@@ -80,15 +84,15 @@
                         <div id="ema-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
                     </div>
                 </div>
-                <div class="text-2xl font-bold" id="ema-count">-</div>
+                <div class="text-xl sm:text-2xl font-bold" id="ema-count">-</div>
                 <div class="text-xs text-gray-500 mt-1">Segnali Attivi</div>
-                <div class="text-xs text-gray-600 mt-1 leading-tight">Prezzo vicino all'EMA 60 su timeframe 30m</div>
+                <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Prezzo vicino all'EMA 60 su timeframe 30m</div>
             </div>
 
             <!-- Flip Scanner -->
-            <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-purple-500 transition-all">
+            <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-purple-500 transition-all">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-purple-400 text-sm font-medium">🔄 Flip</div>
+                    <div class="text-purple-400 text-xs sm:text-sm font-medium">🔄 Flip</div>
                     <div class="flex items-center gap-1.5">
                         <button onclick="openScannerModal('flip')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
                         <span class="text-gray-700 text-xs">|</span>
@@ -99,15 +103,15 @@
                         <div id="flip-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
                     </div>
                 </div>
-                <div class="text-2xl font-bold" id="flip-count">-</div>
+                <div class="text-xl sm:text-2xl font-bold" id="flip-count">-</div>
                 <div class="text-xs text-gray-500 mt-1">Opportunità Flip</div>
-                <div class="text-xs text-gray-600 mt-1 leading-tight">Variazione 24h prossima a zero (cambio segno)</div>
+                <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Variazione 24h prossima a zero (cambio segno)</div>
             </div>
 
             <!-- Volume Scanner -->
-            <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-emerald-500 transition-all">
+            <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-emerald-500 transition-all">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-emerald-400 text-sm font-medium">📊 Volume</div>
+                    <div class="text-emerald-400 text-xs sm:text-sm font-medium">📊 Volume</div>
                     <div class="flex items-center gap-1.5">
                         <button onclick="openScannerModal('volume')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
                         <span class="text-gray-700 text-xs">|</span>
@@ -118,15 +122,15 @@
                         <div id="volume-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
                     </div>
                 </div>
-                <div class="text-2xl font-bold" id="volume-count">-</div>
+                <div class="text-xl sm:text-2xl font-bold" id="volume-count">-</div>
                 <div class="text-xs text-gray-500 mt-1">Alto Volume</div>
-                <div class="text-xs text-gray-600 mt-1 leading-tight">Gain/perdita 24h oltre la soglia configurata</div>
+                <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Gain/perdita 24h oltre la soglia configurata</div>
             </div>
 
             <!-- ATH/ATL Scanner -->
-            <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-amber-500 transition-all">
+            <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-amber-500 transition-all">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-amber-400 text-sm font-medium">🏆 ATH/ATL</div>
+                    <div class="text-amber-400 text-xs sm:text-sm font-medium">🏆 ATH/ATL</div>
                     <div class="flex items-center gap-1.5">
                         <button onclick="openScannerModal('ath')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
                         <span class="text-gray-700 text-xs">|</span>
@@ -137,15 +141,15 @@
                         <div id="ath-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
                     </div>
                 </div>
-                <div class="text-2xl font-bold" id="ath-count">40</div>
+                <div class="text-xl sm:text-2xl font-bold" id="ath-count">40</div>
                 <div class="text-xs text-gray-500 mt-1">Coin Monitorate</div>
-                <div class="text-xs text-gray-600 mt-1 leading-tight">Prezzo vicino al massimo/minimo storico annuale</div>
+                <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Prezzo vicino al massimo/minimo storico annuale</div>
             </div>
 
             <!-- ICO Levels Scanner -->
-            <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-pink-500 transition-all">
+            <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-pink-500 transition-all">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-pink-400 text-sm font-medium">🚀 ICO</div>
+                    <div class="text-pink-400 text-xs sm:text-sm font-medium">🚀 ICO</div>
                     <div class="flex items-center gap-1.5">
                         <button onclick="openScannerModal('ico')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
                         <span class="text-gray-700 text-xs">|</span>
@@ -156,15 +160,15 @@
                         <div id="ico-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
                     </div>
                 </div>
-                <div class="text-2xl font-bold" id="ico-count">-</div>
+                <div class="text-xl sm:text-2xl font-bold" id="ico-count">-</div>
                 <div class="text-xs text-gray-500 mt-1">Listing Recenti</div>
-                <div class="text-xs text-gray-600 mt-1 leading-tight">Nuove coin vicino al prezzo di listing iniziale</div>
+                <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Nuove coin vicino al prezzo di listing iniziale</div>
             </div>
 
             <!-- Terzo Tocco Scanner -->
-            <div class="bg-dark-card border border-dark-border rounded-lg p-4 hover:border-cyan-500 transition-all">
+            <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-cyan-500 transition-all">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-cyan-400 text-sm font-medium">🔁 Terzo Tocco</div>
+                    <div class="text-cyan-400 text-xs sm:text-sm font-medium">🔁 Terzo Tocco</div>
                     <div class="flex items-center gap-1.5">
                         <button onclick="openScannerModal('dt')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
                         <span class="text-gray-700 text-xs">|</span>
@@ -175,9 +179,9 @@
                         <div id="dt-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
                     </div>
                 </div>
-                <div class="text-2xl font-bold" id="dt-count">-</div>
+                <div class="text-xl sm:text-2xl font-bold" id="dt-count">-</div>
                 <div class="text-xs text-gray-500 mt-1">Pattern Daily</div>
-                <div class="text-xs text-gray-600 mt-1 leading-tight">Due tocchi identici H/L — breakout atteso al terzo</div>
+                <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Due tocchi identici H/L — breakout atteso al terzo</div>
                 <a href="double-touch" class="mt-2 block text-xs text-cyan-500 hover:text-cyan-300">→ Scanner visuale</a>
             </div>
         </div>
@@ -189,14 +193,14 @@
                 <!-- Top Gainers/Losers Tabs -->
                 <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
                     <div class="flex border-b border-dark-border">
-                        <button onclick="switchMarketTab('gainers')" id="tab-gainers" class="flex-1 px-4 py-3 text-sm font-medium bg-dark-hover text-emerald-400 border-b-2 border-emerald-400">
-                            🚀 Top Rialzi
+                        <button onclick="switchMarketTab('gainers')" id="tab-gainers" class="flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium bg-dark-hover text-emerald-400 border-b-2 border-emerald-400">
+                            🚀 <span class="hidden sm:inline">Top </span>Rialzi
                         </button>
-                        <button onclick="switchMarketTab('losers')" id="tab-losers" class="flex-1 px-4 py-3 text-sm font-medium text-gray-400 hover:text-gray-300">
-                            📉 Top Ribassi
+                        <button onclick="switchMarketTab('losers')" id="tab-losers" class="flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-300">
+                            📉 <span class="hidden sm:inline">Top </span>Ribassi
                         </button>
-                        <button onclick="switchMarketTab('monitored')" id="tab-monitored" class="flex-1 px-4 py-3 text-sm font-medium text-gray-400 hover:text-gray-300">
-                            👁️ Monitorate (40)
+                        <button onclick="switchMarketTab('monitored')" id="tab-monitored" class="flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-300">
+                            👁️ <span class="hidden sm:inline">Monitorate (</span>40<span class="hidden sm:inline">)</span>
                         </button>
                     </div>
 
@@ -205,12 +209,12 @@
                         <table class="w-full">
                             <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                 <tr>
-                                    <th class="px-4 py-3 text-left">#</th>
-                                    <th class="px-4 py-3 text-left">Coin</th>
-                                    <th class="px-4 py-3 text-right">Prezzo</th>
-                                    <th class="px-4 py-3 text-right">Variazione 24h</th>
-                                    <th class="px-4 py-3 text-right">Volume</th>
-                                    <th class="px-4 py-3 text-center">Chart</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left">Coin</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right">Prezzo</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right"><span class="hidden sm:inline">Var. </span>24h</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell">Volume</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
                             <tbody id="gainers-tbody" class="text-sm">
@@ -224,12 +228,12 @@
                         <table class="w-full">
                             <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                 <tr>
-                                    <th class="px-4 py-3 text-left">#</th>
-                                    <th class="px-4 py-3 text-left">Coin</th>
-                                    <th class="px-4 py-3 text-right">Prezzo</th>
-                                    <th class="px-4 py-3 text-right">Variazione 24h</th>
-                                    <th class="px-4 py-3 text-right">Volume</th>
-                                    <th class="px-4 py-3 text-center">Chart</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left">Coin</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right">Prezzo</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right"><span class="hidden sm:inline">Var. </span>24h</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell">Volume</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
                             <tbody id="losers-tbody" class="text-sm">
@@ -243,12 +247,12 @@
                         <table class="w-full">
                             <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                 <tr>
-                                    <th class="px-4 py-3 text-left">#</th>
-                                    <th class="px-4 py-3 text-left">Coin</th>
-                                    <th class="px-4 py-3 text-right">Prezzo</th>
-                                    <th class="px-4 py-3 text-right">Variazione 24h</th>
-                                    <th class="px-4 py-3 text-right">Volume</th>
-                                    <th class="px-4 py-3 text-center">Chart</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left">Coin</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right">Prezzo</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right"><span class="hidden sm:inline">Var. </span>24h</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell">Volume</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
                             <tbody id="monitored-tbody" class="text-sm">
@@ -288,7 +292,7 @@
 
     <!-- Main Config Modal (Telegram + General) -->
     <div id="config-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeConfigModalOutside(event)">
-        <div style="max-width:440px;margin:48px auto 48px;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
+        <div class="modal-inner" style="max-width:440px;margin:48px auto 48px;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #2B3139;">
                 <span style="font-size:14px;font-weight:700;color:#E5E7EB;">⚙️ Configurazione</span>
                 <div style="display:flex;align-items:center;gap:10px;">
@@ -375,7 +379,7 @@
 
     <!-- EMA Scanner Modal -->
     <div id="scanner-modal-ema" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('ema',event)">
-        <div style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
+        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
                 <span style="font-size:13px;font-weight:700;color:#93C5FD;">🎯 Scanner EMA</span>
                 <button onclick="closeScannerModal('ema')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
@@ -396,7 +400,7 @@
 
     <!-- Flip Scanner Modal -->
     <div id="scanner-modal-flip" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('flip',event)">
-        <div style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
+        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
                 <span style="font-size:13px;font-weight:700;color:#C4B5FD;">🔄 Scanner Flip</span>
                 <button onclick="closeScannerModal('flip')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
@@ -423,7 +427,7 @@
 
     <!-- Volume Scanner Modal -->
     <div id="scanner-modal-volume" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('volume',event)">
-        <div style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
+        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
                 <span style="font-size:13px;font-weight:700;color:#6EE7B7;">📊 Scanner Volume</span>
                 <button onclick="closeScannerModal('volume')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
@@ -444,7 +448,7 @@
 
     <!-- ATH/ATL Scanner Modal -->
     <div id="scanner-modal-ath" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('ath',event)">
-        <div style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
+        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
                 <span style="font-size:13px;font-weight:700;color:#FCD34D;">🏆 Scanner ATH/ATL</span>
                 <button onclick="closeScannerModal('ath')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
@@ -465,7 +469,7 @@
 
     <!-- ICO Levels Scanner Modal -->
     <div id="scanner-modal-ico" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('ico',event)">
-        <div style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
+        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
                 <span style="font-size:13px;font-weight:700;color:#F9A8D4;">🚀 Scanner ICO Levels</span>
                 <button onclick="closeScannerModal('ico')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
@@ -495,7 +499,7 @@
 
     <!-- Terzo Tocco Scanner Modal -->
     <div id="scanner-modal-dt" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('dt',event)">
-        <div style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
+        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
                 <span style="font-size:13px;font-weight:700;color:#67E8F9;">🔁 Terzo Tocco Scanner</span>
                 <button onclick="closeScannerModal('dt')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
@@ -915,8 +919,8 @@
             const allEnabled = Object.values(scanners).some(v => v);
             const statusEl = document.getElementById('bot-status');
             statusEl.innerHTML = allEnabled
-                ? `<div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div><span class="text-sm text-emerald-400 font-medium">Online</span>`
-                : `<div class="w-2 h-2 bg-gray-500 rounded-full"></div><span class="text-sm text-gray-500">Offline</span>`;
+                ? `<div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div><span class="text-sm text-emerald-400 font-medium hidden sm:inline">Online</span>`
+                : `<div class="w-2 h-2 bg-gray-500 rounded-full"></div><span class="text-sm text-gray-500 hidden sm:inline">Offline</span>`;
         }
 
         // ── Market data ───────────────────────────────────────────────────────
@@ -947,17 +951,17 @@
                 const bgColor = isPositive ? 'bg-emerald-400/5' : 'bg-red-400/5';
                 return `
                     <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
-                        <td class="px-4 py-3 text-gray-500">${index + 1}</td>
-                        <td class="px-4 py-3 font-medium">${coin.symbol.replace('USDT', '')}</td>
-                        <td class="px-4 py-3 text-right text-gray-300">$${formatPrice(coin.price)}</td>
-                        <td class="px-4 py-3 text-right">
-                            <span class="${changeColor} ${bgColor} px-2 py-1 rounded text-sm font-medium">
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-gray-500 hidden sm:table-cell">${index + 1}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium">${coin.symbol.replace('USDT', '')}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-300 text-sm">$${formatPrice(coin.price)}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-right">
+                            <span class="${changeColor} ${bgColor} px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs sm:text-sm font-medium">
                                 ${isPositive ? '+' : ''}${coin.change_24h.toFixed(2)}%
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-right text-gray-400 text-sm">$${formatVolume(coin.volume_24h)}</td>
-                        <td class="px-4 py-3 text-center">
-                            <a href="chart?symbol=${coin.symbol}" class="text-xs text-blue-400 hover:text-blue-300 hover:bg-dark-hover px-2 py-1 rounded transition-colors whitespace-nowrap">Chart</a>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-400 text-sm hidden md:table-cell">$${formatVolume(coin.volume_24h)}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-center">
+                            <a href="chart?symbol=${coin.symbol}" class="text-xs text-blue-400 hover:text-blue-300 hover:bg-dark-hover px-2 py-1 rounded transition-colors">▶</a>
                         </td>
                     </tr>
                 `;
@@ -965,12 +969,13 @@
         }
 
         function switchMarketTab(tab) {
+            const inactiveClass = 'flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-300';
             ['gainers', 'losers', 'monitored'].forEach(t => {
-                document.getElementById(`tab-${t}`).className = 'flex-1 px-4 py-3 text-sm font-medium text-gray-400 hover:text-gray-300';
+                document.getElementById(`tab-${t}`).className = inactiveClass;
                 document.getElementById(`content-${t}`).classList.add('hidden');
             });
             const color = tab === 'gainers' ? 'emerald' : tab === 'losers' ? 'red' : 'blue';
-            document.getElementById(`tab-${tab}`).className = `flex-1 px-4 py-3 text-sm font-medium bg-dark-hover text-${color}-400 border-b-2 border-${color}-400`;
+            document.getElementById(`tab-${tab}`).className = `flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium bg-dark-hover text-${color}-400 border-b-2 border-${color}-400`;
             document.getElementById(`content-${tab}`).classList.remove('hidden');
         }
 
