@@ -37,10 +37,10 @@
   .chart-el  { position:absolute; inset:0; }
 
   @media (max-width: 639px) {
-    /* Griglia 2×3 invece di 4×2 */
+    /* Grid mobile: 1 TF per volta, navigazione via JS */
     #grid {
-      grid-template-columns: repeat(2, 1fr) !important;
-      grid-template-rows: repeat(3, 1fr) !important;
+      grid-template-columns: 1fr !important;
+      grid-template-rows: 1fr !important;
     }
     /* Header scrollabile */
     #hdr {
@@ -124,6 +124,7 @@ const EMA_CFG = [
 let slots   = [];
 let ws      = null;
 let wsTimer = null;
+let mobileSlotIdx = 0;
 
 // OB fullscreen
 const OB_TFS = [
@@ -221,6 +222,7 @@ function buildGrid() {
     chartEl.className = 'chart-el';
     body.appendChild(chartEl);
     cell.appendChild(body);
+    if (isMobile) cell.style.display = i === 0 ? 'flex' : 'none';
     grid.appendChild(cell);
 
     // ── create chart ───────────────────────────────────────────────────────
@@ -248,7 +250,7 @@ function buildGrid() {
     });
 
     slots.push({
-      cfg, chart, candleS, emaS, priceEl,
+      cfg, chart, candleS, emaS, priceEl, cell,
       lastEMA: {5:null,10:null,60:null,223:null},
       dayHighLine:null, dayLowLine:null,
       prevHighLine:null, prevLowLine:null,
@@ -524,6 +526,46 @@ document.addEventListener('keydown', e => {
 
 buildGrid();
 loadAll();
+
+// ── mobile single-chart navigation ────────────────────────────────────────────
+function mobilePrevSlot() {
+  if (mobileSlotIdx <= 0) return;
+  slots[mobileSlotIdx].cell.style.display = 'none';
+  mobileSlotIdx--;
+  slots[mobileSlotIdx].cell.style.display = 'flex';
+  updateMTFIndicator();
+}
+
+function mobileNextSlot() {
+  if (mobileSlotIdx >= slots.length - 1) return;
+  slots[mobileSlotIdx].cell.style.display = 'none';
+  mobileSlotIdx++;
+  slots[mobileSlotIdx].cell.style.display = 'flex';
+  updateMTFIndicator();
+}
+
+function updateMTFIndicator() {
+  const el = document.getElementById('mtf-indicator');
+  if (el) el.textContent = `${TF_SLOTS[mobileSlotIdx].label}  ${mobileSlotIdx + 1} / ${TF_SLOTS.length}`;
+}
+
+if (isMobile) {
+  const mkBtn = (side, label, fn) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.onclick = fn;
+    b.style.cssText = `position:fixed;${side}:0;bottom:72px;z-index:50;background:rgba(22,26,30,0.92);border:none;cursor:pointer;color:#6B7280;font-size:22px;padding:20px 16px;border-radius:${side==='left'?'0 6px 6px 0':'6px 0 0 6px'};`;
+    document.body.appendChild(b);
+  };
+  mkBtn('left',  '‹', mobilePrevSlot);
+  mkBtn('right', '›', mobileNextSlot);
+
+  const ind = document.createElement('div');
+  ind.id = 'mtf-indicator';
+  ind.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(22,26,30,0.88);color:#9CA3AF;font-size:11px;padding:4px 14px;border-radius:12px;z-index:60;pointer-events:none;border:1px solid #2B3139;';
+  document.body.appendChild(ind);
+  updateMTFIndicator();
+}
 </script>
 
 <!-- Order Book fullscreen modal -->
