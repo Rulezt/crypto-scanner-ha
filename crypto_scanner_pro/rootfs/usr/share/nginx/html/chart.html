@@ -82,57 +82,21 @@
             }
             #ob-modal > div:last-child { flex: 0 0 50% !important; }
 
-            /* Grid portrait: 1 grafico per volta, scroll verticale snap */
+            /* Grid mobile: 1 grafico per volta, navigazione via JS */
             #grid {
                 grid-template-columns: 1fr !important;
-                grid-template-rows: unset !important;
-                overflow-y: auto !important;
-                overflow-x: hidden !important;
-                scroll-snap-type: y mandatory;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
+                grid-template-rows: 1fr !important;
             }
-            #grid::-webkit-scrollbar { display: none; }
-            #grid > div {
-                height: calc(100vh - 48px) !important;
-                min-height: calc(100vh - 48px) !important;
-                scroll-snap-align: start;
-            }
-            /* Frecce pagina: sposta in basso per raggiungibilità con pollice */
+            /* Frecce chart: ingrandisci e sposta in basso per raggiungibilità con pollice */
             .side-nav {
                 top: auto !important;
                 bottom: 72px !important;
                 transform: none !important;
-                padding: 18px 14px !important;
-                font-size: 20px;
-            }
-            /* Nascondi il bottone 9/18 (non ha senso su mobile) */
-            #btn-view { display: none !important; }
-        }
-
-        /* Grid landscape mobile: 1 grafico per volta, scroll orizzontale snap */
-        @media (max-height: 500px) and (orientation: landscape) {
-            #grid {
-                display: flex !important;
-                flex-direction: row !important;
-                grid-template-columns: unset !important;
-                grid-template-rows: unset !important;
-                overflow-x: auto !important;
-                overflow-y: hidden !important;
-                scroll-snap-type: x mandatory;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-            }
-            #grid::-webkit-scrollbar { display: none; }
-            #grid > div {
-                min-width: 100vw !important;
-                width: 100vw !important;
-                height: 100% !important;
-                flex-shrink: 0 !important;
-                scroll-snap-align: start;
+                padding: 20px 16px !important;
+                font-size: 22px;
+                background: rgba(22,26,30,0.92) !important;
             }
             #btn-view { display: none !important; }
-        }
     </style>
 </head>
 <body class="bg-dark-bg text-gray-100" style="height:100vh;display:flex;flex-direction:column;overflow:hidden;">
@@ -318,6 +282,9 @@ let obDayHighLine = null, obDayLowLine = null;
 let obPrevHighLine = null, obPrevLowLine = null;
 let fsMidLines = [], obMidLines = [];
 let fsObActive = false, fsObBidLine = null, fsObAskLine = null, fsObTimer = null;
+
+const IS_MOBILE = window.innerWidth < 640;
+let mobileChartIdx = 0;
 
 // price alerts
 let pendingAlert = null;
@@ -882,21 +849,45 @@ function buildGrid() {
 // ── view layout ───────────────────────────────────────────────────────────────
 function applyView() {
     const is18  = viewMode === '18';
-    const cols  = is18 ? 6 : 3;
     const grid  = document.getElementById('grid');
+
+    if (IS_MOBILE) {
+        grid.style.gridTemplateColumns = '1fr';
+        grid.style.gridTemplateRows    = '1fr';
+        const visible = is18 ? 18 : 9;
+        slots.forEach((s, i) => {
+            s.cell.style.display = (i === mobileChartIdx && i < visible) ? 'flex' : 'none';
+        });
+        document.getElementById('nav-prev').style.display = 'block';
+        document.getElementById('nav-next').style.display = 'block';
+        const total = allCoins.length;
+        updateMobileNavIndicator(curPage * 9 + mobileChartIdx + 1, total);
+        return;
+    }
+
+    const cols = is18 ? 6 : 3;
     grid.style.gridTemplateColumns = `repeat(${cols},1fr)`;
     grid.style.gridTemplateRows    = 'repeat(3,1fr)';
-
     const visible = is18 ? 18 : 9;
     slots.forEach((s, i) => { s.cell.style.display = i < visible ? 'flex' : 'none'; });
-
     const showArrows = !is18;
     document.getElementById('nav-prev').style.display = showArrows ? 'block' : 'none';
     document.getElementById('nav-next').style.display = showArrows ? 'block' : 'none';
-
     document.getElementById('btn-view').textContent = is18 ? '⊟ 9' : '⊞ 18';
     document.getElementById('btn-view').className   =
         `px-3 py-1 rounded text-xs font-medium transition-colors ${is18 ? 'btn-view-active' : 'btn-view-idle'}`;
+}
+
+function updateMobileNavIndicator(idx, total) {
+    let el = document.getElementById('mobile-chart-indicator');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'mobile-chart-indicator';
+        el.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(22,26,30,0.88);color:#9CA3AF;font-size:11px;padding:4px 14px;border-radius:12px;z-index:60;pointer-events:none;border:1px solid #2B3139;';
+        document.body.appendChild(el);
+    }
+    el.textContent = `${idx} / ${total}`;
+    el.style.display = (IS_MOBILE && total > 0) ? 'block' : 'none';
 }
 
 // ── per-slot TF bar ───────────────────────────────────────────────────────────
@@ -1293,30 +1284,52 @@ function setWSDot(state) {
 
 // ── navigation ─────────────────────────────────────────────────────────────────
 async function prevPage() {
+    if (IS_MOBILE && viewMode !== '18') { await mobilePrevChart(); return; }
     if (curPage === 0 || viewMode === '18') return;
     curPage--; await loadPage();
 }
 
 async function nextPage() {
+    if (IS_MOBILE && viewMode !== '18') { await mobileNextChart(); return; }
     const maxPage = Math.ceil(allCoins.length / 9) - 1;
     if (curPage >= maxPage || viewMode === '18') return;
     curPage++; await loadPage();
 }
 
+async function mobileNextChart() {
+    const coinsOnPage = allCoins.slice(curPage * 9, curPage * 9 + 9).length;
+    if (mobileChartIdx < coinsOnPage - 1) {
+        mobileChartIdx++;
+        applyView();
+    } else {
+        const maxPage = Math.ceil(allCoins.length / 9) - 1;
+        if (curPage < maxPage) { curPage++; mobileChartIdx = 0; await loadPage(); }
+    }
+}
+
+async function mobilePrevChart() {
+    if (mobileChartIdx > 0) {
+        mobileChartIdx--;
+        applyView();
+    } else if (curPage > 0) {
+        curPage--; mobileChartIdx = 8; await loadPage();
+    }
+}
+
 async function toggleView() {
     viewMode = viewMode === '9' ? '18' : '9';
-    curPage  = 0;
+    curPage  = 0; mobileChartIdx = 0;
     await loadPage();
 }
 
 async function switchTF(tf) {
     if (tf === curTF) return;
-    curTF = tf; renderTFBar(); await loadPage();
+    curTF = tf; mobileChartIdx = 0; renderTFBar(); await loadPage();
 }
 
 async function switchMode(mode) {
     if (mode === curMode) return;
-    curMode = mode; curPage = 0;
+    curMode = mode; curPage = 0; mobileChartIdx = 0;
     renderModeButtons();
     await fetchCoins(); await loadPage();
 }
