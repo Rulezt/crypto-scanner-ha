@@ -35,6 +35,30 @@
   }
   .cell-body { flex:1; position:relative; min-height:0; }
   .chart-el  { position:absolute; inset:0; }
+
+  @media (max-width: 639px) {
+    /* Griglia 2×3 invece di 4×2 */
+    #grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+      grid-template-rows: repeat(3, 1fr) !important;
+    }
+    /* Header scrollabile */
+    #hdr {
+      overflow-x: auto; overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      height: auto; min-height: 44px;
+    }
+    #hdr > div[style*="flex:1"] { flex: 0 0 6px !important; min-width: 6px; }
+    #mtf-label { display: none; }
+    /* OB modal verticale */
+    #ob-modal { flex-direction: column !important; }
+    #ob-modal > div:first-child {
+      flex: 0 0 50% !important;
+      border-right: none !important;
+      border-bottom: 1px solid #2B3139;
+    }
+    #ob-modal > div:last-child { flex: 0 0 50% !important; }
+  }
 </style>
 </head>
 <body>
@@ -50,7 +74,7 @@
   <span style="color:#374151;font-size:11px;">|</span>
   <span id="hdr-vol"    style="font-size:11px;color:#60a5fa;white-space:nowrap;"></span>
   <div style="flex:1;"></div>
-  <span style="font-size:9px;color:#4B5563;letter-spacing:.8px;text-transform:uppercase;">Multi Timeframe</span>
+  <span id="mtf-label" style="font-size:9px;color:#4B5563;letter-spacing:.8px;text-transform:uppercase;">Multi Timeframe</span>
   <span style="color:#374151;font-size:11px;margin:0 6px;">|</span>
   <button onclick="openOBModal()"
     style="font-size:11px;color:#9CA3AF;background:#2B3139;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;"
@@ -71,9 +95,17 @@
 const LC  = LightweightCharts;
 const SYM = new URLSearchParams(location.search).get('symbol') || 'BTCUSDT';
 
-// Layout: top row = 4 slots (1 col each), bottom row = 2 slots (2 cols each)
-// Order from right as specified: top [30m][1h][4h][1D], bottom [1m][5m]
-const TF_SLOTS = [
+const isMobile = window.innerWidth < 640;
+
+// Desktop: 4 col × 2 row | Mobile: 2 col × 3 row
+const TF_SLOTS = isMobile ? [
+  { tf:'D',   label:'1D',  col:'1', row:'1' },
+  { tf:'240', label:'4h',  col:'2', row:'1' },
+  { tf:'60',  label:'1h',  col:'1', row:'2' },
+  { tf:'30',  label:'30m', col:'2', row:'2' },
+  { tf:'5',   label:'5m',  col:'1', row:'3' },
+  { tf:'1',   label:'1m',  col:'2', row:'3' },
+] : [
   { tf:'D',   label:'1D',  col:'1',       row:'1' },
   { tf:'240', label:'4h',  col:'2',       row:'1' },
   { tf:'60',  label:'1h',  col:'3',       row:'1' },
@@ -231,7 +263,7 @@ async function loadAll() {
     const rt = await fetch(`api/ticker?symbol=${SYM}`);
     const jt = await rt.json();
     const coin = SYM.replace('USDT','');
-    document.getElementById('hdr-coin').textContent = coin + '/USDT';
+    document.getElementById('hdr-coin').textContent = coin;
     if (jt.success) {
       const pct = jt.change_24h;
       const el  = document.getElementById('hdr-change');
@@ -240,7 +272,7 @@ async function loadAll() {
       document.getElementById('hdr-vol').textContent = fmtVol(jt.volume_24h);
     }
   } catch(e) {
-    document.getElementById('hdr-coin').textContent = SYM.replace('USDT','/USDT');
+    document.getElementById('hdr-coin').textContent = SYM.replace('USDT','');
   }
 
   // Daily H/L for all charts

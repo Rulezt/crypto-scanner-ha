@@ -47,6 +47,41 @@
         .side-nav:hover { background: rgba(43,49,57,0.92); color: #E5E7EB; }
         #nav-prev { left:0;  border-radius: 0 6px 6px 0; }
         #nav-next { right:0; border-radius: 6px 0 0 6px; }
+
+        @media (max-width: 639px) {
+            /* Header principale scrollabile */
+            header {
+                overflow-x: auto; overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+                height: auto !important; min-height: 48px;
+            }
+            header .flex-1 { flex: 0 0 8px !important; min-width: 8px; }
+            #status { display: none; }
+
+            /* Fullscreen header scrollabile */
+            #fs-overlay > div:first-child {
+                overflow-x: auto !important; overflow-y: hidden !important;
+                -webkit-overflow-scrolling: touch;
+                height: auto !important; min-height: 44px;
+            }
+            #fs-hdr-spacer { flex: 0 0 8px !important; min-width: 8px; }
+
+            /* Alert panel full-width */
+            #alerts-panel > div {
+                width: calc(100% - 24px) !important;
+                right: 12px !important; left: 12px !important;
+                top: 52px !important;
+            }
+
+            /* OB modal verticale */
+            #ob-modal { flex-direction: column !important; }
+            #ob-modal > div:first-child {
+                flex: 0 0 50% !important;
+                border-right: none !important;
+                border-bottom: 1px solid #2B3139;
+            }
+            #ob-modal > div:last-child { flex: 0 0 50% !important; }
+        }
     </style>
 </head>
 <body class="bg-dark-bg text-gray-100" style="height:100vh;display:flex;flex-direction:column;overflow:hidden;">
@@ -116,7 +151,7 @@
         <a id="fs-bybit-link" href="#" target="_blank" rel="noopener noreferrer"
            style="font-size:11px;color:#f7a600;text-decoration:none;padding:2px 7px;border-radius:3px;background:#1E2329;white-space:nowrap;">Bybit ↗</a>
 
-        <div style="flex:1;"></div>
+        <div id="fs-hdr-spacer" style="flex:1;"></div>
 
         <div id="fs-ws-dot" class="flex items-center gap-1.5">
             <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
