@@ -268,6 +268,65 @@ body.orderbook-page #app {
     .current-price-box {
         grid-template-columns: 1fr 1fr 1fr;
     }
+    .orderbook-header {
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding: 0.5rem 0.75rem;
+    }
+    .orderbook-header h2 {
+        font-size: 0.85rem;
+    }
+    .header-controls {
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        width: 100%;
+    }
+    .max-level-info {
+        font-size: 10px;
+        gap: 8px;
+        padding: 3px 6px;
+    }
+    .imbalance-toggle {
+        padding: 4px 8px;
+        font-size: 10px;
+    }
+    .orderbook-wrapper {
+        flex-direction: column;
+        gap: 0;
+    }
+    .imbalance-sidebar {
+        flex-direction: row;
+        width: 100%;
+        height: 52px;
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding: 4px 10px;
+        align-items: center;
+        gap: 8px;
+    }
+    .imbalance-label-top,
+    .imbalance-label-bottom {
+        flex-direction: row;
+        align-items: center;
+        gap: 6px;
+    }
+    .imbalance-bar-full {
+        width: 28px;
+        height: 28px;
+        min-height: 0;
+        flex: 0 0 auto;
+        transform: rotate(-90deg);
+        margin: 0;
+    }
+    .imbalance-info {
+        flex-direction: row;
+        margin-top: 0;
+        margin-left: auto;
+        gap: 6px;
+    }
+    .resize-handle {
+        display: none;
+    }
 }
 /* ========== IMBALANCE INDICATOR ========== */
 .orderbook-wrapper {
