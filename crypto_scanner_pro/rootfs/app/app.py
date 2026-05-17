@@ -12,7 +12,6 @@ import time
 import logging
 import uuid
 from scanners.ema_touch import EMAScanner
-from scanners.daily_flip import DailyFlipScanner
 from scanners.volume import VolumeScanner
 from scanners.ath_atl_scanner import ATHATLScanner
 from scanners.ico_levels_scanner import ICOLevelsScanner
@@ -44,14 +43,6 @@ DEFAULT_CONFIG = {
         'ema_touch_threshold': 2.0,
         'scan_interval_minutes': 30,
         'screenshot_tf': '30',
-    },
-    'daily_flip': {
-        'enabled': True,
-        'flip_threshold': 2.0,
-        'flip_type': 'both',
-        'scan_interval_minutes': 30,
-        'max_coins': 20,
-        'screenshot_tf': '240',
     },
     'volume_scanner': {
         'enabled': True,
@@ -196,14 +187,6 @@ def init_scanners():
             **config['general']
         )
 
-        scanners['flip'] = DailyFlipScanner(
-            telegram_config=telegram_config,
-            ws_manager=ws_manager,
-            live_config=config,
-            **config['daily_flip'],
-            **config['general']
-        )
-
         scanners['volume'] = VolumeScanner(
             telegram_config=telegram_config,
             ws_manager=ws_manager,
@@ -283,7 +266,6 @@ def start_scanners():
     # (config_name, scanner_key, interval)
     threads_config = [
         ('ema_touch',      'ema',        config['ema_touch']['scan_interval_minutes']),
-        ('daily_flip',     'flip',       config['daily_flip']['scan_interval_minutes']),
         ('volume_scanner', 'volume',     config['volume_scanner']['scan_interval_minutes']),
         ('ath_atl',        'ath_atl',    config['ath_atl']['scan_interval_minutes']),
         ('ico_levels',     'ico_levels',    config['ico_levels']['scan_interval_minutes']),
@@ -321,7 +303,6 @@ def health():
         'ws_tickers': len(ws_manager.get_all_tickers()),
         'scanners': {
             'ema_touch': config['ema_touch']['enabled'],
-            'daily_flip': config['daily_flip']['enabled'],
             'volume_scanner': config['volume_scanner']['enabled'],
             'ath_atl': config['ath_atl']['enabled'],
             'ico_levels': config['ico_levels']['enabled'],
@@ -445,7 +426,6 @@ def get_recent_alerts():
 
         sources = [
             (ema_path,                            'EMA Touch',    '🎯'),
-            ('/data/flip_cooldown.json',          'Daily Flip',   '🔄'),
             ('/data/gainers_cooldown.json',       'Gainer',       '📈'),
             ('/data/losers_cooldown.json',        'Loser',        '📉'),
             ('/data/ath_cooldown.json',           'ATH',          '🏆'),

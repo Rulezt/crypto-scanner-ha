@@ -61,7 +61,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v3.8.16</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v3.8.17</div>
                 </div>
             </div>
         </div>
@@ -87,25 +87,6 @@
                 <div class="text-xl sm:text-2xl font-bold" id="ema-count">-</div>
                 <div class="text-xs text-gray-500 mt-1">Segnali Attivi</div>
                 <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Prezzo vicino all'EMA 60 su timeframe 30m</div>
-            </div>
-
-            <!-- Flip Scanner -->
-            <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-purple-500 transition-all">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-purple-400 text-xs sm:text-sm font-medium">🔄 Flip</div>
-                    <div class="flex items-center gap-1.5">
-                        <button onclick="openScannerModal('flip')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
-                        <span class="text-gray-700 text-xs">|</span>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="flip-toggle" class="sr-only peer" checked onchange="toggleScanner('daily_flip')">
-                            <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
-                        </label>
-                        <div id="flip-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
-                    </div>
-                </div>
-                <div class="text-xl sm:text-2xl font-bold" id="flip-count">-</div>
-                <div class="text-xs text-gray-500 mt-1">Opportunità Flip</div>
-                <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Variazione 24h prossima a zero (cambio segno)</div>
             </div>
 
             <!-- Volume Scanner -->
@@ -398,33 +379,6 @@
         </div>
     </div>
 
-    <!-- Flip Scanner Modal -->
-    <div id="scanner-modal-flip" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('flip',event)">
-        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
-                <span style="font-size:13px;font-weight:700;color:#C4B5FD;">🔄 Scanner Flip</span>
-                <button onclick="closeScannerModal('flip')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
-            </div>
-            <div class="p-4 space-y-3">
-                <div><label class="text-xs text-gray-500 block mb-1">Soglia (%):</label><input type="number" step="0.1" id="flip-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Tipo Flip:</label>
-                    <select id="flip-cfg-type" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none">
-                        <option value="both">Entrambi</option>
-                        <option value="green_to_red">Verde → Rosso</option>
-                        <option value="red_to_green">Rosso → Verde</option>
-                    </select>
-                </div>
-                <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="flip-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="flip-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-purple-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
-            </div>
-            <div class="px-4 pb-3 flex gap-2">
-                <button onclick="saveScannerConfig('flip')" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
-                <button onclick="closeScannerModal('flip')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors">Annulla</button>
-            </div>
-            <div id="flip-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
-        </div>
-    </div>
-
     <!-- Volume Scanner Modal -->
     <div id="scanner-modal-volume" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('volume',event)">
         <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
@@ -579,7 +533,6 @@
                 currentConfig = await res.json();
 
                 if (currentConfig.ema_touch)      document.getElementById('ema-toggle').checked    = currentConfig.ema_touch.enabled;
-                if (currentConfig.daily_flip)     document.getElementById('flip-toggle').checked   = currentConfig.daily_flip.enabled;
                 if (currentConfig.volume_scanner) document.getElementById('volume-toggle').checked = currentConfig.volume_scanner.enabled;
                 if (currentConfig.ath_atl)        document.getElementById('ath-toggle').checked    = currentConfig.ath_atl.enabled;
                 if (currentConfig.ico_levels)     document.getElementById('ico-toggle').checked    = currentConfig.ico_levels.enabled;
@@ -735,11 +688,6 @@
                 document.getElementById('ema-cfg-period').value       = cfg.ema_touch?.ema_period ?? 60;
                 document.getElementById('ema-cfg-interval').value     = cfg.ema_touch?.scan_interval_minutes ?? 30;
                 document.getElementById('ema-cfg-screenshot-tf').value = cfg.ema_touch?.screenshot_tf ?? '30';
-            } else if (name === 'flip') {
-                document.getElementById('flip-cfg-threshold').value    = cfg.daily_flip?.flip_threshold ?? 2.0;
-                document.getElementById('flip-cfg-type').value         = cfg.daily_flip?.flip_type ?? 'both';
-                document.getElementById('flip-cfg-interval').value     = cfg.daily_flip?.scan_interval_minutes ?? 30;
-                document.getElementById('flip-cfg-screenshot-tf').value = cfg.daily_flip?.screenshot_tf ?? '240';
             } else if (name === 'volume') {
                 document.getElementById('volume-cfg-gainers').value     = cfg.volume_scanner?.gainers_threshold ?? 10;
                 document.getElementById('volume-cfg-losers').value      = cfg.volume_scanner?.losers_threshold ?? 10;
@@ -791,14 +739,6 @@
                         ema_period:             parseInt(document.getElementById('ema-cfg-period').value) || 60,
                         scan_interval_minutes:  parseInt(document.getElementById('ema-cfg-interval').value) || 30,
                         screenshot_tf:          document.getElementById('ema-cfg-screenshot-tf').value || '30',
-                    };
-                } else if (name === 'flip') {
-                    updates.daily_flip = {
-                        ...currentConfig.daily_flip,
-                        flip_threshold:        parseFloat(document.getElementById('flip-cfg-threshold').value) || 2.0,
-                        flip_type:             document.getElementById('flip-cfg-type').value || 'both',
-                        scan_interval_minutes: parseInt(document.getElementById('flip-cfg-interval').value) || 30,
-                        screenshot_tf:         document.getElementById('flip-cfg-screenshot-tf').value || '240',
                     };
                 } else if (name === 'volume') {
                     updates.volume_scanner = {
@@ -870,7 +810,6 @@
 
         const TOGGLE_MAP = {
             'ema_touch':      'ema-toggle',
-            'daily_flip':     'flip-toggle',
             'volume_scanner': 'volume-toggle',
             'ath_atl':        'ath-toggle',
             'ico_levels':     'ico-toggle',
@@ -906,7 +845,6 @@
         function updateBotStatus() {
             const scanners = {
                 'ema-status':    currentConfig.ema_touch?.enabled,
-                'flip-status':   currentConfig.daily_flip?.enabled,
                 'volume-status': currentConfig.volume_scanner?.enabled,
                 'ath-status':    currentConfig.ath_atl?.enabled,
                 'ico-status':    currentConfig.ico_levels?.enabled,
