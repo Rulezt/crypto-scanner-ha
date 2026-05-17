@@ -160,6 +160,7 @@ function makeChart(el, bigSlot) {
       borderColor:'#2B3139', visible:true, timeVisible:true, secondsVisible:false,
       barSpacing: bigSlot ? 4 : 3, rightOffset: bigSlot ? 20 : 15,
     },
+    localization: { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
   });
 }
 

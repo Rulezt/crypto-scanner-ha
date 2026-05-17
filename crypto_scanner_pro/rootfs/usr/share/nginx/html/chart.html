@@ -574,6 +574,7 @@ function makeChart(el, opts) {
         rightPriceScale: { borderColor:'#2B3139', scaleMargins:{top:0.05, bottom:0.05} },
         timeScale: { borderColor:'#2B3139', visible:true, timeVisible:true, secondsVisible:false,
                      barSpacing: opts?.barSpacing || 3, rightOffset: opts?.rightOffset || 30 },
+        localization: { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     });
 }
 
