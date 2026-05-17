@@ -93,6 +93,7 @@
 <script>
 // ── constants ──────────────────────────────────────────────────────────────────
 const LC  = LightweightCharts;
+let CHART_TZ = 'UTC';
 const SYM = new URLSearchParams(location.search).get('symbol') || 'BTCUSDT';
 
 const isMobile = window.innerWidth < 640;
@@ -160,7 +161,7 @@ function makeChart(el, bigSlot) {
       borderColor:'#2B3139', visible:true, timeVisible:true, secondsVisible:false,
       barSpacing: bigSlot ? 4 : 3, rightOffset: bigSlot ? 20 : 15,
     },
-    localization: { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    localization: { timeZone: CHART_TZ },
   });
 }
 
@@ -261,6 +262,14 @@ function buildGrid() {
 
 // ── data loading ───────────────────────────────────────────────────────────────
 async function loadAll() {
+  try {
+    const r = await fetch('scanner-api/config');
+    const cfg = await r.json();
+    const off = cfg?.general?.utc_offset ?? 0;
+    const h = Math.round(off);
+    CHART_TZ = h === 0 ? 'Etc/GMT' : (h > 0 ? `Etc/GMT-${h}` : `Etc/GMT+${Math.abs(h)}`);
+  } catch(e) {}
+
   // Header ticker
   try {
     const rt = await fetch(`api/ticker?symbol=${SYM}`);

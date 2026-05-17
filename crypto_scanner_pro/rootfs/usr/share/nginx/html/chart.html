@@ -237,6 +237,7 @@
 <script>
 // ── constants ─────────────────────────────────────────────────────────────────
 const LC          = LightweightCharts;
+let CHART_TZ      = 'UTC';
 const TIMEFRAMES  = ['1','5','30','60','240','D'];
 const TF_LABEL    = {'1':'1m','5':'5m','30':'30m','60':'1h','240':'4h','D':'1D'};
 const SLOTS_TOTAL = 18;
@@ -574,7 +575,7 @@ function makeChart(el, opts) {
         rightPriceScale: { borderColor:'#2B3139', scaleMargins:{top:0.05, bottom:0.05} },
         timeScale: { borderColor:'#2B3139', visible:true, timeVisible:true, secondsVisible:false,
                      barSpacing: opts?.barSpacing || 3, rightOffset: opts?.rightOffset || 30 },
-        localization: { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+        localization: { timeZone: CHART_TZ },
     });
 }
 
@@ -1381,6 +1382,13 @@ document.addEventListener('keydown', e => {
 
 // ── bootstrap ──────────────────────────────────────────────────────────────────
 async function init() {
+    try {
+        const r = await fetch('scanner-api/config');
+        const cfg = await r.json();
+        const off = cfg?.general?.utc_offset ?? 0;
+        const h = Math.round(off);
+        CHART_TZ = h === 0 ? 'Etc/GMT' : (h > 0 ? `Etc/GMT-${h}` : `Etc/GMT+${Math.abs(h)}`);
+    } catch(e) {}
     renderTFBar(); renderModeButtons();
     buildGrid(); applyView();
     await initNotifications();
