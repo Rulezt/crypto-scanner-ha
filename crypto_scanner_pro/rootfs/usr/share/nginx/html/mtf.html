@@ -213,7 +213,14 @@ function buildGrid() {
     resetBtn.onmouseleave = () => resetBtn.style.color = '#4B5563';
     resetBtn.onclick = () => { const s = slots[i]; if(s && s.chart) s.chart.timeScale().fitContent(); };
 
-    hdr.append(tfLbl, priceEl, spacer, pctEl, resetBtn);
+    const fsBtn = document.createElement('button');
+    fsBtn.textContent = '⛶'; fsBtn.title = 'Schermo intero';
+    fsBtn.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0 0 0 4px;line-height:1;flex-shrink:0;transition:color .15s;';
+    fsBtn.onmouseenter = () => fsBtn.style.color = '#9CA3AF';
+    fsBtn.onmouseleave = () => fsBtn.style.color = '#4B5563';
+    fsBtn.onclick = () => openFSModal(i);
+
+    hdr.append(tfLbl, priceEl, spacer, pctEl, resetBtn, fsBtn);
     cell.appendChild(hdr);
 
     // ── chart body ─────────────────────────────────────────────────────────
@@ -520,10 +527,131 @@ window.addEventListener('message', e => {
 
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
+        const fs = document.getElementById('fs-modal');
+        if (fs && fs.style.display !== 'none') { closeFSModal(); return; }
         const m = document.getElementById('ob-modal');
         if (m && m.style.display !== 'none') { closeOBModal(); return; }
     }
 });
+
+// ── Chart Fullscreen ───────────────────────────────────────────────────────────
+let fsChart = null, fsCandleS = null, fsEmaS = {}, fsLastEMA = {};
+let fsTF = 'D', fsWS = null, fsWsTimer = null;
+let fsDayHighLine = null, fsDayLowLine = null, fsPrevHighLine = null, fsPrevLowLine = null;
+
+function initFSChart() {
+    if (fsChart) return;
+    fsChart = makeChart(document.getElementById('fs-chart-el'), true);
+    fsCandleS = addS(fsChart, 'CandlestickSeries', {
+        upColor:'#26a69a', downColor:'#ef5350',
+        borderVisible:false, wickUpColor:'#26a69a', wickDownColor:'#ef5350',
+    });
+    const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
+    for (const {p, color, width} of EMA_CFG)
+        fsEmaS[p] = addS(fsChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
+}
+
+function renderFSTFBar() {
+    document.getElementById('fs-tf-bar').innerHTML = TF_SLOTS.map(({tf, label}) => {
+        const active = tf === fsTF;
+        return `<button onclick="switchFSTF('${tf}')" style="font-size:11px;padding:2px 8px;border-radius:3px;border:none;cursor:pointer;background:${active?'#2563EB':'#2B3139'};color:${active?'#fff':'#9CA3AF'};">${label}</button>`;
+    }).join('');
+}
+
+async function switchFSTF(tf) {
+    if (tf === fsTF) return;
+    closeFSWS(); fsTF = tf; renderFSTFBar();
+    _clearFSLines(); fsCandleS.setData([]);
+    for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
+    fsLastEMA = {};
+    await loadFSData(); connectFSWS();
+}
+
+function _clearFSLines() {
+    for (const ref of [fsDayHighLine, fsDayLowLine, fsPrevHighLine, fsPrevLowLine])
+        if (ref) try { fsCandleS.removePriceLine(ref); } catch(e) {}
+    fsDayHighLine = fsDayLowLine = fsPrevHighLine = fsPrevLowLine = null;
+}
+
+async function loadFSData() {
+    try {
+        const [r, rd] = await Promise.all([
+            fetch(`api/klines?symbol=${SYM}&interval=${fsTF}`),
+            fetch(`api/klines?symbol=${SYM}&interval=D`),
+        ]);
+        const j = await r.json(); const jd = await rd.json();
+        if (!j.success) return;
+        const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
+        fsCandleS.setData(klines); _clearFSLines();
+        for (const {p} of EMA_CFG) {
+            const ema = calcEMA(klines, p);
+            fsEmaS[p].setData(ema);
+            fsLastEMA[p] = ema[ema.length - 1].value;
+        }
+        fsChart.timeScale().fitContent();
+        if (jd.success && jd.data && jd.data.length) {
+            const today = jd.data[jd.data.length - 1];
+            fsDayHighLine = fsCandleS.createPriceLine({ price: today.high, color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
+            fsDayLowLine  = fsCandleS.createPriceLine({ price: today.low,  color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
+            if (jd.data.length >= 2) {
+                const prev = jd.data[jd.data.length - 2];
+                fsPrevHighLine = fsCandleS.createPriceLine({ price: prev.high, color:'#22c55e', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
+                fsPrevLowLine  = fsCandleS.createPriceLine({ price: prev.low,  color:'#ef4444', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
+            }
+        }
+    } catch(e) { console.error('FS chart load error:', e); }
+}
+
+function connectFSWS() {
+    closeFSWS();
+    fsWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+    fsWS.onopen = () => fsWS.send(JSON.stringify({ op:'subscribe', args:[`kline.${fsTF}.${SYM}`] }));
+    fsWS.onmessage = ev => {
+        let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
+        if (!msg.topic || !msg.topic.startsWith('kline.')) return;
+        const b = msg.data[0]; const confirmed = b.confirm === true || b.confirm === 'true';
+        const candle = { time: Math.floor(parseInt(b.start)/1000) + TZ_OFFSET_S, open: parseFloat(b.open), high: parseFloat(b.high), low: parseFloat(b.low), close: parseFloat(b.close) };
+        fsCandleS.update(candle);
+        for (const {p} of EMA_CFG) {
+            if (fsLastEMA[p] == null) continue;
+            const k = 2/(p+1);
+            const live = candle.close * k + fsLastEMA[p] * (1-k);
+            fsEmaS[p].update({ time: candle.time, value: live });
+            if (confirmed) fsLastEMA[p] = live;
+        }
+    };
+    fsWS.onerror = () => {};
+    fsWS.onclose = () => { fsWsTimer = setTimeout(connectFSWS, 5000); };
+}
+
+function closeFSWS() {
+    clearTimeout(fsWsTimer);
+    if (fsWS) { try { fsWS.close(); } catch(e) {} fsWS = null; }
+}
+
+function openFSModal(idx) {
+    fsTF = slots[idx].cfg.tf;
+    document.getElementById('fs-sym').textContent = SYM.replace('USDT','');
+    document.getElementById('fs-modal').style.display = 'flex';
+    initFSChart();
+    renderFSTFBar();
+    _clearFSLines();
+    fsCandleS.setData([]);
+    for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
+    fsLastEMA = {};
+    loadFSData().then(() => connectFSWS());
+}
+
+function closeFSModal() {
+    document.getElementById('fs-modal').style.display = 'none';
+    closeFSWS();
+    if (fsCandleS) {
+        _clearFSLines();
+        fsCandleS.setData([]);
+        for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
+        fsLastEMA = {};
+    }
+}
 
 buildGrid();
 loadAll();
@@ -568,6 +696,22 @@ if (isMobile) {
   updateMTFIndicator();
 }
 </script>
+
+<!-- Chart fullscreen modal -->
+<div id="fs-modal"
+     style="display:none;position:fixed;inset:0;z-index:600;flex-direction:column;background:#0B0E11;">
+    <div style="height:36px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2B3139;display:flex;align-items:center;padding:0 10px;gap:10px;">
+        <span id="fs-sym" style="font-size:13px;font-weight:700;color:#E5E7EB;min-width:60px;"></span>
+        <div id="fs-tf-bar" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+        <div style="flex:1;"></div>
+        <button onclick="if(fsChart)fsChart.timeScale().fitContent()"
+                style="background:#2B3139;border:none;color:#9CA3AF;font-size:11px;padding:3px 8px;border-radius:3px;cursor:pointer;margin-right:4px;"
+                title="Reset zoom">↺</button>
+        <button onclick="closeFSModal()"
+                style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+    </div>
+    <div id="fs-chart-el" style="flex:1;min-height:0;"></div>
+</div>
 
 <!-- Order Book fullscreen modal -->
 <div id="ob-modal"
