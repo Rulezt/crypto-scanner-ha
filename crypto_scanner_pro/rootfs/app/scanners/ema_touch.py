@@ -1,7 +1,7 @@
 """EMA Touch Scanner — 30m Timeframe, EMA 60 Focus (real-time via kline WebSocket)"""
 import threading
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import sys
 import os
 import json
@@ -20,7 +20,8 @@ class EMAScanner:
     def __init__(self, telegram_config, enabled=True, ema_touch_threshold=2.0,
                  scan_interval_minutes=30, min_volume_24h=10000000,
                  max_coins_per_alert=10, screenshot_tf='30',
-                 ws_manager=None, **kwargs):
+                 ws_manager=None, schedule_start='', schedule_end='',
+                 utc_offset=2, **kwargs):
 
         self.telegram_token   = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
@@ -30,6 +31,9 @@ class EMAScanner:
         self.min_volume_24h   = min_volume_24h
         self.max_coins_per_alert = max_coins_per_alert
         self.screenshot_tf    = screenshot_tf
+        self.schedule_start   = schedule_start
+        self.schedule_end     = schedule_end
+        self.utc_offset       = utc_offset
 
         self._setup_cooldown_path()
         self.last_alerts = self._load_cooldown()
@@ -89,6 +93,24 @@ class EMAScanner:
         self.last_alerts[symbol] = datetime.utcnow()
         self._save_cooldown()
 
+    # ── schedule check ───────────────────────────────────────────────────────
+
+    def _is_in_schedule(self):
+        if not self.schedule_start or not self.schedule_end:
+            return True
+        try:
+            now = datetime.utcnow() + timedelta(hours=self.utc_offset)
+            sh, sm = map(int, self.schedule_start.split(':'))
+            eh, em = map(int, self.schedule_end.split(':'))
+            now_m   = now.hour * 60 + now.minute
+            start_m = sh * 60 + sm
+            end_m   = eh * 60 + em
+            if start_m <= end_m:
+                return start_m <= now_m <= end_m
+            return now_m >= start_m or now_m <= end_m
+        except Exception:
+            return True
+
     # ── kline subscription management ────────────────────────────────────────
 
     def _init_kline_subs(self):
@@ -144,6 +166,8 @@ class EMAScanner:
         """Called on every kline update from WebSocket."""
         if not self.enabled or interval != '30' or not is_closed:
             return  # Only act on confirmed 30m candle closes
+        if not self._is_in_schedule():
+            return
 
         klines = self._ws_manager.get_klines(symbol, '30')
         if len(klines) < 223:
