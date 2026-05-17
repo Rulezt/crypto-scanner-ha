@@ -15,7 +15,8 @@ class DailyFlipScanner:
     def __init__(self, telegram_config, enabled=True, flip_threshold=2.0,
                  flip_type='both', scan_interval_minutes=30, max_coins=20,
                  min_volume_24h=10000000, cooldown_hours=2,
-                 screenshot_tf='240', ws_manager=None, **kwargs):
+                 screenshot_tf='240', ws_manager=None,
+                 schedule_start='', schedule_end='', utc_offset=2, **kwargs):
 
         self.telegram_token   = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
@@ -27,6 +28,9 @@ class DailyFlipScanner:
         self.min_volume_24h   = min_volume_24h
         self.cooldown_hours   = cooldown_hours
         self.screenshot_tf    = screenshot_tf
+        self.schedule_start   = schedule_start
+        self.schedule_end     = schedule_end
+        self.utc_offset       = utc_offset
 
         self.last_alerts = self._load_cooldown()
         self._lock       = threading.Lock()
@@ -67,6 +71,9 @@ class DailyFlipScanner:
     def _on_tick(self, symbol, data):
         """Called on every ticker update from WebSocket."""
         if not self.enabled:
+            return
+        from alert_utils import is_in_schedule
+        if not is_in_schedule(self.schedule_start, self.schedule_end, self.utc_offset):
             return
         price  = data.get('price', 0)
         change = data.get('change_24h')

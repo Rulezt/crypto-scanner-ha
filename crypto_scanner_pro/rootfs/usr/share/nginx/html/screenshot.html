@@ -37,6 +37,7 @@
 
 <script>
 const LC  = LightweightCharts;
+let TZ_OFFSET_S = 0;
 const qp  = new URLSearchParams(location.search);
 const SYM = qp.get('symbol') || 'BTCUSDT';
 const TF  = qp.get('interval') || '30';
@@ -77,13 +78,23 @@ function fmtPrice(p) {
 }
 
 async function init() {
+  try {
+    const r = await fetch('scanner-api/config');
+    const cfg = await r.json();
+    TZ_OFFSET_S = Math.round(cfg?.general?.utc_offset ?? 0) * 3600;
+  } catch(e) {}
+
   const coin = SYM.replace('USDT','');
   document.getElementById('h-coin').textContent = coin+'/USDT';
   document.getElementById('h-tf').textContent   = TF_LABEL[TF] || TF;
   const now = new Date();
+  const localH = Math.floor((now.getTime()/1000 + TZ_OFFSET_S) % 86400 / 3600);
+  const localM = Math.floor((now.getTime()/1000 + TZ_OFFSET_S) % 3600 / 60);
+  const tzSign = TZ_OFFSET_S >= 0 ? '+' : '-';
+  const tzH    = Math.abs(Math.round(TZ_OFFSET_S / 3600));
   document.getElementById('h-time').textContent =
-    now.getUTCHours().toString().padStart(2,'0') + ':' +
-    now.getUTCMinutes().toString().padStart(2,'0') + ' UTC';
+    String(localH).padStart(2,'0') + ':' + String(localM).padStart(2,'0') +
+    ' UTC' + tzSign + tzH;
 
   const chart = LC.createChart(document.getElementById('chart'), {
     width: 1280,
@@ -128,7 +139,7 @@ async function init() {
     }
 
     if (jk.success) {
-      const klines = jk.data;
+      const klines = TZ_OFFSET_S ? jk.data.map(k => ({...k, time: k.time + TZ_OFFSET_S})) : jk.data;
       candleS.setData(klines);
       for (const {p} of EMA_CFG) emaS[p].setData(calcEMA(klines, p));
 

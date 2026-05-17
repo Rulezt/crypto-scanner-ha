@@ -24,7 +24,8 @@ class ICOLevelsScanner:
                  ico_levels_threshold=2.0, ico_levels_tf='D',
                  new_listing_days=30, cooldown_hours=2,
                  scan_interval_minutes=60, screenshot_tf=None,
-                 ws_manager=None, **kwargs):
+                 ws_manager=None,
+                 schedule_start='', schedule_end='', utc_offset=2, **kwargs):
         self.telegram_token   = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
         self.ha_url           = telegram_config.get('ha_url', '')
@@ -34,6 +35,9 @@ class ICOLevelsScanner:
         self.screenshot_tf    = screenshot_tf if screenshot_tf else ico_levels_tf
         self.new_listing_days = new_listing_days
         self.cooldown_hours   = cooldown_hours
+        self.schedule_start   = schedule_start
+        self.schedule_end     = schedule_end
+        self.utc_offset       = utc_offset
 
         # In-memory ICO levels cache: {symbol: {first_high, first_low}}
         self._levels      = {}
@@ -162,6 +166,9 @@ class ICOLevelsScanner:
 
     def _on_tick(self, symbol, data):
         if not self.enabled:
+            return
+        from alert_utils import is_in_schedule
+        if not is_in_schedule(self.schedule_start, self.schedule_end, self.utc_offset):
             return
         with self._levels_lock:
             levels = self._levels.get(symbol)

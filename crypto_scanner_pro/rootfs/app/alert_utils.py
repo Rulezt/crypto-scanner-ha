@@ -1,9 +1,27 @@
 """Shared alert utilities used by all scanners."""
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import requests
 
 logger = logging.getLogger(__name__)
+
+
+def is_in_schedule(schedule_start, schedule_end, utc_offset=0):
+    """Return True if current local time (UTC+offset) is within the configured window."""
+    if not schedule_start or not schedule_end:
+        return True
+    try:
+        now = datetime.utcnow() + timedelta(hours=utc_offset)
+        sh, sm = map(int, schedule_start.split(':'))
+        eh, em = map(int, schedule_end.split(':'))
+        now_m   = now.hour * 60 + now.minute
+        start_m = sh * 60 + sm
+        end_m   = eh * 60 + em
+        if start_m <= end_m:
+            return start_m <= now_m <= end_m
+        return now_m >= start_m or now_m <= end_m
+    except Exception:
+        return True
 
 
 def fmt_price(p):
