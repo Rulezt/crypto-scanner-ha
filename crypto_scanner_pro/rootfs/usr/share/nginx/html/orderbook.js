@@ -1,7 +1,5 @@
 // Order Book Standalone Vue App
-const { createApp, ref, onMounted, onUnmounted, computed, watch } = Vue;
-
-const isMobile = window.innerWidth < 640;
+const { createApp, ref, onMounted, onUnmounted, watch } = Vue;
 
 createApp({
     setup() {
@@ -18,12 +16,9 @@ createApp({
         const priceColor = ref('#9ca3af');
         const loading = ref(true);
         const error = ref('');
-        const showImbalance = ref(!isMobile);
+        const showImbalance = ref(true);
         const isPaused = ref(false);
-        const showCVD = ref(!isMobile);
         const showBook = ref(true);
-        const cvdWidth = ref(180);
-        const isResizing = ref(false);
 
         const maxLevelDistance = ref({
             askPrice: 0, askPercent: '0.00',
@@ -31,31 +26,9 @@ createApp({
         });
 
         const imbalance = ref({
-            ratio: 0, percent: 50, signal: 'neutral',
-            bidTotal: 0, askTotal: 0, direction: '⚪', strength: ''
+            ratio: 0, percent: '50.0', signal: 'neutral',
+            bidTotal: '0K', askTotal: '0K', direction: '⚪', strength: ''
         });
-
-        // ============================
-        //  CVD STATE
-        // ============================
-        const cvdData = ref({
-            cvd: 0,
-            delta1m: 0,
-            buyVol: 0,
-            sellVol: 0,
-            lastTrades: [],
-            largeThreshold: 0,
-            signal: 'neutral',
-        });
-
-        const cvdHistory = ref([]);
-        const MAX_CVD_HISTORY = 120;
-
-        let wsTrades = null;
-        let tradeReconnectTimer = null;
-        let cvdChartInstance = null;
-        let cvdSeries = null;
-        let deltaSeries = null;
 
         // ============================
         //  ORDER BOOK STATE
@@ -165,7 +138,6 @@ createApp({
                     maxLevelDistance.value.bidPrice = maxBidLevel[0];
                     maxLevelDistance.value.bidPercent = (((midPrice - maxBidLevel[0]) / midPrice) * 100).toFixed(2);
                 }
-                // Send strongest bid/ask levels to parent chart
                 if (window.parent !== window) {
                     window.parent.postMessage({
                         type: 'ob_levels',
@@ -316,275 +288,27 @@ createApp({
         };
 
         // ============================
-        //  CVD WEBSOCKET (publicTrade)
-        // ============================
-        let bucketBuy  = 0;
-        let bucketSell = 0;
-        let bucketTimer = null;
-
-        const flushBucket = () => {
-            const delta = bucketBuy - bucketSell;
-            const now = Date.now();
-
-            cvdData.value.cvd      += delta;
-            cvdData.value.buyVol   += bucketBuy;
-            cvdData.value.sellVol  += bucketSell;
-            cvdData.value.delta1m   = delta;
-
-            const totalVol = bucketBuy + bucketSell;
-            if (totalVol > 0) {
-                const ratio = bucketBuy / totalVol;
-                if      (ratio > 0.65) cvdData.value.signal = 'bull';
-                else if (ratio < 0.35) cvdData.value.signal = 'bear';
-                else                   cvdData.value.signal = 'neutral';
-            }
-
-            cvdHistory.value.push({ time: now, cvd: cvdData.value.cvd, delta });
-            if (cvdHistory.value.length > MAX_CVD_HISTORY) cvdHistory.value.shift();
-
-            drawCVDChart();
-
-            bucketBuy  = 0;
-            bucketSell = 0;
-        };
-
-        const processTrade = (trade) => {
-            const size = parseFloat(trade.v) || 0;
-            const price = parseFloat(trade.p) || 0;
-            const usdVal = size * price;
-
-            if (trade.S === 'Buy') {
-                bucketBuy += usdVal;
-            } else {
-                bucketSell += usdVal;
-            }
-
-            const threshold = cvdData.value.largeThreshold || (price * 10);
-            if (usdVal >= threshold) {
-                const lt = {
-                    side: trade.S,
-                    size: size.toFixed(2),
-                    usd: usdVal >= 1e6
-                        ? (usdVal / 1e6).toFixed(2) + 'M'
-                        : (usdVal / 1e3).toFixed(1) + 'K',
-                    price: price,
-                    time: new Date(trade.T).toLocaleTimeString('it-IT')
-                };
-                cvdData.value.lastTrades.unshift(lt);
-                if (cvdData.value.lastTrades.length > 8) cvdData.value.lastTrades.pop();
-            }
-
-            if (cvdData.value.buyVol + cvdData.value.sellVol > 0) {
-                const totalTrades = cvdHistory.value.length || 1;
-                const avgBucket = (cvdData.value.buyVol + cvdData.value.sellVol) / totalTrades;
-                cvdData.value.largeThreshold = avgBucket * 5;
-            }
-        };
-
-        const connectTradesWS = () => {
-            wsTrades = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-            wsTrades.onopen = () => {
-                wsTrades.send(JSON.stringify({ op: 'subscribe', args: [`publicTrade.${symbol.value}`] }));
-                bucketTimer = setInterval(flushBucket, 1000);
-            };
-            wsTrades.onmessage = (event) => {
-                try {
-                    const msg = JSON.parse(event.data);
-                    if (msg.topic && msg.topic.startsWith('publicTrade') && Array.isArray(msg.data)) {
-                        msg.data.forEach(processTrade);
-                    }
-                } catch(e) { console.error(e); }
-            };
-            wsTrades.onerror = (e) => console.error('Trade WS error:', e);
-            wsTrades.onclose = () => {
-                clearInterval(bucketTimer);
-                tradeReconnectTimer = setTimeout(connectTradesWS, 3000);
-            };
-        };
-
-        // ============================
-        //  CVD CANVAS CHART
-        // ============================
-        const drawCVDChart = () => {
-            const canvas = document.getElementById('cvd-canvas');
-            if (!canvas) return;
-            if (canvas.offsetWidth > 0 && canvas.width !== canvas.offsetWidth)
-                canvas.width = canvas.offsetWidth;
-            if (canvas.offsetHeight > 0 && canvas.height !== canvas.offsetHeight)
-                canvas.height = canvas.offsetHeight;
-            const ctx = canvas.getContext('2d');
-            const W = canvas.width;
-            const H = canvas.height;
-            ctx.clearRect(0, 0, W, H);
-
-            const hist = cvdHistory.value;
-            if (hist.length < 2) return;
-
-            ctx.fillStyle = '#0a0a0b';
-            ctx.fillRect(0, 0, W, H);
-
-            const cvdVals = hist.map(h => h.cvd);
-            const cvdMin  = Math.min(...cvdVals);
-            const cvdMax  = Math.max(...cvdVals);
-            const cvdRange = cvdMax - cvdMin || 1;
-
-            const toX = (i) => (i / (hist.length - 1)) * W;
-            const toCvdY = (v) => H * 0.7 - ((v - cvdMin) / cvdRange) * (H * 0.6);
-
-            const zeroY = toCvdY(0);
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([4, 4]);
-            ctx.moveTo(0, zeroY);
-            ctx.lineTo(W, zeroY);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            const lastCvd = cvdVals[cvdVals.length - 1];
-            const cvdColor = lastCvd >= 0 ? '#10b981' : '#ef4444';
-            const cvdGrad = ctx.createLinearGradient(0, 0, 0, H * 0.7);
-            cvdGrad.addColorStop(0, lastCvd >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)');
-            cvdGrad.addColorStop(1, 'rgba(0,0,0,0)');
-
-            ctx.beginPath();
-            ctx.moveTo(toX(0), toCvdY(cvdVals[0]));
-            for (let i = 1; i < hist.length; i++) {
-                ctx.lineTo(toX(i), toCvdY(cvdVals[i]));
-            }
-            ctx.lineTo(toX(hist.length - 1), H * 0.7);
-            ctx.lineTo(toX(0), H * 0.7);
-            ctx.closePath();
-            ctx.fillStyle = cvdGrad;
-            ctx.fill();
-
-            ctx.beginPath();
-            ctx.strokeStyle = cvdColor;
-            ctx.lineWidth = 1.5;
-            ctx.moveTo(toX(0), toCvdY(cvdVals[0]));
-            for (let i = 1; i < hist.length; i++) {
-                ctx.lineTo(toX(i), toCvdY(cvdVals[i]));
-            }
-            ctx.stroke();
-
-            const barH = H * 0.28;
-            const barTop = H * 0.72;
-            const deltaVals = hist.map(h => h.delta);
-            const maxDelta = Math.max(...deltaVals.map(Math.abs)) || 1;
-            const barW = Math.max(1, (W / hist.length) - 1);
-
-            for (let i = 0; i < hist.length; i++) {
-                const d = deltaVals[i];
-                const bh = (Math.abs(d) / maxDelta) * barH;
-                const bx = toX(i) - barW / 2;
-                ctx.fillStyle = d >= 0 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)';
-                ctx.fillRect(bx, barTop + (barH - bh), barW, bh);
-            }
-
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-            ctx.lineWidth = 1;
-            ctx.moveTo(0, barTop);
-            ctx.lineTo(W, barTop);
-            ctx.stroke();
-
-            ctx.font = '9px monospace';
-            ctx.fillStyle = '#6b7280';
-            ctx.fillText('CVD', 4, 10);
-            ctx.fillText('Δ', 4, barTop + 10);
-
-            ctx.font = 'bold 10px monospace';
-            ctx.fillStyle = cvdColor;
-            const cvdLabel = lastCvd >= 1e6
-                ? (lastCvd / 1e6).toFixed(2) + 'M'
-                : lastCvd >= 1e3
-                    ? (lastCvd / 1e3).toFixed(1) + 'K'
-                    : lastCvd.toFixed(0);
-            ctx.fillText(cvdLabel, W - 50, 10);
-        };
-
-        // ============================
-        //  CVD PANEL RESIZE
-        // ============================
-        let resizeStartX = 0;
-        let resizeStartWidth = 0;
-
-        const onResize = (e) => {
-            const diff = resizeStartX - e.clientX;
-            cvdWidth.value = Math.max(140, Math.min(520, resizeStartWidth + diff));
-            const canvas = document.getElementById('cvd-canvas');
-            if (canvas) {
-                canvas.width = cvdWidth.value - 8;
-                drawCVDChart();
-            }
-        };
-
-        const stopResize = () => {
-            isResizing.value = false;
-            document.removeEventListener('mousemove', onResize);
-            document.removeEventListener('mouseup', stopResize);
-        };
-
-        const startResize = (e) => {
-            isResizing.value = true;
-            resizeStartX = e.clientX;
-            resizeStartWidth = cvdWidth.value;
-            document.addEventListener('mousemove', onResize);
-            document.addEventListener('mouseup', stopResize);
-        };
-
-        // ============================
         //  CLEANUP
         // ============================
         const cleanup = () => {
             if (ws) { ws.close(); ws = null; }
-            if (wsTrades) { wsTrades.close(); wsTrades = null; }
             if (reconnectTimer) clearTimeout(reconnectTimer);
-            if (tradeReconnectTimer) clearTimeout(tradeReconnectTimer);
-            if (bucketTimer) clearInterval(bucketTimer);
-            document.removeEventListener('mousemove', onResize);
-            document.removeEventListener('mouseup', stopResize);
             asksMap.clear();
             bidsMap.clear();
         };
 
-        // Notify parent when book section visibility changes
         watch(showBook, val => {
             if (window.parent !== window) {
                 window.parent.postMessage({ type: 'ob_book_toggle', visible: val }, '*');
             }
         });
 
-        // Resize canvas when CVD panel becomes visible
-        watch(showCVD, val => {
-            if (val) {
-                setTimeout(() => {
-                    const canvas = document.getElementById('cvd-canvas');
-                    if (canvas && canvas.offsetWidth > 0) {
-                        canvas.width = canvas.offsetWidth;
-                        drawCVDChart();
-                    }
-                }, 60);
-            }
-        });
-
-        const onWindowResize = () => {
-            const canvas = document.getElementById('cvd-canvas');
-            if (canvas && showCVD.value && canvas.offsetWidth > 0) {
-                canvas.width = canvas.offsetWidth;
-                drawCVDChart();
-            }
-        };
-
         onMounted(() => {
             fetchOrderBook();
-            connectTradesWS();
             document.title = `${symbol.value} Order Book`;
-            window.addEventListener('resize', onWindowResize);
         });
 
         onUnmounted(() => {
-            window.removeEventListener('resize', onWindowResize);
             cleanup();
         });
 
@@ -596,9 +320,7 @@ createApp({
             loading, error,
             imbalance, showImbalance, isPaused,
             maxLevelDistance,
-            cvdData, cvdHistory, showCVD,
-            showBook, cvdWidth, isResizing,
-            startResize,
+            showBook,
             fetchOrderBook, updateDisplay,
         };
     }

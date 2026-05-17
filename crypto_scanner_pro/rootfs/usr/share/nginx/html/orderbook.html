@@ -8,143 +8,74 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
     <script defer src="orderbook.js"></script>
     <style>
-        /* ===== CVD PANEL ===== */
-        .cvd-panel {
-            display: flex;
-            flex-direction: column;
-            width: 180px;
-            min-width: 180px;
-            background: #0a0a0b;
-            border-left: 1px solid rgba(255,255,255,0.06);
-            overflow: hidden;
-        }
-
-        .cvd-header {
+        /* ===== HORIZONTAL IMBALANCE BAR ===== */
+        .imbalance-hbar {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 5px 8px;
-            background: #111;
-            border-bottom: 1px solid #1e1e1e;
-            font-size: 0.65rem;
-            color: #6b7280;
-            font-weight: 600;
-            text-transform: uppercase;
+            height: 28px;
+            background: #0f1117;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            padding: 0 8px;
+            gap: 8px;
+            flex-shrink: 0;
         }
-        .cvd-signal {
-            font-size: 0.65rem;
+        .imh-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            min-width: 90px;
+            white-space: nowrap;
+            font-size: 10px;
+        }
+        .imh-ask { color: #ef4444; }
+        .imh-bid { color: #10b981; justify-content: flex-end; }
+        .imh-pct {
             font-weight: 700;
-            padding: 1px 6px;
-            border-radius: 8px;
-        }
-        .cvd-signal.bull    { background: rgba(16,185,129,0.2); color: #10b981; }
-        .cvd-signal.bear    { background: rgba(239,68,68,0.2);  color: #ef4444; }
-        .cvd-signal.neutral { background: rgba(148,163,184,0.1); color: #6b7280; }
-
-        /* Canvas chart */
-        .cvd-chart-wrap {
-            padding: 4px 4px 0;
-        }
-        #cvd-canvas {
-            width: 100%;
-            height: 110px;
-            display: block;
-            border-radius: 3px;
-        }
-
-        /* Stats grid */
-        .cvd-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1px;
-            padding: 4px 6px;
-        }
-        .cvd-stat {
-            display: flex;
-            flex-direction: column;
-            gap: 1px;
-        }
-        .cvd-stat-label {
-            font-size: 0.58rem;
-            color: #4b5563;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-        }
-        .cvd-stat-value {
-            font-size: 0.72rem;
+            font-size: 11px;
             font-family: 'Monaco','Consolas',monospace;
-            font-weight: 600;
         }
-        .cvd-stat-value.green { color: #10b981; }
-        .cvd-stat-value.red   { color: #ef4444; }
-        .cvd-stat-value.gray  { color: #9ca3af; }
-
-        /* Buy/Sell bar */
-        .cvd-ratio-bar {
-            margin: 2px 6px;
-            height: 5px;
-            border-radius: 3px;
-            background: #1a1a1a;
-            overflow: hidden;
-            display: flex;
+        .imh-vol {
+            font-size: 9px;
+            color: #9ca3af;
         }
-        .cvd-ratio-buy  { background: #10b981; transition: width 0.4s; }
-        .cvd-ratio-sell { background: #ef4444; flex: 1; }
-
-        /* Large trades */
-        .cvd-large-label {
-            font-size: 0.58rem;
-            color: #4b5563;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            padding: 3px 6px 1px;
-        }
-        .cvd-trades {
+        .imh-track {
             flex: 1;
-            overflow-y: auto;
-            padding: 0 4px 4px;
-            scrollbar-width: none;
+            height: 6px;
+            display: flex;
+            border-radius: 3px;
+            overflow: hidden;
+            background: #1a1a1a;
         }
-        .cvd-trades::-webkit-scrollbar { display: none; }
-        .cvd-trade-row {
+        .imh-fill-ask {
+            background: linear-gradient(90deg, #dc2626, #ef4444);
+            opacity: 0.8;
+            transition: width 0.4s;
+            border-radius: 3px 0 0 3px;
+        }
+        .imh-fill-bid {
+            background: linear-gradient(90deg, #059669, #10b981);
+            opacity: 0.8;
+            transition: width 0.4s;
+            border-radius: 0 3px 3px 0;
+        }
+        .imh-center {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 2px 4px;
-            border-radius: 3px;
-            margin-bottom: 1px;
-            font-size: 0.65rem;
+            gap: 4px;
+            min-width: 54px;
+            justify-content: center;
+            font-size: 12px;
+        }
+        .imh-ratio {
+            font-weight: 700;
+            font-size: 10px;
+            color: #94a3b8;
             font-family: 'Monaco','Consolas',monospace;
-            animation: flash-in 0.3s ease;
         }
-        @keyframes flash-in {
-            from { opacity: 0; transform: translateX(6px); }
-            to   { opacity: 1; transform: translateX(0); }
-        }
-        .cvd-trade-row.buy  { background: rgba(16,185,129,0.08); }
-        .cvd-trade-row.sell { background: rgba(239,68,68,0.08); }
-        .trade-side { font-weight: 700; font-size: 0.6rem; }
-        .trade-side.buy  { color: #10b981; }
-        .trade-side.sell { color: #ef4444; }
-        .trade-usd  { color: #d1d5db; }
-        .trade-time { color: #4b5563; font-size: 0.58rem; }
-
-        .cvd-empty {
-            font-size: 0.65rem;
-            color: #374151;
-            text-align: center;
-            padding: 8px 4px;
-        }
-
         @media (max-width: 640px) {
-            .cvd-panel {
-                width: 100% !important;
-                min-width: 0 !important;
-                height: 220px;
-                flex-shrink: 0;
-                border-left: none;
-                border-top: 1px solid rgba(255,255,255,0.06);
-            }
+            .imh-label { min-width: 70px; }
+            .imh-vol { display: none; }
+            .imh-center { min-width: 40px; }
         }
     </style>
 </head>
@@ -177,10 +108,6 @@
                             :class="['imbalance-toggle', showImbalance ? 'active' : '']">
                         IMB
                     </button>
-                    <button @click="showCVD = !showCVD"
-                            :class="['imbalance-toggle', showCVD ? 'active' : '']">
-                        CVD
-                    </button>
                     <button @click="showBook = !showBook"
                             :class="['imbalance-toggle', showBook ? 'active' : '']">
                         BOOK
@@ -203,23 +130,27 @@
             <!-- Main Content -->
             <div v-else class="orderbook-wrapper">
 
-                <!-- Imbalance Bar -->
-                <div v-if="showBook && showImbalance" class="imbalance-sidebar" :class="imbalance.signal">
-                    <div class="imbalance-label-top">
-                        <span class="side-percent ask-pct">{{ (100 - imbalance.percent).toFixed(1) }}%</span>
-                        <span class="side-total">🔴 {{ imbalance.askTotal }}</span>
+                <!-- Horizontal Imbalance Bar -->
+                <div v-if="showImbalance" class="imbalance-hbar" :class="imbalance.signal">
+                    <div class="imh-label imh-ask">
+                        <span>🔴</span>
+                        <span class="imh-pct">{{ (100 - parseFloat(imbalance.percent)).toFixed(1) }}%</span>
+                        <span class="imh-vol">{{ imbalance.askTotal }}</span>
                     </div>
-                    <div class="imbalance-bar-full">
-                        <div class="imbalance-ask-fill" :style="{ height: (100 - imbalance.percent) + '%' }"></div>
-                        <div class="imbalance-bid-fill" :style="{ height: imbalance.percent + '%' }"></div>
+                    <div class="imh-track">
+                        <div class="imh-fill-ask"
+                             :style="{ width: (100 - parseFloat(imbalance.percent)) + '%' }"></div>
+                        <div class="imh-fill-bid"
+                             :style="{ width: parseFloat(imbalance.percent) + '%' }"></div>
                     </div>
-                    <div class="imbalance-label-bottom">
-                        <span class="side-total">🟢 {{ imbalance.bidTotal }}</span>
-                        <span class="side-percent bid-pct">{{ imbalance.percent }}%</span>
+                    <div class="imh-center">
+                        <span>{{ imbalance.direction }}</span>
+                        <span class="imh-ratio">{{ imbalance.ratio }}x</span>
                     </div>
-                    <div class="imbalance-info">
-                        <span class="imbalance-direction">{{ imbalance.direction }}</span>
-                        <span class="imbalance-ratio">{{ imbalance.ratio }}x</span>
+                    <div class="imh-label imh-bid">
+                        <span class="imh-vol">{{ imbalance.bidTotal }}</span>
+                        <span class="imh-pct">{{ imbalance.percent }}%</span>
+                        <span>🟢</span>
                     </div>
                 </div>
 
@@ -262,92 +193,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Resize handle CVD -->
-                <div v-if="showBook && showCVD" class="resize-handle" :class="{ resizing: isResizing }" @mousedown.prevent="startResize"></div>
-
-                <!-- CVD PANEL -->
-                <div v-if="showBook && showCVD" class="cvd-panel" :style="{ width: cvdWidth + 'px', minWidth: cvdWidth + 'px' }">
-
-                    <!-- Header -->
-                    <div class="cvd-header">
-                        <span>CVD · Delta</span>
-                        <span :class="['cvd-signal', cvdData.signal]">
-                            {{ cvdData.signal === 'bull' ? '▲ BUY' : cvdData.signal === 'bear' ? '▼ SELL' : '— NEU' }}
-                        </span>
-                    </div>
-
-                    <!-- Chart canvas -->
-                    <div class="cvd-chart-wrap">
-                        <canvas id="cvd-canvas" width="172" height="110"></canvas>
-                    </div>
-
-                    <!-- Stats -->
-                    <div class="cvd-stats">
-                        <div class="cvd-stat">
-                            <span class="cvd-stat-label">CVD</span>
-                            <span :class="['cvd-stat-value', cvdData.cvd >= 0 ? 'green' : 'red']">
-                                {{ cvdData.cvd >= 1e6
-                                    ? (cvdData.cvd/1e6).toFixed(2)+'M'
-                                    : cvdData.cvd >= 1e3
-                                        ? (cvdData.cvd/1e3).toFixed(1)+'K'
-                                        : cvdData.cvd.toFixed(0) }}
-                            </span>
-                        </div>
-                        <div class="cvd-stat">
-                            <span class="cvd-stat-label">Δ 1s</span>
-                            <span :class="['cvd-stat-value', cvdData.delta1m >= 0 ? 'green' : 'red']">
-                                {{ cvdData.delta1m >= 1e6
-                                    ? (cvdData.delta1m/1e6).toFixed(2)+'M'
-                                    : cvdData.delta1m >= 1e3
-                                        ? (cvdData.delta1m/1e3).toFixed(1)+'K'
-                                        : cvdData.delta1m.toFixed(0) }}
-                            </span>
-                        </div>
-                        <div class="cvd-stat">
-                            <span class="cvd-stat-label">Buy Vol</span>
-                            <span class="cvd-stat-value green">
-                                {{ cvdData.buyVol >= 1e6
-                                    ? (cvdData.buyVol/1e6).toFixed(1)+'M'
-                                    : (cvdData.buyVol/1e3).toFixed(1)+'K' }}
-                            </span>
-                        </div>
-                        <div class="cvd-stat">
-                            <span class="cvd-stat-label">Sell Vol</span>
-                            <span class="cvd-stat-value red">
-                                {{ cvdData.sellVol >= 1e6
-                                    ? (cvdData.sellVol/1e6).toFixed(1)+'M'
-                                    : (cvdData.sellVol/1e3).toFixed(1)+'K' }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Buy/Sell ratio bar -->
-                    <div class="cvd-ratio-bar">
-                        <div class="cvd-ratio-buy"
-                             :style="{ width: (cvdData.buyVol / (cvdData.buyVol + cvdData.sellVol + 0.001) * 100) + '%' }">
-                        </div>
-                        <div class="cvd-ratio-sell"></div>
-                    </div>
-
-                    <!-- Large trades -->
-                    <div class="cvd-large-label">Large Trades</div>
-                    <div class="cvd-trades">
-                        <div v-if="cvdData.lastTrades.length === 0" class="cvd-empty">
-                            In attesa...
-                        </div>
-                        <div v-for="(t, i) in cvdData.lastTrades" :key="i"
-                             :class="['cvd-trade-row', t.side.toLowerCase()]">
-                            <span :class="['trade-side', t.side.toLowerCase()]">
-                                {{ t.side === 'Buy' ? '▲' : '▼' }}
-                            </span>
-                            <span class="trade-usd">{{ t.usd }}</span>
-                            <span class="trade-time">{{ t.time }}</span>
-                        </div>
-                    </div>
-
-                </div>
-                <!-- END CVD PANEL -->
 
             </div>
         </div>
