@@ -577,11 +577,6 @@ function makeChart(el, opts) {
                      barSpacing: opts?.barSpacing || 3, rightOffset: opts?.rightOffset || 30 },
     });
 }
-function shiftKlines(data) {
-    if (!TZ_OFFSET_S) return data;
-    return data.map(k => ({ ...k, time: k.time + TZ_OFFSET_S }));
-}
-
 // ── Mid grid lines (intermediate horizontal lines tra le linee principali) ────
 function niceGridStep(range) {
     if (range <= 0) return 1;
@@ -1007,7 +1002,7 @@ async function loadSlotData(idx) {
         const j  = await r.json();
         const jd = await rd.json();
         if (!j.success) return;
-        const klines = shiftKlines(j.data);
+        const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
         s.candleS.setData(klines);
         for (const {p} of EMA_CFG) {
             const ema = calcEMA(klines, p);
@@ -1154,7 +1149,7 @@ async function loadFsData() {
         const j  = await r.json();
         const jd = await rd.json();
         if (!j.success) return;
-        const klines = shiftKlines(j.data);
+        const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
         fsCandleS.setData(klines);
         for (const {p} of EMA_CFG) {
             const ema = calcEMA(klines, p);
@@ -1385,11 +1380,6 @@ document.addEventListener('keydown', e => {
 
 // ── bootstrap ──────────────────────────────────────────────────────────────────
 async function init() {
-    try {
-        const r = await fetch('scanner-api/config');
-        const cfg = await r.json();
-        TZ_OFFSET_S = Math.round(cfg?.general?.utc_offset ?? 0) * 3600;
-    } catch(e) {}
     renderTFBar(); renderModeButtons();
     buildGrid(); applyView();
     await initNotifications();
@@ -1450,7 +1440,7 @@ async function loadOBData() {
         ]);
         const j = await r.json(); const jd = await rd.json();
         if (!j.success) return;
-        const klines = shiftKlines(j.data);
+        const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
         obCandleS.setData(klines);
         for (const {p} of EMA_CFG) {
             const ema = calcEMA(klines, p);

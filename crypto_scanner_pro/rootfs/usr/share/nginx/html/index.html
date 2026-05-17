@@ -61,7 +61,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v3.8.13</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v3.8.14</div>
                 </div>
             </div>
         </div>
@@ -692,7 +692,7 @@
                         min_volume_24h:      parseInt(document.getElementById('input-min-volume').value) || 10000000,
                         cooldown_hours:      parseInt(document.getElementById('input-cooldown').value) || 2,
                         max_coins_per_alert: parseInt(document.getElementById('input-max-coins').value) || 10,
-                        utc_offset:          parseFloat(document.getElementById('input-utc-offset').value) ?? 2,
+                        utc_offset:          parseFloat(document.getElementById('input-utc-offset').value) || 2,
                         schedule_start:      document.getElementById('input-schedule-start').value || '',
                         schedule_end:        document.getElementById('input-schedule-end').value || '',
                     }

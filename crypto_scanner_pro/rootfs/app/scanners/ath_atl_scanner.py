@@ -22,7 +22,7 @@ class ATHATLScanner:
                  proximity_threshold=2.0, lookback_days=365,
                  scan_interval_minutes=30, min_volume_24h=10000000,
                  max_coins_per_alert=10, cooldown_hours=24,
-                 screenshot_tf='D', ws_manager=None,
+                 screenshot_tf='D', ws_manager=None, live_config=None,
                  schedule_start='', schedule_end='', utc_offset=2, **kwargs):
 
         self.telegram_token     = telegram_config['token']
@@ -37,9 +37,7 @@ class ATHATLScanner:
         self.min_volume_24h     = min_volume_24h
         self.max_coins_per_alert = max_coins_per_alert
         self.cooldown_hours     = cooldown_hours
-        self.schedule_start     = schedule_start
-        self.schedule_end       = schedule_end
-        self.utc_offset         = utc_offset
+        self._live_config       = live_config
 
         self.last_ath_alerts = self._load_cooldown(ATH_COOLDOWN_FILE)
         self.last_atl_alerts = self._load_cooldown(ATL_COOLDOWN_FILE)
@@ -152,7 +150,8 @@ class ATHATLScanner:
         if not self.enabled:
             return
         from alert_utils import is_in_schedule
-        if not is_in_schedule(self.schedule_start, self.schedule_end, self.utc_offset):
+        _gen = (self._live_config or {}).get('general', {})
+        if not is_in_schedule(_gen.get('schedule_start',''), _gen.get('schedule_end',''), float(_gen.get('utc_offset') or 2)):
             return
         price  = data.get('price', 0)
         volume = data.get('volume_24h', 0)

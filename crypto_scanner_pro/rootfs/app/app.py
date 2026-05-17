@@ -191,6 +191,7 @@ def init_scanners():
         scanners['ema'] = EMAScanner(
             telegram_config=telegram_config,
             ws_manager=ws_manager,
+            live_config=config,
             **config['ema_touch'],
             **config['general']
         )
@@ -198,6 +199,7 @@ def init_scanners():
         scanners['flip'] = DailyFlipScanner(
             telegram_config=telegram_config,
             ws_manager=ws_manager,
+            live_config=config,
             **config['daily_flip'],
             **config['general']
         )
@@ -205,6 +207,7 @@ def init_scanners():
         scanners['volume'] = VolumeScanner(
             telegram_config=telegram_config,
             ws_manager=ws_manager,
+            live_config=config,
             **config['volume_scanner'],
             **config['general']
         )
@@ -212,6 +215,7 @@ def init_scanners():
         scanners['ath_atl'] = ATHATLScanner(
             telegram_config=telegram_config,
             ws_manager=ws_manager,
+            live_config=config,
             **config['ath_atl'],
             **config['general']
         )
@@ -219,6 +223,7 @@ def init_scanners():
         scanners['ico_levels'] = ICOLevelsScanner(
             telegram_config=telegram_config,
             ws_manager=ws_manager,
+            live_config=config,
             **config['ico_levels'],
             **config['general']
         )
@@ -240,7 +245,7 @@ def _is_in_schedule():
     if not start_str or not end_str:
         return True
     try:
-        utc_offset = int(config['general'].get('utc_offset', 0))
+        utc_offset = float(config['general'].get('utc_offset') or 2)
         now = datetime.utcnow() + timedelta(hours=utc_offset)
         sh, sm = map(int, start_str.split(':'))
         eh, em = map(int, end_str.split(':'))
@@ -308,7 +313,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.8.13',
+        'version': '3.8.14',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -830,8 +835,14 @@ def get_klines():
 
         # Bybit returns newest first — reverse to chronological order
         klines = list(reversed(data['result']['list']))
+        utc_off = config.get('general', {}).get('utc_offset', 2)
+        try:
+            utc_off = float(utc_off)
+        except (TypeError, ValueError):
+            utc_off = 2
+        tz_s = int(utc_off * 3600)
         result = [{
-            'time':   int(k[0]) // 1000,
+            'time':   int(k[0]) // 1000 + tz_s,
             'open':   float(k[1]),
             'high':   float(k[2]),
             'low':    float(k[3]),
@@ -839,7 +850,8 @@ def get_klines():
             'volume': float(k[5]),
         } for k in klines]
 
-        return jsonify({'success': True, 'data': result, 'symbol': symbol, 'interval': interval})
+        return jsonify({'success': True, 'data': result, 'symbol': symbol,
+                        'interval': interval, 'utc_offset_s': tz_s})
 
     except Exception as e:
         logger.error(f"Error fetching klines for {symbol}: {e}")

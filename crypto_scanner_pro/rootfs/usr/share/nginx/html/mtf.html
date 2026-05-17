@@ -164,11 +164,6 @@ function makeChart(el, bigSlot) {
   });
 }
 
-function shiftKlines(data) {
-  if (!TZ_OFFSET_S) return data;
-  return data.map(k => ({ ...k, time: k.time + TZ_OFFSET_S }));
-}
-
 function fmtPrice(p) {
   if (p>=10000) return p.toLocaleString('en-US',{maximumFractionDigits:1});
   if (p>=1)     return p.toFixed(3);
@@ -266,12 +261,6 @@ function buildGrid() {
 
 // ── data loading ───────────────────────────────────────────────────────────────
 async function loadAll() {
-  try {
-    const r = await fetch('scanner-api/config');
-    const cfg = await r.json();
-    TZ_OFFSET_S = Math.round(cfg?.general?.utc_offset ?? 0) * 3600;
-  } catch(e) {}
-
   // Header ticker
   try {
     const rt = await fetch(`api/ticker?symbol=${SYM}`);
@@ -309,7 +298,7 @@ async function loadSlot(idx, dailyData) {
     const r = await fetch(`api/klines?symbol=${SYM}&interval=${s.cfg.tf}`);
     const j = await r.json();
     if (!j.success) return;
-    const klines = shiftKlines(j.data);
+    const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
     s.candleS.setData(klines);
     for (const {p} of EMA_CFG) {
       const ema = calcEMA(klines, p);
@@ -442,7 +431,7 @@ async function loadOBData() {
         ]);
         const j = await r.json(); const jd = await rd.json();
         if (!j.success) return;
-        const klines = shiftKlines(j.data);
+        const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
         obCandleS.setData(klines);
         for (const {p} of EMA_CFG) {
             const ema = calcEMA(klines, p);
