@@ -12,7 +12,6 @@ import time
 import logging
 import uuid
 from scanners.ema_touch import EMAScanner
-from scanners.volume import VolumeScanner
 from scanners.ath_atl_scanner import ATHATLScanner
 from scanners.ico_levels_scanner import ICOLevelsScanner
 from scanners.double_touch import DoubleTouchScanner
@@ -43,16 +42,6 @@ DEFAULT_CONFIG = {
         'ema_touch_threshold': 2.0,
         'scan_interval_minutes': 30,
         'screenshot_tf': '30',
-    },
-    'volume_scanner': {
-        'enabled': True,
-        'volume_spike_threshold': 200,
-        'gainers_enabled': True,
-        'gainers_threshold': 10,
-        'losers_enabled': True,
-        'losers_threshold': 10,
-        'scan_interval_minutes': 30,
-        'screenshot_tf': '240',
     },
     'ath_atl': {
         'enabled': True,
@@ -187,14 +176,6 @@ def init_scanners():
             **config['general']
         )
 
-        scanners['volume'] = VolumeScanner(
-            telegram_config=telegram_config,
-            ws_manager=ws_manager,
-            live_config=config,
-            **config['volume_scanner'],
-            **config['general']
-        )
-
         scanners['ath_atl'] = ATHATLScanner(
             telegram_config=telegram_config,
             ws_manager=ws_manager,
@@ -266,7 +247,6 @@ def start_scanners():
     # (config_name, scanner_key, interval)
     threads_config = [
         ('ema_touch',      'ema',        config['ema_touch']['scan_interval_minutes']),
-        ('volume_scanner', 'volume',     config['volume_scanner']['scan_interval_minutes']),
         ('ath_atl',        'ath_atl',    config['ath_atl']['scan_interval_minutes']),
         ('ico_levels',     'ico_levels',    config['ico_levels']['scan_interval_minutes']),
         ('double_touch',   'double_touch',  config['double_touch']['scan_interval_minutes']),
@@ -295,7 +275,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.8.25',
+        'version': '3.8.26',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -303,7 +283,6 @@ def health():
         'ws_tickers': len(ws_manager.get_all_tickers()),
         'scanners': {
             'ema_touch': config['ema_touch']['enabled'],
-            'volume_scanner': config['volume_scanner']['enabled'],
             'ath_atl': config['ath_atl']['enabled'],
             'ico_levels': config['ico_levels']['enabled'],
             'double_touch': config['double_touch']['enabled'],

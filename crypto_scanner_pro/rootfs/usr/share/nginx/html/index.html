@@ -61,7 +61,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v3.8.25</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v3.8.26</div>
                 </div>
             </div>
         </div>
@@ -87,25 +87,6 @@
                 <div class="text-xl sm:text-2xl font-bold" id="ema-count">-</div>
                 <div class="text-xs text-gray-500 mt-1">Segnali Attivi</div>
                 <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Prezzo vicino all'EMA 60 su timeframe 30m</div>
-            </div>
-
-            <!-- Volume Scanner -->
-            <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-emerald-500 transition-all">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-emerald-400 text-xs sm:text-sm font-medium">📊 Volume</div>
-                    <div class="flex items-center gap-1.5">
-                        <button onclick="openScannerModal('volume')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
-                        <span class="text-gray-700 text-xs">|</span>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="volume-toggle" class="sr-only peer" checked onchange="toggleScanner('volume_scanner')">
-                            <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-600"></div>
-                        </label>
-                        <div id="volume-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
-                    </div>
-                </div>
-                <div class="text-xl sm:text-2xl font-bold" id="volume-count">-</div>
-                <div class="text-xs text-gray-500 mt-1">Alto Volume</div>
-                <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Gain/perdita 24h oltre la soglia configurata</div>
             </div>
 
             <!-- ATH/ATL Scanner -->
@@ -379,26 +360,6 @@
         </div>
     </div>
 
-    <!-- Volume Scanner Modal -->
-    <div id="scanner-modal-volume" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('volume',event)">
-        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
-                <span style="font-size:13px;font-weight:700;color:#6EE7B7;">📊 Scanner Volume</span>
-                <button onclick="closeScannerModal('volume')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
-            </div>
-            <div class="p-4 space-y-3">
-                <div><label class="text-xs text-gray-500 block mb-1">Soglia Rialzi (%):</label><input type="number" id="volume-cfg-gainers" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Soglia Ribassi (%):</label><input type="number" id="volume-cfg-losers" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="volume-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="volume-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
-            </div>
-            <div class="px-4 pb-3 flex gap-2">
-                <button onclick="saveScannerConfig('volume')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
-                <button onclick="closeScannerModal('volume')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors">Annulla</button>
-            </div>
-            <div id="volume-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
-        </div>
-    </div>
 
     <!-- ATH/ATL Scanner Modal -->
     <div id="scanner-modal-ath" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('ath',event)">
@@ -533,8 +494,7 @@
                 currentConfig = await res.json();
 
                 if (currentConfig.ema_touch)      document.getElementById('ema-toggle').checked    = currentConfig.ema_touch.enabled;
-                if (currentConfig.volume_scanner) document.getElementById('volume-toggle').checked = currentConfig.volume_scanner.enabled;
-                if (currentConfig.ath_atl)        document.getElementById('ath-toggle').checked    = currentConfig.ath_atl.enabled;
+if (currentConfig.ath_atl)        document.getElementById('ath-toggle').checked    = currentConfig.ath_atl.enabled;
                 if (currentConfig.ico_levels)     document.getElementById('ico-toggle').checked    = currentConfig.ico_levels.enabled;
                 if (currentConfig.double_touch)   document.getElementById('dt-toggle').checked     = currentConfig.double_touch.enabled;
 
@@ -688,11 +648,6 @@
                 document.getElementById('ema-cfg-period').value       = cfg.ema_touch?.ema_period ?? 60;
                 document.getElementById('ema-cfg-interval').value     = cfg.ema_touch?.scan_interval_minutes ?? 30;
                 document.getElementById('ema-cfg-screenshot-tf').value = cfg.ema_touch?.screenshot_tf ?? '30';
-            } else if (name === 'volume') {
-                document.getElementById('volume-cfg-gainers').value     = cfg.volume_scanner?.gainers_threshold ?? 10;
-                document.getElementById('volume-cfg-losers').value      = cfg.volume_scanner?.losers_threshold ?? 10;
-                document.getElementById('volume-cfg-interval').value    = cfg.volume_scanner?.scan_interval_minutes ?? 30;
-                document.getElementById('volume-cfg-screenshot-tf').value = cfg.volume_scanner?.screenshot_tf ?? '240';
             } else if (name === 'ath') {
                 document.getElementById('ath-cfg-threshold').value     = cfg.ath_atl?.proximity_threshold ?? 1.0;
                 document.getElementById('ath-cfg-lookback').value      = cfg.ath_atl?.lookback_days ?? 365;
@@ -739,14 +694,6 @@
                         ema_period:             parseInt(document.getElementById('ema-cfg-period').value) || 60,
                         scan_interval_minutes:  parseInt(document.getElementById('ema-cfg-interval').value) || 30,
                         screenshot_tf:          document.getElementById('ema-cfg-screenshot-tf').value || '30',
-                    };
-                } else if (name === 'volume') {
-                    updates.volume_scanner = {
-                        ...currentConfig.volume_scanner,
-                        gainers_threshold:     parseInt(document.getElementById('volume-cfg-gainers').value) || 10,
-                        losers_threshold:      parseInt(document.getElementById('volume-cfg-losers').value) || 10,
-                        scan_interval_minutes: parseInt(document.getElementById('volume-cfg-interval').value) || 30,
-                        screenshot_tf:         document.getElementById('volume-cfg-screenshot-tf').value || '240',
                     };
                 } else if (name === 'ath') {
                     updates.ath_atl = {
@@ -810,7 +757,6 @@
 
         const TOGGLE_MAP = {
             'ema_touch':      'ema-toggle',
-            'volume_scanner': 'volume-toggle',
             'ath_atl':        'ath-toggle',
             'ico_levels':     'ico-toggle',
             'double_touch':   'dt-toggle',
@@ -845,7 +791,6 @@
         function updateBotStatus() {
             const scanners = {
                 'ema-status':    currentConfig.ema_touch?.enabled,
-                'volume-status': currentConfig.volume_scanner?.enabled,
                 'ath-status':    currentConfig.ath_atl?.enabled,
                 'ico-status':    currentConfig.ico_levels?.enabled,
                 'dt-status':     currentConfig.double_touch?.enabled,
