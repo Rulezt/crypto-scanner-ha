@@ -203,6 +203,11 @@
             title="Reset zoom">
             ↺ Reset
         </button>
+        <button id="fs-range-btn" onclick="toggleFsRange()"
+            style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;"
+            title="Range Prezzo">
+            ▭ Range
+        </button>
         <button onclick="closeFullscreen()"
             style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;">
             ✕ Chiudi
@@ -211,6 +216,7 @@
 
     <div style="flex:1;position:relative;min-height:0;">
         <div id="fs-chart-el" style="position:absolute;inset:0;"></div>
+        <canvas id="fs-range-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;display:none;"></canvas>
     </div>
 </div>
 
@@ -279,6 +285,7 @@ let ws = null, wsTimer = null;
 
 // fullscreen
 let fsChart = null, fsCandleS = null, fsEmaS = {}, fsLastEMA = {};
+let fsRangeActive = false, fsRangeP1 = null, fsRangeP2 = null, _fsRangeSub = null, _fsRangeCsSub = null;
 let fsTF = '30', fsCoin = null;
 let fsWs = null, fsWsTimer = null;
 let fsDayHighLine = null, fsDayLowLine = null;
@@ -762,7 +769,13 @@ function buildGrid() {
         expandEl.onclick = () => openFullscreen(i);
 
         const sep = () => { const s = document.createElement('span'); s.textContent='|'; s.style.cssText='font-size:10px;color:#374151;'; return s; };
-        rightGroup.append(candlePctEl, sep(), resetEl, sep(), mtfEl, sep(), obEl, sep(), expandEl);
+        const rangeBtn = document.createElement('button');
+        rangeBtn.textContent = '▭'; rangeBtn.title = 'Range Prezzo';
+        rangeBtn.style.cssText = 'font-size:11px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+        rangeBtn.onmouseenter = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#B2B5BE'; };
+        rangeBtn.onmouseleave = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#4B5563'; };
+        rangeBtn.onclick = () => toggleSlotRange(i);
+        rightGroup.append(candlePctEl, sep(), resetEl, sep(), mtfEl, sep(), obEl, sep(), rangeBtn, sep(), expandEl);
         hdr.append(starEl, titleEl, changeEl, sep1, volEl, sep2, tfEl, sep3, bybitEl, rightGroup);
         cell.appendChild(hdr);
 
@@ -772,6 +785,9 @@ function buildGrid() {
         const chartEl = document.createElement('div');
         chartEl.style.cssText = 'position:absolute;inset:0;';
         body.appendChild(chartEl);
+        const rangeCanvas = document.createElement('canvas');
+        rangeCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;';
+        body.appendChild(rangeCanvas);
 
         const alertBtn = document.createElement('div');
         alertBtn.innerHTML = '🔔';
@@ -826,7 +842,7 @@ function buildGrid() {
         });
 
         slots.push({
-            cell, chart, candleS, emaSeries, chartEl,
+            cell, chart, candleS, emaSeries, chartEl, rangeCanvas, rangeBtn,
             lastEMA: {5:null, 10:null, 60:null, 223:null},
             starEl, titleEl, changeEl, volEl, candlePctEl, tfEl, bybitEl, alertBtn, obEl,
             symbol: null, coin: null, curTF, lastPrice: null, crosshairPrice: null,
@@ -834,6 +850,7 @@ function buildGrid() {
             dayHighLine: null, dayLowLine: null,
             prevHighLine: null, prevLowLine: null,
             obActive: false, obBidLine: null, obAskLine: null, obTimer: null,
+            rangeActive: false, rangeP1: null, rangeP2: null, _rangeSub: null, _rangeCsSub: null,
         });
         const _s = slots[slots.length - 1];
         chart.timeScale().subscribeVisibleTimeRangeChange(() => {});
@@ -954,6 +971,8 @@ async function loadPage() {
         if (s.prevHighLine) { try { s.candleS.removePriceLine(s.prevHighLine); } catch(e) {} s.prevHighLine = null; }
         if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
         clearInterval(s.obTimer); s.obTimer = null; _clearSlotOBLines(s);
+        if (s.rangeActive) { s.rangeActive = false; s.rangeBtn.style.color = '#4B5563'; if (s._rangeSub) { try { s.chart.unsubscribeClick(s._rangeSub); } catch(e){} s._rangeSub = null; } if (s._rangeCsSub) { try { s.chart.unsubscribeCrosshairMove(s._rangeCsSub); } catch(e){} s._rangeCsSub = null; } }
+        s.rangeP1 = null; s.rangeP2 = null; try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
         s.candleS.setData([]);
         for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
         s.lastEMA = {5:null, 10:null, 60:null, 223:null};
@@ -1093,6 +1112,7 @@ async function openFullscreen(idx) {
 }
 
 function closeFullscreen() {
+    if (fsRangeActive) toggleFsRange();
     document.getElementById('fs-overlay').style.display = 'none';
     closeFsWS();
     clearInterval(fsObTimer); fsObTimer = null;
@@ -1599,6 +1619,117 @@ document.addEventListener('mouseup', () => {
     const ov = document.getElementById('ob-drag-ov');
     if (ov) ov.remove();
 });
+
+// ── Range Prezzo Tool ─────────────────────────────────────────────────────────
+
+function _drawRangeCanvas(canvas, series, p1, p2) {
+    canvas.width  = canvas.clientWidth  || canvas.parentElement.clientWidth  || 100;
+    canvas.height = canvas.clientHeight || canvas.parentElement.clientHeight || 100;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (p1 === null || p2 === null) return;
+
+    let y1 = series.priceToCoordinate(p1);
+    let y2 = series.priceToCoordinate(p2);
+    if (y1 === null) y1 = p2 > p1 ? canvas.height : 0;
+    if (y2 === null) y2 = p2 > p1 ? 0 : canvas.height;
+
+    const top    = Math.min(y1, y2);
+    const bottom = Math.max(y1, y2);
+    const h      = Math.max(bottom - top, 1);
+    const isUp   = p2 > p1;
+    const color  = isUp ? '#089981' : '#F23645';
+
+    ctx.fillStyle = isUp ? 'rgba(8,153,129,0.12)' : 'rgba(242,54,69,0.12)';
+    ctx.fillRect(0, top, canvas.width, h);
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 3]);
+    ctx.beginPath(); ctx.moveTo(0, y1); ctx.lineTo(canvas.width, y1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, y2); ctx.lineTo(canvas.width, y2); ctx.stroke();
+    ctx.setLineDash([]);
+
+    const delta   = p2 - p1;
+    const pct     = (delta / p1) * 100;
+    const sign    = delta >= 0 ? '+' : '';
+    const absDelta = Math.abs(delta);
+    const dStr    = absDelta >= 100 ? delta.toFixed(1) : absDelta >= 1 ? delta.toFixed(2) : delta.toFixed(4);
+    const label   = `${sign}${dStr}  (${sign}${pct.toFixed(2)}%)`;
+
+    const fs  = Math.max(9, Math.min(12, Math.floor(h * 0.35)));
+    ctx.font  = `bold ${fs}px monospace`;
+    const tw  = ctx.measureText(label).width;
+    const pad = 4;
+    const lx  = canvas.width - tw - pad * 2 - 6;
+    const ly  = top + h / 2;
+
+    ctx.fillStyle = isUp ? 'rgba(8,153,129,0.88)' : 'rgba(242,54,69,0.88)';
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(lx - pad, ly - fs, tw + pad * 2, fs + 6, 3)
+                  : ctx.rect(lx - pad, ly - fs, tw + pad * 2, fs + 6);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(label, lx, ly);
+}
+
+function toggleSlotRange(idx) {
+    const s = slots[idx];
+    s.rangeActive = !s.rangeActive;
+    s.rangeBtn.style.color = s.rangeActive ? '#f59e0b' : '#4B5563';
+    if (!s.rangeActive) {
+        s.rangeP1 = null; s.rangeP2 = null;
+        try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
+        if (s._rangeSub)   { try { s.chart.unsubscribeClick(s._rangeSub); }          catch(e){} s._rangeSub   = null; }
+        if (s._rangeCsSub) { try { s.chart.unsubscribeCrosshairMove(s._rangeCsSub); } catch(e){} s._rangeCsSub = null; }
+    } else {
+        s.rangeP1 = null; s.rangeP2 = null;
+        s._rangeSub = param => {
+            if (!param.point) return;
+            const price = s.candleS.coordinateToPrice(param.point.y);
+            if (price == null) return;
+            if (s.rangeP1 === null || s.rangeP2 !== null) { s.rangeP1 = price; s.rangeP2 = null; }
+            else { s.rangeP2 = price; _drawRangeCanvas(s.rangeCanvas, s.candleS, s.rangeP1, s.rangeP2); }
+        };
+        s._rangeCsSub = param => {
+            if (s.rangeP2 !== null) return;
+            const p2 = param.point ? s.candleS.coordinateToPrice(param.point.y) : null;
+            _drawRangeCanvas(s.rangeCanvas, s.candleS, s.rangeP1, p2);
+        };
+        s.chart.subscribeClick(s._rangeSub);
+        s.chart.subscribeCrosshairMove(s._rangeCsSub);
+    }
+}
+
+function toggleFsRange() {
+    fsRangeActive = !fsRangeActive;
+    const btn    = document.getElementById('fs-range-btn');
+    const canvas = document.getElementById('fs-range-canvas');
+    btn.style.color      = fsRangeActive ? '#f59e0b' : '#B2B5BE';
+    canvas.style.display = fsRangeActive ? 'block' : 'none';
+    if (!fsRangeActive) {
+        fsRangeP1 = null; fsRangeP2 = null;
+        try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
+        if (_fsRangeSub)   { try { fsChart.unsubscribeClick(_fsRangeSub); }          catch(e){} _fsRangeSub   = null; }
+        if (_fsRangeCsSub) { try { fsChart.unsubscribeCrosshairMove(_fsRangeCsSub); } catch(e){} _fsRangeCsSub = null; }
+    } else {
+        fsRangeP1 = null; fsRangeP2 = null;
+        _fsRangeSub = param => {
+            if (!param.point) return;
+            const price = fsCandleS.coordinateToPrice(param.point.y);
+            if (price == null) return;
+            if (fsRangeP1 === null || fsRangeP2 !== null) { fsRangeP1 = price; fsRangeP2 = null; }
+            else { fsRangeP2 = price; _drawRangeCanvas(canvas, fsCandleS, fsRangeP1, fsRangeP2); }
+        };
+        _fsRangeCsSub = param => {
+            if (fsRangeP2 !== null) return;
+            const p2 = param.point ? fsCandleS.coordinateToPrice(param.point.y) : null;
+            _drawRangeCanvas(canvas, fsCandleS, fsRangeP1, p2);
+        };
+        fsChart.subscribeClick(_fsRangeSub);
+        fsChart.subscribeCrosshairMove(_fsRangeCsSub);
+    }
+}
 </script>
 
 <!-- Order Book fullscreen modal -->
