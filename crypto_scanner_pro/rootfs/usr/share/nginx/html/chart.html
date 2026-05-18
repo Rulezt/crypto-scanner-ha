@@ -87,6 +87,16 @@
                 grid-template-columns: 1fr !important;
                 grid-template-rows: repeat(3, 1fr) !important;
             }
+            /* Slot header scrollabile su mobile */
+            .slot-hdr {
+                overflow-x: auto !important;
+                overflow-y: hidden !important;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            .slot-hdr::-webkit-scrollbar { display: none; }
+            .slot-hdr > * { flex-shrink: 0 !important; }
+            .slot-hdr-right { margin-left: 8px !important; }
             /* Frecce chart: ingrandisci e sposta in basso per raggiungibilità con pollice */
             .side-nav {
                 top: auto !important;
@@ -679,6 +689,7 @@ function buildGrid() {
 
         // ── cell header ──────────────────────────────────────────────────────
         const hdr = document.createElement('div');
+        hdr.className = 'slot-hdr';
         hdr.style.cssText = 'height:24px;flex-shrink:0;display:flex;align-items:center;gap:4px;padding:0 5px;background:#0F0F0F;border-bottom:2px solid #2C2C2C;';
 
         const starEl = document.createElement('button');
@@ -716,6 +727,7 @@ function buildGrid() {
         bybitEl.onmouseleave = () => bybitEl.style.background = '#1E222D';
 
         const rightGroup = document.createElement('div');
+        rightGroup.className = 'slot-hdr-right';
         rightGroup.style.cssText = 'margin-left:auto;display:flex;align-items:center;gap:4px;';
 
         const candlePctEl = document.createElement('span');
