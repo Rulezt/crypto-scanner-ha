@@ -172,6 +172,12 @@ class EMAScanner:
         # Use live price from the current candle, not last closed close
         live_price   = candle['close']
         ema60        = ema_data['ema60']
+
+        # Only alert when price approaches EMA from above (support bounce setup)
+        # Skip if price is already below EMA (rebounding from below = not our setup)
+        if live_price < ema60:
+            return
+
         distance_pct = abs((live_price - ema60) / ema60 * 100)
 
         if distance_pct < self.ema_touch_threshold:
