@@ -67,6 +67,7 @@
         .filt-btn.res.active { background: rgba(16,185,129,0.2); border-color: #10b981; color: #34d399; }
         .filt-btn.sup.active { background: rgba(239,68,68,0.2); border-color: #ef4444; color: #f87171; }
         .divider { width: 1px; height: 18px; background: #2a2a2a; }
+        .tf-badge { font-size:0.68rem; padding:1px 6px; border-radius:3px; font-weight:600; background:#1E222D; color:#60a5fa; }
         .count-chip {
             margin-left: auto; font-size: 0.68rem; color: #4b5563;
             background: #111; border: 1px solid #1f1f1f;
@@ -201,27 +202,6 @@
         </div>
         <div class="controls">
             <div class="control-group">
-                <label>Min Vol</label>
-                <select v-model="minVolume">
-                    <option :value="0">Nessun minimo</option>
-                    <option :value="10e6">10M</option>
-                    <option :value="20e6">20M</option>
-                    <option :value="50e6">50M</option>
-                    <option :value="100e6">100M</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label>Timeframe</label>
-                <select v-model="scanTf">
-                    <option value="D">Daily</option>
-                    <option value="240">4h</option>
-                    <option value="60">1h</option>
-                    <option value="30">30m</option>
-                    <option value="5">5m</option>
-                    <option value="1">1m</option>
-                </select>
-            </div>
-            <div class="control-group">
                 <label>Tolleranza %</label>
                 <input type="number" v-model.number="tolerance" min="0.1" max="2" step="0.1">
             </div>
@@ -258,6 +238,15 @@
         <button @click="setSortBy('gap')"       :class="['filt-btn', sortBy==='gap'       ? 'active':'']">Gap candele</button>
         <button @click="setSortBy('volume')"    :class="['filt-btn', sortBy==='volume'    ? 'active':'']">Volume</button>
         <button @click="setSortBy('precision')" :class="['filt-btn', sortBy==='precision' ? 'active':'']">Precisione</button>
+        <div class="divider"></div>
+        <span class="filter-label">TF:</span>
+        <button @click="tfFilter='all'" :class="['filt-btn', tfFilter==='all' ? 'active':'']">Tutti</button>
+        <button @click="tfFilter='D'"   :class="['filt-btn', tfFilter==='D'   ? 'active':'']">1D</button>
+        <button @click="tfFilter='240'" :class="['filt-btn', tfFilter==='240' ? 'active':'']">4h</button>
+        <button @click="tfFilter='60'"  :class="['filt-btn', tfFilter==='60'  ? 'active':'']">1h</button>
+        <button @click="tfFilter='30'"  :class="['filt-btn', tfFilter==='30'  ? 'active':'']">30m</button>
+        <button @click="tfFilter='5'"   :class="['filt-btn', tfFilter==='5'   ? 'active':'']">5m</button>
+        <button @click="tfFilter='1'"   :class="['filt-btn', tfFilter==='1'   ? 'active':'']">1m</button>
         <div class="count-chip">{{ filteredResults.length }} pattern trovati</div>
     </div>
 
@@ -312,7 +301,7 @@
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="(r, i) in filteredResults" :key="r.symbol + r.type + r.level"
+                <tr v-for="(r, i) in filteredResults" :key="r.symbol + r.tf + r.type + r.level"
                     @mouseenter="showPopup($event, r)"
                     @mouseleave="hidePopup">
                     <td class="td-rank">{{ i + 1 }}</td>
@@ -327,6 +316,9 @@
                             <span :class="['type-badge', r.type === 'resistance' ? 'type-res' : 'type-sup']">
                                 {{ r.type === 'resistance' ? '🟢 Long' : '🔴 Short' }}
                             </span>
+                        </template>
+                        <template v-else-if="col.key === 'tf'">
+                            <span class="tf-badge">{{ r.tfLabel }}</span>
                         </template>
                         <template v-else-if="col.key === 'volume'">{{ formatVolume(r.volume) }}</template>
                         <template v-else-if="col.key === 'avgCandlePct'">
@@ -393,7 +385,7 @@ createApp({
         const topN        = ref(9999);
         const tolerance   = ref(0.5);
         const maxFreshness= 30;
-        const scanTf      = ref('D');
+        const TFS         = ['D','240','60','30','5','1'];
         const proximity   = ref(2);
         const scanning    = ref(false);
         const stopFlag    = ref(false);
@@ -411,7 +403,7 @@ createApp({
         //  COLUMNS (drag & drop)
         // ============================
         const STORAGE_KEY_DT = 'dt_columns_order';
-        const defaultOrder = ['symbol','segnale','volume','avgCandlePct','precision','gap','freshness','currentPrice','distFromCurrent'];
+        const defaultOrder = ['symbol','segnale','tf','volume','avgCandlePct','precision','gap','freshness','currentPrice','distFromCurrent'];
 
         const savedOrder = (() => {
             try { return JSON.parse(localStorage.getItem(STORAGE_KEY_DT)); } catch { return null; }
@@ -420,6 +412,7 @@ createApp({
         const columnsDef = [
             { key: 'symbol',         label: 'Symbol',       sortKey: 'symbol',       align: 'left',   tdClass: () => 'td-sym' },
             { key: 'segnale',        label: 'Segnale',      sortKey: null,           align: 'center', tdClass: () => 'td-center' },
+            { key: 'tf',             label: 'TF',           sortKey: 'tf',           align: 'center', tdClass: () => 'td-center' },
             { key: 'volume',         label: 'Vol 24h',      sortKey: 'volume',       align: 'right',  tdClass: () => 'td-num muted' },
             { key: 'avgCandlePct',   label: '% Candela',    sortKey: 'avgCandlePct', align: 'right',  tdClass: () => 'td-num' },
             { key: 'precision',      label: 'Diff tocchi',  sortKey: 'precision',    align: 'right',  tdClass: () => 'td-num' },
@@ -457,6 +450,7 @@ createApp({
         //  FILTER & SORT
         // ============================
         const typeFilter = ref('all');
+        const tfFilter   = ref('all');
         const sortBy     = ref('freshness');
         const sortDir    = ref(1);
 
@@ -478,6 +472,7 @@ createApp({
         const filteredResults = computed(() => {
             let list = [...results.value];
             if (typeFilter.value !== 'all') list = list.filter(r => r.type === typeFilter.value);
+            if (tfFilter.value !== 'all')   list = list.filter(r => r.tf === tfFilter.value);
 
             list.sort((a, b) => {
                 let va, vb;
@@ -659,7 +654,7 @@ createApp({
                     .slice(0, topN.value);
 
                 progressTotal.value = tickers.length;
-                statusMsg.value = `🔍 Analisi ${tickers.length} coin su ${scanTf.value}...`;
+                statusMsg.value = `🔍 Analisi ${tickers.length} coin su tutti i TF...`;
 
                 const BATCH = 5;
                 for (let i = 0; i < tickers.length; i += BATCH) {
@@ -668,47 +663,53 @@ createApp({
                     const batch = tickers.slice(i, i + BATCH);
                     await Promise.all(batch.map(async (ticker) => {
                         try {
-                            const url = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${ticker.symbol}&interval=${scanTf.value}&limit=100`;
-                            const res  = await fetch(url);
-                            const json = await res.json();
-                            if (json.retCode !== 0 || !json.result?.list?.length) return;
+                            await Promise.all(TFS.map(async (tf) => {
+                                try {
+                                    const url = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${ticker.symbol}&interval=${tf}&limit=100`;
+                                    const res  = await fetch(url);
+                                    const json = await res.json();
+                                    if (json.retCode !== 0 || !json.result?.list?.length) return;
 
-                            const candles = json.result.list
-                                .slice(1)
-                                .reverse()
-                                .map(c => ({
-                                    time:  Math.floor(parseInt(c[0]) / 1000),
-                                    open:  parseFloat(c[1]),
-                                    high:  parseFloat(c[2]),
-                                    low:   parseFloat(c[3]),
-                                    close: parseFloat(c[4]),
-                                }))
-                                .filter(c => isFinite(c.high) && isFinite(c.low));
+                                    const candles = json.result.list
+                                        .slice(1)
+                                        .reverse()
+                                        .map(c => ({
+                                            time:  Math.floor(parseInt(c[0]) / 1000),
+                                            open:  parseFloat(c[1]),
+                                            high:  parseFloat(c[2]),
+                                            low:   parseFloat(c[3]),
+                                            close: parseFloat(c[4]),
+                                        }))
+                                        .filter(c => isFinite(c.high) && isFinite(c.low));
 
-                            if (candles.length < 10) return;
+                                    if (candles.length < 10) return;
 
-                            const avgCandlePct = candles.reduce((sum, c) =>
-                                sum + (c.low > 0 ? ((c.high - c.low) / c.low) * 100 : 0), 0
-                            ) / candles.length;
+                                    const avgCandlePct = candles.reduce((sum, c) =>
+                                        sum + (c.low > 0 ? ((c.high - c.low) / c.low) * 100 : 0), 0
+                                    ) / candles.length;
 
-                            const patterns = findDoubleTouches(
-                                candles,
-                                tolerance.value,
-                                maxFreshness,
-                                ticker.price
-                            );
+                                    const patterns = findDoubleTouches(
+                                        candles,
+                                        tolerance.value,
+                                        maxFreshness,
+                                        ticker.price
+                                    );
 
-                            for (const p of patterns) {
-                                if (Math.abs(p.distFromCurrent) > proximity.value) continue;
-                                results.value.push({
-                                    symbol:       ticker.symbol,
-                                    currentPrice: ticker.price,
-                                    volume:       ticker.volume,
-                                    avgCandlePct,
-                                    ...p,
-                                });
-                            }
-                        } catch(e) { /* skip */ }
+                                    for (const p of patterns) {
+                                        if (Math.abs(p.distFromCurrent) > proximity.value) continue;
+                                        results.value.push({
+                                            symbol:       ticker.symbol,
+                                            currentPrice: ticker.price,
+                                            volume:       ticker.volume,
+                                            avgCandlePct,
+                                            tf,
+                                            tfLabel:      TF_LABEL[tf],
+                                            ...p,
+                                        });
+                                    }
+                                } catch(e) { /* skip tf */ }
+                            }));
+                        } catch(e) { /* skip coin */ }
                         finally { progressDone.value++; }
                     }));
 
@@ -763,7 +764,7 @@ createApp({
 
         let popupChart   = null;
         let popupSymbol  = null;
-        let popupTf      = scanTf.value;
+        let popupTf      = 'D';
         let popupResult  = null;
         let hideTimer    = null;
         let popupLocked  = false;
@@ -888,7 +889,7 @@ createApp({
             const popup = document.getElementById('lwc-popup');
             if (!popup) return;
 
-            popupTf = scanTf.value;
+            popupTf = result.tf || 'D';
             const tfBar = document.getElementById('lwc-popup-tf');
             if (tfBar) {
                 tfBar.querySelectorAll('button').forEach(b => {
@@ -958,11 +959,11 @@ createApp({
         };
 
         return {
-            minVolume, tolerance, scanTf, proximity,
+            tolerance, proximity,
             columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
             scanning, stopFlag, statusMsg, initialDone,
             results, filteredResults, progressDone, progressTotal, progressPct,
-            typeFilter, sortBy, sortDir, countRes, countSup,
+            typeFilter, tfFilter, sortBy, sortDir, countRes, countSup,
             setSortBy, sa,
             startScan, stopScan,
             showPopup, hidePopup,
