@@ -308,7 +308,7 @@
                     <td v-for="col in columns" :key="col.key"
                         :class="col.tdClass ? col.tdClass(r) : 'td-num'">
                         <template v-if="col.key === 'symbol'">
-                            <a :href="`https://it.tradingview.com/chart/KDtSSRjB/?symbol=BYBIT:${r.symbol}.P`" target="_blank">
+                            <a :href="`mtf.html?symbol=${r.symbol}`" target="_blank">
                                 {{ r.symbol.replace('USDT','') }}
                             </a>
                         </template>
