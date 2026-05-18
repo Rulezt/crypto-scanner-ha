@@ -46,6 +46,18 @@ const SIG_PRICE = parseFloat(qp.get('signal_price') || '0');
 const SIG_COND  = qp.get('signal_condition') || 'above';
 
 const TF_LABEL = {'1':'1m','5':'5m','15':'15m','30':'30m','60':'1h','240':'4h','D':'1D'};
+
+function getPriceFormat(price) {
+  const p = Math.abs(price || 0);
+  if (p >= 100)   return { type:'price', precision:2, minMove:0.01 };
+  if (p >= 10)    return { type:'price', precision:3, minMove:0.001 };
+  if (p >= 1)     return { type:'price', precision:4, minMove:0.0001 };
+  if (p >= 0.1)   return { type:'price', precision:5, minMove:0.00001 };
+  if (p >= 0.01)  return { type:'price', precision:6, minMove:0.000001 };
+  if (p >= 0.001) return { type:'price', precision:7, minMove:0.0000001 };
+  return            { type:'price', precision:8, minMove:0.00000001 };
+}
+
 const EMA_CFG  = [
   {p:5,   color:'#ef4444', width:2},
   {p:10,  color:'#fbbf24', width:2},
@@ -135,6 +147,7 @@ async function init() {
         ' UTC' + tzSign + Math.abs(Math.round(TZ_OFFSET_S / 3600));
       const klines = jk.data;
       candleS.setData(klines);
+      candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
       for (const {p} of EMA_CFG) emaS[p].setData(calcEMA(klines, p));
 
       if (jd.success && jd.data && jd.data.length >= 2) {

@@ -102,7 +102,7 @@
 <body class="bg-dark-bg text-gray-100" style="height:100vh;display:flex;flex-direction:column;overflow:hidden;">
 
 <!-- ===== MAIN HEADER ===== -->
-<header class="flex items-center gap-2 px-3 flex-shrink-0" style="height:48px;background:#0F0F0F;border-bottom:2px solid #111111;">
+<header class="flex items-center gap-2 px-3 flex-shrink-0" style="height:48px;background:#0F0F0F;border-bottom:2px solid #2C2C2C;">
 
     <a href="./" class="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded hover:bg-dark-hover transition-colors whitespace-nowrap">
         ← Scanner
@@ -155,7 +155,7 @@
 <!-- ===== FULLSCREEN OVERLAY ===== -->
 <div id="fs-overlay" style="display:none;position:fixed;inset:0;z-index:100;background:#0F0F0F;flex-direction:column;">
 
-    <div style="height:48px;flex-shrink:0;background:#0F0F0F;border-bottom:2px solid #111111;display:flex;align-items:center;gap:8px;padding:0 14px;">
+    <div style="height:48px;flex-shrink:0;background:#0F0F0F;border-bottom:2px solid #2C2C2C;display:flex;align-items:center;gap:8px;padding:0 14px;">
         <span id="fs-title"  style="font-size:15px;font-weight:700;color:#E5E7EB;"></span>
         <span id="fs-change" style="font-size:12px;font-weight:500;"></span>
         <span style="color:#374151;font-size:11px;">|</span>
@@ -559,6 +559,18 @@ function updateAllStars() {
     });
 }
 
+// ── price format helper ───────────────────────────────────────────────────────
+function getPriceFormat(price) {
+    const p = Math.abs(price || 0);
+    if (p >= 100)   return { type:'price', precision:2, minMove:0.01 };
+    if (p >= 10)    return { type:'price', precision:3, minMove:0.001 };
+    if (p >= 1)     return { type:'price', precision:4, minMove:0.0001 };
+    if (p >= 0.1)   return { type:'price', precision:5, minMove:0.00001 };
+    if (p >= 0.01)  return { type:'price', precision:6, minMove:0.000001 };
+    if (p >= 0.001) return { type:'price', precision:7, minMove:0.0000001 };
+    return            { type:'price', precision:8, minMove:0.00000001 };
+}
+
 // ── chart factory ─────────────────────────────────────────────────────────────
 function addSeries(chart, type, opts) {
     if (typeof chart.addSeries === 'function' && LC[type]) return chart.addSeries(LC[type], opts);
@@ -667,7 +679,7 @@ function buildGrid() {
 
         // ── cell header ──────────────────────────────────────────────────────
         const hdr = document.createElement('div');
-        hdr.style.cssText = 'height:24px;flex-shrink:0;display:flex;align-items:center;gap:4px;padding:0 5px;background:#0F0F0F;border-bottom:2px solid #111111;';
+        hdr.style.cssText = 'height:24px;flex-shrink:0;display:flex;align-items:center;gap:4px;padding:0 5px;background:#0F0F0F;border-bottom:2px solid #2C2C2C;';
 
         const starEl = document.createElement('button');
         starEl.textContent = '☆';
@@ -974,6 +986,7 @@ async function loadSlotData(idx) {
         if (!j.success) return;
         const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
         s.candleS.setData(klines);
+        s.candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
         for (const {p} of EMA_CFG) {
             const ema = calcEMA(klines, p);
             s.emaSeries[p].setData(ema);
@@ -1118,6 +1131,7 @@ async function loadFsData() {
         if (!j.success) return;
         const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
         fsCandleS.setData(klines);
+        fsCandleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
         for (const {p} of EMA_CFG) {
             const ema = calcEMA(klines, p);
             fsEmaS[p].setData(ema);
@@ -1406,6 +1420,7 @@ async function loadOBData() {
         if (!j.success) return;
         const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
         obCandleS.setData(klines);
+        obCandleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
         for (const {p} of EMA_CFG) {
             const ema = calcEMA(klines, p);
             obEmaS[p].setData(ema);
@@ -1576,7 +1591,7 @@ document.addEventListener('mouseup', () => {
      style="display:none;position:fixed;inset:0;z-index:500;flex-direction:row;background:#0F0F0F;">
     <!-- Left: chart -->
     <div id="ob-chart-panel" style="flex-basis:50%;min-width:200px;display:flex;flex-direction:column;">
-        <div style="height:36px;flex-shrink:0;background:#0F0F0F;border-bottom:2px solid #111111;display:flex;align-items:center;padding:0 10px;gap:10px;">
+        <div style="height:36px;flex-shrink:0;background:#0F0F0F;border-bottom:2px solid #2C2C2C;display:flex;align-items:center;padding:0 10px;gap:10px;">
             <span id="ob-chart-sym" style="font-size:13px;font-weight:700;color:#E5E7EB;min-width:60px;"></span>
             <div id="ob-tf-bar" style="display:flex;gap:4px;"></div>
             <div style="flex:1;"></div>
