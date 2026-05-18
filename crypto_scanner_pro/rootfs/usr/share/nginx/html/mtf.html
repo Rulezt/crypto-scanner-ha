@@ -14,7 +14,7 @@
   }
   #hdr {
     height:44px; flex-shrink:0;
-    background:#161A1E; border-bottom:1px solid #2A2E39;
+    background:#0F0F0F; border-bottom:2px solid #111111;
     display:flex; align-items:center; gap:8px; padding:0 14px;
   }
   #grid {
@@ -30,8 +30,8 @@
   .cell-hdr {
     height:26px; flex-shrink:0;
     display:flex; align-items:center; gap:5px;
-    padding:0 7px; background:#161A1E;
-    border-bottom:1px solid #2A2E39;
+    padding:0 7px; background:#0F0F0F;
+    border-bottom:2px solid #111111;
   }
   .cell-body { flex:1; position:relative; min-height:0; }
   .chart-el  { position:absolute; inset:0; }
@@ -700,7 +700,7 @@ if (isMobile) {
 <!-- Chart fullscreen modal -->
 <div id="fs-modal"
      style="display:none;position:fixed;inset:0;z-index:600;flex-direction:column;background:#0F0F0F;">
-    <div style="height:36px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2A2E39;display:flex;align-items:center;padding:0 10px;gap:10px;">
+    <div style="height:36px;flex-shrink:0;background:#0F0F0F;border-bottom:2px solid #111111;display:flex;align-items:center;padding:0 10px;gap:10px;">
         <span id="fs-sym" style="font-size:13px;font-weight:700;color:#E5E7EB;min-width:60px;"></span>
         <div id="fs-tf-bar" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
         <div style="flex:1;"></div>
@@ -718,7 +718,7 @@ if (isMobile) {
      style="display:none;position:fixed;inset:0;z-index:500;flex-direction:row;background:#0F0F0F;">
     <!-- Left: chart -->
     <div style="flex:1;min-width:0;display:flex;flex-direction:column;border-right:1px solid #2A2E39;">
-        <div style="height:36px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2A2E39;display:flex;align-items:center;padding:0 10px;gap:10px;">
+        <div style="height:36px;flex-shrink:0;background:#0F0F0F;border-bottom:2px solid #111111;display:flex;align-items:center;padding:0 10px;gap:10px;">
             <span id="ob-chart-sym" style="font-size:13px;font-weight:700;color:#E5E7EB;min-width:60px;"></span>
             <div id="ob-tf-bar" style="display:flex;gap:4px;"></div>
             <div style="flex:1;"></div>

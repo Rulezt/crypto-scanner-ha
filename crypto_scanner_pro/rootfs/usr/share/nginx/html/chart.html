@@ -102,7 +102,7 @@
 <body class="bg-dark-bg text-gray-100" style="height:100vh;display:flex;flex-direction:column;overflow:hidden;">
 
 <!-- ===== MAIN HEADER ===== -->
-<header class="bg-dark-card border-b border-dark-border flex items-center gap-2 px-3 flex-shrink-0" style="height:48px;">
+<header class="flex items-center gap-2 px-3 flex-shrink-0" style="height:48px;background:#0F0F0F;border-bottom:2px solid #111111;">
 
     <a href="./" class="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded hover:bg-dark-hover transition-colors whitespace-nowrap">
         ← Scanner
@@ -155,7 +155,7 @@
 <!-- ===== FULLSCREEN OVERLAY ===== -->
 <div id="fs-overlay" style="display:none;position:fixed;inset:0;z-index:100;background:#0F0F0F;flex-direction:column;">
 
-    <div style="height:48px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2A2E39;display:flex;align-items:center;gap:8px;padding:0 14px;">
+    <div style="height:48px;flex-shrink:0;background:#0F0F0F;border-bottom:2px solid #111111;display:flex;align-items:center;gap:8px;padding:0 14px;">
         <span id="fs-title"  style="font-size:15px;font-weight:700;color:#E5E7EB;"></span>
         <span id="fs-change" style="font-size:12px;font-weight:500;"></span>
         <span style="color:#374151;font-size:11px;">|</span>
@@ -667,7 +667,7 @@ function buildGrid() {
 
         // ── cell header ──────────────────────────────────────────────────────
         const hdr = document.createElement('div');
-        hdr.style.cssText = 'height:24px;flex-shrink:0;display:flex;align-items:center;gap:4px;padding:0 5px;background:#161A1E;border-bottom:1px solid #2A2E39;';
+        hdr.style.cssText = 'height:24px;flex-shrink:0;display:flex;align-items:center;gap:4px;padding:0 5px;background:#0F0F0F;border-bottom:2px solid #111111;';
 
         const starEl = document.createElement('button');
         starEl.textContent = '☆';
@@ -1576,7 +1576,7 @@ document.addEventListener('mouseup', () => {
      style="display:none;position:fixed;inset:0;z-index:500;flex-direction:row;background:#0F0F0F;">
     <!-- Left: chart -->
     <div id="ob-chart-panel" style="flex-basis:50%;min-width:200px;display:flex;flex-direction:column;">
-        <div style="height:36px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2A2E39;display:flex;align-items:center;padding:0 10px;gap:10px;">
+        <div style="height:36px;flex-shrink:0;background:#0F0F0F;border-bottom:2px solid #111111;display:flex;align-items:center;padding:0 10px;gap:10px;">
             <span id="ob-chart-sym" style="font-size:13px;font-weight:700;color:#E5E7EB;min-width:60px;"></span>
             <div id="ob-tf-bar" style="display:flex;gap:4px;"></div>
             <div style="flex:1;"></div>
