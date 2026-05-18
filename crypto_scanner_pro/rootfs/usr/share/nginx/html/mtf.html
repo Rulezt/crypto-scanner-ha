@@ -231,7 +231,13 @@ function buildGrid() {
     fsBtn.onmouseleave = () => fsBtn.style.color = '#4B5563';
     fsBtn.onclick = () => openFSModal(i);
 
-    hdr.append(tfLbl, priceEl, spacer, pctEl, resetBtn, fsBtn);
+    const rangeBtn = document.createElement('button');
+    rangeBtn.textContent = '▭'; rangeBtn.title = 'Range Prezzo';
+    rangeBtn.style.cssText = 'font-size:11px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+    rangeBtn.onmouseenter = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#B2B5BE'; };
+    rangeBtn.onmouseleave = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#4B5563'; };
+    rangeBtn.onclick = () => toggleSlotRange(i);
+    hdr.append(tfLbl, priceEl, spacer, pctEl, resetBtn, rangeBtn, fsBtn);
     cell.appendChild(hdr);
 
     // ── chart body ─────────────────────────────────────────────────────────
@@ -240,6 +246,9 @@ function buildGrid() {
     const chartEl = document.createElement('div');
     chartEl.className = 'chart-el';
     body.appendChild(chartEl);
+    const rangeCanvas = document.createElement('canvas');
+    rangeCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;';
+    body.appendChild(rangeCanvas);
     cell.appendChild(body);
     if (isMobile) cell.style.display = i === 0 ? 'flex' : 'none';
     grid.appendChild(cell);
@@ -269,10 +278,11 @@ function buildGrid() {
     });
 
     slots.push({
-      cfg, chart, candleS, emaS, priceEl, cell,
+      cfg, chart, candleS, emaS, priceEl, cell, rangeCanvas, rangeBtn,
       lastEMA: {5:null,10:null,60:null,223:null},
       dayHighLine:null, dayLowLine:null,
       prevHighLine:null, prevLowLine:null,
+      rangeActive: false, rangeP1: null, rangeP2: null, _rangeSub: null, _rangeCsSub: null,
     });
   });
 }
@@ -551,6 +561,7 @@ document.addEventListener('keydown', e => {
 let fsChart = null, fsCandleS = null, fsEmaS = {}, fsLastEMA = {};
 let fsTF = 'D', fsWS = null, fsWsTimer = null;
 let fsDayHighLine = null, fsDayLowLine = null, fsPrevHighLine = null, fsPrevLowLine = null;
+let fsRangeActive = false, fsRangeP1 = null, fsRangeP2 = null, _fsRangeSub = null, _fsRangeCsSub = null;
 
 function initFSChart() {
     if (fsChart) return;
@@ -657,6 +668,7 @@ function openFSModal(idx) {
 }
 
 function closeFSModal() {
+    if (fsRangeActive) toggleFsRange();
     document.getElementById('fs-modal').style.display = 'none';
     closeFSWS();
     if (fsCandleS) {
@@ -692,6 +704,117 @@ function updateMTFIndicator() {
   if (el) el.textContent = `${TF_SLOTS[mobileSlotIdx].label}  ${mobileSlotIdx + 1} / ${TF_SLOTS.length}`;
 }
 
+// ── Range Prezzo Tool ─────────────────────────────────────────────────────────
+
+function _drawRangeCanvas(canvas, series, p1, p2) {
+  canvas.width  = canvas.clientWidth  || canvas.parentElement.clientWidth  || 100;
+  canvas.height = canvas.clientHeight || canvas.parentElement.clientHeight || 100;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (p1 === null || p2 === null) return;
+
+  let y1 = series.priceToCoordinate(p1);
+  let y2 = series.priceToCoordinate(p2);
+  if (y1 === null) y1 = p2 > p1 ? canvas.height : 0;
+  if (y2 === null) y2 = p2 > p1 ? 0 : canvas.height;
+
+  const top    = Math.min(y1, y2);
+  const bottom = Math.max(y1, y2);
+  const h      = Math.max(bottom - top, 1);
+  const isUp   = p2 > p1;
+  const color  = isUp ? '#089981' : '#F23645';
+
+  ctx.fillStyle = isUp ? 'rgba(8,153,129,0.12)' : 'rgba(242,54,69,0.12)';
+  ctx.fillRect(0, top, canvas.width, h);
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([5, 3]);
+  ctx.beginPath(); ctx.moveTo(0, y1); ctx.lineTo(canvas.width, y1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, y2); ctx.lineTo(canvas.width, y2); ctx.stroke();
+  ctx.setLineDash([]);
+
+  const delta    = p2 - p1;
+  const pct      = (delta / p1) * 100;
+  const sign     = delta >= 0 ? '+' : '';
+  const absDelta = Math.abs(delta);
+  const dStr     = absDelta >= 100 ? delta.toFixed(1) : absDelta >= 1 ? delta.toFixed(2) : delta.toFixed(4);
+  const label    = `${sign}${dStr}  (${sign}${pct.toFixed(2)}%)`;
+
+  const fs  = Math.max(9, Math.min(12, Math.floor(h * 0.35)));
+  ctx.font  = `bold ${fs}px monospace`;
+  const tw  = ctx.measureText(label).width;
+  const pad = 4;
+  const lx  = canvas.width - tw - pad * 2 - 6;
+  const ly  = top + h / 2;
+
+  ctx.fillStyle = isUp ? 'rgba(8,153,129,0.88)' : 'rgba(242,54,69,0.88)';
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(lx - pad, ly - fs, tw + pad * 2, fs + 6, 3)
+                : ctx.rect(lx - pad, ly - fs, tw + pad * 2, fs + 6);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(label, lx, ly);
+}
+
+function toggleSlotRange(idx) {
+  const s = slots[idx];
+  s.rangeActive = !s.rangeActive;
+  s.rangeBtn.style.color = s.rangeActive ? '#f59e0b' : '#4B5563';
+  if (!s.rangeActive) {
+    s.rangeP1 = null; s.rangeP2 = null;
+    try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
+    if (s._rangeSub)   { try { s.chart.unsubscribeClick(s._rangeSub); }          catch(e){} s._rangeSub   = null; }
+    if (s._rangeCsSub) { try { s.chart.unsubscribeCrosshairMove(s._rangeCsSub); } catch(e){} s._rangeCsSub = null; }
+  } else {
+    s.rangeP1 = null; s.rangeP2 = null;
+    s._rangeSub = param => {
+      if (!param.point) return;
+      const price = s.candleS.coordinateToPrice(param.point.y);
+      if (price == null) return;
+      if (s.rangeP1 === null || s.rangeP2 !== null) { s.rangeP1 = price; s.rangeP2 = null; }
+      else { s.rangeP2 = price; _drawRangeCanvas(s.rangeCanvas, s.candleS, s.rangeP1, s.rangeP2); }
+    };
+    s._rangeCsSub = param => {
+      if (s.rangeP2 !== null) return;
+      const p2 = param.point ? s.candleS.coordinateToPrice(param.point.y) : null;
+      _drawRangeCanvas(s.rangeCanvas, s.candleS, s.rangeP1, p2);
+    };
+    s.chart.subscribeClick(s._rangeSub);
+    s.chart.subscribeCrosshairMove(s._rangeCsSub);
+  }
+}
+
+function toggleFsRange() {
+  fsRangeActive = !fsRangeActive;
+  const btn    = document.getElementById('fs-range-btn');
+  const canvas = document.getElementById('fs-range-canvas');
+  btn.style.color      = fsRangeActive ? '#f59e0b' : '#B2B5BE';
+  canvas.style.display = fsRangeActive ? 'block' : 'none';
+  if (!fsRangeActive) {
+    fsRangeP1 = null; fsRangeP2 = null;
+    try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
+    if (_fsRangeSub)   { try { fsChart.unsubscribeClick(_fsRangeSub); }          catch(e){} _fsRangeSub   = null; }
+    if (_fsRangeCsSub) { try { fsChart.unsubscribeCrosshairMove(_fsRangeCsSub); } catch(e){} _fsRangeCsSub = null; }
+  } else {
+    fsRangeP1 = null; fsRangeP2 = null;
+    _fsRangeSub = param => {
+      if (!param.point) return;
+      const price = fsCandleS.coordinateToPrice(param.point.y);
+      if (price == null) return;
+      if (fsRangeP1 === null || fsRangeP2 !== null) { fsRangeP1 = price; fsRangeP2 = null; }
+      else { fsRangeP2 = price; _drawRangeCanvas(canvas, fsCandleS, fsRangeP1, fsRangeP2); }
+    };
+    _fsRangeCsSub = param => {
+      if (fsRangeP2 !== null) return;
+      const p2 = param.point ? fsCandleS.coordinateToPrice(param.point.y) : null;
+      _drawRangeCanvas(canvas, fsCandleS, fsRangeP1, p2);
+    };
+    fsChart.subscribeClick(_fsRangeSub);
+    fsChart.subscribeCrosshairMove(_fsRangeCsSub);
+  }
+}
+
 if (isMobile) {
   const mkBtn = (side, label, fn) => {
     const b = document.createElement('button');
@@ -721,10 +844,16 @@ if (isMobile) {
         <button onclick="if(fsChart)fsChart.timeScale().fitContent()"
                 style="background:#2A2E39;border:none;color:#B2B5BE;font-size:11px;padding:3px 8px;border-radius:3px;cursor:pointer;margin-right:4px;"
                 title="Reset zoom">↺</button>
+        <button id="fs-range-btn" onclick="toggleFsRange()"
+                style="background:#2A2E39;border:none;color:#B2B5BE;font-size:11px;padding:3px 8px;border-radius:3px;cursor:pointer;margin-right:4px;"
+                title="Range Prezzo">▭</button>
         <button onclick="closeFSModal()"
                 style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
     </div>
-    <div id="fs-chart-el" style="flex:1;min-height:0;"></div>
+    <div style="flex:1;min-height:0;position:relative;">
+        <div id="fs-chart-el" style="position:absolute;inset:0;"></div>
+        <canvas id="fs-range-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;display:none;"></canvas>
+    </div>
 </div>
 
 <!-- Order Book fullscreen modal -->
