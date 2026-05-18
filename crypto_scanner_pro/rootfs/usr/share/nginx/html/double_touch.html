@@ -786,7 +786,7 @@ createApp({
             const chart = LightweightCharts.createChart(container, {
                 width: width || 600, height: height || 310,
                 layout: { background: { color: '#0f0f10' }, textColor: '#d1d5db' },
-                grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
+                grid: { vertLines: { color: '#1a1a1a' }, horzLines: { visible: false } },
                 crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
                 handleScroll: true, handleScale: true,
                 rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },

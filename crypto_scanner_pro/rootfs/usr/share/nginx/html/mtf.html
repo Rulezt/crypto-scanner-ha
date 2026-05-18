@@ -154,7 +154,7 @@ function makeChart(el, bigSlot) {
   return LC.createChart(el, {
     autoSize: true,
     layout: { background:{color:'#0B0E11'}, textColor:'#9CA3AF', fontSize: bigSlot ? 11 : 10 },
-    grid:   { vertLines:{color:'#1E2329'}, horzLines:{color:'#1E2329'} },
+    grid:   { vertLines:{color:'#1E2329'}, horzLines:{visible:false} },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
     rightPriceScale: { borderColor:'#2B3139', scaleMargins:{top:0.05,bottom:0.05} },
     timeScale: {
