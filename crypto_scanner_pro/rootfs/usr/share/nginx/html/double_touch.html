@@ -47,13 +47,13 @@
         .btn.danger:hover { background: #991b1b; }
 
         /* ===== PROGRESS ===== */
-        .progress-wrap { height: 3px; background: #1a1a1a; }
+        .progress-wrap { height: 3px; background: #1E222D; }
         .progress-fill { height: 100%; background: #7c3aed; transition: width 0.3s; }
 
         /* ===== FILTER BAR ===== */
         .filter-bar {
             display: flex; gap: 8px; padding: 7px 16px;
-            background: #0e0e0f; border-bottom: 1px solid #1a1a1a;
+            background: #131722; border-bottom: 1px solid #1E222D;
             flex-wrap: wrap; align-items: center;
         }
         .filter-label { font-size: 0.7rem; color: #6b7280; }
@@ -83,7 +83,7 @@
             padding: 8px 10px; border-bottom: 1px solid #222;
             white-space: nowrap; cursor: pointer; user-select: none;
         }
-        thead th:hover { color: #d1d5db; }
+        thead th:hover { color: #B2B5BE; }
         .sa { margin-left: 3px; color: #4b5563; }
         thead th.sorted .sa { color: #7c3aed; }
 
@@ -115,7 +115,7 @@
             justify-content: flex-end;
         }
         .level-price {
-            font-family: 'Monaco','Consolas',monospace; font-size: 0.78rem; color: #d1d5db;
+            font-family: 'Monaco','Consolas',monospace; font-size: 0.78rem; color: #B2B5BE;
         }
         .level-bar-wrap {
             width: 50px; height: 5px; background: #1f2937; border-radius: 3px; overflow: hidden;
@@ -151,7 +151,7 @@
 
         /* ===== LWC POPUP ===== */
         .lwc-popup {
-            position: fixed; z-index: 9999; background: #0f0f10;
+            position: fixed; z-index: 9999; background: #131722;
             border: 1px solid #2a2a2a; border-radius: 8px;
             box-shadow: 0 8px 40px rgba(0,0,0,0.85);
             overflow: hidden; pointer-events: none;
@@ -179,7 +179,7 @@
         /* ===== LEGEND ===== */
         .legend {
             display: flex; gap: 14px; padding: 6px 16px;
-            background: #0e0e0f; border-top: 1px solid #1a1a1a; flex-wrap: wrap;
+            background: #131722; border-top: 1px solid #1E222D; flex-wrap: wrap;
         }
         .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: #6b7280; }
         .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
@@ -785,8 +785,8 @@ createApp({
             const { width, height } = container.getBoundingClientRect();
             const chart = LightweightCharts.createChart(container, {
                 width: width || 600, height: height || 310,
-                layout: { background: { color: '#0f0f10' }, textColor: '#d1d5db' },
-                grid: { vertLines: { color: '#1a1a1a' }, horzLines: { visible: false } },
+                layout: { background: { color: '#131722' }, textColor: '#B2B5BE' },
+                grid: { vertLines: { color: '#1E222D' }, horzLines: { visible: false } },
                 crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
                 handleScroll: true, handleScale: true,
                 rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },
@@ -822,8 +822,8 @@ createApp({
                 if (!klines.length || !popupChart || session !== buildSession) return;
 
                 const cs = chart.addCandlestickSeries({
-                    upColor: '#10b981', downColor: '#ef4444',
-                    borderVisible: false, wickUpColor: '#10b981', wickDownColor: '#ef4444',
+                    upColor: '#089981', downColor: '#F23645',
+                    borderVisible: false, wickUpColor: '#089981', wickDownColor: '#F23645',
                 });
                 cs.setData(klines);
 

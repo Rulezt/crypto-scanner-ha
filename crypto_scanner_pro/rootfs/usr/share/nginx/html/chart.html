@@ -9,31 +9,31 @@
     <script>
         tailwind.config = {
             darkMode: 'class',
-            theme: { extend: { colors: { dark: { bg: '#0B0E11', card: '#161A1E', hover: '#1E2329', border: '#2B3139' } } } }
+            theme: { extend: { colors: { dark: { bg: '#131722', card: '#161A1E', hover: '#1E222D', border: '#2A2E39' } } } }
         }
     </script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         .btn-page-active  { background: #2563EB; color: #fff; }
-        .btn-page-idle    { color: #6B7280; background: #1E2329; }
-        .btn-page-idle:hover { color: #9CA3AF; background: #2B3139; }
+        .btn-page-idle    { color: #6B7280; background: #1E222D; }
+        .btn-page-idle:hover { color: #B2B5BE; background: #2A2E39; }
         .btn-tf-active    { background: #2563EB; color: #fff; }
         .btn-tf-idle      { color: #6B7280; }
-        .btn-tf-idle:hover { color: #9CA3AF; background: #1E2329; }
+        .btn-tf-idle:hover { color: #B2B5BE; background: #1E222D; }
         .btn-gain-active  { background: #065f46; color: #34d399; }
-        .btn-gain-idle    { color: #6B7280; background: #1E2329; }
+        .btn-gain-idle    { color: #6B7280; background: #1E222D; }
         .btn-gain-idle:hover { color: #34d399; background: #064e3b; }
         .btn-loss-active  { background: #7f1d1d; color: #f87171; }
-        .btn-loss-idle    { color: #6B7280; background: #1E2329; }
+        .btn-loss-idle    { color: #6B7280; background: #1E222D; }
         .btn-loss-idle:hover { color: #f87171; background: #450a0a; }
         .btn-fav-active   { background: #78350f; color: #fbbf24; }
-        .btn-fav-idle     { color: #6B7280; background: #1E2329; }
+        .btn-fav-idle     { color: #6B7280; background: #1E222D; }
         .btn-fav-idle:hover { color: #fbbf24; background: #451a03; }
         .btn-view-active  { background: #374151; color: #E5E7EB; }
-        .btn-view-idle    { color: #6B7280; background: #1E2329; }
-        .btn-view-idle:hover { color: #9CA3AF; background: #2B3139; }
+        .btn-view-idle    { color: #6B7280; background: #1E222D; }
+        .btn-view-idle:hover { color: #B2B5BE; background: #2A2E39; }
         .btn-ico-active   { background: #312e81; color: #a5b4fc; }
-        .btn-ico-idle     { color: #6B7280; background: #1E2329; }
+        .btn-ico-idle     { color: #6B7280; background: #1E222D; }
         .btn-ico-idle:hover { color: #a5b4fc; background: #1e1b4b; }
 
         /* Side nav arrows */
@@ -78,7 +78,7 @@
             #ob-modal > div:first-child {
                 flex: 0 0 50% !important;
                 border-right: none !important;
-                border-bottom: 1px solid #2B3139;
+                border-bottom: 1px solid #2A2E39;
             }
             #ob-modal > div:last-child { flex: 0 0 50% !important; }
 
@@ -148,14 +148,14 @@
 <!-- Empty state notice -->
 <div id="fav-empty" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;z-index:5;">
     <div id="fav-empty-icon"  style="font-size:48px;margin-bottom:12px;">★</div>
-    <div id="fav-empty-title" style="font-size:16px;color:#9CA3AF;">Nessun preferito</div>
+    <div id="fav-empty-title" style="font-size:16px;color:#B2B5BE;">Nessun preferito</div>
     <div id="fav-empty-sub"   style="font-size:12px;color:#6B7280;margin-top:6px;">Clicca ★ su qualsiasi grafico per aggiungerlo</div>
 </div>
 
 <!-- ===== FULLSCREEN OVERLAY ===== -->
-<div id="fs-overlay" style="display:none;position:fixed;inset:0;z-index:100;background:#0B0E11;flex-direction:column;">
+<div id="fs-overlay" style="display:none;position:fixed;inset:0;z-index:100;background:#131722;flex-direction:column;">
 
-    <div style="height:48px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2B3139;display:flex;align-items:center;gap:8px;padding:0 14px;">
+    <div style="height:48px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2A2E39;display:flex;align-items:center;gap:8px;padding:0 14px;">
         <span id="fs-title"  style="font-size:15px;font-weight:700;color:#E5E7EB;"></span>
         <span id="fs-change" style="font-size:12px;font-weight:500;"></span>
         <span style="color:#374151;font-size:11px;">|</span>
@@ -164,7 +164,7 @@
         <div  id="fs-tf-bar" style="display:flex;gap:3px;align-items:center;"></div>
         <span style="color:#374151;font-size:11px;">|</span>
         <a id="fs-bybit-link" href="#" target="_blank" rel="noopener noreferrer"
-           style="font-size:11px;color:#f7a600;text-decoration:none;padding:2px 7px;border-radius:3px;background:#1E2329;white-space:nowrap;">Bybit ↗</a>
+           style="font-size:11px;color:#f7a600;text-decoration:none;padding:2px 7px;border-radius:3px;background:#1E222D;white-space:nowrap;">Bybit ↗</a>
 
         <div id="fs-hdr-spacer" style="flex:1;"></div>
 
@@ -174,27 +174,27 @@
         </div>
         <span id="fs-candle-pct" style="font-size:12px;font-family:monospace;min-width:58px;text-align:right;"></span>
         <button onclick="if(fsCoin) window.open('mtf?symbol='+fsCoin.symbol, '_blank')"
-            style="margin-left:8px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;"
+            style="margin-left:8px;padding:4px 10px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;"
             title="Multi Timeframe">
             ⊞ MTF
         </button>
         <button onclick="if(fsCoin) openOBModal(fsCoin.symbol)"
-            style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;"
+            style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;"
             title="Order Book">
             📖 OB
         </button>
         <button id="fs-ob-lvl-btn" onclick="toggleFsOBLevels()"
-            style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;"
+            style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;"
             title="Livelli bid/ask">
             OB Lvl
         </button>
         <button onclick="if(fsChart) fsChart.timeScale().fitContent()"
-            style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;"
+            style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;"
             title="Reset zoom">
             ↺ Reset
         </button>
         <button onclick="closeFullscreen()"
-            style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2B3139;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;">
+            style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;">
             ✕ Chiudi
         </button>
     </div>
@@ -205,28 +205,28 @@
 </div>
 
 <!-- Alert popover -->
-<div id="alert-popover" style="display:none;position:fixed;z-index:200;background:#161A1E;border:1px solid #2B3139;border-radius:8px;padding:14px 16px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.7);">
+<div id="alert-popover" style="display:none;position:fixed;z-index:200;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;padding:14px 16px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.7);">
     <div style="font-size:13px;font-weight:700;color:#E5E7EB;margin-bottom:6px;">🔔 Imposta Alert</div>
-    <div id="alert-pop-symbol" style="font-size:11px;color:#9CA3AF;margin-bottom:3px;"></div>
+    <div id="alert-pop-symbol" style="font-size:11px;color:#B2B5BE;margin-bottom:3px;"></div>
     <div id="alert-pop-price"  style="font-size:17px;font-family:monospace;color:#fbbf24;margin-bottom:8px;"></div>
     <div style="margin-bottom:10px;">
         <div style="font-size:10px;color:#6B7280;margin-bottom:4px;">Notifica via:</div>
         <div style="display:flex;gap:4px;">
             <button id="notify-both" onclick="setNotifyMode('both')" style="flex:1;padding:5px 0;font-size:10px;background:#1d4ed8;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;">📱 Telegram + PC</button>
-            <button id="notify-browser" onclick="setNotifyMode('browser')" style="flex:1;padding:5px 0;font-size:10px;background:#1E2329;color:#6B7280;border:none;border-radius:4px;cursor:pointer;font-weight:600;">🖥 Solo PC</button>
+            <button id="notify-browser" onclick="setNotifyMode('browser')" style="flex:1;padding:5px 0;font-size:10px;background:#1E222D;color:#6B7280;border:none;border-radius:4px;cursor:pointer;font-weight:600;">🖥 Solo PC</button>
         </div>
     </div>
     <div style="display:flex;gap:6px;">
         <button onclick="confirmAlert('above')" style="flex:1;padding:7px 0;font-size:12px;background:#065f46;color:#34d399;border:none;border-radius:4px;cursor:pointer;font-weight:600;">↑ Sopra</button>
         <button onclick="confirmAlert('below')" style="flex:1;padding:7px 0;font-size:12px;background:#7f1d1d;color:#f87171;border:none;border-radius:4px;cursor:pointer;font-weight:600;">↓ Sotto</button>
-        <button onclick="closeAlertPopover()" style="flex:1;padding:7px 0;font-size:12px;background:#1E2329;color:#9CA3AF;border:none;border-radius:4px;cursor:pointer;">✕</button>
+        <button onclick="closeAlertPopover()" style="flex:1;padding:7px 0;font-size:12px;background:#1E222D;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;">✕</button>
     </div>
 </div>
 
 <!-- Alerts panel -->
 <div id="alerts-panel" style="display:none;position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.55);" onclick="closePanelOutside(event)">
-    <div style="position:absolute;top:56px;right:12px;width:340px;background:#161A1E;border:1px solid #2B3139;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);">
-        <div style="padding:11px 14px;border-bottom:1px solid #2B3139;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="position:absolute;top:56px;right:12px;width:340px;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);">
+        <div style="padding:11px 14px;border-bottom:1px solid #2A2E39;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
             <span style="font-size:13px;font-weight:700;color:#E5E7EB;">🔔 Alert Attivi</span>
             <button onclick="closeAlertsPanel()" style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
         </div>
@@ -331,9 +331,9 @@ function setNotifyMode(mode) {
     const browser = document.getElementById('notify-browser');
     if (mode === 'both') {
         both.style.background = '#1d4ed8'; both.style.color = '#fff';
-        browser.style.background = '#1E2329'; browser.style.color = '#6B7280';
+        browser.style.background = '#1E222D'; browser.style.color = '#6B7280';
     } else {
-        both.style.background = '#1E2329'; both.style.color = '#6B7280';
+        both.style.background = '#1E222D'; both.style.color = '#6B7280';
         browser.style.background = '#1d4ed8'; browser.style.color = '#fff';
     }
 }
@@ -462,7 +462,7 @@ function renderAlertsList() {
         const dirColor = a.condition === 'above' ? '#34d399' : '#f87171';
         const dirLabel = a.condition === 'above' ? '▲ Sopra' : '▼ Sotto';
         const notifyIcon = a.notify === 'browser' ? '🖥' : '📱';
-        return `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #1E2329;">
+        return `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #1E222D;">
             <span style="font-size:11px;font-weight:700;color:#E5E7EB;min-width:76px;">${coin}</span>
             <span style="font-size:11px;color:${dirColor};font-weight:600;min-width:52px;">${dirLabel}</span>
             <span style="font-size:11px;font-family:monospace;color:#fbbf24;flex:1;">${fmtPrice(a.price)}</span>
@@ -490,7 +490,7 @@ async function deleteAlert(id) {
 function showToast(msg) {
     const t = document.createElement('div');
     t.textContent = msg;
-    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1E2329;color:#E5E7EB;padding:8px 18px;border-radius:6px;font-size:13px;z-index:300;border:1px solid #2B3139;pointer-events:none;opacity:1;transition:opacity .3s;';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1E222D;color:#E5E7EB;padding:8px 18px;border-radius:6px;font-size:13px;z-index:300;border:1px solid #2A2E39;pointer-events:none;opacity:1;transition:opacity .3s;';
     document.body.appendChild(t);
     setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 2500);
 }
@@ -569,11 +569,11 @@ function addSeries(chart, type, opts) {
 function makeChart(el, opts) {
     return LC.createChart(el, {
         autoSize: true,
-        layout: { background:{color:'#0B0E11'}, textColor:'#9CA3AF', fontSize: opts?.fontSize || 10 },
-        grid:    { vertLines:{color:'#1E2329'}, horzLines:{visible:false} },
+        layout: { background:{color:'#131722'}, textColor:'#B2B5BE', fontSize: opts?.fontSize || 10 },
+        grid:    { vertLines:{color:'#1E222D'}, horzLines:{visible:false} },
         crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
-        rightPriceScale: { borderColor:'#2B3139', scaleMargins:{top:0.05, bottom:0.05} },
-        timeScale: { borderColor:'#2B3139', visible:true, timeVisible:true, secondsVisible:false,
+        rightPriceScale: { borderColor:'#2A2E39', scaleMargins:{top:0.05, bottom:0.05} },
+        timeScale: { borderColor:'#2A2E39', visible:true, timeVisible:true, secondsVisible:false,
                      barSpacing: opts?.barSpacing || 3, rightOffset: opts?.rightOffset || 30 },
     });
 }
@@ -601,7 +601,7 @@ function refreshMidLines(chartEl, series, midLines) {
         const midP = n * step + step / 2;
         if (midP < lo || midP > hi) continue;
         midLines.push(series.createPriceLine({
-            price: midP, color: '#1E2329', lineWidth: 1,
+            price: midP, color: '#1E222D', lineWidth: 1,
             lineStyle: 2, axisLabelVisible: false, title: '',
         }));
     }
@@ -679,7 +679,7 @@ function toggleFsOBLevels() {
         clearInterval(fsObTimer); fsObTimer = null;
         if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} fsObBidLine = null; }
         if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} fsObAskLine = null; }
-        if (btn) { btn.style.color = '#9CA3AF'; btn.style.background = '#2B3139'; }
+        if (btn) { btn.style.color = '#B2B5BE'; btn.style.background = '#2A2E39'; }
     }
 }
 
@@ -691,11 +691,11 @@ function buildGrid() {
 
     for (let i = 0; i < SLOTS_TOTAL; i++) {
         const cell = document.createElement('div');
-        cell.style.cssText = 'display:flex;flex-direction:column;border:1px solid #2B3139;overflow:hidden;';
+        cell.style.cssText = 'display:flex;flex-direction:column;border:1px solid #2A2E39;overflow:hidden;';
 
         // ── cell header ──────────────────────────────────────────────────────
         const hdr = document.createElement('div');
-        hdr.style.cssText = 'height:24px;flex-shrink:0;display:flex;align-items:center;gap:4px;padding:0 5px;background:#161A1E;border-bottom:1px solid #2B3139;';
+        hdr.style.cssText = 'height:24px;flex-shrink:0;display:flex;align-items:center;gap:4px;padding:0 5px;background:#161A1E;border-bottom:1px solid #2A2E39;';
 
         const starEl = document.createElement('button');
         starEl.textContent = '☆';
@@ -727,9 +727,9 @@ function buildGrid() {
         const bybitEl = document.createElement('a');
         bybitEl.textContent = 'Bybit ↗';
         bybitEl.target = '_blank'; bybitEl.rel = 'noopener noreferrer'; bybitEl.href = '#';
-        bybitEl.style.cssText = 'font-size:9px;color:#f7a600;text-decoration:none;padding:1px 5px;border-radius:2px;background:#1E2329;white-space:nowrap;';
-        bybitEl.onmouseenter = () => bybitEl.style.background = '#2B3139';
-        bybitEl.onmouseleave = () => bybitEl.style.background = '#1E2329';
+        bybitEl.style.cssText = 'font-size:9px;color:#f7a600;text-decoration:none;padding:1px 5px;border-radius:2px;background:#1E222D;white-space:nowrap;';
+        bybitEl.onmouseenter = () => bybitEl.style.background = '#2A2E39';
+        bybitEl.onmouseleave = () => bybitEl.style.background = '#1E222D';
 
         const rightGroup = document.createElement('div');
         rightGroup.style.cssText = 'margin-left:auto;display:flex;align-items:center;gap:4px;';
@@ -740,28 +740,28 @@ function buildGrid() {
         const resetEl = document.createElement('button');
         resetEl.textContent = '↺'; resetEl.title = 'Reset zoom';
         resetEl.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
-        resetEl.onmouseenter = () => resetEl.style.color = '#9CA3AF';
+        resetEl.onmouseenter = () => resetEl.style.color = '#B2B5BE';
         resetEl.onmouseleave = () => resetEl.style.color = '#4B5563';
         resetEl.onclick = () => { const s = slots[i]; if (s && s.chart) s.chart.timeScale().fitContent(); };
 
         const mtfEl = document.createElement('button');
         mtfEl.textContent = '⊞'; mtfEl.title = 'Multi Timeframe';
         mtfEl.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
-        mtfEl.onmouseenter = () => mtfEl.style.color = '#9CA3AF';
+        mtfEl.onmouseenter = () => mtfEl.style.color = '#B2B5BE';
         mtfEl.onmouseleave = () => mtfEl.style.color = '#4B5563';
         mtfEl.onclick = () => { const s = slots[i]; if (s && s.symbol) window.open(`mtf?symbol=${s.symbol}`, '_blank'); };
 
         const obEl = document.createElement('button');
         obEl.textContent = 'OB'; obEl.title = 'Livelli bid/ask';
         obEl.style.cssText = 'font-size:10px;font-weight:600;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
-        obEl.onmouseenter = () => { if (!slots[i]?.obActive) obEl.style.color = '#9CA3AF'; };
+        obEl.onmouseenter = () => { if (!slots[i]?.obActive) obEl.style.color = '#B2B5BE'; };
         obEl.onmouseleave = () => { if (!slots[i]?.obActive) obEl.style.color = '#4B5563'; };
         obEl.onclick = () => toggleSlotOBLevels(i);
 
         const expandEl = document.createElement('button');
         expandEl.textContent = '⤢'; expandEl.title = 'Schermo intero';
         expandEl.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
-        expandEl.onmouseenter = () => expandEl.style.color = '#9CA3AF';
+        expandEl.onmouseenter = () => expandEl.style.color = '#B2B5BE';
         expandEl.onmouseleave = () => expandEl.style.color = '#4B5563';
         expandEl.onclick = () => openFullscreen(i);
 
@@ -789,8 +789,8 @@ function buildGrid() {
 
         const chart = makeChart(chartEl);
         const candleS = addSeries(chart, 'CandlestickSeries', {
-            upColor:'#26a69a', downColor:'#ef5350',
-            borderVisible:false, wickUpColor:'#26a69a', wickDownColor:'#ef5350',
+            upColor:'#089981', downColor:'#F23645',
+            borderVisible:false, wickUpColor:'#089981', wickDownColor:'#F23645',
         });
         const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
         const emaSeries = {};
@@ -883,7 +883,7 @@ function updateMobileNavIndicator(idx, total) {
     if (!el) {
         el = document.createElement('div');
         el.id = 'mobile-chart-indicator';
-        el.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(22,26,30,0.88);color:#9CA3AF;font-size:11px;padding:4px 14px;border-radius:12px;z-index:60;pointer-events:none;border:1px solid #2B3139;';
+        el.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(22,26,30,0.88);color:#B2B5BE;font-size:11px;padding:4px 14px;border-radius:12px;z-index:60;pointer-events:none;border:1px solid #2A2E39;';
         document.body.appendChild(el);
     }
     el.textContent = `${idx} / ${total}`;
@@ -896,7 +896,7 @@ function renderSlotTF(idx) {
     s.tfEl.innerHTML = TIMEFRAMES.map(tf => {
         const active = tf === s.curTF;
         return `<button onclick="switchSlotTF(${idx},'${tf}')"
-            style="font-size:9px;padding:1px 4px;border-radius:2px;border:none;cursor:pointer;background:${active?'#2563EB':'#1E2329'};color:${active?'#fff':'#6B7280'};"
+            style="font-size:9px;padding:1px 4px;border-radius:2px;border:none;cursor:pointer;background:${active?'#2563EB':'#1E222D'};color:${active?'#fff':'#6B7280'};"
             >${TF_LABEL[tf]}</button>`;
     }).join('');
 }
@@ -1035,8 +1035,8 @@ function initFsChart() {
     if (fsChart) return;
     fsChart   = makeChart(document.getElementById('fs-chart-el'), { fontSize:11, barSpacing:6, rightOffset:40 });
     fsCandleS = addSeries(fsChart, 'CandlestickSeries', {
-        upColor:'#26a69a', downColor:'#ef5350',
-        borderVisible:false, wickUpColor:'#26a69a', wickDownColor:'#ef5350',
+        upColor:'#089981', downColor:'#F23645',
+        borderVisible:false, wickUpColor:'#089981', wickDownColor:'#F23645',
     });
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
     for (const {p, color, width} of EMA_CFG)
@@ -1093,7 +1093,7 @@ async function openFullscreen(idx) {
         fsObTimer = setInterval(fetchFsOBLevels, 15000);
     } else {
         fsObActive = false;
-        if (fsObBtn) { fsObBtn.style.color = '#9CA3AF'; fsObBtn.style.background = '#2B3139'; }
+        if (fsObBtn) { fsObBtn.style.color = '#B2B5BE'; fsObBtn.style.background = '#2A2E39'; }
     }
 }
 
@@ -1103,7 +1103,7 @@ function closeFullscreen() {
     clearInterval(fsObTimer); fsObTimer = null;
     fsObActive = false;
     const fsObBtn = document.getElementById('fs-ob-lvl-btn');
-    if (fsObBtn) { fsObBtn.style.color = '#9CA3AF'; fsObBtn.style.background = '#2B3139'; }
+    if (fsObBtn) { fsObBtn.style.color = '#B2B5BE'; fsObBtn.style.background = '#2A2E39'; }
     if (fsChart) {
         if (fsDayHighLine)  { try { fsCandleS.removePriceLine(fsDayHighLine);  } catch(e) {} fsDayHighLine  = null; }
         if (fsDayLowLine)   { try { fsCandleS.removePriceLine(fsDayLowLine);   } catch(e) {} fsDayLowLine   = null; }
@@ -1122,7 +1122,7 @@ function renderFsTFBar() {
     document.getElementById('fs-tf-bar').innerHTML = TIMEFRAMES.map(tf => {
         const active = tf === fsTF;
         return `<button onclick="switchFsTF('${tf}')"
-            style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:${active?'#2563EB':'#2B3139'};color:${active?'#fff':'#9CA3AF'};"
+            style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:${active?'#2563EB':'#2A2E39'};color:${active?'#fff':'#B2B5BE'};"
             >${TF_LABEL[tf]}</button>`;
     }).join('');
 }
@@ -1395,8 +1395,8 @@ function initOBChart() {
     if (obChart) return;
     obChart   = makeChart(document.getElementById('ob-chart-el'), { fontSize:11, barSpacing:6, rightOffset:40 });
     obCandleS = addSeries(obChart, 'CandlestickSeries', {
-        upColor:'#26a69a', downColor:'#ef5350',
-        borderVisible:false, wickUpColor:'#26a69a', wickDownColor:'#ef5350',
+        upColor:'#089981', downColor:'#F23645',
+        borderVisible:false, wickUpColor:'#089981', wickDownColor:'#F23645',
     });
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
     for (const {p, color, width} of EMA_CFG)
@@ -1409,7 +1409,7 @@ function initOBChart() {
 function renderOBTFBar() {
     document.getElementById('ob-tf-bar').innerHTML = TIMEFRAMES.map(tf => {
         const active = tf === obTF;
-        return `<button onclick="switchOBTF('${tf}')" style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:${active?'#2563EB':'#2B3139'};color:${active?'#fff':'#9CA3AF'};">${TF_LABEL[tf]}</button>`;
+        return `<button onclick="switchOBTF('${tf}')" style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:${active?'#2563EB':'#2A2E39'};color:${active?'#fff':'#B2B5BE'};">${TF_LABEL[tf]}</button>`;
     }).join('');
 }
 
@@ -1610,10 +1610,10 @@ document.addEventListener('mouseup', () => {
 
 <!-- Order Book fullscreen modal -->
 <div id="ob-modal"
-     style="display:none;position:fixed;inset:0;z-index:500;flex-direction:row;background:#0B0E11;">
+     style="display:none;position:fixed;inset:0;z-index:500;flex-direction:row;background:#131722;">
     <!-- Left: chart -->
     <div id="ob-chart-panel" style="flex-basis:50%;min-width:200px;display:flex;flex-direction:column;">
-        <div style="height:36px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2B3139;display:flex;align-items:center;padding:0 10px;gap:10px;">
+        <div style="height:36px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2A2E39;display:flex;align-items:center;padding:0 10px;gap:10px;">
             <span id="ob-chart-sym" style="font-size:13px;font-weight:700;color:#E5E7EB;min-width:60px;"></span>
             <div id="ob-tf-bar" style="display:flex;gap:4px;"></div>
             <div style="flex:1;"></div>
@@ -1623,10 +1623,10 @@ document.addEventListener('mouseup', () => {
         <div id="ob-chart-el" style="flex:1;min-height:0;"></div>
     </div>
     <!-- Resize handle -->
-    <div id="ob-panel-resize" style="width:5px;flex-shrink:0;cursor:col-resize;background:transparent;border-left:1px solid #2B3139;transition:background 0.15s;"
+    <div id="ob-panel-resize" style="width:5px;flex-shrink:0;cursor:col-resize;background:transparent;border-left:1px solid #2A2E39;transition:background 0.15s;"
          onmouseenter="this.style.background='rgba(59,130,246,0.35)'" onmouseleave="if(!_obRes)this.style.background='transparent'"></div>
     <!-- Right: order book -->
-    <div id="ob-book-panel" style="flex-basis:50%;min-width:200px;display:flex;flex-direction:column;background:#0B0E11;">
+    <div id="ob-book-panel" style="flex-basis:50%;min-width:200px;display:flex;flex-direction:column;background:#131722;">
         <iframe id="ob-iframe" src="" style="flex:1;border:none;width:100%;height:100%;"></iframe>
     </div>
 </div>
