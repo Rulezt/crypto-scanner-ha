@@ -275,7 +275,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.8.37',
+        'version': '3.8.38',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -383,8 +383,8 @@ def get_ath_atl_status():
             'success': True,
             'config': config.get('ath_atl', {}),
             'monitored_coins': monitored_coins,
-            'top_gainers': top_gainers[:10],
-            'top_losers': top_losers[:10],
+            'top_gainers': top_gainers[:20],
+            'top_losers': top_losers[:20],
             'total_pairs': len(all_pairs)
         })
 
