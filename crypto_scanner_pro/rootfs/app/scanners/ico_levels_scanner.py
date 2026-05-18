@@ -200,7 +200,7 @@ class ICOLevelsScanner:
             state['alerted'] = dict(self._alerted)
             self._save_state(state)
             threading.Thread(
-                target=self._send_alert, args=(symbol, side, dist, level),
+                target=self._send_alert, args=(symbol, side, dist, level, price),
                 daemon=True).start()
 
     # ── polling scan (fallback / manual) ─────────────────────────────────────
@@ -270,7 +270,7 @@ class ICOLevelsScanner:
                     elapsed = (now - datetime.fromisoformat(last_str)).total_seconds()
                     if elapsed < self.cooldown_hours * 3600:
                         continue
-                self._send_alert(sym, side, dist, level)
+                self._send_alert(sym, side, dist, level, current_price)
                 alerted[key] = now.isoformat()
                 modified = True
 
@@ -281,19 +281,19 @@ class ICOLevelsScanner:
 
     # ── alert ─────────────────────────────────────────────────────────────────
 
-    def _send_alert(self, sym, side, dist, level):
+    def _send_alert(self, sym, side, dist, level, price=0):
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, mtf_link
+            from alert_utils import send_photo, send_text, get_chart, build_caption
         except ImportError as e:
             logger.error(f'Cannot import alert_utils: {e}')
             return
 
         side_str = 'massimo' if side == 'high' else 'minimo'
         sig_type = 'ath' if side == 'high' else 'atl'
-        caption  = (f"ICO Level  {mtf_link(sym, self.ha_url)}\n"
-                    f"vicino al {side_str} prima candela: {dist:.2f}%")
+        note     = f"ICO {side_str} {dist:.2f}%"
+        caption  = build_caption(sym, price, note, self.ha_url)
         img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)

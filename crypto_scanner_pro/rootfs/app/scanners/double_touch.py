@@ -270,21 +270,13 @@ class DoubleTouchScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, mtf_link
+            from alert_utils import send_photo, send_text, get_chart, build_caption
         except ImportError:
             return
         for p in patterns[:3]:
-            sym      = p['symbol']
-            sign_str = '🟢 Long (resistenza)' if p['type'] == 'resistance' else '🔴 Short (supporto)'
-            sign_dist = f"{'+' if p['dist_pct'] >= 0 else ''}{p['dist_pct']:.2f}%"
-            def _fmt(v):
-                if v >= 1e9: return f'${v/1e9:.1f}B'
-                if v >= 1e6: return f'${v/1e6:.0f}M'
-                return f'${v/1e3:.0f}K'
-            caption = (f"Terzo Tocco · {self.scan_tf}  {mtf_link(sym, self.ha_url)}\n"
-                       f"{sign_str}\n"
-                       f"dist: {sign_dist} · gap: {p['gap']} · fresh: {p['freshness']}\n"
-                       f"vol: {_fmt(p['volume'])}")
+            sym  = p['symbol']
+            note = '3tplus' if p['type'] == 'resistance' else '3tminus'
+            caption = build_caption(sym, p['price'], note, self.ha_url)
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ema'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)

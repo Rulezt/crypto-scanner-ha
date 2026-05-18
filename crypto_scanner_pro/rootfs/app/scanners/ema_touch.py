@@ -282,14 +282,14 @@ class EMAScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, mtf_link
+            from alert_utils import send_photo, send_text, get_chart, build_caption
         except ImportError:
             return
         for coin in coins[:3]:
             sym     = coin['symbol']
             dir_str = 'da sotto' if 'below' in coin['approach'] else 'da sopra'
-            caption = (f"EMA60 Touch · 30m  {mtf_link(sym, self.ha_url)}\n"
-                       f"distanza: {coin['distance_pct']:.2f}% {dir_str}")
+            note    = f"EMA60 30m {dir_str} {coin['distance_pct']:.2f}%"
+            caption = build_caption(sym, coin['price'], note, self.ha_url)
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ema'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)

@@ -185,18 +185,17 @@ class ATHATLScanner:
 
     def _send_single_alert(self, coin, alert_type):
         try:
-            from alert_utils import send_photo, send_text, get_chart, mtf_link
+            from alert_utils import send_photo, send_text, get_chart, build_caption
         except ImportError:
             return
         sym = coin['symbol']
         if alert_type == 'ath':
-            caption = (f"Nuovo ATH!  {mtf_link(sym, self.ha_url)}" if coin['is_new_ath']
-                       else f"Vicino ATH  {mtf_link(sym, self.ha_url)}\ndistanza: {coin['distance_pct']:.2f}%")
+            note     = 'Nuovo ATH' if coin['is_new_ath'] else f"Vicino ATH {coin['distance_pct']:.2f}%"
             sig_type = 'ath'
         else:
-            caption = (f"Nuovo ATL!  {mtf_link(sym, self.ha_url)}" if coin['is_new_atl']
-                       else f"Vicino ATL  {mtf_link(sym, self.ha_url)}\ndistanza: {coin['distance_pct']:.2f}%")
+            note     = 'Nuovo ATL' if coin['is_new_atl'] else f"Vicino ATL {coin['distance_pct']:.2f}%"
             sig_type = 'atl'
+        caption = build_caption(sym, coin['price'], note, self.ha_url)
         img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
@@ -336,14 +335,14 @@ class ATHATLScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, mtf_link
+            from alert_utils import send_photo, send_text, get_chart, build_caption
         except ImportError:
             return
 
         for coin in result.get('ath', [])[:3]:
             sym     = coin['symbol']
-            caption = (f"Nuovo ATH!  {mtf_link(sym, self.ha_url)}" if coin['is_new_ath']
-                       else f"Vicino ATH  {mtf_link(sym, self.ha_url)}\ndistanza: {coin['distance_pct']:.2f}%")
+            note    = 'Nuovo ATH' if coin['is_new_ath'] else f"Vicino ATH {coin['distance_pct']:.2f}%"
+            caption = build_caption(sym, coin['price'], note, self.ha_url)
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ath'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
@@ -352,8 +351,8 @@ class ATHATLScanner:
 
         for coin in result.get('atl', [])[:3]:
             sym     = coin['symbol']
-            caption = (f"Nuovo ATL!  {mtf_link(sym, self.ha_url)}" if coin['is_new_atl']
-                       else f"Vicino ATL  {mtf_link(sym, self.ha_url)}\ndistanza: {coin['distance_pct']:.2f}%")
+            note    = 'Nuovo ATL' if coin['is_new_atl'] else f"Vicino ATL {coin['distance_pct']:.2f}%"
+            caption = build_caption(sym, coin['price'], note, self.ha_url)
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'atl'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)

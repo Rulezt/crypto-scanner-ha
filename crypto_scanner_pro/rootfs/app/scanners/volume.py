@@ -114,22 +114,17 @@ class VolumeScanner:
 
     def _send_single_alert(self, coin, alert_type):
         try:
-            from alert_utils import send_photo, send_text, get_chart, mtf_link
+            from alert_utils import send_photo, send_text, get_chart, build_caption
         except ImportError:
             return
         sym = coin['symbol']
-        def _vol(v):
-            if v >= 1e9: return f'${v/1e9:.1f}B'
-            if v >= 1e6: return f'${v/1e6:.0f}M'
-            return f'${v/1e3:.0f}K'
         if alert_type == 'gainer':
-            caption = (f"+{coin['change_pct']:.2f}% (24h)  {mtf_link(sym, self.ha_url)}\n"
-                       f"Vol: {_vol(coin['volume_24h_usd'])}")
+            note     = f"+{coin['change_pct']:.2f}% 24h"
             sig_type = 'gainer'
         else:
-            caption = (f"{coin['change_pct']:.2f}% (24h)  {mtf_link(sym, self.ha_url)}\n"
-                       f"Vol: {_vol(coin['volume_24h_usd'])}")
+            note     = f"{coin['change_pct']:.2f}% 24h"
             sig_type = 'loser'
+        caption = build_caption(sym, coin['price'], note, self.ha_url)
         img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
@@ -209,19 +204,14 @@ class VolumeScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, mtf_link
+            from alert_utils import send_photo, send_text, get_chart, build_caption
         except ImportError:
             return
 
-        def _vol(v):
-            if v >= 1e9: return f'${v/1e9:.1f}B'
-            if v >= 1e6: return f'${v/1e6:.0f}M'
-            return f'${v/1e3:.0f}K'
-
         for coin in result.get('gainers', [])[:2]:
             sym     = coin['symbol']
-            caption = (f"+{coin['change_pct']:.2f}% (24h)  {mtf_link(sym, self.ha_url)}\n"
-                       f"Vol: {_vol(coin['volume_24h_usd'])}")
+            note    = f"+{coin['change_pct']:.2f}% 24h"
+            caption = build_caption(sym, coin['price'], note, self.ha_url)
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'gainer'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
@@ -230,8 +220,8 @@ class VolumeScanner:
 
         for coin in result.get('losers', [])[:2]:
             sym     = coin['symbol']
-            caption = (f"{coin['change_pct']:.2f}% (24h)  {mtf_link(sym, self.ha_url)}\n"
-                       f"Vol: {_vol(coin['volume_24h_usd'])}")
+            note    = f"{coin['change_pct']:.2f}% 24h"
+            caption = build_caption(sym, coin['price'], note, self.ha_url)
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'loser'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
