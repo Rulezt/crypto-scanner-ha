@@ -154,9 +154,9 @@ class EMAScanner:
     # ── real-time kline callback ──────────────────────────────────────────────
 
     def _on_kline(self, symbol, interval, candle, is_closed):
-        """Called on every kline update from WebSocket."""
-        if not self.enabled or interval != '30' or not is_closed:
-            return  # Only act on confirmed 30m candle closes
+        """Called on every kline update from WebSocket (live + closed)."""
+        if not self.enabled or interval != '30':
+            return
         if not self._is_in_schedule():
             return
 
@@ -164,21 +164,26 @@ class EMAScanner:
         if len(klines) < 223:
             return  # Cache not seeded yet
 
-        closes   = [k['close'] for k in klines]
+        closes = [k['close'] for k in klines]
         ema_data = self._calc_ema_from_closes(closes)
         if not ema_data:
             return
 
-        if ema_data['distance_pct'] < self.ema_touch_threshold:
+        # Use live price from the current candle, not last closed close
+        live_price   = candle['close']
+        ema60        = ema_data['ema60']
+        distance_pct = abs((live_price - ema60) / ema60 * 100)
+
+        if distance_pct < self.ema_touch_threshold:
             with self._lock:
                 if not self.is_in_cooldown(symbol):
                     self.mark_alerted(symbol)
                     coin = {
                         'symbol': symbol,
-                        'price': ema_data['current_price'],
-                        'ema60': ema_data['ema60'],
-                        'distance_pct': ema_data['distance_pct'],
-                        'approach': 'from above' if ema_data['current_price'] > ema_data['ema60'] else 'from below',
+                        'price': live_price,
+                        'ema60': ema60,
+                        'distance_pct': distance_pct,
+                        'approach': 'from above' if live_price > ema60 else 'from below',
                         'volume_24h': 0,
                     }
                     threading.Thread(
