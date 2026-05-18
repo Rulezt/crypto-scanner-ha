@@ -53,7 +53,7 @@
         /* ===== FILTER BAR ===== */
         .filter-bar {
             display: flex; gap: 8px; padding: 7px 16px;
-            background: #131722; border-bottom: 1px solid #1E222D;
+            background: #0F0F0F; border-bottom: 1px solid #1E222D;
             flex-wrap: wrap; align-items: center;
         }
         .filter-label { font-size: 0.7rem; color: #6b7280; }
@@ -151,7 +151,7 @@
 
         /* ===== LWC POPUP ===== */
         .lwc-popup {
-            position: fixed; z-index: 9999; background: #131722;
+            position: fixed; z-index: 9999; background: #0F0F0F;
             border: 1px solid #2a2a2a; border-radius: 8px;
             box-shadow: 0 8px 40px rgba(0,0,0,0.85);
             overflow: hidden; pointer-events: none;
@@ -179,7 +179,7 @@
         /* ===== LEGEND ===== */
         .legend {
             display: flex; gap: 14px; padding: 6px 16px;
-            background: #131722; border-top: 1px solid #1E222D; flex-wrap: wrap;
+            background: #0F0F0F; border-top: 1px solid #1E222D; flex-wrap: wrap;
         }
         .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: #6b7280; }
         .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
@@ -785,7 +785,7 @@ createApp({
             const { width, height } = container.getBoundingClientRect();
             const chart = LightweightCharts.createChart(container, {
                 width: width || 600, height: height || 310,
-                layout: { background: { color: '#131722' }, textColor: '#B2B5BE' },
+                layout: { background: { color: '#0F0F0F' }, textColor: '#B2B5BE' },
                 grid: { vertLines: { color: '#1E222D' }, horzLines: { visible: false } },
                 crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
                 handleScroll: true, handleScale: true,

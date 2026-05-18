@@ -9,7 +9,7 @@
     <script>
         tailwind.config = {
             darkMode: 'class',
-            theme: { extend: { colors: { dark: { bg: '#131722', card: '#161A1E', hover: '#1E222D', border: '#2A2E39' } } } }
+            theme: { extend: { colors: { dark: { bg: '#0F0F0F', card: '#161A1E', hover: '#1E222D', border: '#2A2E39' } } } }
         }
     </script>
     <style>
@@ -153,7 +153,7 @@
 </div>
 
 <!-- ===== FULLSCREEN OVERLAY ===== -->
-<div id="fs-overlay" style="display:none;position:fixed;inset:0;z-index:100;background:#131722;flex-direction:column;">
+<div id="fs-overlay" style="display:none;position:fixed;inset:0;z-index:100;background:#0F0F0F;flex-direction:column;">
 
     <div style="height:48px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2A2E39;display:flex;align-items:center;gap:8px;padding:0 14px;">
         <span id="fs-title"  style="font-size:15px;font-weight:700;color:#E5E7EB;"></span>
@@ -281,7 +281,7 @@ let obWS = null, obWsTimer = null;
 let obBidLine = null, obAskLine = null;
 let obDayHighLine = null, obDayLowLine = null;
 let obPrevHighLine = null, obPrevLowLine = null;
-let fsMidLines = [], obMidLines = [];
+let fsMidLines = [], obMidLines = []; // kept for compat, no longer used
 let fsObActive = false, fsObBidLine = null, fsObAskLine = null, fsObTimer = null;
 
 const IS_MOBILE = window.innerWidth < 640;
@@ -569,7 +569,7 @@ function addSeries(chart, type, opts) {
 function makeChart(el, opts) {
     return LC.createChart(el, {
         autoSize: true,
-        layout: { background:{color:'#131722'}, textColor:'#B2B5BE', fontSize: opts?.fontSize || 10 },
+        layout: { background:{color:'#0F0F0F'}, textColor:'#B2B5BE', fontSize: opts?.fontSize || 10 },
         grid:    { vertLines:{color:'#1E222D'}, horzLines:{visible:false} },
         crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
         rightPriceScale: { borderColor:'#2A2E39', scaleMargins:{top:0.05, bottom:0.05} },
@@ -577,35 +577,7 @@ function makeChart(el, opts) {
                      barSpacing: opts?.barSpacing || 3, rightOffset: opts?.rightOffset || 30 },
     });
 }
-// ── Mid grid lines (intermediate horizontal lines tra le linee principali) ────
-function niceGridStep(range) {
-    if (range <= 0) return 1;
-    const rough = range / 5;
-    const mag = Math.pow(10, Math.floor(Math.log10(rough)));
-    const x = rough / mag;
-    const f = x < 1.5 ? 1 : x < 3.5 ? 2 : x < 7.5 ? 5 : 10;
-    return f * mag;
-}
 
-function refreshMidLines(chartEl, series, midLines) {
-    midLines.forEach(l => { try { series.removePriceLine(l); } catch(e) {} });
-    midLines.length = 0;
-    const h = chartEl.clientHeight;
-    if (!h || !series) return;
-    const topP = series.coordinateToPrice(0);
-    const botP = series.coordinateToPrice(h);
-    if (topP == null || botP == null) return;
-    const [lo, hi] = topP < botP ? [topP, botP] : [botP, topP];
-    const step = niceGridStep(hi - lo);
-    for (let n = Math.floor(lo / step) - 1; n * step <= hi + step; n++) {
-        const midP = n * step + step / 2;
-        if (midP < lo || midP > hi) continue;
-        midLines.push(series.createPriceLine({
-            price: midP, color: '#1E222D', lineWidth: 1,
-            lineStyle: 2, axisLabelVisible: false, title: '',
-        }));
-    }
-}
 
 // ── OB Levels (bid/ask wall) per slot e fullscreen ────────────────────────────
 async function _fetchOBLevels(symbol) {
@@ -830,7 +802,7 @@ function buildGrid() {
         });
 
         slots.push({
-            cell, chart, candleS, emaSeries, chartEl, midLines: [],
+            cell, chart, candleS, emaSeries, chartEl,
             lastEMA: {5:null, 10:null, 60:null, 223:null},
             starEl, titleEl, changeEl, volEl, candlePctEl, tfEl, bybitEl, alertBtn, obEl,
             symbol: null, coin: null, curTF, lastPrice: null, crosshairPrice: null,
@@ -840,9 +812,7 @@ function buildGrid() {
             obActive: false, obBidLine: null, obAskLine: null, obTimer: null,
         });
         const _s = slots[slots.length - 1];
-        chart.timeScale().subscribeVisibleTimeRangeChange(() => {
-            setTimeout(() => refreshMidLines(_s.chartEl, _s.candleS, _s.midLines), 60);
-        });
+        chart.timeScale().subscribeVisibleTimeRangeChange(() => {});
     }
 }
 
@@ -1011,7 +981,6 @@ async function loadSlotData(idx) {
         }
         const _n = getCandlesForTF(s.curTF);
         s.chart.timeScale().setVisibleLogicalRange({ from: klines.length - _n, to: klines.length + 3 });
-        setTimeout(() => refreshMidLines(s.chartEl, s.candleS, s.midLines), 100);
         s.lastPrice = klines[klines.length - 1].close;
         if (s.dayHighLine)  { try { s.candleS.removePriceLine(s.dayHighLine);  } catch(e) {} }
         if (s.dayLowLine)   { try { s.candleS.removePriceLine(s.dayLowLine);   } catch(e) {} }
@@ -1042,9 +1011,7 @@ function initFsChart() {
     for (const {p, color, width} of EMA_CFG)
         fsEmaS[p] = addSeries(fsChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
 
-    fsChart.timeScale().subscribeVisibleTimeRangeChange(() => {
-        setTimeout(() => refreshMidLines(document.getElementById('fs-chart-el'), fsCandleS, fsMidLines), 60);
-    });
+    fsChart.timeScale().subscribeVisibleTimeRangeChange(() => {});
     fsChart.subscribeCrosshairMove(param => {
         const el = document.getElementById('fs-candle-pct');
         if (!el) return;
@@ -1158,7 +1125,6 @@ async function loadFsData() {
         }
         const _fn = getCandlesForTF(fsTF);
         fsChart.timeScale().setVisibleLogicalRange({ from: klines.length - _fn, to: klines.length + 3 });
-        setTimeout(() => refreshMidLines(document.getElementById('fs-chart-el'), fsCandleS, fsMidLines), 100);
         if (fsDayHighLine)  { try { fsCandleS.removePriceLine(fsDayHighLine);  } catch(e) {} }
         if (fsDayLowLine)   { try { fsCandleS.removePriceLine(fsDayLowLine);   } catch(e) {} }
         if (fsPrevHighLine) { try { fsCandleS.removePriceLine(fsPrevHighLine); } catch(e) {} }
@@ -1401,9 +1367,7 @@ function initOBChart() {
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
     for (const {p, color, width} of EMA_CFG)
         obEmaS[p] = addSeries(obChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
-    obChart.timeScale().subscribeVisibleTimeRangeChange(() => {
-        setTimeout(() => refreshMidLines(document.getElementById('ob-chart-el'), obCandleS, obMidLines), 60);
-    });
+    obChart.timeScale().subscribeVisibleTimeRangeChange(() => {});
 }
 
 function renderOBTFBar() {
@@ -1449,7 +1413,6 @@ async function loadOBData() {
         }
         const _on = getCandlesForTF(obTF);
         obChart.timeScale().setVisibleLogicalRange({ from: klines.length - _on, to: klines.length + 3 });
-        setTimeout(() => refreshMidLines(document.getElementById('ob-chart-el'), obCandleS, obMidLines), 100);
         if (obDayHighLine)  { try { obCandleS.removePriceLine(obDayHighLine);  } catch(e) {} obDayHighLine  = null; }
         if (obDayLowLine)   { try { obCandleS.removePriceLine(obDayLowLine);   } catch(e) {} obDayLowLine   = null; }
         if (obPrevHighLine) { try { obCandleS.removePriceLine(obPrevHighLine); } catch(e) {} obPrevHighLine = null; }
@@ -1610,7 +1573,7 @@ document.addEventListener('mouseup', () => {
 
 <!-- Order Book fullscreen modal -->
 <div id="ob-modal"
-     style="display:none;position:fixed;inset:0;z-index:500;flex-direction:row;background:#131722;">
+     style="display:none;position:fixed;inset:0;z-index:500;flex-direction:row;background:#0F0F0F;">
     <!-- Left: chart -->
     <div id="ob-chart-panel" style="flex-basis:50%;min-width:200px;display:flex;flex-direction:column;">
         <div style="height:36px;flex-shrink:0;background:#161A1E;border-bottom:1px solid #2A2E39;display:flex;align-items:center;padding:0 10px;gap:10px;">
@@ -1626,7 +1589,7 @@ document.addEventListener('mouseup', () => {
     <div id="ob-panel-resize" style="width:5px;flex-shrink:0;cursor:col-resize;background:transparent;border-left:1px solid #2A2E39;transition:background 0.15s;"
          onmouseenter="this.style.background='rgba(59,130,246,0.35)'" onmouseleave="if(!_obRes)this.style.background='transparent'"></div>
     <!-- Right: order book -->
-    <div id="ob-book-panel" style="flex-basis:50%;min-width:200px;display:flex;flex-direction:column;background:#131722;">
+    <div id="ob-book-panel" style="flex-basis:50%;min-width:200px;display:flex;flex-direction:column;background:#0F0F0F;">
         <iframe id="ob-iframe" src="" style="flex:1;border:none;width:100%;height:100%;"></iframe>
     </div>
 </div>
