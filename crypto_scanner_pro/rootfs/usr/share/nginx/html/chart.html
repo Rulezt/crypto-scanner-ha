@@ -82,10 +82,10 @@
             }
             #ob-modal > div:last-child { flex: 0 0 50% !important; }
 
-            /* Grid mobile: 1 grafico per volta, navigazione via JS */
+            /* Grid mobile portrait: 3 grafici in colonna */
             #grid {
                 grid-template-columns: 1fr !important;
-                grid-template-rows: 1fr !important;
+                grid-template-rows: repeat(3, 1fr) !important;
             }
             /* Frecce chart: ingrandisci e sposta in basso per raggiungibilità con pollice */
             .side-nav {
@@ -835,15 +835,18 @@ function applyView() {
 
     if (IS_MOBILE) {
         grid.style.gridTemplateColumns = '1fr';
-        grid.style.gridTemplateRows    = '1fr';
+        grid.style.gridTemplateRows    = 'repeat(3, 1fr)';
         const visible = is18 ? 18 : 9;
         slots.forEach((s, i) => {
-            s.cell.style.display = (i === mobileChartIdx && i < visible) ? 'flex' : 'none';
+            const show = i >= mobileChartIdx && i < mobileChartIdx + 3 && i < visible;
+            s.cell.style.display = show ? 'flex' : 'none';
         });
         document.getElementById('nav-prev').style.display = 'block';
         document.getElementById('nav-next').style.display = 'block';
         const total = allCoins.length;
-        updateMobileNavIndicator(curPage * 9 + mobileChartIdx + 1, total);
+        const first = curPage * 9 + mobileChartIdx + 1;
+        const last  = Math.min(first + 2, total);
+        updateMobileNavIndicator(first, last, total);
         return;
     }
 
@@ -860,7 +863,7 @@ function applyView() {
         `px-3 py-1 rounded text-xs font-medium transition-colors ${is18 ? 'btn-view-active' : 'btn-view-idle'}`;
 }
 
-function updateMobileNavIndicator(idx, total) {
+function updateMobileNavIndicator(from, to, total) {
     let el = document.getElementById('mobile-chart-indicator');
     if (!el) {
         el = document.createElement('div');
@@ -868,7 +871,7 @@ function updateMobileNavIndicator(idx, total) {
         el.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(22,26,30,0.88);color:#B2B5BE;font-size:11px;padding:4px 14px;border-radius:12px;z-index:60;pointer-events:none;border:1px solid #2A2E39;';
         document.body.appendChild(el);
     }
-    el.textContent = `${idx} / ${total}`;
+    el.textContent = from === to ? `${from} / ${total}` : `${from}-${to} / ${total}`;
     el.style.display = (IS_MOBILE && total > 0) ? 'block' : 'none';
 }
 
@@ -1278,8 +1281,8 @@ async function nextPage() {
 
 async function mobileNextChart() {
     const coinsOnPage = allCoins.slice(curPage * 9, curPage * 9 + 9).length;
-    if (mobileChartIdx < coinsOnPage - 1) {
-        mobileChartIdx++;
+    if (mobileChartIdx + 3 < coinsOnPage) {
+        mobileChartIdx += 3;
         applyView();
     } else {
         const maxPage = Math.ceil(allCoins.length / 9) - 1;
@@ -1288,11 +1291,11 @@ async function mobileNextChart() {
 }
 
 async function mobilePrevChart() {
-    if (mobileChartIdx > 0) {
-        mobileChartIdx--;
+    if (mobileChartIdx >= 3) {
+        mobileChartIdx -= 3;
         applyView();
     } else if (curPage > 0) {
-        curPage--; mobileChartIdx = 8; await loadPage();
+        curPage--; mobileChartIdx = 6; await loadPage();
     }
 }
 
