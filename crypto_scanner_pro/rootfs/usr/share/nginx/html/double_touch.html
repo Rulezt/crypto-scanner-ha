@@ -308,7 +308,7 @@
                     <td v-for="col in columns" :key="col.key"
                         :class="col.tdClass ? col.tdClass(r) : 'td-num'">
                         <template v-if="col.key === 'symbol'">
-                            <a :href="`mtf.html?symbol=${r.symbol}`" target="_blank">
+                            <a :href="(haUrl || '') + '/mtf?symbol=' + r.symbol" target="_blank">
                                 {{ r.symbol.replace('USDT','') }}
                             </a>
                         </template>
@@ -381,6 +381,7 @@ const { createApp, ref, computed, onMounted } = Vue;
 
 createApp({
     setup() {
+        const haUrl       = ref('');
         const minVolume   = ref(10e6);
         const topN        = ref(9999);
         const tolerance   = ref(0.5);
@@ -940,6 +941,14 @@ createApp({
         };
         initPopup();
 
+        onMounted(async () => {
+            try {
+                const res  = await fetch('scanner-api/config');
+                const data = await res.json();
+                haUrl.value = (data?.telegram?.ha_url || '').replace(/\/$/, '');
+            } catch(e) {}
+        });
+
         // ============================
         //  HELPERS
         // ============================
@@ -959,7 +968,7 @@ createApp({
         };
 
         return {
-            tolerance, proximity,
+            haUrl, tolerance, proximity,
             columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
             scanning, stopFlag, statusMsg, initialDone,
             results, filteredResults, progressDone, progressTotal, progressPct,
