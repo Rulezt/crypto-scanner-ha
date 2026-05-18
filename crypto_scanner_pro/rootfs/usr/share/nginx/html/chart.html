@@ -878,7 +878,7 @@ function renderSlotTF(idx) {
     s.tfEl.innerHTML = TIMEFRAMES.map(tf => {
         const active = tf === s.curTF;
         return `<button onclick="switchSlotTF(${idx},'${tf}')"
-            style="font-size:9px;padding:1px 4px;border-radius:2px;border:none;cursor:pointer;background:${active?'#2563EB':'#1E222D'};color:${active?'#fff':'#6B7280'};"
+            style="font-size:9px;padding:1px 4px;border-radius:2px;border:none;cursor:pointer;background:${active?'#4A4A4A':'transparent'};color:${active?'#fff':'#6B7280'};"
             >${TF_LABEL[tf]}</button>`;
     }).join('');
 }
@@ -1102,7 +1102,7 @@ function renderFsTFBar() {
     document.getElementById('fs-tf-bar').innerHTML = TIMEFRAMES.map(tf => {
         const active = tf === fsTF;
         return `<button onclick="switchFsTF('${tf}')"
-            style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:${active?'#2563EB':'#2A2E39'};color:${active?'#fff':'#B2B5BE'};"
+            style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:${active?'#4A4A4A':'transparent'};color:${active?'#fff':'#B2B5BE'};"
             >${TF_LABEL[tf]}</button>`;
     }).join('');
 }
