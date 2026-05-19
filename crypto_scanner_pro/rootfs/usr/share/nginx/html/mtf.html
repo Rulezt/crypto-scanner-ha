@@ -69,7 +69,9 @@
     ✕
   </button>
   <div style="width:1px;height:22px;background:#2A2E39;flex-shrink:0;"></div>
-  <span id="hdr-coin"   style="font-size:15px;font-weight:700;color:#E5E7EB;white-space:nowrap;"></span>
+  <a id="hdr-coin" href="#" target="_blank" rel="noopener"
+     style="font-size:15px;font-weight:700;color:#E5E7EB;white-space:nowrap;text-decoration:none;cursor:pointer;"
+     title="Apri su Bybit"></a>
   <span id="hdr-change" style="font-size:12px;font-weight:600;white-space:nowrap;"></span>
   <span style="color:#374151;font-size:11px;">|</span>
   <span id="hdr-vol"    style="font-size:11px;color:#60a5fa;white-space:nowrap;"></span>
@@ -253,9 +255,6 @@ function buildGrid() {
     tfLbl.textContent = cfg.label;
     tfLbl.style.cssText = 'font-size:10px;font-weight:700;color:#60a5fa;background:#1E222D;padding:1px 6px;border-radius:2px;flex-shrink:0;';
 
-    const priceEl = document.createElement('span');
-    priceEl.style.cssText = 'font-size:10px;font-family:monospace;color:#E5E7EB;white-space:nowrap;';
-
     const spacer = document.createElement('div');
     spacer.style.flex = '1';
 
@@ -282,7 +281,7 @@ function buildGrid() {
     rangeBtn.onmouseenter = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#B2B5BE'; };
     rangeBtn.onmouseleave = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#4B5563'; };
     rangeBtn.onclick = () => toggleSlotRange(i);
-    hdr.append(tfLbl, priceEl, spacer, pctEl, resetBtn, rangeBtn, fsBtn);
+    hdr.append(tfLbl, spacer, pctEl, resetBtn, rangeBtn, fsBtn);
     cell.appendChild(hdr);
 
     // ── chart body ─────────────────────────────────────────────────────────
@@ -323,7 +322,7 @@ function buildGrid() {
     });
 
     slots.push({
-      cfg, chart, candleS, emaS, priceEl, cell, rangeCanvas, rangeBtn,
+      cfg, chart, candleS, emaS, cell, rangeCanvas, rangeBtn,
       lastEMA: {5:null,10:null,60:null,223:null},
       dayHighLine:null, dayLowLine:null,
       prevHighLine:null, prevLowLine:null,
@@ -340,7 +339,9 @@ async function loadAll() {
     const rt = await fetch(`api/ticker?symbol=${SYM}`);
     const jt = await rt.json();
     const coin = SYM.replace('USDT','');
-    document.getElementById('hdr-coin').textContent = coin;
+    const hdrCoin = document.getElementById('hdr-coin');
+    hdrCoin.textContent = coin;
+    hdrCoin.href = `https://www.bybit.com/trade/usdt/${SYM}`;
     if (jt.success) {
       const pct = jt.change_24h;
       const el  = document.getElementById('hdr-change');
@@ -349,7 +350,9 @@ async function loadAll() {
       document.getElementById('hdr-vol').textContent = fmtVol(jt.volume_24h);
     }
   } catch(e) {
-    document.getElementById('hdr-coin').textContent = SYM.replace('USDT','');
+    const _hc = document.getElementById('hdr-coin');
+    _hc.textContent = SYM.replace('USDT','');
+    _hc.href = `https://www.bybit.com/trade/usdt/${SYM}`;
   }
 
   // Daily H/L for all charts
@@ -382,8 +385,6 @@ async function loadSlot(idx, dailyData) {
       s.lastEMA[p] = ema[ema.length-1].value;
     }
     s.chart.timeScale().fitContent();
-    if (klines.length)
-      s.priceEl.textContent = fmtPrice(klines[klines.length-1].close);
 
     // H / L / pH / pL lines
     if (dailyData) {
@@ -427,7 +428,6 @@ function openWS() {
     };
     const s = slots[idx];
     s.candleS.update(candle);
-    s.priceEl.textContent = fmtPrice(candle.close);
     for (const {p} of EMA_CFG) {
       if (s.lastEMA[p] === null) continue;
       const k    = 2/(p+1);
