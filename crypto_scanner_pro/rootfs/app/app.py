@@ -275,7 +275,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.8.52',
+        'version': '3.8.53',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -852,6 +852,11 @@ def chart_page():
 def mtf_page():
     """Serve multi-timeframe chart page."""
     return send_file('/usr/share/nginx/html/mtf.html')
+
+
+@app.route('/screener', methods=['GET'])
+def screener_page():
+    return send_file('/usr/share/nginx/html/screener.html')
 
 
 @app.route('/screenshot', methods=['GET'])
