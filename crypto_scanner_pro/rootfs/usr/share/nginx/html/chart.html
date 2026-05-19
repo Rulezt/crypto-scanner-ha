@@ -145,9 +145,15 @@
 
     <div class="w-px h-5 bg-dark-border"></div>
     <button id="alerts-btn" onclick="openAlertsPanel()" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Alert attivi">🔔</button>
-    <button onclick="openOBModal(allCoins[0]?.symbol||'BTCUSDT')" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Order Book">📖 OB</button>
 
     <div class="flex-1"></div>
+
+    <!-- BTC performance indicator -->
+    <div id="btc-ticker" class="flex items-center gap-1.5 px-2 py-1 rounded flex-shrink-0" style="background:#151515;border:1px solid #2A2A2A;">
+        <span style="color:#F7931A;font-size:11px;font-weight:800;">₿</span>
+        <span id="btc-price" class="text-xs font-mono" style="color:#D1D5DB;">---</span>
+        <span id="btc-change" class="text-xs font-semibold" style="color:#6B7280;">---</span>
+    </div>
     <span id="status" class="text-xs text-gray-500 mr-2"></span>
 
     <div id="ws-dot" class="flex items-center gap-1.5">
@@ -1833,6 +1839,46 @@ function toggleFsRange() {
         fsChart.subscribeCrosshairMove(_fsRangeCsSub);
     }
 }
+
+// ── BTC Performance Ticker ────────────────────────────────────────────────────
+let _btcWs = null;
+
+function _updateBTCTicker(price, pct24h) {
+    const priceEl  = document.getElementById('btc-price');
+    const changeEl = document.getElementById('btc-change');
+    if (!priceEl || !changeEl || !price) return;
+    const p = price >= 10000
+        ? Math.round(price).toLocaleString('en-US')
+        : price >= 1 ? price.toFixed(2) : price.toFixed(4);
+    priceEl.textContent = '$' + p;
+    const pctVal = pct24h * 100;
+    const pos = pctVal >= 0;
+    changeEl.textContent = (pos ? '▲+' : '▼') + Math.abs(pctVal).toFixed(2) + '%';
+    changeEl.style.color = pos ? '#22c55e' : '#ef4444';
+}
+
+function _openBTCTicker() {
+    _btcWs = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+    _btcWs.onopen = () => _btcWs.send(JSON.stringify({ op: 'subscribe', args: ['tickers.BTCUSDT'] }));
+    _btcWs.onmessage = ev => {
+        let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
+        if (!msg.topic || !msg.topic.startsWith('tickers.')) return;
+        const d = msg.data;
+        if (d && d.lastPrice) _updateBTCTicker(parseFloat(d.lastPrice), parseFloat(d.price24hPcnt || 0));
+    };
+    _btcWs.onclose = () => setTimeout(_openBTCTicker, 5000);
+    _btcWs.onerror = () => {};
+}
+
+(async function() {
+    try {
+        const r = await fetch('https://api.bybit.com/v5/market/tickers?category=linear&symbol=BTCUSDT');
+        const j = await r.json();
+        const t = j.result?.list?.[0];
+        if (t) _updateBTCTicker(parseFloat(t.lastPrice), parseFloat(t.price24hPcnt));
+    } catch(e) {}
+    _openBTCTicker();
+})();
 </script>
 
 <!-- Order Book fullscreen modal -->
