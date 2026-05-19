@@ -61,7 +61,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v3.8.48</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v3.8.49</div>
                 </div>
             </div>
         </div>
@@ -161,6 +161,12 @@
                         <button onclick="switchMarketTab('losers')" id="tab-losers" class="flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-300">
                             📉 <span class="hidden sm:inline">Top </span>Ribassi
                         </button>
+                        <button onclick="switchMarketTab('stock')" id="tab-stock" class="flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-300">
+                            ▣ Stock
+                        </button>
+                        <button onclick="switchMarketTab('commodity')" id="tab-commodity" class="flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-300">
+                            ⬡ <span class="hidden sm:inline">Commodity</span><span class="sm:hidden">Comm.</span>
+                        </button>
                         <button onclick="switchMarketTab('monitored')" id="tab-monitored" class="flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-300">
                             👁️ <span class="hidden sm:inline">Monitorate (</span>40<span class="hidden sm:inline">)</span>
                         </button>
@@ -200,6 +206,44 @@
                             </thead>
                             <tbody id="losers-tbody" class="text-sm">
                                 <tr><td colspan="6" class="text-center py-8 text-gray-500">Caricamento dati mercato...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Stock Table -->
+                    <div id="content-stock" class="overflow-x-auto hidden">
+                        <table class="w-full">
+                            <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
+                                <tr>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left">Strumento</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right">Prezzo</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right"><span class="hidden sm:inline">Var. </span>24h</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell">Volume</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stock-tbody" class="text-sm">
+                                <tr><td colspan="6" class="text-center py-8 text-gray-500">Caricamento...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Commodity Table -->
+                    <div id="content-commodity" class="overflow-x-auto hidden">
+                        <table class="w-full">
+                            <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
+                                <tr>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left">Strumento</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right">Prezzo</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right"><span class="hidden sm:inline">Var. </span>24h</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell">Volume</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
+                                </tr>
+                            </thead>
+                            <tbody id="commodity-tbody" class="text-sm">
+                                <tr><td colspan="6" class="text-center py-8 text-gray-500">Caricamento...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -451,8 +495,10 @@
             await loadConfig();
             await loadMarketData();
             await loadAlerts();
+            loadStockCommodityData();
             checkTelegramStatus();
             setInterval(loadMarketData, 30000);
+            setInterval(loadStockCommodityData, 60000);
             setInterval(loadAlerts, 60000);
         }
 
@@ -807,6 +853,20 @@ if (currentConfig.ath_atl)        document.getElementById('ath-toggle').checked 
         }
 
         // ── Market data ───────────────────────────────────────────────────────
+        const INSTRUMENT_NAMES = {
+            'AAPLUSDT':'Apple',    'AMZNUSDT':'Amazon',     'ARMUSDT':'ARM',
+            'AVGOUSDT':'Broadcom', 'BABAUSDT':'Alibaba',    'BMNRUSDT':'BMNR',
+            'BZUSDT':'Brent Oil',  'COINUSDT':'Coinbase',   'CRCLUSDT':'Circle',
+            'CRWVUSDT':'CoreWeave','EWJUSDT':'Japan ETF',   'EWYUSDT':'Korea ETF',
+            'GOOGLUSDT':'Alphabet','HOODUSDT':'Robinhood',  'INTCUSDT':'Intel',
+            'IWMUSDT':'Russell 2k','LITEUSDT':'LITE',       'LLYUSDT':'Eli Lilly',
+            'METAUSDT':'Meta',     'MRVLUSDT':'Marvell',    'MSFTUSDT':'Microsoft',
+            'MSTRUSDT':'MicroStrategy','MUUSDT':'Micron',   'NVDAUSDT':'Nvidia',
+            'ORCLUSDT':'Oracle',   'PLTRUSDT':'Palantir',   'QQQUSDT':'Nasdaq ETF',
+            'SNDKUSDT':'SanDisk',  'SPYUSDT':'S&P 500',     'TSLAUSDT':'Tesla',
+            'TSMUSDT':'TSMC',
+            'XAUUSDT':'Gold',      'XAGUSDT':'Silver',      'CLUSDT':'Crude Oil',
+        };
 
         async function loadMarketData() {
             try {
@@ -835,7 +895,7 @@ if (currentConfig.ath_atl)        document.getElementById('ath-toggle').checked 
                 return `
                     <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-gray-500 hidden sm:table-cell">${index + 1}</td>
-                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium">${coin.symbol.replace('USDT', '')}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium">${coin.name || coin.symbol.replace('USDT', '')}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-300 text-sm">$${formatPrice(coin.price)}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right">
                             <span class="${changeColor} ${bgColor} px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs sm:text-sm font-medium">
@@ -853,13 +913,39 @@ if (currentConfig.ath_atl)        document.getElementById('ath-toggle').checked 
 
         function switchMarketTab(tab) {
             const inactiveClass = 'flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-300';
-            ['gainers', 'losers', 'monitored'].forEach(t => {
+            ['gainers', 'losers', 'stock', 'commodity', 'monitored'].forEach(t => {
                 document.getElementById(`tab-${t}`).className = inactiveClass;
                 document.getElementById(`content-${t}`).classList.add('hidden');
             });
-            const color = tab === 'gainers' ? 'emerald' : tab === 'losers' ? 'red' : 'blue';
+            const colors = { gainers:'emerald', losers:'red', stock:'blue', commodity:'yellow', monitored:'blue' };
+            const color = colors[tab] || 'gray';
             document.getElementById(`tab-${tab}`).className = `flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium bg-dark-hover text-${color}-400 border-b-2 border-${color}-400`;
             document.getElementById(`content-${tab}`).classList.remove('hidden');
+        }
+
+        async function loadStockCommodityData() {
+            try {
+                const [ri, rt] = await Promise.all([
+                    fetch('https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000'),
+                    fetch('https://api.bybit.com/v5/market/tickers?category=linear'),
+                ]);
+                const ji = await ri.json(); const jt = await rt.json();
+                const stockSyms = new Set(ji.result.list.filter(x => x.symbolType === 'stock').map(x => x.symbol));
+                const commSyms  = new Set(ji.result.list.filter(x => x.symbolType === 'commodity').map(x => x.symbol));
+                const mapCoin = x => ({
+                    symbol: x.symbol,
+                    name: INSTRUMENT_NAMES[x.symbol] || x.symbol.replace('USDT',''),
+                    price: parseFloat(x.lastPrice),
+                    change_24h: parseFloat(x.price24hPcnt) * 100,
+                    volume_24h: parseFloat(x.turnover24h),
+                });
+                const stocks = jt.result.list.filter(x => stockSyms.has(x.symbol) && x.lastPrice)
+                    .map(mapCoin).sort((a, b) => b.change_24h - a.change_24h);
+                const comms  = jt.result.list.filter(x => commSyms.has(x.symbol) && x.lastPrice)
+                    .map(mapCoin).sort((a, b) => b.change_24h - a.change_24h);
+                renderTable('stock-tbody', stocks);
+                renderTable('commodity-tbody', comms);
+            } catch(e) { console.error('Error loading stock/commodity data:', e); }
         }
 
         async function checkTelegramStatus() {
