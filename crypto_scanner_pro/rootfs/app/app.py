@@ -275,7 +275,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.8.53',
+        'version': '3.8.54',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -403,25 +403,35 @@ def get_recent_alerts():
         ema_candidates = ['/config/ema_cooldown.json', '/share/ema_cooldown.json', '/data/ema_cooldown.json']
         ema_path = next((p for p in ema_candidates if os.path.exists(p)), None)
 
+        # (filepath, label, emoji, key_transform)
+        # key_transform: 'plain' = key is symbol, 'strip_suffix' = key is SYMBOL_TYPE
         sources = [
-            (ema_path,                            'EMA Touch',    '🎯'),
-            ('/data/gainers_cooldown.json',       'Gainer',       '📈'),
-            ('/data/losers_cooldown.json',        'Loser',        '📉'),
-            ('/data/ath_cooldown.json',           'ATH',          '🏆'),
-            ('/data/atl_cooldown.json',           'ATL',          '⬇️'),
-            ('/data/double_touch_cooldown.json',  'Terzo Tocco',  '🔁'),
+            (ema_path,                            'EMA Touch',    '🎯', 'plain'),
+            ('/data/gainers_cooldown.json',       'Gainer',       '📈', 'plain'),
+            ('/data/losers_cooldown.json',        'Loser',        '📉', 'plain'),
+            ('/data/ath_cooldown.json',           'ATH',          '🏆', 'plain'),
+            ('/data/atl_cooldown.json',           'ATL',          '⬇️', 'plain'),
+            ('/data/double_touch_cooldown.json',  'Terzo Tocco',  '🔁', 'strip_suffix'),
         ]
 
         recent_alerts = []
-        for filepath, label, emoji in sources:
+
+        # Standard cooldown files: {symbol: isoformat_timestamp}
+        for filepath, label, emoji, key_mode in sources:
             if not filepath or not os.path.exists(filepath):
                 continue
             try:
                 with open(filepath, 'r') as f:
                     data = json.load(f)
-                for symbol, ts_str in data.items():
-                    ts = datetime.fromisoformat(ts_str)
+                for key, ts_str in data.items():
+                    if not isinstance(ts_str, str):
+                        continue
+                    try:
+                        ts = datetime.fromisoformat(ts_str)
+                    except Exception:
+                        continue
                     if ts >= cutoff:
+                        symbol = key.rsplit('_', 1)[0] if key_mode == 'strip_suffix' else key
                         recent_alerts.append({
                             'symbol':    symbol,
                             'type':      label,
@@ -431,6 +441,31 @@ def get_recent_alerts():
                         })
             except Exception:
                 continue
+
+        # ICO scanner: /data/ico_levels_state.json has {discarded:[...], alerted:{SYMBOL_TF: ts}}
+        ico_state_path = '/data/ico_levels_state.json'
+        if os.path.exists(ico_state_path):
+            try:
+                with open(ico_state_path, 'r') as f:
+                    ico_state = json.load(f)
+                for key, ts_str in ico_state.get('alerted', {}).items():
+                    if not isinstance(ts_str, str):
+                        continue
+                    try:
+                        ts = datetime.fromisoformat(ts_str)
+                    except Exception:
+                        continue
+                    if ts >= cutoff:
+                        symbol = key.rsplit('_', 1)[0]  # strip _TF suffix
+                        recent_alerts.append({
+                            'symbol':    symbol,
+                            'type':      'ICO Level',
+                            'emoji':     '🚀',
+                            'time':      ts.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                            'timestamp': ts.timestamp(),
+                        })
+            except Exception:
+                pass
 
         recent_alerts.sort(key=lambda x: x['timestamp'], reverse=True)
         return jsonify({'success': True, 'alerts': recent_alerts[:50], 'count': len(recent_alerts)})
