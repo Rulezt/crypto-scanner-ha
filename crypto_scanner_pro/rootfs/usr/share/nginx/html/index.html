@@ -49,6 +49,10 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-2 sm:space-x-4">
+                    <a href="screener"
+                       class="flex items-center px-2.5 sm:px-3 py-1.5 bg-dark-hover hover:bg-dark-border rounded-lg transition-colors text-sm font-medium text-gray-300">
+                        <span>Screener</span>
+                    </a>
                     <a href="chart?symbol=BTCUSDT"
                        class="flex items-center px-2.5 sm:px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-sm font-medium text-white">
                         <span>Grafici</span>
@@ -61,93 +65,13 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v3.8.51</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v3.8.52</div>
                 </div>
             </div>
         </div>
     </header>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <!-- Scanner Cards Grid -->
-        <div class="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4 mb-6">
-            <!-- EMA Scanner -->
-            <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-blue-500 transition-all">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-blue-400 text-xs sm:text-sm font-medium">🎯 EMA</div>
-                    <div class="flex items-center gap-1.5">
-                        <button onclick="openScannerModal('ema')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
-                        <span class="text-gray-700 text-xs">|</span>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="ema-toggle" class="sr-only peer" checked onchange="toggleScanner('ema_touch')">
-                            <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                        <div id="ema-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
-                    </div>
-                </div>
-                <div class="text-xl sm:text-2xl font-bold" id="ema-count">-</div>
-                <div class="text-xs text-gray-500 mt-1">Segnali Attivi</div>
-                <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Prezzo vicino all'EMA 60 su timeframe 30m</div>
-            </div>
-
-            <!-- ATH/ATL Scanner -->
-            <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-amber-500 transition-all">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-amber-400 text-xs sm:text-sm font-medium">🏆 ATH/ATL</div>
-                    <div class="flex items-center gap-1.5">
-                        <button onclick="openScannerModal('ath')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
-                        <span class="text-gray-700 text-xs">|</span>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="ath-toggle" class="sr-only peer" checked onchange="toggleScanner('ath_atl')">
-                            <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-amber-600"></div>
-                        </label>
-                        <div id="ath-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
-                    </div>
-                </div>
-                <div class="text-xl sm:text-2xl font-bold" id="ath-count">40</div>
-                <div class="text-xs text-gray-500 mt-1">Coin Monitorate</div>
-                <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Prezzo vicino al massimo/minimo storico annuale</div>
-            </div>
-
-            <!-- ICO Levels Scanner -->
-            <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-pink-500 transition-all">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-pink-400 text-xs sm:text-sm font-medium">🚀 ICO</div>
-                    <div class="flex items-center gap-1.5">
-                        <button onclick="openScannerModal('ico')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
-                        <span class="text-gray-700 text-xs">|</span>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="ico-toggle" class="sr-only peer" checked onchange="toggleScanner('ico_levels')">
-                            <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-pink-600"></div>
-                        </label>
-                        <div id="ico-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
-                    </div>
-                </div>
-                <div class="text-xl sm:text-2xl font-bold" id="ico-count">-</div>
-                <div class="text-xs text-gray-500 mt-1">Listing Recenti</div>
-                <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Nuove coin vicino al prezzo di listing iniziale</div>
-            </div>
-
-            <!-- Terzo Tocco Scanner -->
-            <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-cyan-500 transition-all">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-cyan-400 text-xs sm:text-sm font-medium">🔁 Terzo Tocco</div>
-                    <div class="flex items-center gap-1.5">
-                        <button onclick="openScannerModal('dt')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
-                        <span class="text-gray-700 text-xs">|</span>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="dt-toggle" class="sr-only peer" checked onchange="toggleScanner('double_touch')">
-                            <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-cyan-600"></div>
-                        </label>
-                        <div id="dt-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
-                    </div>
-                </div>
-                <div class="text-xl sm:text-2xl font-bold" id="dt-count">-</div>
-                <div class="text-xs text-gray-500 mt-1">Pattern Daily</div>
-                <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Due tocchi identici H/L — breakout atteso al terzo</div>
-                <a href="double-touch" class="mt-2 block text-xs text-cyan-500 hover:text-cyan-300">→ Scanner visuale</a>
-            </div>
-        </div>
-
         <!-- Main Content Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Left Column: Market Overview -->
@@ -383,109 +307,6 @@
         </div>
     </div>
 
-    <!-- EMA Scanner Modal -->
-    <div id="scanner-modal-ema" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('ema',event)">
-        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
-                <span style="font-size:13px;font-weight:700;color:#93C5FD;">🎯 Scanner EMA</span>
-                <button onclick="closeScannerModal('ema')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
-            </div>
-            <div class="p-4 space-y-3">
-                <div><label class="text-xs text-gray-500 block mb-1">Soglia (%):</label><input type="number" step="0.1" id="ema-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Periodo EMA:</label><input type="number" id="ema-cfg-period" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="ema-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="ema-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-blue-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
-            </div>
-            <div class="px-4 pb-3 flex gap-2">
-                <button onclick="saveScannerConfig('ema')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
-                <button onclick="closeScannerModal('ema')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors">Annulla</button>
-            </div>
-            <div id="ema-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
-        </div>
-    </div>
-
-
-    <!-- ATH/ATL Scanner Modal -->
-    <div id="scanner-modal-ath" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('ath',event)">
-        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
-                <span style="font-size:13px;font-weight:700;color:#FCD34D;">🏆 Scanner ATH/ATL</span>
-                <button onclick="closeScannerModal('ath')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
-            </div>
-            <div class="p-4 space-y-3">
-                <div><label class="text-xs text-gray-500 block mb-1">Prossimità (%):</label><input type="number" step="0.1" id="ath-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Storico (giorni):</label><input type="number" id="ath-cfg-lookback" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="ath-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="ath-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
-            </div>
-            <div class="px-4 pb-3 flex gap-2">
-                <button onclick="saveScannerConfig('ath')" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
-                <button onclick="closeScannerModal('ath')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors">Annulla</button>
-            </div>
-            <div id="ath-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
-        </div>
-    </div>
-
-    <!-- ICO Levels Scanner Modal -->
-    <div id="scanner-modal-ico" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('ico',event)">
-        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
-                <span style="font-size:13px;font-weight:700;color:#F9A8D4;">🚀 Scanner ICO Levels</span>
-                <button onclick="closeScannerModal('ico')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
-            </div>
-            <div class="p-4 space-y-3">
-                <div><label class="text-xs text-gray-500 block mb-1">Soglia prossimità (%):</label><input type="number" step="0.1" id="ico-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Timeframe:</label>
-                    <select id="ico-cfg-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none">
-                        <option value="D">Daily (1D)</option>
-                        <option value="240">4h</option>
-                        <option value="60">1h</option>
-                        <option value="30">30m</option>
-                        <option value="15">15m</option>
-                    </select>
-                </div>
-                <div><label class="text-xs text-gray-500 block mb-1">Giorni listing recenti:</label><input type="number" id="ico-cfg-days" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="ico-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="ico-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
-            </div>
-            <div class="px-4 pb-3 flex gap-2">
-                <button onclick="saveScannerConfig('ico')" class="flex-1 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
-                <button onclick="closeScannerModal('ico')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors">Annulla</button>
-            </div>
-            <div id="ico-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
-        </div>
-    </div>
-
-    <!-- Terzo Tocco Scanner Modal -->
-    <div id="scanner-modal-dt" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('dt',event)">
-        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
-                <span style="font-size:13px;font-weight:700;color:#67E8F9;">🔁 Terzo Tocco Scanner</span>
-                <button onclick="closeScannerModal('dt')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
-            </div>
-            <div class="p-4 space-y-3">
-                <div><label class="text-xs text-gray-500 block mb-1">Tolleranza tocchi (%):</label><input type="number" step="0.1" id="dt-cfg-tolerance" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Prossimità al livello (%):</label><input type="number" step="0.1" id="dt-cfg-proximity" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Timeframe:</label>
-                    <select id="dt-cfg-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none">
-                        <option value="D">Daily (1D)</option>
-                        <option value="240">4h</option>
-                        <option value="60">1h</option>
-                        <option value="30">30m</option>
-                    </select>
-                </div>
-                <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="dt-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Cooldown alert (ore):</label><input type="number" id="dt-cfg-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="dt-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
-            </div>
-            <div class="px-4 pb-3 flex gap-2">
-                <button onclick="saveScannerConfig('dt')" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
-                <button onclick="closeScannerModal('dt')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors">Annulla</button>
-            </div>
-            <div id="dt-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
-        </div>
-    </div>
-
     <script>
         const API_URL = '.';
         let currentConfig = {};
@@ -500,6 +321,19 @@
             setInterval(loadMarketData, 30000);
             setInterval(loadStockCommodityData, 60000);
             setInterval(loadAlerts, 60000);
+        }
+
+        function updateBotStatus() {
+            const allEnabled = [
+                currentConfig.ema_touch?.enabled,
+                currentConfig.ath_atl?.enabled,
+                currentConfig.ico_levels?.enabled,
+                currentConfig.double_touch?.enabled,
+            ].some(v => v);
+            const statusEl = document.getElementById('bot-status');
+            statusEl.innerHTML = allEnabled
+                ? `<div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div><span class="text-sm text-emerald-400 font-medium hidden sm:inline">Online</span>`
+                : `<div class="w-2 h-2 bg-gray-500 rounded-full"></div><span class="text-sm text-gray-500 hidden sm:inline">Offline</span>`;
         }
 
         async function loadAlerts() {
@@ -538,12 +372,6 @@
             try {
                 const res = await fetch(`${API_URL}/scanner-api/config`);
                 currentConfig = await res.json();
-
-                if (currentConfig.ema_touch)      document.getElementById('ema-toggle').checked    = currentConfig.ema_touch.enabled;
-if (currentConfig.ath_atl)        document.getElementById('ath-toggle').checked    = currentConfig.ath_atl.enabled;
-                if (currentConfig.ico_levels)     document.getElementById('ico-toggle').checked    = currentConfig.ico_levels.enabled;
-                if (currentConfig.double_touch)   document.getElementById('dt-toggle').checked     = currentConfig.double_touch.enabled;
-
                 updateDashboardInfo();
                 updateBotStatus();
             } catch (e) {
@@ -683,173 +511,6 @@ if (currentConfig.ath_atl)        document.getElementById('ath-toggle').checked 
                 statusEl.className = 'p-3 rounded text-sm bg-red-500/20 text-red-300';
                 statusEl.textContent = '❌ Errore: ' + e.message;
             }
-        }
-
-        // ── Per-scanner modals ────────────────────────────────────────────────
-
-        function openScannerModal(name) {
-            const cfg = currentConfig;
-            if (name === 'ema') {
-                document.getElementById('ema-cfg-threshold').value    = cfg.ema_touch?.ema_touch_threshold ?? 2.0;
-                document.getElementById('ema-cfg-period').value       = cfg.ema_touch?.ema_period ?? 60;
-                document.getElementById('ema-cfg-interval').value     = cfg.ema_touch?.scan_interval_minutes ?? 30;
-                document.getElementById('ema-cfg-screenshot-tf').value = cfg.ema_touch?.screenshot_tf ?? '30';
-            } else if (name === 'ath') {
-                document.getElementById('ath-cfg-threshold').value     = cfg.ath_atl?.proximity_threshold ?? 1.0;
-                document.getElementById('ath-cfg-lookback').value      = cfg.ath_atl?.lookback_days ?? 365;
-                document.getElementById('ath-cfg-interval').value      = cfg.ath_atl?.scan_interval_minutes ?? 60;
-                document.getElementById('ath-cfg-screenshot-tf').value  = cfg.ath_atl?.screenshot_tf ?? 'D';
-            } else if (name === 'ico') {
-                document.getElementById('ico-cfg-threshold').value     = cfg.ico_levels?.ico_levels_threshold ?? 2.0;
-                document.getElementById('ico-cfg-tf').value            = cfg.ico_levels?.ico_levels_tf ?? 'D';
-                document.getElementById('ico-cfg-days').value          = cfg.general?.new_listing_days ?? 30;
-                document.getElementById('ico-cfg-interval').value      = cfg.ico_levels?.scan_interval_minutes ?? 60;
-                document.getElementById('ico-cfg-screenshot-tf').value  = cfg.ico_levels?.screenshot_tf ?? 'D';
-            } else if (name === 'dt') {
-                document.getElementById('dt-cfg-tolerance').value      = cfg.double_touch?.tolerance ?? 0.5;
-                document.getElementById('dt-cfg-proximity').value      = cfg.double_touch?.proximity ?? 2.0;
-                document.getElementById('dt-cfg-tf').value             = cfg.double_touch?.scan_tf ?? 'D';
-                document.getElementById('dt-cfg-interval').value       = cfg.double_touch?.scan_interval_minutes ?? 240;
-                document.getElementById('dt-cfg-cooldown').value       = cfg.double_touch?.cooldown_hours ?? 12;
-                document.getElementById('dt-cfg-screenshot-tf').value   = cfg.double_touch?.screenshot_tf ?? 'D';
-            }
-            const statusEl = document.getElementById(`${name}-cfg-status`);
-            if (statusEl) statusEl.className = 'hidden';
-            document.getElementById(`scanner-modal-${name}`).style.display = 'block';
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeScannerModal(name, event) {
-            if (event && event.target !== document.getElementById(`scanner-modal-${name}`)) return;
-            document.getElementById(`scanner-modal-${name}`).style.display = 'none';
-            document.body.style.overflow = '';
-        }
-
-        async function saveScannerConfig(name) {
-            const statusEl = document.getElementById(`${name}-cfg-status`);
-            if (statusEl) {
-                statusEl.className = 'mx-4 mb-4 p-2 rounded text-xs bg-blue-500/20 text-blue-300';
-                statusEl.textContent = 'Salvataggio...';
-            }
-            try {
-                let updates = {};
-                if (name === 'ema') {
-                    updates.ema_touch = {
-                        ...currentConfig.ema_touch,
-                        ema_touch_threshold:    parseFloat(document.getElementById('ema-cfg-threshold').value) || 2.0,
-                        ema_period:             parseInt(document.getElementById('ema-cfg-period').value) || 60,
-                        scan_interval_minutes:  parseInt(document.getElementById('ema-cfg-interval').value) || 30,
-                        screenshot_tf:          document.getElementById('ema-cfg-screenshot-tf').value || '30',
-                    };
-                } else if (name === 'ath') {
-                    updates.ath_atl = {
-                        ...currentConfig.ath_atl,
-                        proximity_threshold:   parseFloat(document.getElementById('ath-cfg-threshold').value) || 1.0,
-                        lookback_days:         parseInt(document.getElementById('ath-cfg-lookback').value) || 365,
-                        scan_interval_minutes: parseInt(document.getElementById('ath-cfg-interval').value) || 60,
-                        screenshot_tf:         document.getElementById('ath-cfg-screenshot-tf').value || 'D',
-                    };
-                } else if (name === 'ico') {
-                    updates.ico_levels = {
-                        ...currentConfig.ico_levels,
-                        ico_levels_threshold:  parseFloat(document.getElementById('ico-cfg-threshold').value) || 2.0,
-                        ico_levels_tf:         document.getElementById('ico-cfg-tf').value || 'D',
-                        scan_interval_minutes: parseInt(document.getElementById('ico-cfg-interval').value) || 60,
-                        screenshot_tf:         document.getElementById('ico-cfg-screenshot-tf').value || 'D',
-                    };
-                    updates.general = {
-                        ...currentConfig.general,
-                        new_listing_days: parseInt(document.getElementById('ico-cfg-days').value) || 30,
-                    };
-                } else if (name === 'dt') {
-                    updates.double_touch = {
-                        ...currentConfig.double_touch,
-                        tolerance:             parseFloat(document.getElementById('dt-cfg-tolerance').value) || 0.5,
-                        proximity:             parseFloat(document.getElementById('dt-cfg-proximity').value) || 2.0,
-                        scan_tf:               document.getElementById('dt-cfg-tf').value || 'D',
-                        scan_interval_minutes: parseInt(document.getElementById('dt-cfg-interval').value) || 240,
-                        cooldown_hours:        parseInt(document.getElementById('dt-cfg-cooldown').value) || 12,
-                        screenshot_tf:         document.getElementById('dt-cfg-screenshot-tf').value || 'D',
-                    };
-                }
-
-                const newConfig = { ...currentConfig, ...updates };
-                const res = await fetch(`${API_URL}/scanner-api/config`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newConfig),
-                });
-                const result = await res.json();
-                if (result.success) {
-                    currentConfig = newConfig;
-                    updateBotStatus();
-                    if (statusEl) {
-                        statusEl.className = 'mx-4 mb-4 p-2 rounded text-xs bg-emerald-500/20 text-emerald-300';
-                        statusEl.textContent = '✅ Salvato!';
-                    }
-                    setTimeout(() => closeScannerModal(name), 1200);
-                } else {
-                    throw new Error(result.error || 'Errore');
-                }
-            } catch (e) {
-                if (statusEl) {
-                    statusEl.className = 'mx-4 mb-4 p-2 rounded text-xs bg-red-500/20 text-red-300';
-                    statusEl.textContent = '❌ ' + e.message;
-                }
-            }
-        }
-
-        // ── Scanner toggle ────────────────────────────────────────────────────
-
-        const TOGGLE_MAP = {
-            'ema_touch':      'ema-toggle',
-            'ath_atl':        'ath-toggle',
-            'ico_levels':     'ico-toggle',
-            'double_touch':   'dt-toggle',
-        };
-
-        async function toggleScanner(scannerName) {
-            const toggleId = TOGGLE_MAP[scannerName];
-            if (!toggleId) return;
-            const toggle = document.getElementById(toggleId);
-            const newConfig = { ...currentConfig };
-            if (newConfig[scannerName]) {
-                newConfig[scannerName] = { ...newConfig[scannerName], enabled: toggle.checked };
-                try {
-                    const res = await fetch(`${API_URL}/scanner-api/config`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(newConfig),
-                    });
-                    if (res.ok) {
-                        currentConfig = newConfig;
-                        updateBotStatus();
-                    }
-                } catch (e) {
-                    console.error('Error toggling scanner:', e);
-                    toggle.checked = !toggle.checked;
-                }
-            }
-        }
-
-        // ── Bot status ────────────────────────────────────────────────────────
-
-        function updateBotStatus() {
-            const scanners = {
-                'ema-status':    currentConfig.ema_touch?.enabled,
-                'ath-status':    currentConfig.ath_atl?.enabled,
-                'ico-status':    currentConfig.ico_levels?.enabled,
-                'dt-status':     currentConfig.double_touch?.enabled,
-            };
-            Object.entries(scanners).forEach(([id, enabled]) => {
-                const el = document.getElementById(id);
-                if (el) el.className = `w-2 h-2 rounded-full ${enabled ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'}`;
-            });
-            const allEnabled = Object.values(scanners).some(v => v);
-            const statusEl = document.getElementById('bot-status');
-            statusEl.innerHTML = allEnabled
-                ? `<div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div><span class="text-sm text-emerald-400 font-medium hidden sm:inline">Online</span>`
-                : `<div class="w-2 h-2 bg-gray-500 rounded-full"></div><span class="text-sm text-gray-500 hidden sm:inline">Offline</span>`;
         }
 
         // ── Market data ───────────────────────────────────────────────────────
