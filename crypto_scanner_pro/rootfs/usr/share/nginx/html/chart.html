@@ -26,6 +26,9 @@
         .btn-loss-active  { background: #7f1d1d; color: #f87171; }
         .btn-loss-idle    { color: #6B7280; background: #1E222D; }
         .btn-loss-idle:hover { color: #f87171; background: #450a0a; }
+        .btn-commodity-active { background: #292524; color: #d6b57a; }
+        .btn-commodity-idle   { color: #6B7280; background: #1E222D; }
+        .btn-commodity-idle:hover { color: #d6b57a; background: #1c1917; }
         .btn-stock-active { background: #1e3a5f; color: #60a5fa; }
         .btn-stock-idle   { color: #6B7280; background: #1E222D; }
         .btn-stock-idle:hover { color: #60a5fa; background: #172554; }
@@ -126,7 +129,8 @@
     <div class="flex gap-1">
         <button id="btn-mode-gain"  onclick="switchMode('gainers')"   class="px-3 py-1 rounded text-xs font-medium transition-colors btn-gain-active">▲ Migliori</button>
         <button id="btn-mode-loss"  onclick="switchMode('losers')"    class="px-3 py-1 rounded text-xs font-medium transition-colors btn-loss-idle">▼ Peggiori</button>
-        <button id="btn-mode-stock" onclick="switchMode('stock')"     class="px-3 py-1 rounded text-xs font-medium transition-colors btn-stock-idle">▣ Stock</button>
+        <button id="btn-mode-commodity" onclick="switchMode('commodity')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-commodity-idle">⬡ Commodity</button>
+        <button id="btn-mode-stock"     onclick="switchMode('stock')"     class="px-3 py-1 rounded text-xs font-medium transition-colors btn-stock-idle">▣ Stock</button>
         <button id="btn-mode-ico"   onclick="switchMode('ico')"       class="px-3 py-1 rounded text-xs font-medium transition-colors btn-ico-idle">◆ ICO</button>
         <button id="btn-mode-fav"  onclick="switchMode('favorites')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-fav-idle">★ Preferiti</button>
     </div>
@@ -1407,12 +1411,13 @@ async function switchMode(mode) {
 }
 
 function renderModeButtons() {
-    const g = curMode==='gainers', l = curMode==='losers', f = curMode==='favorites', ic = curMode==='ico', st = curMode==='stock';
-    document.getElementById('btn-mode-gain').className  = `px-3 py-1 rounded text-xs font-medium transition-colors ${g?'btn-gain-active':'btn-gain-idle'}`;
-    document.getElementById('btn-mode-loss').className  = `px-3 py-1 rounded text-xs font-medium transition-colors ${l?'btn-loss-active':'btn-loss-idle'}`;
-    document.getElementById('btn-mode-stock').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${st?'btn-stock-active':'btn-stock-idle'}`;
-    document.getElementById('btn-mode-fav').className   = `px-3 py-1 rounded text-xs font-medium transition-colors ${f?'btn-fav-active':'btn-fav-idle'}`;
-    document.getElementById('btn-mode-ico').className   = `px-3 py-1 rounded text-xs font-medium transition-colors ${ic?'btn-ico-active':'btn-ico-idle'}`;
+    const g = curMode==='gainers', l = curMode==='losers', f = curMode==='favorites', ic = curMode==='ico', st = curMode==='stock', cm = curMode==='commodity';
+    document.getElementById('btn-mode-gain').className      = `px-3 py-1 rounded text-xs font-medium transition-colors ${g?'btn-gain-active':'btn-gain-idle'}`;
+    document.getElementById('btn-mode-loss').className      = `px-3 py-1 rounded text-xs font-medium transition-colors ${l?'btn-loss-active':'btn-loss-idle'}`;
+    document.getElementById('btn-mode-commodity').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${cm?'btn-commodity-active':'btn-commodity-idle'}`;
+    document.getElementById('btn-mode-stock').className     = `px-3 py-1 rounded text-xs font-medium transition-colors ${st?'btn-stock-active':'btn-stock-idle'}`;
+    document.getElementById('btn-mode-fav').className       = `px-3 py-1 rounded text-xs font-medium transition-colors ${f?'btn-fav-active':'btn-fav-idle'}`;
+    document.getElementById('btn-mode-ico').className       = `px-3 py-1 rounded text-xs font-medium transition-colors ${ic?'btn-ico-active':'btn-ico-idle'}`;
 }
 
 function renderTFBar() {
@@ -1434,15 +1439,16 @@ async function fetchCoins() {
         if (!j.success) throw new Error('API error');
         allCoins = j.data;
         await fetchFavoritesList();
-    } else if (curMode === 'stock') {
+    } else if (curMode === 'commodity' || curMode === 'stock') {
+        const type = curMode === 'stock' ? 'stock' : 'commodity';
         const [ri, rt] = await Promise.all([
             fetch('https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000'),
             fetch('https://api.bybit.com/v5/market/tickers?category=linear'),
         ]);
         const ji = await ri.json(); const jt = await rt.json();
-        const stockSyms = new Set(ji.result.list.filter(x => x.symbolType === 'stock').map(x => x.symbol));
+        const syms = new Set(ji.result.list.filter(x => x.symbolType === type).map(x => x.symbol));
         allCoins = jt.result.list
-            .filter(x => stockSyms.has(x.symbol) && x.lastPrice)
+            .filter(x => syms.has(x.symbol) && x.lastPrice)
             .map(x => ({
                 symbol: x.symbol,
                 change_24h: parseFloat(x.price24hPcnt) * 100,
