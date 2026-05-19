@@ -264,6 +264,20 @@ const LC          = LightweightCharts;
 let TZ_OFFSET_S   = 0;
 const TIMEFRAMES  = ['1','5','30','60','240','D'];
 const TF_LABEL    = {'1':'1m','5':'5m','30':'30m','60':'1h','240':'4h','D':'1D'};
+const INSTRUMENT_NAMES = {
+    'AAPLUSDT':'Apple',   'AMZNUSDT':'Amazon',    'ARMUSDT':'ARM',
+    'AVGOUSDT':'Broadcom','BABAUSDT':'Alibaba',    'BMNRUSDT':'BMNR',
+    'BZUSDT':'Brent Oil', 'COINUSDT':'Coinbase',   'CRCLUSDT':'Circle',
+    'CRWVUSDT':'CoreWeave','EWJUSDT':'Japan ETF',  'EWYUSDT':'Korea ETF',
+    'GOOGLUSDT':'Alphabet','HOODUSDT':'Robinhood', 'INTCUSDT':'Intel',
+    'IWMUSDT':'Russell 2k','LITEUSDT':'LITE',      'LLYUSDT':'Eli Lilly',
+    'METAUSDT':'Meta',    'MRVLUSDT':'Marvell',    'MSFTUSDT':'Microsoft',
+    'MSTRUSDT':'MicroStrategy','MUUSDT':'Micron',  'NVDAUSDT':'Nvidia',
+    'ORCLUSDT':'Oracle',  'PLTRUSDT':'Palantir',   'QQQUSDT':'Nasdaq ETF',
+    'SNDKUSDT':'SanDisk', 'SPYUSDT':'S&P 500',     'TSLAUSDT':'Tesla',
+    'TSMUSDT':'TSMC',
+    'XAUUSDT':'Gold',     'XAGUSDT':'Silver',      'CLUSDT':'Crude Oil',
+};
 const SLOTS_TOTAL = 18;
 const EMA_CFG     = [
     {p:5,   color:'#ef4444', width:2},
@@ -1048,7 +1062,9 @@ async function loadSlot(idx, coin) {
     const s = slots[idx];
     s.symbol = coin.symbol; s.coin = coin;
     const pct = coin.change_24h;
-    s.titleEl.textContent  = coin.symbol.replace('USDT','');
+    s.titleEl.textContent  = (curMode === 'stock' || curMode === 'commodity')
+        ? (INSTRUMENT_NAMES[coin.symbol] || coin.symbol.replace('USDT',''))
+        : coin.symbol.replace('USDT','');
     s.changeEl.textContent = '(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)';
     s.changeEl.style.color = pct >= 0 ? '#34d399' : '#f87171';
     s.volEl.textContent    = fmtVol(coin.volume_24h);
