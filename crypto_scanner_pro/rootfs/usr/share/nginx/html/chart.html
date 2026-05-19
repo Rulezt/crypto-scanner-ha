@@ -1053,6 +1053,9 @@ async function loadPage() {
         setStatus('Caricamento grafici...');
         await Promise.all(pageCoins.map((coin, i) => loadSlot(i, coin)));
         setStatus('');
+        for (let i = 0; i < visible; i++) {
+            if (!slots[i].coin) slots[i].cell.style.display = 'none';
+        }
         openWS();
         await syncAllAlertLines();
     }
