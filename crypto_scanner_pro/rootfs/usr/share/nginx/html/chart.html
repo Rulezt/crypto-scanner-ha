@@ -299,6 +299,7 @@ let obBidLine = null, obAskLine = null;
 let obDayHighLine = null, obDayLowLine = null;
 let obPrevHighLine = null, obPrevLowLine = null;
 let fsMidLines = [], obMidLines = []; // kept for compat, no longer used
+let fsDayPrimitive = null, obDayPrimitive = null;
 let fsObActive = false, fsObBidLine = null, fsObAskLine = null, fsObTimer = null;
 
 const IS_MOBILE = window.innerWidth < 640;
@@ -608,6 +609,51 @@ function makeChart(el, opts) {
 }
 
 
+// ── Day separator lines ────────────────────────────────────────────────────────
+function getDayTimestamps(klines) {
+    if (!klines || klines.length < 2) return [];
+    const result = [];
+    let prevDay = Math.floor(klines[0].time / 86400);
+    for (let i = 1; i < klines.length; i++) {
+        const day = Math.floor(klines[i].time / 86400);
+        if (day !== prevDay) { result.push(klines[i].time); prevDay = day; }
+    }
+    return result;
+}
+class DayLinesPrimitive {
+    constructor(dayTs, chart) {
+        const renderer = {
+            draw: target => target.useBitmapCoordinateSpace(({ context: ctx, bitmapSize, horizontalPixelRatio }) => {
+                const ts = chart.timeScale();
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                ctx.lineWidth = horizontalPixelRatio;
+                for (const t of dayTs) {
+                    const x = ts.timeToCoordinate(t);
+                    if (x === null) continue;
+                    const xPx = Math.round(x * horizontalPixelRatio) + 0.5;
+                    if (xPx < 0 || xPx > bitmapSize.width) continue;
+                    ctx.beginPath(); ctx.moveTo(xPx, 0); ctx.lineTo(xPx, bitmapSize.height); ctx.stroke();
+                }
+                ctx.restore();
+            })
+        };
+        this._view = { renderer: () => renderer, zOrder: () => 'bottom' };
+    }
+    paneViews() { return [this._view]; }
+    updateAllViews() {}
+    attached() {}
+    detached() {}
+}
+function attachDayLines(series, chart, klines, tf, prev) {
+    if (prev) { try { series.detachPrimitive(prev); } catch(e) {} }
+    if (tf === 'D' || !klines || klines.length < 2) return null;
+    const dayTs = getDayTimestamps(klines);
+    if (!dayTs.length) return null;
+    const prim = new DayLinesPrimitive(dayTs, chart);
+    try { series.attachPrimitive(prim); return prim; } catch(e) { return null; }
+}
+
 // ── OB Levels (bid/ask wall) per slot e fullscreen ────────────────────────────
 async function _fetchOBLevels(symbol) {
     const r = await fetch(`https://api.bybit.com/v5/market/orderbook?category=linear&symbol=${symbol}&limit=200`);
@@ -851,6 +897,7 @@ function buildGrid() {
             prevHighLine: null, prevLowLine: null,
             obActive: false, obBidLine: null, obAskLine: null, obTimer: null,
             rangeActive: false, rangeP1: null, rangeP2: null, _rangeSub: null, _rangeCsSub: null,
+            dayPrimitive: null,
         });
         const _s = slots[slots.length - 1];
         chart.timeScale().subscribeVisibleTimeRangeChange(() => {});
@@ -926,6 +973,7 @@ async function switchSlotTF(idx, tf) {
     if (s.dayLowLine)   { try { s.candleS.removePriceLine(s.dayLowLine);   } catch(e) {} s.dayLowLine   = null; }
     if (s.prevHighLine) { try { s.candleS.removePriceLine(s.prevHighLine); } catch(e) {} s.prevHighLine = null; }
     if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
+    if (s.dayPrimitive) { try { s.candleS.detachPrimitive(s.dayPrimitive); } catch(e) {} s.dayPrimitive = null; }
     s.candleS.setData([]);
     for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
     s.lastEMA = {5:null, 10:null, 60:null, 223:null};
@@ -973,6 +1021,7 @@ async function loadPage() {
         clearInterval(s.obTimer); s.obTimer = null; _clearSlotOBLines(s);
         if (s.rangeActive) { s.rangeActive = false; s.rangeBtn.style.color = '#4B5563'; if (s._rangeSub) { try { s.chart.unsubscribeClick(s._rangeSub); } catch(e){} s._rangeSub = null; } if (s._rangeCsSub) { try { s.chart.unsubscribeCrosshairMove(s._rangeCsSub); } catch(e){} s._rangeCsSub = null; } }
         s.rangeP1 = null; s.rangeP2 = null; try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
+        if (s.dayPrimitive) { try { s.candleS.detachPrimitive(s.dayPrimitive); } catch(e) {} s.dayPrimitive = null; }
         s.candleS.setData([]);
         for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
         s.lastEMA = {5:null, 10:null, 60:null, 223:null};
@@ -1020,6 +1069,7 @@ async function loadSlotData(idx) {
         if (!j.success) return;
         const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
         s.candleS.setData(klines);
+        s.dayPrimitive = attachDayLines(s.candleS, s.chart, klines, s.curTF, s.dayPrimitive);
         s.candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
         for (const {p} of EMA_CFG) {
             const ema = calcEMA(klines, p);
@@ -1126,6 +1176,7 @@ function closeFullscreen() {
         if (fsPrevLowLine)  { try { fsCandleS.removePriceLine(fsPrevLowLine);  } catch(e) {} fsPrevLowLine  = null; }
         if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} fsObBidLine = null; }
         if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} fsObAskLine = null; }
+        if (fsDayPrimitive) { try { fsCandleS.detachPrimitive(fsDayPrimitive); } catch(e) {} fsDayPrimitive = null; }
         fsCandleS.setData([]);
         for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
         fsLastEMA = {};
@@ -1149,6 +1200,7 @@ async function switchFsTF(tf) {
     if (fsDayLowLine)   { try { fsCandleS.removePriceLine(fsDayLowLine);   } catch(e) {} fsDayLowLine   = null; }
     if (fsPrevHighLine) { try { fsCandleS.removePriceLine(fsPrevHighLine); } catch(e) {} fsPrevHighLine = null; }
     if (fsPrevLowLine)  { try { fsCandleS.removePriceLine(fsPrevLowLine);  } catch(e) {} fsPrevLowLine  = null; }
+    if (fsDayPrimitive) { try { fsCandleS.detachPrimitive(fsDayPrimitive); } catch(e) {} fsDayPrimitive = null; }
     fsCandleS.setData([]);
     for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
     fsLastEMA = {};
@@ -1166,6 +1218,7 @@ async function loadFsData() {
         if (!j.success) return;
         const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
         fsCandleS.setData(klines);
+        fsDayPrimitive = attachDayLines(fsCandleS, fsChart, klines, fsTF, fsDayPrimitive);
         fsCandleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
         for (const {p} of EMA_CFG) {
             const ema = calcEMA(klines, p);
@@ -1430,6 +1483,7 @@ async function switchOBTF(tf) {
     if (tf === obTF || !obSymbolName) return;
     closeOBWS(); obTF = tf; renderOBTFBar();
     _clearOBLines();
+    if (obDayPrimitive) { try { obCandleS.detachPrimitive(obDayPrimitive); } catch(e) {} obDayPrimitive = null; }
     obCandleS.setData([]);
     for (const {p} of EMA_CFG) obEmaS[p].setData([]);
     obLastEMA = {};
@@ -1455,6 +1509,7 @@ async function loadOBData() {
         if (!j.success) return;
         const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
         obCandleS.setData(klines);
+        obDayPrimitive = attachDayLines(obCandleS, obChart, klines, obTF, obDayPrimitive);
         obCandleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
         for (const {p} of EMA_CFG) {
             const ema = calcEMA(klines, p);
@@ -1523,6 +1578,7 @@ function openOBModal(symbol) {
     if (changed) {
         closeOBWS();
         _clearOBLines();
+        if (obDayPrimitive) { try { obCandleS.detachPrimitive(obDayPrimitive); } catch(e) {} obDayPrimitive = null; }
         obCandleS.setData([]);
         for (const {p} of EMA_CFG) obEmaS[p].setData([]);
         obLastEMA = {};
@@ -1538,6 +1594,7 @@ function closeOBModal() {
     closeOBWS();
     if (obCandleS) {
         _clearOBLines();
+        if (obDayPrimitive) { try { obCandleS.detachPrimitive(obDayPrimitive); } catch(e) {} obDayPrimitive = null; }
         obCandleS.setData([]);
         for (const {p} of EMA_CFG) obEmaS[p].setData([]);
         obLastEMA = {};
