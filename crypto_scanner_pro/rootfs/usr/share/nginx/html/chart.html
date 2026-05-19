@@ -26,6 +26,9 @@
         .btn-loss-active  { background: #7f1d1d; color: #f87171; }
         .btn-loss-idle    { color: #6B7280; background: #1E222D; }
         .btn-loss-idle:hover { color: #f87171; background: #450a0a; }
+        .btn-stock-active { background: #1e3a5f; color: #60a5fa; }
+        .btn-stock-idle   { color: #6B7280; background: #1E222D; }
+        .btn-stock-idle:hover { color: #60a5fa; background: #172554; }
         .btn-fav-active   { background: #78350f; color: #fbbf24; }
         .btn-fav-idle     { color: #6B7280; background: #1E222D; }
         .btn-fav-idle:hover { color: #fbbf24; background: #451a03; }
@@ -121,9 +124,10 @@
     <div class="w-px h-5 bg-dark-border"></div>
 
     <div class="flex gap-1">
-        <button id="btn-mode-gain" onclick="switchMode('gainers')"   class="px-3 py-1 rounded text-xs font-medium transition-colors btn-gain-active">▲ Migliori</button>
-        <button id="btn-mode-loss" onclick="switchMode('losers')"    class="px-3 py-1 rounded text-xs font-medium transition-colors btn-loss-idle">▼ Peggiori</button>
-        <button id="btn-mode-ico"  onclick="switchMode('ico')"       class="px-3 py-1 rounded text-xs font-medium transition-colors btn-ico-idle">◆ ICO</button>
+        <button id="btn-mode-gain"  onclick="switchMode('gainers')"   class="px-3 py-1 rounded text-xs font-medium transition-colors btn-gain-active">▲ Migliori</button>
+        <button id="btn-mode-loss"  onclick="switchMode('losers')"    class="px-3 py-1 rounded text-xs font-medium transition-colors btn-loss-idle">▼ Peggiori</button>
+        <button id="btn-mode-stock" onclick="switchMode('stock')"     class="px-3 py-1 rounded text-xs font-medium transition-colors btn-stock-idle">▣ Stock</button>
+        <button id="btn-mode-ico"   onclick="switchMode('ico')"       class="px-3 py-1 rounded text-xs font-medium transition-colors btn-ico-idle">◆ ICO</button>
         <button id="btn-mode-fav"  onclick="switchMode('favorites')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-fav-idle">★ Preferiti</button>
     </div>
 
@@ -1403,11 +1407,12 @@ async function switchMode(mode) {
 }
 
 function renderModeButtons() {
-    const g = curMode==='gainers', l = curMode==='losers', f = curMode==='favorites', ic = curMode==='ico';
-    document.getElementById('btn-mode-gain').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${g?'btn-gain-active':'btn-gain-idle'}`;
-    document.getElementById('btn-mode-loss').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${l?'btn-loss-active':'btn-loss-idle'}`;
-    document.getElementById('btn-mode-fav').className  = `px-3 py-1 rounded text-xs font-medium transition-colors ${f?'btn-fav-active':'btn-fav-idle'}`;
-    document.getElementById('btn-mode-ico').className  = `px-3 py-1 rounded text-xs font-medium transition-colors ${ic?'btn-ico-active':'btn-ico-idle'}`;
+    const g = curMode==='gainers', l = curMode==='losers', f = curMode==='favorites', ic = curMode==='ico', st = curMode==='stock';
+    document.getElementById('btn-mode-gain').className  = `px-3 py-1 rounded text-xs font-medium transition-colors ${g?'btn-gain-active':'btn-gain-idle'}`;
+    document.getElementById('btn-mode-loss').className  = `px-3 py-1 rounded text-xs font-medium transition-colors ${l?'btn-loss-active':'btn-loss-idle'}`;
+    document.getElementById('btn-mode-stock').className = `px-3 py-1 rounded text-xs font-medium transition-colors ${st?'btn-stock-active':'btn-stock-idle'}`;
+    document.getElementById('btn-mode-fav').className   = `px-3 py-1 rounded text-xs font-medium transition-colors ${f?'btn-fav-active':'btn-fav-idle'}`;
+    document.getElementById('btn-mode-ico').className   = `px-3 py-1 rounded text-xs font-medium transition-colors ${ic?'btn-ico-active':'btn-ico-idle'}`;
 }
 
 function renderTFBar() {
@@ -1428,6 +1433,22 @@ async function fetchCoins() {
         const j = await r.json();
         if (!j.success) throw new Error('API error');
         allCoins = j.data;
+        await fetchFavoritesList();
+    } else if (curMode === 'stock') {
+        const [ri, rt] = await Promise.all([
+            fetch('https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000'),
+            fetch('https://api.bybit.com/v5/market/tickers?category=linear'),
+        ]);
+        const ji = await ri.json(); const jt = await rt.json();
+        const stockSyms = new Set(ji.result.list.filter(x => x.symbolType === 'stock').map(x => x.symbol));
+        allCoins = jt.result.list
+            .filter(x => stockSyms.has(x.symbol) && x.lastPrice)
+            .map(x => ({
+                symbol: x.symbol,
+                change_24h: parseFloat(x.price24hPcnt) * 100,
+                volume_24h: parseFloat(x.turnover24h),
+            }))
+            .sort((a, b) => b.volume_24h - a.volume_24h);
         await fetchFavoritesList();
     } else {
         const r = await fetch(`api/top-coins?limit=18&min_volume=10000000&sort=${curMode}`);
