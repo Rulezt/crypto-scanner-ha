@@ -278,7 +278,7 @@ function buildGrid() {
     fsBtn.onclick = () => openFSModal(i);
 
     const rangeBtn = document.createElement('button');
-    rangeBtn.textContent = '▭'; rangeBtn.title = 'Range Prezzo';
+    rangeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="12" height="12" style="vertical-align:middle"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg>'; rangeBtn.title = 'Range Prezzo';
     rangeBtn.style.cssText = 'font-size:11px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
     rangeBtn.onmouseenter = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#B2B5BE'; };
     rangeBtn.onmouseleave = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#4B5563'; };
@@ -902,7 +902,7 @@ if (isMobile) {
                 title="Reset zoom">↺</button>
         <button id="fs-range-btn" onclick="toggleFsRange()"
                 style="background:#2A2E39;border:none;color:#B2B5BE;font-size:11px;padding:3px 8px;border-radius:3px;cursor:pointer;margin-right:4px;"
-                title="Range Prezzo">▭</button>
+                title="Range Prezzo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="14" height="14" style="vertical-align:middle"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg></button>
         <button onclick="closeFSModal()"
                 style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
     </div>
