@@ -119,6 +119,15 @@ const TF_SLOTS = isMobile ? [
   { tf:'1',   label:'1m',  col:'3/span 2',row:'2' },
 ];
 
+const DEFAULT_CANDLES = {'1':80,'5':80,'30':60,'60':60,'240':50,'D':40};
+function getCandlesForTF(tf) {
+  try {
+    const s = JSON.parse(localStorage.getItem('chart_candles_per_tf'));
+    if (s && s[tf]) return Math.max(20, Math.min(500, parseInt(s[tf])));
+  } catch(e) {}
+  return DEFAULT_CANDLES[tf] || 60;
+}
+
 function getPriceFormat(price) {
   const p = Math.abs(price || 0);
   if (p >= 100)   return { type:'price', precision:2, minMove:0.01 };
@@ -384,7 +393,7 @@ async function loadSlot(idx, dailyData) {
       s.emaS[p].setData(ema);
       s.lastEMA[p] = ema[ema.length-1].value;
     }
-    s.chart.timeScale().fitContent();
+    s.chart.timeScale().setVisibleLogicalRange({ from: klines.length - getCandlesForTF(s.cfg.tf), to: klines.length + 3 });
 
     // H / L / pH / pL lines
     if (dailyData) {
