@@ -781,30 +781,30 @@ function buildGrid() {
         starEl.onclick = () => toggleFavorite(i);
 
         const titleEl  = document.createElement('span');
-        titleEl.style.cssText = 'font-size:11px;font-weight:700;color:#E5E7EB;white-space:nowrap;';
+        titleEl.style.cssText = 'font-size:13px;font-weight:700;color:#E5E7EB;white-space:nowrap;';
 
         const changeEl = document.createElement('span');
-        changeEl.style.cssText = 'font-size:10px;font-weight:500;white-space:nowrap;';
+        changeEl.style.cssText = 'font-size:13px;font-weight:500;white-space:nowrap;';
 
         const sep1 = document.createElement('span');
-        sep1.textContent = '|'; sep1.style.cssText = 'font-size:10px;color:#374151;';
+        sep1.textContent = '|'; sep1.style.cssText = 'font-size:13px;color:#374151;';
 
         const volEl = document.createElement('span');
-        volEl.style.cssText = 'font-size:10px;color:#60a5fa;white-space:nowrap;';
+        volEl.style.cssText = 'font-size:13px;color:#60a5fa;white-space:nowrap;';
 
         const sep2 = document.createElement('span');
-        sep2.textContent = '|'; sep2.style.cssText = 'font-size:10px;color:#374151;';
+        sep2.textContent = '|'; sep2.style.cssText = 'font-size:13px;color:#374151;';
 
         const tfEl = document.createElement('div');
         tfEl.style.cssText = 'display:flex;gap:2px;align-items:center;';
 
         const sep3 = document.createElement('span');
-        sep3.textContent = '|'; sep3.style.cssText = 'font-size:10px;color:#374151;';
+        sep3.textContent = '|'; sep3.style.cssText = 'font-size:13px;color:#374151;';
 
         const bybitEl = document.createElement('a');
         bybitEl.textContent = 'Bybit ↗';
         bybitEl.target = '_blank'; bybitEl.rel = 'noopener noreferrer'; bybitEl.href = '#';
-        bybitEl.style.cssText = 'font-size:9px;color:#f7a600;text-decoration:none;padding:1px 5px;border-radius:2px;background:#1E222D;white-space:nowrap;';
+        bybitEl.style.cssText = 'font-size:13px;color:#f7a600;text-decoration:none;padding:1px 5px;border-radius:2px;background:#1E222D;white-space:nowrap;';
         bybitEl.onmouseenter = () => bybitEl.style.background = '#2A2E39';
         bybitEl.onmouseleave = () => bybitEl.style.background = '#1E222D';
 
@@ -813,40 +813,40 @@ function buildGrid() {
         rightGroup.style.cssText = 'margin-left:auto;display:flex;align-items:center;gap:4px;';
 
         const candlePctEl = document.createElement('span');
-        candlePctEl.style.cssText = 'font-size:10px;font-family:monospace;min-width:48px;text-align:right;white-space:nowrap;';
+        candlePctEl.style.cssText = 'font-size:13px;font-family:monospace;min-width:48px;text-align:right;white-space:nowrap;';
 
         const resetEl = document.createElement('button');
         resetEl.textContent = '↺'; resetEl.title = 'Reset zoom';
-        resetEl.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+        resetEl.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
         resetEl.onmouseenter = () => resetEl.style.color = '#B2B5BE';
         resetEl.onmouseleave = () => resetEl.style.color = '#4B5563';
         resetEl.onclick = () => { const s = slots[i]; if (s && s.chart) s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.curTF), to: s.klineCount + 3 }); };
 
         const mtfEl = document.createElement('button');
         mtfEl.textContent = '⊞'; mtfEl.title = 'Multi Timeframe';
-        mtfEl.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+        mtfEl.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
         mtfEl.onmouseenter = () => mtfEl.style.color = '#B2B5BE';
         mtfEl.onmouseleave = () => mtfEl.style.color = '#4B5563';
         mtfEl.onclick = () => { const s = slots[i]; if (s && s.symbol) window.open(`mtf?symbol=${s.symbol}`, '_blank'); };
 
         const obEl = document.createElement('button');
         obEl.textContent = 'OB'; obEl.title = 'Livelli bid/ask';
-        obEl.style.cssText = 'font-size:10px;font-weight:600;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+        obEl.style.cssText = 'font-size:13px;font-weight:600;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
         obEl.onmouseenter = () => { if (!slots[i]?.obActive) obEl.style.color = '#B2B5BE'; };
         obEl.onmouseleave = () => { if (!slots[i]?.obActive) obEl.style.color = '#4B5563'; };
         obEl.onclick = () => toggleSlotOBLevels(i);
 
         const expandEl = document.createElement('button');
         expandEl.textContent = '⤢'; expandEl.title = 'Schermo intero';
-        expandEl.style.cssText = 'font-size:12px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+        expandEl.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
         expandEl.onmouseenter = () => expandEl.style.color = '#B2B5BE';
         expandEl.onmouseleave = () => expandEl.style.color = '#4B5563';
         expandEl.onclick = () => openFullscreen(i);
 
-        const sep = () => { const s = document.createElement('span'); s.textContent='|'; s.style.cssText='font-size:10px;color:#374151;'; return s; };
+        const sep = () => { const s = document.createElement('span'); s.textContent='|'; s.style.cssText='font-size:13px;color:#374151;'; return s; };
         const rangeBtn = document.createElement('button');
-        rangeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="12" height="12" style="vertical-align:middle"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg>'; rangeBtn.title = 'Range Prezzo';
-        rangeBtn.style.cssText = 'font-size:11px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+        rangeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="13" height="13" style="vertical-align:middle"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg>'; rangeBtn.title = 'Range Prezzo';
+        rangeBtn.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
         rangeBtn.onmouseenter = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#B2B5BE'; };
         rangeBtn.onmouseleave = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#4B5563'; };
         rangeBtn.onclick = () => toggleSlotRange(i);
