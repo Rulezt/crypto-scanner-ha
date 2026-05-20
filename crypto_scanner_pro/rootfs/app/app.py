@@ -275,7 +275,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.8.60',
+        'version': '3.8.61',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -922,6 +922,11 @@ def orderbook_js():
 @app.route('/orderbook-styles.css', methods=['GET'])
 def orderbook_css():
     return send_file('/usr/share/nginx/html/orderbook-styles.css', mimetype='text/css')
+
+
+@app.route('/favicon.svg', methods=['GET'])
+def favicon():
+    return send_file('/usr/share/nginx/html/favicon.svg', mimetype='image/svg+xml')
 
 
 @app.route('/', methods=['GET'])
