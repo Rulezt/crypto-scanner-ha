@@ -91,6 +91,7 @@ createApp({
         const lastEMA = {};
         let chartWS   = null;
         let chartWsTimer = null;
+        let obKlineCount = 0;
 
         // ── book state ────────────────────────────────────────────────────────
         const displayLevels  = ref(20);
@@ -153,6 +154,7 @@ createApp({
             for (const { p, color, width } of EMA_CFG)
                 emaS[p] = addSeries(obChart, 'LineSeries', { ...lineBase, color, lineWidth: width + 0.5 });
 
+            obChart.subscribeDblClick(() => { if (obKlineCount) obChart.timeScale().setVisibleLogicalRange({ from: obKlineCount - (DEFAULT_CANDLES[chartTF.value] || 80), to: obKlineCount + 3 }); });
             obChart.subscribeCrosshairMove(param => {
                 if (param && param.point && param.point.y > 0 && param.seriesData && candleS) {
                     const cd = param.seriesData.get(candleS);
@@ -185,6 +187,7 @@ createApp({
                 const klines = j.data;
 
                 candleS.setData(klines);
+                obKlineCount = klines.length;
                 candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length - 1]?.close) });
 
                 for (const { p } of EMA_CFG) {

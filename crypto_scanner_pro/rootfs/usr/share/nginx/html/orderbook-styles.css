@@ -314,7 +314,7 @@ body.orderbook-page #app {
     color: #94a3b8;
     padding: 6px 12px;
     border-radius: 4px;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
@@ -337,7 +337,7 @@ body.orderbook-page #app {
     padding: 4px 10px;
     background: rgba(30, 41, 59, 0.5);
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
 }
 
@@ -438,13 +438,13 @@ body.orderbook-page #app {
     white-space: nowrap;
 }
 .ob-chg {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     font-family: 'Monaco','Consolas',monospace;
     white-space: nowrap;
 }
 .ob-vol {
-    font-size: 10px;
+    font-size: 13px;
     color: #60a5fa;
     font-family: 'Monaco','Consolas',monospace;
     white-space: nowrap;
@@ -489,7 +489,7 @@ body.orderbook-page #app {
 }
 
 .ob-tf-btn {
-    font-size: 11px;
+    font-size: 13px;
     padding: 2px 7px;
     border-radius: 3px;
     border: none;
@@ -513,7 +513,7 @@ body.orderbook-page #app {
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 10px;
+    font-size: 13px;
     font-family: 'Monaco','Consolas',monospace;
     margin-left: 6px;
     white-space: nowrap;
@@ -521,7 +521,7 @@ body.orderbook-page #app {
 }
 .ohlc-lbl {
     color: #6B7280;
-    font-size: 9px;
+    font-size: 11px;
 }
 
 .ob-chart-container {
