@@ -45,7 +45,7 @@ function getPriceFormat(price) {
 function makeOBChart(el) {
     return LC.createChart(el, {
         autoSize: true,
-        layout: { background: { color: '#0F0F0F' }, textColor: '#B2B5BE', fontSize: 10 },
+        layout: { background: { color: '#0F0F0F' }, textColor: '#B2B5BE', fontSize: 13 },
         grid:    { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
         crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
         rightPriceScale: { borderColor: '#2A2E39', scaleMargins: { top: 0.05, bottom: 0.05 } },
