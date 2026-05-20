@@ -127,14 +127,27 @@
 
     <div class="w-px h-5 bg-dark-border"></div>
 
+    <!-- BTC performance indicator -->
+    <div id="btc-ticker" class="flex items-center gap-1.5 px-2 py-1 rounded flex-shrink-0" style="background:#151515;border:1px solid #2A2A2A;">
+        <span style="color:#F7931A;font-size:11px;font-weight:800;">₿</span>
+        <span id="btc-price" class="text-xs font-mono" style="color:#D1D5DB;">---</span>
+        <span id="btc-change" class="text-xs font-semibold" style="color:#6B7280;">---</span>
+    </div>
+
+    <div class="w-px h-5 bg-dark-border"></div>
+
     <div class="flex gap-1">
         <button id="btn-mode-gain"  onclick="switchMode('gainers')"   class="px-3 py-1 rounded text-xs font-medium transition-colors btn-gain-active">▲ Migliori</button>
         <button id="btn-mode-loss"  onclick="switchMode('losers')"    class="px-3 py-1 rounded text-xs font-medium transition-colors btn-loss-idle">▼ Peggiori</button>
         <button id="btn-mode-commodity" onclick="switchMode('commodity')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-commodity-idle">⬡ Commodity</button>
         <button id="btn-mode-stock"     onclick="switchMode('stock')"     class="px-3 py-1 rounded text-xs font-medium transition-colors btn-stock-idle">▣ Stock</button>
         <button id="btn-mode-ico"   onclick="switchMode('ico')"       class="px-3 py-1 rounded text-xs font-medium transition-colors btn-ico-idle">◆ ICO</button>
-        <button id="btn-mode-fav"  onclick="switchMode('favorites')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-fav-idle">★ Preferiti</button>
     </div>
+
+    <div class="w-px h-5 bg-dark-border"></div>
+
+    <button id="btn-mode-fav" onclick="switchMode('favorites')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-fav-idle">★ Preferiti</button>
+    <button id="alerts-btn" onclick="openAlertsPanel()" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Alert attivi">🔔</button>
 
     <div class="w-px h-5 bg-dark-border"></div>
 
@@ -144,17 +157,8 @@
 
     <div class="flex gap-1" id="tf-bar"></div>
 
-    <div class="w-px h-5 bg-dark-border"></div>
-    <button id="alerts-btn" onclick="openAlertsPanel()" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Alert attivi">🔔</button>
-
     <div class="flex-1"></div>
 
-    <!-- BTC performance indicator -->
-    <div id="btc-ticker" class="flex items-center gap-1.5 px-2 py-1 rounded flex-shrink-0" style="background:#151515;border:1px solid #2A2A2A;">
-        <span style="color:#F7931A;font-size:11px;font-weight:800;">₿</span>
-        <span id="btc-price" class="text-xs font-mono" style="color:#D1D5DB;">---</span>
-        <span id="btc-change" class="text-xs font-semibold" style="color:#6B7280;">---</span>
-    </div>
     <span id="status" class="text-xs text-gray-500 mr-2"></span>
 
     <div id="ws-dot" class="flex items-center gap-1.5">
