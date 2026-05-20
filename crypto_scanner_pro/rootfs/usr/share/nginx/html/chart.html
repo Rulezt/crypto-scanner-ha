@@ -326,7 +326,7 @@ let fsPrevHighLine = null, fsPrevLowLine = null;
 
 // OB fullscreen
 let obChart = null, obCandleS = null, obEmaS = {}, obLastEMA = {};
-let obTF = '30', obSymbolName = null;
+let obTF = '30', obSymbolName = null, obKlineCount = 0;
 let obWS = null, obWsTimer = null;
 let obBidLine = null, obAskLine = null;
 let obDayHighLine = null, obDayLowLine = null;
@@ -935,6 +935,7 @@ function buildGrid() {
         });
         const _s = slots[slots.length - 1];
         chart.timeScale().subscribeVisibleTimeRangeChange(() => {});
+        chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.curTF), to: s.klineCount + 3 }); });
     }
 }
 
@@ -1149,6 +1150,7 @@ function initFsChart() {
         fsEmaS[p] = addSeries(fsChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
 
     fsChart.timeScale().subscribeVisibleTimeRangeChange(() => {});
+    fsChart.subscribeDblClick(() => { if (fsKlineCount) fsChart.timeScale().setVisibleLogicalRange({ from: fsKlineCount - getCandlesForTF(fsTF), to: fsKlineCount + 3 }); });
     fsChart.subscribeCrosshairMove(param => {
         const el = document.getElementById('fs-candle-pct');
         if (!el) return;
@@ -1530,6 +1532,7 @@ function initOBChart() {
     for (const {p, color, width} of EMA_CFG)
         obEmaS[p] = addSeries(obChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
     obChart.timeScale().subscribeVisibleTimeRangeChange(() => {});
+    obChart.subscribeDblClick(() => { if (obKlineCount) obChart.timeScale().setVisibleLogicalRange({ from: obKlineCount - getCandlesForTF(obTF), to: obKlineCount + 3 }); });
 }
 
 function renderOBTFBar() {
@@ -1577,7 +1580,8 @@ async function loadOBData() {
             obLastEMA[p] = ema[ema.length - 1].value;
         }
         const _on = getCandlesForTF(obTF);
-        obChart.timeScale().setVisibleLogicalRange({ from: klines.length - _on, to: klines.length + 3 });
+        obKlineCount = klines.length;
+        obChart.timeScale().setVisibleLogicalRange({ from: obKlineCount - _on, to: obKlineCount + 3 });
         if (obDayHighLine)  { try { obCandleS.removePriceLine(obDayHighLine);  } catch(e) {} obDayHighLine  = null; }
         if (obDayLowLine)   { try { obCandleS.removePriceLine(obDayLowLine);   } catch(e) {} obDayLowLine   = null; }
         if (obPrevHighLine) { try { obCandleS.removePriceLine(obPrevHighLine); } catch(e) {} obPrevHighLine = null; }

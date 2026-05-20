@@ -341,6 +341,7 @@ function buildGrid() {
       rangeActive: false, rangeP1: null, rangeP2: null, _rangeSub: null, _rangeCsSub: null,
       dayPrimitive: null,
     });
+    chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.cfg.tf), to: s.klineCount + 3 }); });
   });
 }
 
@@ -635,6 +636,7 @@ function initFSChart() {
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
     for (const {p, color, width} of EMA_CFG)
         fsEmaS[p] = addS(fsChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
+    fsChart.subscribeDblClick(() => { if (fsKlineCount) fsChart.timeScale().setVisibleLogicalRange({ from: fsKlineCount - getCandlesForTF(fsTF), to: fsKlineCount + 3 }); });
 }
 
 function renderFSTFBar() {
