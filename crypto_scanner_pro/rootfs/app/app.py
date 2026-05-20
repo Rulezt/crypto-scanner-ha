@@ -275,7 +275,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.8.66',
+        'version': '3.8.67',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
