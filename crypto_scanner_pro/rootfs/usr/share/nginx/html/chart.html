@@ -217,12 +217,7 @@
             title="Livelli bid/ask">
             OB Lvl
         </button>
-        <button onclick="if(fsChart) fsChart.timeScale().setVisibleLogicalRange({ from: fsKlineCount - getCandlesForTF(fsTF), to: fsKlineCount + 3 })"
-            style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;"
-            title="Reset zoom">
-            ↺ Reset
-        </button>
-        <button id="fs-range-btn" onclick="toggleFsRange()"
+<button id="fs-range-btn" onclick="toggleFsRange()"
             style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;"
             title="Range Prezzo">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="14" height="14" style="vertical-align:middle"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg> Range
@@ -819,14 +814,7 @@ function buildGrid() {
         const candlePctEl = document.createElement('span');
         candlePctEl.style.cssText = 'font-size:13px;font-family:monospace;min-width:48px;text-align:right;white-space:nowrap;';
 
-        const resetEl = document.createElement('button');
-        resetEl.textContent = '↺'; resetEl.title = 'Reset zoom';
-        resetEl.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
-        resetEl.onmouseenter = () => resetEl.style.color = '#B2B5BE';
-        resetEl.onmouseleave = () => resetEl.style.color = '#4B5563';
-        resetEl.onclick = () => { const s = slots[i]; if (s && s.chart) s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.curTF), to: s.klineCount + 3 }); };
-
-        const mtfEl = document.createElement('button');
+const mtfEl = document.createElement('button');
         mtfEl.textContent = '⊞'; mtfEl.title = 'Multi Timeframe';
         mtfEl.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
         mtfEl.onmouseenter = () => mtfEl.style.color = '#B2B5BE';
@@ -854,7 +842,7 @@ function buildGrid() {
         rangeBtn.onmouseenter = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#B2B5BE'; };
         rangeBtn.onmouseleave = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#4B5563'; };
         rangeBtn.onclick = () => toggleSlotRange(i);
-        rightGroup.append(candlePctEl, sep(), resetEl, sep(), mtfEl, sep(), obEl, sep(), rangeBtn, sep(), expandEl);
+        rightGroup.append(candlePctEl, sep(), mtfEl, sep(), obEl, sep(), rangeBtn, sep(), expandEl);
         hdr.append(starEl, titleEl, changeEl, sep1, volEl, sep2, tfEl, sep3, bybitEl, rightGroup);
         cell.appendChild(hdr);
 
