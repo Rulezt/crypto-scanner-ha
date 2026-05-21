@@ -175,6 +175,7 @@ class ICOLevelsScanner:
             return
 
         price      = data.get('price', 0)
+        change_pct = data.get('change_24h', 0.0)
         if price <= 0:
             return
         first_high = levels['first_high']
@@ -200,7 +201,7 @@ class ICOLevelsScanner:
             state['alerted'] = dict(self._alerted)
             self._save_state(state)
             threading.Thread(
-                target=self._send_alert, args=(symbol, side, dist, level, price),
+                target=self._send_alert, args=(symbol, side, dist, level, price, change_pct),
                 daemon=True).start()
 
     # ── polling scan (fallback / manual) ─────────────────────────────────────
@@ -281,7 +282,7 @@ class ICOLevelsScanner:
 
     # ── alert ─────────────────────────────────────────────────────────────────
 
-    def _send_alert(self, sym, side, dist, level, price=0):
+    def _send_alert(self, sym, side, dist, level, price=0, change_pct=0.0):
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
@@ -293,7 +294,7 @@ class ICOLevelsScanner:
         side_str = 'massimo' if side == 'high' else 'minimo'
         sig_type = 'ath' if side == 'high' else 'atl'
         note     = f"ICO {side_str} {dist:.2f}%"
-        caption  = build_caption(sym, price, note, self.ha_url)
+        caption  = build_caption(sym, change_pct, note, self.ha_url)
         img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)

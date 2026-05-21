@@ -40,9 +40,9 @@ def mtf_link(symbol, ha_url=''):
     return name
 
 
-def build_caption(symbol, price, note, ha_url=''):
+def build_caption(symbol, change_pct, note, ha_url=''):
     """Standard 🔔 Alert caption format used by all scanners."""
-    lines = ['🔔 Alert', '', f'Coin: {symbol}', f'Prezzo: {fmt_price(price)}', f'Segnale: {note}', '']
+    lines = ['🔔 Alert', '', f'Coin: {symbol}', f'Vol 24h: {change_pct:+.2f}%', f'Segnale: {note}', '']
     if ha_url:
         base = ha_url.rstrip('/')
         lines.append(f'<a href="{base}/chart?symbol={symbol}">View Chart</a>')

@@ -257,6 +257,7 @@ class EMAScanner:
                                       'change_pct': float(item.get('price24hPcnt', 0)) * 100})
 
             all_pairs.sort(key=lambda x: x['change_pct'], reverse=True)
+            change_pct_map   = {p['item']['symbol']: p['change_pct'] for p in all_pairs}
             pairs_to_analyze = [p['item'] for p in all_pairs[:10]] + \
                                [p['item'] for p in all_pairs[-10:]]
 
@@ -277,6 +278,7 @@ class EMAScanner:
                                 'distance_pct': ema_data['distance_pct'],
                                 'approach': 'from above' if ema_data['current_price'] > ema_data['ema60'] else 'from below',
                                 'volume_24h': float(pair.get('volume24h', 0)),
+                                'change_pct': change_pct_map.get(symbol, 0.0),
                             })
 
             found = found[:self.max_coins_per_alert]
@@ -300,7 +302,7 @@ class EMAScanner:
             sym     = coin['symbol']
             dir_str = 'da sotto' if 'below' in coin['approach'] else 'da sopra'
             note    = f"EMA60 30m {dir_str} {coin['distance_pct']:.2f}%"
-            caption = build_caption(sym, coin['price'], note, self.ha_url)
+            caption = build_caption(sym, coin.get('change_pct', 0.0), note, self.ha_url)
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ema'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)

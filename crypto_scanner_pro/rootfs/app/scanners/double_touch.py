@@ -83,7 +83,8 @@ class DoubleTouchScanner:
                 vol   = float(item.get('turnover24h', 0) or 0)
                 if price <= 0 or vol < self.min_volume_24h:
                     continue
-                result.append({'symbol': item['symbol'], 'price': price, 'volume': vol})
+                result.append({'symbol': item['symbol'], 'price': price, 'volume': vol,
+                               'change_pct': float(item.get('price24hPcnt', 0) or 0) * 100})
             result.sort(key=lambda x: x['volume'], reverse=True)
             return result[:MAX_COINS]
         except Exception as e:
@@ -251,7 +252,8 @@ class DoubleTouchScanner:
                             self.mark_alerted(cooldown_key)
                             found.append({'symbol': symbol,
                                           'price': ticker['price'],
-                                          'volume': ticker['volume'], **p})
+                                          'volume': ticker['volume'],
+                                          'change_pct': ticker.get('change_pct', 0.0), **p})
                 # Gentle rate limit
                 if (i + 1) % 10 == 0:
                     time.sleep(0.5)
@@ -276,7 +278,7 @@ class DoubleTouchScanner:
         for p in patterns[:3]:
             sym  = p['symbol']
             note = '3tplus' if p['type'] == 'resistance' else '3tminus'
-            caption = build_caption(sym, p['price'], note, self.ha_url)
+            caption = build_caption(sym, p.get('change_pct', 0.0), note, self.ha_url)
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ema'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)

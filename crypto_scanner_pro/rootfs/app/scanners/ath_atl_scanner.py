@@ -195,7 +195,7 @@ class ATHATLScanner:
         else:
             note     = 'Nuovo ATL' if coin['is_new_atl'] else f"Vicino ATL {coin['distance_pct']:.2f}%"
             sig_type = 'atl'
-        caption = build_caption(sym, coin['price'], note, self.ha_url)
+        caption = build_caption(sym, coin.get('change_pct', 0.0), note, self.ha_url)
         img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
