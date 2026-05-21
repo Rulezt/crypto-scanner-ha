@@ -147,6 +147,7 @@ const EMA_CFG = [
 ];
 
 let slots   = [];
+let isSyncing = false;
 let ws      = null;
 let wsTimer = null;
 let mobileSlotIdx = 0;
@@ -312,17 +313,31 @@ const fsBtn = document.createElement('button');
     for (const {p,color,width} of EMA_CFG)
       emaS[p] = addS(chart, 'LineSeries', {...lineBase, color, lineWidth:width});
 
-    // Crosshair → candle % change
+    // Crosshair → candle % change + sync to other charts
     chart.subscribeCrosshairMove(param => {
-      if (!param || !param.seriesData) { pctEl.textContent = ''; return; }
-      const cd = param.seriesData.get(candleS);
-      if (cd && cd.open != null) {
-        const pct = ((cd.close - cd.open) / cd.open) * 100;
-        pctEl.textContent = (pct>=0?'+':'')+pct.toFixed(2)+'%';
-        pctEl.style.color = pct>=0 ? '#34d399' : '#f87171';
-      } else {
-        pctEl.textContent = '';
+      if (!param || !param.seriesData) { pctEl.textContent = ''; }
+      else {
+        const cd = param.seriesData.get(candleS);
+        if (cd && cd.open != null) {
+          const pct = ((cd.close - cd.open) / cd.open) * 100;
+          pctEl.textContent = (pct>=0?'+':'')+pct.toFixed(2)+'%';
+          pctEl.style.color = pct>=0 ? '#34d399' : '#f87171';
+        } else {
+          pctEl.textContent = ''; }
       }
+      if (isSyncing) return;
+      isSyncing = true;
+      const time  = param?.time;
+      const price = param?.point ? candleS.coordinateToPrice(param.point.y) : null;
+      slots.forEach((other, j) => {
+        if (j === i) return;
+        if (time == null || price == null) {
+          try { other.chart.clearCrosshairPosition(); } catch(e) {}
+        } else {
+          try { other.chart.setCrosshairPosition(price, time, other.candleS); } catch(e) {}
+        }
+      });
+      isSyncing = false;
     });
 
     slots.push({
