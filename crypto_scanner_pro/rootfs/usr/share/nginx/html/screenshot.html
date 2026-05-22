@@ -179,7 +179,7 @@ async function init() {
       for (const {p} of EMA_CFG) emaS[p].setData(calcEMA(klines, p));
 
       const nowUtcS = Math.floor(Date.now() / 1000);
-      const dayStartUtcS = Math.floor((nowUtcS + TZ_OFFSET_S) / 86400) * 86400 - TZ_OFFSET_S;
+      const dayStartUtcS = Math.floor(nowUtcS / 86400) * 86400;
       candleS.attachPrimitive(new DayOpenLine(dayStartUtcS));
 
       if (jd.success && jd.data && jd.data.length >= 2) {
