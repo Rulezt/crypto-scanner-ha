@@ -276,11 +276,13 @@ class DoubleTouchScanner:
             from alert_utils import send_photo, send_text, get_chart, build_caption
         except ImportError:
             return
+        TF_LABEL = {'D': '1D', '240': '4h', '60': '1h', '30': '30m', '15': '15m', '5': '5m', '1': '1m'}
         for p in patterns[:3]:
-            sym  = p['symbol']
-            tf   = p.get('tf', self.scan_tfs[0])
-            note = '3tplus' if p['type'] == 'resistance' else '3tminus'
-            caption = build_caption(sym, p.get('change_pct', 0.0), note, self.ha_url)
+            sym      = p['symbol']
+            tf       = p.get('tf', self.scan_tfs[0])
+            tf_label = TF_LABEL.get(tf, tf)
+            note     = f'3tplus {tf_label}' if p['type'] == 'resistance' else f'3tminus {tf_label}'
+            caption  = build_caption(sym, p.get('change_pct', 0.0), note, self.ha_url)
             img = get_chart(sym, interval=tf, signal={'type': 'ema'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
