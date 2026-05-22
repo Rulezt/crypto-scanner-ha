@@ -43,8 +43,14 @@ def take_screenshot(symbol, interval='30', signal_type=None, signal_price=None,
             # Belt-and-suspenders: set window size after init too
             driver.set_window_size(PAGE_W, PAGE_H)
 
-            url = (f'http://localhost:{port}/screenshot'
-                   f'?symbol={symbol}&interval={interval}')
+            # Price-level signals (3tplus/3tminus) use the dedicated dt_chart page
+            # which mirrors the scanner popup exactly (fitContent, solid level line)
+            if signal_type == 'price':
+                url = (f'http://localhost:{port}/dt_chart'
+                       f'?symbol={symbol}&interval={interval}')
+            else:
+                url = (f'http://localhost:{port}/screenshot'
+                       f'?symbol={symbol}&interval={interval}')
             if signal_type:
                 url += f'&signal_type={signal_type}'
             if signal_price and signal_price > 0:

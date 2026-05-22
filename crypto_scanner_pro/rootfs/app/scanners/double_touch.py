@@ -166,6 +166,7 @@ class DoubleTouchScanner:
                     'type': 'resistance', 'level': level,
                     'precision': diff * 100, 'gap': gap,
                     'freshness': max(1, n - j), 'dist_pct': dist_pct,
+                    'touchATime': candles[i]['time'],
                 })
 
         # ── SUPPORT: two Low touches ──────────────────────────────────────────
@@ -214,6 +215,7 @@ class DoubleTouchScanner:
                     'type': 'support', 'level': level,
                     'precision': diff * 100, 'gap': gap,
                     'freshness': max(1, n - j), 'dist_pct': dist_pct,
+                    'touchATime': candles[i]['time'],
                 })
 
         # Keep best pattern per type (freshest, then most precise)
@@ -299,7 +301,7 @@ class DoubleTouchScanner:
                 'type': 'price',
                 'price': p['level'],
                 'condition': 'above' if p['type'] == 'resistance' else 'below',
-                'time': p.get('touchBTime'),
+                'time': p.get('touchATime'),
             })
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
