@@ -9,6 +9,7 @@ import json
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 COOLDOWN_FILE = None  # set in __init__
+ZONE_FILE = '/data/ema_zone.json'
 
 # How many top coins to subscribe klines for
 TOP_KLINE_SYMBOLS = 40
@@ -36,9 +37,9 @@ class EMAScanner:
         self._setup_cooldown_path()
         self.last_alerts = self._load_cooldown()
         self._lock       = threading.Lock()
-        # Zone-based dedup: symbol stays "in zone" until price moves away by exit_threshold.
-        # Populated on startup from recent cooldown entries to avoid spam after restart.
-        self._in_zone: set = set()
+        # Zone persisted to file so it survives restarts.
+        # Merge: file-based zone + last-24h cooldown entries (backwards compat).
+        self._in_zone: set = self._load_zone()
         cutoff = datetime.utcnow() - timedelta(hours=24)
         for sym, ts in self.last_alerts.items():
             if ts >= cutoff:
@@ -67,6 +68,23 @@ class EMAScanner:
             except Exception:
                 continue
         COOLDOWN_FILE = '/data/ema_cooldown.json'
+
+    def _load_zone(self):
+        try:
+            if os.path.exists(ZONE_FILE):
+                with open(ZONE_FILE, 'r') as f:
+                    return set(json.load(f))
+        except Exception as e:
+            print(f'⚠️ Error loading EMA zone: {e}')
+        return set()
+
+    def _save_zone(self):
+        try:
+            os.makedirs(os.path.dirname(ZONE_FILE), exist_ok=True)
+            with open(ZONE_FILE, 'w') as f:
+                json.dump(list(self._in_zone), f)
+        except Exception as e:
+            print(f'⚠️ Error saving EMA zone: {e}')
 
     def _load_cooldown(self):
         try:
@@ -175,17 +193,24 @@ class EMAScanner:
         live_price   = candle['close']
         ema60        = ema_data['ema60']
 
-        # Only alert when price approaches EMA from above (support bounce setup)
-        if live_price < ema60:
-            return
-
-        distance_pct = abs((live_price - ema60) / ema60 * 100)
+        distance_pct   = abs((live_price - ema60) / ema60 * 100)
         exit_threshold = self.ema_touch_threshold * 3.0
 
+        # When price is below EMA still check exit so zone resets if price dropped far enough
+        if live_price < ema60:
+            if distance_pct >= exit_threshold:
+                with self._lock:
+                    if symbol in self._in_zone:
+                        self._in_zone.discard(symbol)
+                        self._save_zone()
+            return
+
         if distance_pct >= exit_threshold:
-            # Price moved significantly away → reset zone, next touch will alert
+            # Price moved significantly above EMA → reset zone, next touch will alert
             with self._lock:
-                self._in_zone.discard(symbol)
+                if symbol in self._in_zone:
+                    self._in_zone.discard(symbol)
+                    self._save_zone()
             return
 
         if distance_pct < self.ema_touch_threshold:
@@ -193,6 +218,7 @@ class EMAScanner:
             with self._lock:
                 if symbol not in self._in_zone:
                     self._in_zone.add(symbol)
+                    self._save_zone()
                     self.mark_alerted(symbol)
                     coin = {
                         'symbol': symbol,
@@ -282,11 +308,14 @@ class EMAScanner:
                 d = ema_data['distance_pct']
                 if d >= exit_threshold:
                     with self._lock:
-                        self._in_zone.discard(symbol)
+                        if symbol in self._in_zone:
+                            self._in_zone.discard(symbol)
+                            self._save_zone()
                 elif d < self.ema_touch_threshold:
                     with self._lock:
                         if symbol not in self._in_zone:
                             self._in_zone.add(symbol)
+                            self._save_zone()
                             self.mark_alerted(symbol)
                             found.append({
                                 'symbol': symbol,
