@@ -283,7 +283,11 @@ class DoubleTouchScanner:
             tf_label = TF_LABEL.get(tf, tf)
             note     = f'3tplus {tf_label}' if p['type'] == 'resistance' else f'3tminus {tf_label}'
             caption  = build_caption(sym, p.get('change_pct', 0.0), note, self.ha_url)
-            img = get_chart(sym, interval=tf, signal={'type': 'ema'})
+            img = get_chart(sym, interval=tf, signal={
+                'type': 'price',
+                'price': p['level'],
+                'condition': 'above' if p['type'] == 'resistance' else 'below',
+            })
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
