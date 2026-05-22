@@ -312,14 +312,28 @@ class EMAScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, build_caption
+            from alert_utils import send_photo, send_text, get_chart
         except ImportError:
             return
+        TF_LABEL = {'1':'1m','5':'5m','15':'15m','30':'30m','60':'1h','240':'4h','D':'1D'}
+        scan_tf_label = TF_LABEL.get('30', '30m')
         for coin in coins[:3]:
-            sym     = coin['symbol']
-            dir_str = 'da sotto' if 'below' in coin['approach'] else 'da sopra'
-            note    = f"EMA60 30m {dir_str} {coin['distance_pct']:.2f}%"
-            caption = build_caption(sym, coin.get('change_pct', 0.0), note, self.ha_url)
+            sym    = coin['symbol']
+            change = coin.get('change_pct', 0.0)
+            dist   = coin['distance_pct']
+            lines  = [
+                '🔔 Alert', '',
+                f'Coin: {sym}',
+                f'Vol: {change:+.2f}%    Segnale: EMA60',
+                f'Timeframe: {scan_tf_label}',
+                f'Distanza: {dist:.2f}%',
+                '',
+            ]
+            base = self.ha_url.rstrip('/') if self.ha_url else ''
+            if base:
+                lines.append(f'<a href="{base}/chart?symbol={sym}">View Chart</a>')
+                lines.append(f'<a href="{base}/mtf?symbol={sym}">View MultiTimeframe</a>')
+            caption = '\n'.join(lines)
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ema'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
