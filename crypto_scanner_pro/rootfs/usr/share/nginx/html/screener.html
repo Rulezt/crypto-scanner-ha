@@ -346,17 +346,20 @@
             <div class="p-4 space-y-3">
                 <div><label class="text-xs text-gray-500 block mb-1">Tolleranza tocchi (%):</label><input type="number" step="0.1" id="dt-cfg-tolerance" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
                 <div><label class="text-xs text-gray-500 block mb-1">Prossimità al livello (%):</label><input type="number" step="0.1" id="dt-cfg-proximity" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Timeframe:</label>
-                    <select id="dt-cfg-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none">
-                        <option value="D">Daily (1D)</option>
-                        <option value="240">4h</option>
-                        <option value="60">1h</option>
-                        <option value="30">30m</option>
-                    </select>
+                <div>
+                    <label class="text-xs text-gray-500 block mb-1">Timeframe (multi-selezione):</label>
+                    <div id="dt-cfg-tf-group" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;background:#1E222D;border:1px solid #2B3139;border-radius:6px;">
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-D"   value="D"   style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">1D</span></label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-240" value="240" style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">4h</span></label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-60"  value="60"  style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">1h</span></label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-30"  value="30"  style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">30m</span></label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-5"   value="5"   style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">5m</span></label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-1"   value="1"   style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">1m</span></label>
+                    </div>
+                    <p style="font-size:10px;color:#4B5563;margin-top:4px;">Lo screenshot usa automaticamente il TF dell'alert.</p>
                 </div>
                 <div><label class="text-xs text-gray-500 block mb-1">Intervallo scansione (min):</label><input type="number" id="dt-cfg-interval" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
                 <div><label class="text-xs text-gray-500 block mb-1">Cooldown alert (ore):</label><input type="number" id="dt-cfg-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="dt-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
             </div>
             <div class="px-4 pb-3 flex gap-2">
                 <button onclick="saveScannerConfig('dt')" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
@@ -583,12 +586,16 @@
                 document.getElementById('ico-cfg-interval').value       = cfg.ico_levels?.scan_interval_minutes ?? 60;
                 document.getElementById('ico-cfg-screenshot-tf').value  = cfg.ico_levels?.screenshot_tf ?? 'D';
             } else if (name === 'dt') {
-                document.getElementById('dt-cfg-tolerance').value       = cfg.double_touch?.tolerance ?? 0.5;
-                document.getElementById('dt-cfg-proximity').value       = cfg.double_touch?.proximity ?? 2.0;
-                document.getElementById('dt-cfg-tf').value              = cfg.double_touch?.scan_tf ?? 'D';
-                document.getElementById('dt-cfg-interval').value        = cfg.double_touch?.scan_interval_minutes ?? 240;
-                document.getElementById('dt-cfg-cooldown').value        = cfg.double_touch?.cooldown_hours ?? 12;
-                document.getElementById('dt-cfg-screenshot-tf').value   = cfg.double_touch?.screenshot_tf ?? 'D';
+                document.getElementById('dt-cfg-tolerance').value = cfg.double_touch?.tolerance ?? 0.5;
+                document.getElementById('dt-cfg-proximity').value = cfg.double_touch?.proximity ?? 2.0;
+                document.getElementById('dt-cfg-interval').value  = cfg.double_touch?.scan_interval_minutes ?? 240;
+                document.getElementById('dt-cfg-cooldown').value  = cfg.double_touch?.cooldown_hours ?? 12;
+                const rawTf = cfg.double_touch?.scan_tf ?? ['D'];
+                const selTfs = Array.isArray(rawTf) ? rawTf : [rawTf];
+                ['D','240','60','30','5','1'].forEach(v => {
+                    const cb = document.getElementById(`dt-tf-${v}`);
+                    if (cb) cb.checked = selTfs.includes(v);
+                });
             }
             const statusEl = document.getElementById(`${name}-cfg-status`);
             if (statusEl) statusEl.className = 'hidden';
@@ -639,14 +646,14 @@
                         new_listing_days: parseInt(document.getElementById('ico-cfg-days').value) || 30,
                     };
                 } else if (name === 'dt') {
+                    const chosenTfs = ['D','240','60','30','5','1'].filter(v => document.getElementById(`dt-tf-${v}`)?.checked);
                     updates.double_touch = {
                         ...currentConfig.double_touch,
                         tolerance:             parseFloat(document.getElementById('dt-cfg-tolerance').value) || 0.5,
                         proximity:             parseFloat(document.getElementById('dt-cfg-proximity').value) || 2.0,
-                        scan_tf:               document.getElementById('dt-cfg-tf').value || 'D',
+                        scan_tf:               chosenTfs.length > 0 ? chosenTfs : ['D'],
                         scan_interval_minutes: parseInt(document.getElementById('dt-cfg-interval').value) || 240,
                         cooldown_hours:        parseInt(document.getElementById('dt-cfg-cooldown').value) || 12,
-                        screenshot_tf:         document.getElementById('dt-cfg-screenshot-tf').value || 'D',
                     };
                 }
                 const newConfig = { ...currentConfig, ...updates };
