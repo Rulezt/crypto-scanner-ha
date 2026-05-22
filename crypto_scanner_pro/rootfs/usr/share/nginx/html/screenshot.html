@@ -116,6 +116,34 @@ async function init() {
   for (const {p,color,width} of EMA_CFG)
     emaS[p] = addS(chart, 'LineSeries', {...lineBase, color, lineWidth:width});
 
+  class DayOpenLine {
+    constructor(time) { this._time = time; this._chart = null; }
+    attached({ chart }) { this._chart = chart; }
+    detached() { this._chart = null; }
+    updateAllViews() {}
+    paneViews() {
+      const self = this;
+      return [{ renderer() { return { draw(target) {
+        if (!self._chart) return;
+        const x = self._chart.timeScale().timeToCoordinate(self._time);
+        if (x === null) return;
+        target.useBitmapCoordinateSpace(({ context: ctx, bitmapSize, horizontalPixelRatio: dpr }) => {
+          const xb = Math.round(x * dpr);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+          ctx.lineWidth = dpr;
+          ctx.setLineDash([6 * dpr, 4 * dpr]);
+          ctx.beginPath(); ctx.moveTo(xb, 0); ctx.lineTo(xb, bitmapSize.height); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = 'rgba(255,255,255,0.4)';
+          ctx.font = `${10 * dpr}px monospace`;
+          ctx.fillText('00:00', xb + 4 * dpr, bitmapSize.height - 6 * dpr);
+          ctx.restore();
+        });
+      }}; } }];
+    }
+  }
+
   try {
     const [rk, rd, rt] = await Promise.all([
       fetch(`api/klines?symbol=${SYM}&interval=${TF}`),
@@ -149,6 +177,10 @@ async function init() {
       candleS.setData(klines);
       candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
       for (const {p} of EMA_CFG) emaS[p].setData(calcEMA(klines, p));
+
+      const nowUtcS = Math.floor(Date.now() / 1000);
+      const dayStartUtcS = Math.floor((nowUtcS + TZ_OFFSET_S) / 86400) * 86400 - TZ_OFFSET_S;
+      candleS.attachPrimitive(new DayOpenLine(dayStartUtcS));
 
       if (jd.success && jd.data && jd.data.length >= 2) {
         const today = jd.data[jd.data.length-1];
