@@ -183,7 +183,8 @@ async function init() {
       const dayStartUtcS = Math.floor(nowUtcS / 86400) * 86400;
       candleS.attachPrimitive(new DayOpenLine(dayStartUtcS));
 
-      if (jd.success && jd.data && jd.data.length >= 2) {
+      // Daily H/L lines: solo per alert EMA, non per livelli Terzo Tocco
+      if (SIG !== 'price' && jd.success && jd.data && jd.data.length >= 2) {
         const today = jd.data[jd.data.length-1];
         const prev  = jd.data[jd.data.length-2];
         candleS.createPriceLine({price:today.high,color:'#22c55e',lineWidth:2,lineStyle:0,axisLabelVisible:false,title:''});
@@ -202,7 +203,7 @@ async function init() {
         const lvlS = addS(chart, 'LineSeries', {
           color: clr, lineWidth: 2,
           lineStyle: LC.LineStyle ? LC.LineStyle.Dashed : 2,
-          priceLineVisible: false, lastValueVisible: true,
+          priceLineVisible: false, lastValueVisible: false,
           crosshairMarkerVisible: false, title: '',
         });
         lvlS.setData([
