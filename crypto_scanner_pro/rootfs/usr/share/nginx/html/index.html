@@ -49,6 +49,12 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-2 sm:space-x-4">
+                    <!-- Search -->
+                    <button onclick="openSearch()" title="Cerca crypto"
+                        class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-dark-hover hover:bg-dark-border rounded-lg transition-colors text-sm font-medium text-gray-300 hover:text-gray-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        <span class="hidden sm:inline">Cerca</span>
+                    </button>
                     <a href="chart?symbol=BTCUSDT"
                        class="flex items-center px-2.5 sm:px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-sm font-medium text-white">
                         <span>Grafici</span>
@@ -65,7 +71,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v3.8.91</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v3.8.92</div>
                 </div>
             </div>
         </div>
@@ -304,6 +310,25 @@
                 </div>
                 <div id="save-status" class="hidden p-3 rounded text-sm"></div>
             </form>
+        </div>
+    </div>
+
+    <!-- Search overlay -->
+    <div id="search-overlay" class="hidden fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm" onclick="closeSearch()"></div>
+    <div id="search-modal" class="hidden fixed top-16 left-1/2 z-[201] w-full max-w-lg px-4" style="transform:translateX(-50%)">
+        <div class="bg-dark-card border border-dark-border rounded-xl shadow-2xl overflow-hidden">
+            <div class="flex items-center gap-2 px-3 py-2.5 border-b border-dark-border">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input id="search-input" type="text" autocomplete="off" autocorrect="off" spellcheck="false"
+                    placeholder="Cerca coin Bybit… (es. BTC, SOL)"
+                    class="flex-1 bg-transparent text-gray-100 text-sm outline-none placeholder-gray-600"
+                    oninput="onSearchInput(this.value)"
+                    onkeydown="onSearchKey(event)">
+                <kbd class="text-xs text-gray-600 bg-dark-hover px-1.5 py-0.5 rounded border border-dark-border cursor-pointer select-none" onclick="closeSearch()">ESC</kbd>
+            </div>
+            <div id="search-results" class="max-h-80 overflow-y-auto">
+                <div class="py-8 text-center text-xs text-gray-600">Digita per cercare tra le crypto su Bybit</div>
+            </div>
         </div>
     </div>
 
@@ -633,6 +658,108 @@
             if (volume >= 1e6) return (volume / 1e6).toFixed(2) + 'M';
             return volume.toFixed(0);
         }
+
+        // ── SEARCH ────────────────────────────────────────────────────────────
+        let _searchCache = null;
+        let _searchTimer = null;
+
+        function openSearch() {
+            document.getElementById('search-overlay').classList.remove('hidden');
+            document.getElementById('search-modal').classList.remove('hidden');
+            const inp = document.getElementById('search-input');
+            inp.value = '';
+            document.getElementById('search-results').innerHTML =
+                '<div class="py-8 text-center text-xs text-gray-600">Digita per cercare tra le crypto su Bybit</div>';
+            requestAnimationFrame(() => inp.focus());
+        }
+
+        function closeSearch() {
+            document.getElementById('search-overlay').classList.add('hidden');
+            document.getElementById('search-modal').classList.add('hidden');
+        }
+
+        async function _loadSearchCache() {
+            if (_searchCache) return _searchCache;
+            try {
+                const r = await fetch('https://api.bybit.com/v5/market/tickers?category=linear');
+                const d = await r.json();
+                if (d.retCode !== 0) return [];
+                _searchCache = d.result.list
+                    .filter(t => t.symbol.endsWith('USDT') && !t.symbol.includes('-') && parseFloat(t.lastPrice) > 0)
+                    .map(t => ({
+                        symbol:  t.symbol,
+                        coin:    t.symbol.replace('USDT', ''),
+                        price:   parseFloat(t.lastPrice),
+                        change:  parseFloat(t.price24hPcnt) * 100,
+                        volume:  parseFloat(t.turnover24h),
+                    }))
+                    .sort((a, b) => b.volume - a.volume);
+            } catch(e) { _searchCache = []; }
+            return _searchCache;
+        }
+
+        function onSearchInput(raw) {
+            clearTimeout(_searchTimer);
+            _searchTimer = setTimeout(() => _runSearch(raw.trim().toUpperCase()), 120);
+        }
+
+        async function _runSearch(q) {
+            const el = document.getElementById('search-results');
+            if (!q) {
+                el.innerHTML = '<div class="py-8 text-center text-xs text-gray-600">Digita per cercare</div>';
+                return;
+            }
+            el.innerHTML = '<div class="py-6 text-center text-xs text-gray-500">⏳ Caricamento…</div>';
+            const coins = await _loadSearchCache();
+            const matches = coins.filter(c =>
+                c.coin.startsWith(q) || c.coin.includes(q) || c.symbol.startsWith(q)
+            ).slice(0, 25);
+            if (!matches.length) {
+                el.innerHTML = `<div class="py-8 text-center text-xs text-gray-500">Nessun risultato per "<b class="text-gray-300">${q}</b>"</div>`;
+                return;
+            }
+            el.innerHTML = matches.map((c, i) => {
+                const sgn   = c.change >= 0 ? '+' : '';
+                const clr   = c.change >= 0 ? '#34d399' : '#f87171';
+                const pStr  = c.price >= 1000 ? c.price.toLocaleString('en-US',{maximumFractionDigits:1})
+                            : c.price >= 1    ? c.price.toFixed(3)
+                            : c.price >= 0.01 ? c.price.toFixed(5)
+                            :                   c.price.toFixed(7);
+                const vStr  = c.volume >= 1e9 ? '$'+(c.volume/1e9).toFixed(1)+'B'
+                            : c.volume >= 1e6 ? '$'+(c.volume/1e6).toFixed(0)+'M'
+                            :                   '$'+(c.volume/1e3).toFixed(0)+'K';
+                return `<div class="flex items-center gap-3 px-4 py-2.5 hover:bg-dark-hover cursor-pointer border-b border-dark-border/30 transition-colors last:border-0"
+                             onclick="selectSearchCoin('${c.symbol}')" data-idx="${i}">
+                    <span class="font-bold text-sm text-gray-100 w-24 flex-shrink-0">${c.coin}<span class="text-gray-600 font-normal text-xs">/USDT</span></span>
+                    <span class="text-xs text-gray-400 font-mono">${pStr}</span>
+                    <span class="text-xs font-semibold flex-shrink-0" style="color:${clr}">${sgn}${c.change.toFixed(2)}%</span>
+                    <span class="ml-auto text-xs text-gray-600 flex-shrink-0">${vStr}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                </div>`;
+            }).join('');
+        }
+
+        function onSearchKey(e) {
+            if (e.key === 'Escape') { closeSearch(); return; }
+            if (e.key === 'Enter') {
+                const first = document.querySelector('#search-results [data-idx="0"]');
+                if (first) first.click();
+            }
+            if (e.key === 'ArrowDown') {
+                const first = document.querySelector('#search-results [data-idx="0"]');
+                if (first) { e.preventDefault(); first.focus(); }
+            }
+        }
+
+        function selectSearchCoin(symbol) {
+            closeSearch();
+            window.location.href = `mtf?symbol=${symbol}`;
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeSearch();
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
+        });
 
         init();
     </script>
