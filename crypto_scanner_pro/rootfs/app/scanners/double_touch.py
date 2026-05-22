@@ -288,7 +288,8 @@ class DoubleTouchScanner:
             lines    = [
                 '🔔 Alert', '',
                 f'Coin: {sym}',
-                f'Vol: {change:+.2f}%    Segnale: {segnale}',
+                f'Segnale: {segnale}',
+                f'Vol: {change:+.2f}%',
                 f'Timeframe: {tf_label}',
                 '',
             ]

@@ -105,7 +105,7 @@ async function init() {
       borderColor:'#2A2E39', visible:true, timeVisible:true,
       secondsVisible:false,
       barSpacing: TF === 'D' ? 10 : 6,
-      rightOffset: 5,
+      rightOffset: 20,
     },
   });
 
@@ -172,8 +172,8 @@ async function init() {
         ]);
       }
 
-      chart.timeScale().fitContent();
-      chart.timeScale().scrollToPosition(5, false);
+      const visibleBars = TF === 'D' ? 50 : TF === '240' ? 60 : 70;
+      chart.timeScale().setVisibleLogicalRange({ from: klines.length - visibleBars, to: klines.length + 20 });
     }
   } catch(e) {
     console.error('Chart init error:', e);
