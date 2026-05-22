@@ -36,6 +36,13 @@ class EMAScanner:
         self._setup_cooldown_path()
         self.last_alerts = self._load_cooldown()
         self._lock       = threading.Lock()
+        # Zone-based dedup: symbol stays "in zone" until price moves away by exit_threshold.
+        # Populated on startup from recent cooldown entries to avoid spam after restart.
+        self._in_zone: set = set()
+        cutoff = datetime.utcnow() - timedelta(hours=24)
+        for sym, ts in self.last_alerts.items():
+            if ts >= cutoff:
+                self._in_zone.add(sym)
 
         self._ws_manager = ws_manager
         if ws_manager is not None:
@@ -80,12 +87,7 @@ class EMAScanner:
             print(f'⚠️ Error saving EMA cooldown: {e}')
 
     def is_in_cooldown(self, symbol):
-        now = datetime.utcnow()
-        current_day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        if symbol not in self.last_alerts:
-            return False
-        last = self.last_alerts[symbol]
-        return last.replace(hour=0, minute=0, second=0, microsecond=0) >= current_day_start
+        return symbol in self._in_zone
 
     def mark_alerted(self, symbol):
         self.last_alerts[symbol] = datetime.utcnow()
@@ -174,15 +176,23 @@ class EMAScanner:
         ema60        = ema_data['ema60']
 
         # Only alert when price approaches EMA from above (support bounce setup)
-        # Skip if price is already below EMA (rebounding from below = not our setup)
         if live_price < ema60:
             return
 
         distance_pct = abs((live_price - ema60) / ema60 * 100)
+        exit_threshold = self.ema_touch_threshold * 3.0
+
+        if distance_pct >= exit_threshold:
+            # Price moved significantly away → reset zone, next touch will alert
+            with self._lock:
+                self._in_zone.discard(symbol)
+            return
 
         if distance_pct < self.ema_touch_threshold:
+            coin = None
             with self._lock:
-                if not self.is_in_cooldown(symbol):
+                if symbol not in self._in_zone:
+                    self._in_zone.add(symbol)
                     self.mark_alerted(symbol)
                     coin = {
                         'symbol': symbol,
@@ -192,8 +202,9 @@ class EMAScanner:
                         'approach': 'from above' if live_price > ema60 else 'from below',
                         'volume_24h': 0,
                     }
-                    threading.Thread(
-                        target=self.send_alert, args=([coin],), daemon=True).start()
+            if coin:
+                threading.Thread(
+                    target=self.send_alert, args=([coin],), daemon=True).start()
 
     # ── REST kline + EMA (used by polling scan) ───────────────────────────────
 
@@ -267,15 +278,21 @@ class EMAScanner:
                 ema_data = self.fetch_klines_and_calculate_ema(symbol, interval='30', limit=250)
                 if not ema_data:
                     continue
-                if ema_data['distance_pct'] < self.ema_touch_threshold:
+                exit_threshold = self.ema_touch_threshold * 3.0
+                d = ema_data['distance_pct']
+                if d >= exit_threshold:
                     with self._lock:
-                        if not self.is_in_cooldown(symbol):
+                        self._in_zone.discard(symbol)
+                elif d < self.ema_touch_threshold:
+                    with self._lock:
+                        if symbol not in self._in_zone:
+                            self._in_zone.add(symbol)
                             self.mark_alerted(symbol)
                             found.append({
                                 'symbol': symbol,
                                 'price': ema_data['current_price'],
                                 'ema60': ema_data['ema60'],
-                                'distance_pct': ema_data['distance_pct'],
+                                'distance_pct': d,
                                 'approach': 'from above' if ema_data['current_price'] > ema_data['ema60'] else 'from below',
                                 'volume_24h': float(pair.get('volume24h', 0)),
                                 'change_pct': change_pct_map.get(symbol, 0.0),
