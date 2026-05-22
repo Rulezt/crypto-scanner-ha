@@ -220,13 +220,15 @@ class EMAScanner:
                     self._in_zone.add(symbol)
                     self._save_zone()
                     self.mark_alerted(symbol)
+                    ticker_data = self._ws_manager.get_all_tickers().get(symbol, {}) if self._ws_manager else {}
                     coin = {
                         'symbol': symbol,
                         'price': live_price,
                         'ema60': ema60,
                         'distance_pct': distance_pct,
                         'approach': 'from above' if live_price > ema60 else 'from below',
-                        'volume_24h': 0,
+                        'volume_24h': ticker_data.get('volume_24h', 0),
+                        'change_pct': ticker_data.get('change_24h', 0.0),
                     }
             if coin:
                 threading.Thread(
@@ -353,7 +355,8 @@ class EMAScanner:
             lines  = [
                 '🔔 Alert', '',
                 f'Coin: {sym}',
-                f'Vol: {change:+.2f}%    Segnale: EMA60',
+                f'Segnale: EMA60',
+                f'Vol: {change:+.2f}%',
                 f'Timeframe: {scan_tf_label}',
                 f'Distanza: {dist:.2f}%',
                 '',
