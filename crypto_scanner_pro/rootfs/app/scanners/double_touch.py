@@ -275,7 +275,7 @@ class DoubleTouchScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart
+            from alert_utils import send_photo, send_text, get_chart, log_alert
         except ImportError:
             return
         TF_LABEL = {'D': '1D', '240': '4h', '60': '1h', '30': '30m', '15': '15m', '5': '5m', '1': '1m'}
@@ -308,4 +308,6 @@ class DoubleTouchScanner:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
+            segnale_label = '3tplus' if p['type'] == 'resistance' else '3tminus'
+            log_alert(sym, 'Terzo Tocco', emoji='🔁', note=segnale_label, tf=tf_label)
             print(f'Terzo Tocco alert: {sym} ({p["type"]})')

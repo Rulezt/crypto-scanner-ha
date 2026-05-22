@@ -99,7 +99,7 @@ class DailyFlipScanner:
 
     def _send_single_alert(self, coin):
         try:
-            from alert_utils import send_photo, send_text, get_chart, mtf_link
+            from alert_utils import send_photo, send_text, get_chart, mtf_link, log_alert
         except ImportError:
             return
         sym     = coin['symbol']
@@ -111,6 +111,7 @@ class DailyFlipScanner:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
         else:
             send_text(self.telegram_token, self.telegram_chat_id, caption)
+        log_alert(sym, 'Daily Flip', emoji='🔄', note=f'{sign}{coin["change_pct"]:.2f}%')
         print(f'Flip alert: {sym}')
 
     # ── polling scan (fallback / manual) ─────────────────────────────────────
@@ -182,7 +183,7 @@ class DailyFlipScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, mtf_link
+            from alert_utils import send_photo, send_text, get_chart, mtf_link, log_alert
         except ImportError:
             return
         for coin in coins[:2]:
@@ -195,4 +196,5 @@ class DailyFlipScanner:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
+            log_alert(sym, 'Daily Flip', emoji='🔄', note=f'{sign}{coin["change_pct"]:.2f}%')
             print(f'Flip alert inviato: {sym}')

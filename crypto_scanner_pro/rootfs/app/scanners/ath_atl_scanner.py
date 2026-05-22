@@ -185,22 +185,25 @@ class ATHATLScanner:
 
     def _send_single_alert(self, coin, alert_type):
         try:
-            from alert_utils import send_photo, send_text, get_chart, build_caption
+            from alert_utils import send_photo, send_text, get_chart, build_caption, log_alert
         except ImportError:
             return
         sym = coin['symbol']
         if alert_type == 'ath':
             note     = 'Nuovo ATH' if coin['is_new_ath'] else f"Vicino ATH {coin['distance_pct']:.2f}%"
             sig_type = 'ath'
+            emoji, label = '🏆', 'ATH'
         else:
             note     = 'Nuovo ATL' if coin['is_new_atl'] else f"Vicino ATL {coin['distance_pct']:.2f}%"
             sig_type = 'atl'
+            emoji, label = '⬇️', 'ATL'
         caption = build_caption(sym, coin.get('change_pct', 0.0), note, self.ha_url)
         img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
         else:
             send_text(self.telegram_token, self.telegram_chat_id, caption)
+        log_alert(sym, label, emoji=emoji, note=note)
         print(f'ATH/ATL alert: {sym} ({alert_type})')
 
     # ── historical data helpers ───────────────────────────────────────────────
@@ -339,6 +342,11 @@ class ATHATLScanner:
         except ImportError:
             return
 
+        try:
+            from alert_utils import log_alert as _log
+        except ImportError:
+            _log = None
+
         for coin in result.get('ath', [])[:3]:
             sym     = coin['symbol']
             note    = 'Nuovo ATH' if coin['is_new_ath'] else f"Vicino ATH {coin['distance_pct']:.2f}%"
@@ -348,6 +356,7 @@ class ATHATLScanner:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
+            if _log: _log(sym, 'ATH', emoji='🏆', note=note)
 
         for coin in result.get('atl', [])[:3]:
             sym     = coin['symbol']
@@ -358,3 +367,4 @@ class ATHATLScanner:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
+            if _log: _log(sym, 'ATL', emoji='⬇️', note=note)

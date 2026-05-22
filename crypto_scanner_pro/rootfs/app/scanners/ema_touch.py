@@ -341,7 +341,7 @@ class EMAScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart
+            from alert_utils import send_photo, send_text, get_chart, log_alert
         except ImportError:
             return
         TF_LABEL = {'1':'1m','5':'5m','15':'15m','30':'30m','60':'1h','240':'4h','D':'1D'}
@@ -368,4 +368,5 @@ class EMAScanner:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
+            log_alert(sym, 'EMA Touch', emoji='🎯', note='EMA60', tf='30m')
             print(f'EMA alert: {sym}')

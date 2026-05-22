@@ -53,6 +53,15 @@ def build_caption(symbol, change_pct, note, ha_url=''):
     return '\n'.join(lines)
 
 
+def log_alert(symbol, alert_type, emoji='🔔', note='', tf=None):
+    """Write an alert entry to the daily log (resets at UTC midnight)."""
+    try:
+        from daily_log import append_alert
+        append_alert(symbol, alert_type, emoji=emoji, note=note, tf=tf)
+    except Exception as e:
+        logger.warning(f'daily_log error: {e}')
+
+
 def send_photo(token, chat_id, image_bytes, caption):
     """Send a Telegram photo with HTML caption."""
     try:

@@ -286,7 +286,7 @@ class ICOLevelsScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, build_caption
+            from alert_utils import send_photo, send_text, get_chart, build_caption, log_alert
         except ImportError as e:
             logger.error(f'Cannot import alert_utils: {e}')
             return
@@ -300,4 +300,5 @@ class ICOLevelsScanner:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
         else:
             send_text(self.telegram_token, self.telegram_chat_id, caption)
+        log_alert(sym, 'ICO Level', emoji='🚀', note=note)
         logger.info(f'ICO levels alert: {sym} {side} dist={dist:.2f}%')
