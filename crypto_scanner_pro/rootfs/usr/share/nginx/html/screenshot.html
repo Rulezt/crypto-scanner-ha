@@ -44,6 +44,7 @@ const TF  = qp.get('interval') || '30';
 const SIG       = qp.get('signal_type') || '';
 const SIG_PRICE = parseFloat(qp.get('signal_price') || '0');
 const SIG_COND  = qp.get('signal_condition') || 'above';
+const SIG_TIME  = parseInt(qp.get('signal_time') || '0');
 
 const TF_LABEL = {'1':'1m','5':'5m','15':'15m','30':'30m','60':'1h','240':'4h','D':'1D'};
 
@@ -193,12 +194,22 @@ async function init() {
 
       if (SIG === 'price' && SIG_PRICE > 0) {
         const clr = SIG_COND === 'above' ? '#34d399' : '#f87171';
-        const lbl = SIG_COND === 'above' ? 'TARGET ▲' : 'TARGET ▼';
-        candleS.createPriceLine({
-          price:SIG_PRICE, color:clr, lineWidth:2,
+        const klines = candleS.data ? candleS.data() : [];
+        const lastTime  = klines.length ? klines[klines.length-1].time : Math.floor(Date.now()/1000);
+        const timeStep  = klines.length > 1 ? klines[klines.length-1].time - klines[klines.length-2].time : 60;
+        const startTime = (SIG_TIME > 0 && SIG_TIME >= (klines[0]?.time ?? 0))
+                          ? SIG_TIME : (klines[0]?.time ?? lastTime - timeStep * 80);
+        const futureTime = lastTime + timeStep * 30;
+        const lvlS = addS(chart, 'LineSeries', {
+          color: clr, lineWidth: 2,
           lineStyle: LC.LineStyle ? LC.LineStyle.Dashed : 2,
-          axisLabelVisible:true, title:lbl,
+          priceLineVisible: false, lastValueVisible: true,
+          crosshairMarkerVisible: false, title: '',
         });
+        lvlS.setData([
+          { time: startTime,  value: SIG_PRICE },
+          { time: futureTime, value: SIG_PRICE },
+        ]);
       }
 
       const len = klines.length;

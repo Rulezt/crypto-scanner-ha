@@ -18,7 +18,7 @@ PAGE_W, PAGE_H = 1280, 760
 
 
 def take_screenshot(symbol, interval='30', signal_type=None, signal_price=None,
-                    signal_condition=None, port=8080):
+                    signal_condition=None, signal_time=None, port=8080):
     """
     Renders screenshot.html in headless Chromium for the given symbol/interval.
     Returns PNG bytes or None on failure.
@@ -51,6 +51,8 @@ def take_screenshot(symbol, interval='30', signal_type=None, signal_price=None,
                 url += f'&signal_price={signal_price}'
             if signal_condition:
                 url += f'&signal_condition={signal_condition}'
+            if signal_time:
+                url += f'&signal_time={int(signal_time)}'
 
             driver.get(url)
 

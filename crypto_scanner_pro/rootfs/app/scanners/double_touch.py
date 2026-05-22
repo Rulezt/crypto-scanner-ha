@@ -287,6 +287,7 @@ class DoubleTouchScanner:
                 'type': 'price',
                 'price': p['level'],
                 'condition': 'above' if p['type'] == 'resistance' else 'below',
+                'time': p.get('touchBTime'),
             })
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)

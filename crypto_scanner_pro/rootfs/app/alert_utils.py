@@ -92,6 +92,7 @@ def get_chart(symbol, interval='30', signal=None):
     sig_type  = signal.get('type')      if signal else None
     sig_price = signal.get('price')     if signal else None
     sig_cond  = signal.get('condition') if signal else None
+    sig_time  = signal.get('time')      if signal else None
 
     # Primary: Selenium screenshot of chart.html-style page
     try:
@@ -101,6 +102,7 @@ def get_chart(symbol, interval='30', signal=None):
             signal_type=sig_type,
             signal_price=sig_price,
             signal_condition=sig_cond,
+            signal_time=sig_time,
         )
         if img:
             return img
