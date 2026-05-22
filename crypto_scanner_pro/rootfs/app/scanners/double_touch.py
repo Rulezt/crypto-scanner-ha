@@ -273,7 +273,7 @@ class DoubleTouchScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, build_caption
+            from alert_utils import send_photo, send_text, get_chart
         except ImportError:
             return
         TF_LABEL = {'D': '1D', '240': '4h', '60': '1h', '30': '30m', '15': '15m', '5': '5m', '1': '1m'}
@@ -281,8 +281,20 @@ class DoubleTouchScanner:
             sym      = p['symbol']
             tf       = p.get('tf', self.scan_tfs[0])
             tf_label = TF_LABEL.get(tf, tf)
-            note     = f'3tplus {tf_label}' if p['type'] == 'resistance' else f'3tminus {tf_label}'
-            caption  = build_caption(sym, p.get('change_pct', 0.0), note, self.ha_url)
+            segnale  = f'3tplus' if p['type'] == 'resistance' else f'3tminus'
+            change   = p.get('change_pct', 0.0)
+            lines    = [
+                '🔔 Alert', '',
+                f'Coin: {sym}',
+                f'Vol: {change:+.2f}%    Segnale: {segnale}',
+                f'Timeframe: {tf_label}',
+                '',
+            ]
+            base = self.ha_url.rstrip('/') if self.ha_url else ''
+            if base:
+                lines.append(f'<a href="{base}/chart?symbol={sym}">View Chart</a>')
+                lines.append(f'<a href="{base}/mtf?symbol={sym}">View MultiTimeframe</a>')
+            caption = '\n'.join(lines)
             img = get_chart(sym, interval=tf, signal={
                 'type': 'price',
                 'price': p['level'],

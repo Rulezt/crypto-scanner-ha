@@ -193,12 +193,11 @@ async function init() {
       }
 
       if (SIG === 'price' && SIG_PRICE > 0) {
-        const clr = SIG_COND === 'above' ? '#34d399' : '#f87171';
-        const klines = candleS.data ? candleS.data() : [];
-        const lastTime  = klines.length ? klines[klines.length-1].time : Math.floor(Date.now()/1000);
-        const timeStep  = klines.length > 1 ? klines[klines.length-1].time - klines[klines.length-2].time : 60;
-        const startTime = (SIG_TIME > 0 && SIG_TIME >= (klines[0]?.time ?? 0))
-                          ? SIG_TIME : (klines[0]?.time ?? lastTime - timeStep * 80);
+        const clr      = SIG_COND === 'above' ? '#34d399' : '#f87171';
+        const lastTime = klines[klines.length - 1].time;
+        const timeStep = klines.length > 1 ? klines[klines.length-1].time - klines[klines.length-2].time : 60;
+        const startTime = (SIG_TIME > 0 && SIG_TIME >= klines[0].time)
+                          ? SIG_TIME : klines[0].time;
         const futureTime = lastTime + timeStep * 30;
         const lvlS = addS(chart, 'LineSeries', {
           color: clr, lineWidth: 2,
