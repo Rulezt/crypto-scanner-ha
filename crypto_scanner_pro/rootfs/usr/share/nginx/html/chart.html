@@ -521,6 +521,7 @@ function renderAlertsList() {
             <span style="font-size:11px;color:${dirColor};font-weight:600;min-width:52px;">${dirLabel}</span>
             <span style="font-size:11px;font-family:monospace;color:#fbbf24;flex:1;">${fmtPrice(a.price)}</span>
             <span style="font-size:12px;" title="${a.notify === 'browser' ? 'Solo PC' : 'Telegram + PC'}">${notifyIcon}</span>
+            <a href="mtf?symbol=${a.symbol}" target="_blank" style="font-size:11px;color:#60a5fa;text-decoration:none;flex-shrink:0;" onmouseenter="this.style.color='#93c5fd'" onmouseleave="this.style.color='#60a5fa'">Chart</a>
             <button onclick="deleteAlert('${a.id}')" style="background:#3f1515;color:#f87171;border:1px solid #7f1d1d;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;flex-shrink:0;" onmouseenter="this.style.background='#7f1d1d'" onmouseleave="this.style.background='#3f1515'">✕</button>
         </div>`;
     }).join('');

@@ -385,7 +385,10 @@
                                 <span class="text-xs text-gray-500 ml-1">${a.type}</span>
                             </div>
                         </div>
-                        <span class="text-xs text-gray-500 flex-shrink-0">${ago}</span>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <a href="mtf?symbol=${a.symbol}" class="text-xs text-blue-400 hover:text-blue-300">Chart</a>
+                            <span class="text-xs text-gray-500">${ago}</span>
+                        </div>
                     </div>`;
                 }).join('');
             } catch (e) {
