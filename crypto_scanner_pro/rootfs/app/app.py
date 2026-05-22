@@ -63,10 +63,9 @@ DEFAULT_CONFIG = {
         'enabled': True,
         'tolerance': 0.5,
         'proximity': 2.0,
-        'scan_tf': 'D',
+        'scan_tf': ['D', '240'],
         'scan_interval_minutes': 240,
         'cooldown_hours': 12,
-        'screenshot_tf': 'D',
     },
     'general': {
         'min_volume_24h': 10000000,
@@ -411,7 +410,7 @@ def get_recent_alerts():
             ('/data/losers_cooldown.json',        'Loser',        '📉', 'plain'),
             ('/data/ath_cooldown.json',           'ATH',          '🏆', 'plain'),
             ('/data/atl_cooldown.json',           'ATL',          '⬇️', 'plain'),
-            ('/data/double_touch_cooldown.json',  'Terzo Tocco',  '🔁', 'strip_suffix'),
+            ('/data/double_touch_cooldown.json',  'Terzo Tocco',  '🔁', 'strip2'),
         ]
 
         recent_alerts = []
@@ -431,14 +430,26 @@ def get_recent_alerts():
                     except Exception:
                         continue
                     if ts >= cutoff:
-                        symbol = key.rsplit('_', 1)[0] if key_mode == 'strip_suffix' else key
-                        recent_alerts.append({
+                        if key_mode == 'strip_suffix':
+                            symbol = key.rsplit('_', 1)[0]
+                            alert_tf = None
+                        elif key_mode == 'strip2':
+                            parts = key.rsplit('_', 2)
+                            symbol = parts[0]
+                            alert_tf = parts[1] if len(parts) == 3 else None
+                        else:
+                            symbol = key
+                            alert_tf = None
+                        entry = {
                             'symbol':    symbol,
                             'type':      label,
                             'emoji':     emoji,
                             'time':      ts.strftime('%Y-%m-%dT%H:%M:%SZ'),
                             'timestamp': ts.timestamp(),
-                        })
+                        }
+                        if alert_tf:
+                            entry['tf'] = alert_tf
+                        recent_alerts.append(entry)
             except Exception:
                 continue
 

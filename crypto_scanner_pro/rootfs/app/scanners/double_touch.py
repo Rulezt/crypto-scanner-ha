@@ -16,9 +16,9 @@ MAX_COINS = 200
 class DoubleTouchScanner:
     def __init__(self, telegram_config, enabled=True,
                  tolerance=0.5, proximity=2.0,
-                 scan_tf='D', min_volume_24h=10_000_000,
+                 scan_tf=None, min_volume_24h=10_000_000,
                  scan_interval_minutes=240, cooldown_hours=12,
-                 max_coins_per_alert=5, screenshot_tf=None,
+                 max_coins_per_alert=5,
                  ws_manager=None, **kwargs):
 
         self.telegram_token   = telegram_config['token']
@@ -27,8 +27,8 @@ class DoubleTouchScanner:
         self.enabled          = enabled
         self.tolerance        = float(tolerance)
         self.proximity        = float(proximity)
-        self.scan_tf          = scan_tf
-        self.screenshot_tf    = screenshot_tf if screenshot_tf else scan_tf
+        raw_tf = scan_tf if scan_tf is not None else 'D'
+        self.scan_tfs         = raw_tf if isinstance(raw_tf, list) else [raw_tf]
         self.min_volume_24h   = min_volume_24h
         self.max_coins_per_alert = max_coins_per_alert
         self.cooldown_hours   = cooldown_hours
@@ -36,7 +36,7 @@ class DoubleTouchScanner:
         self.last_alerts = self._load_cooldown()
         self._lock       = threading.Lock()
 
-        print(f'🔁 Terzo Tocco Scanner init — tol={self.tolerance}% prox={self.proximity}% tf={self.scan_tf}')
+        print(f'🔁 Terzo Tocco Scanner init — tol={self.tolerance}% prox={self.proximity}% tf={",".join(self.scan_tfs)}')
 
     # ── cooldown ─────────────────────────────────────────────────────────────
 
@@ -91,11 +91,11 @@ class DoubleTouchScanner:
             print(f'❌ Double touch: fetch tickers: {e}')
             return []
 
-    def _fetch_klines(self, symbol):
+    def _fetch_klines(self, symbol, tf):
         try:
             r = requests.get('https://api.bybit.com/v5/market/kline',
                              params={'category': 'linear', 'symbol': symbol,
-                                     'interval': self.scan_tf, 'limit': 100},
+                                     'interval': tf, 'limit': 100},
                              timeout=10)
             data = r.json()
             if data.get('retCode') != 0:
@@ -235,25 +235,26 @@ class DoubleTouchScanner:
     def scan(self):
         if not self.enabled:
             return []
-        print(f'🔁 Terzo Tocco Scanner — scanning top {MAX_COINS} coin (tol={self.tolerance}% prox={self.proximity}% tf={self.scan_tf})...')
+        print(f'🔁 Terzo Tocco Scanner — scanning top {MAX_COINS} coin (tol={self.tolerance}% prox={self.proximity}% tf={",".join(self.scan_tfs)})...')
         found = []
         try:
             tickers = self._fetch_tickers()
             for i, ticker in enumerate(tickers):
-                symbol  = ticker['symbol']
-                candles = self._fetch_klines(symbol)
-                if len(candles) < 10:
-                    continue
-                patterns = self._find_double_touches(candles, ticker['price'])
-                for p in patterns:
-                    cooldown_key = f"{symbol}_{p['type']}"
-                    with self._lock:
-                        if not self.is_in_cooldown(cooldown_key):
-                            self.mark_alerted(cooldown_key)
-                            found.append({'symbol': symbol,
-                                          'price': ticker['price'],
-                                          'volume': ticker['volume'],
-                                          'change_pct': ticker.get('change_pct', 0.0), **p})
+                symbol = ticker['symbol']
+                for tf in self.scan_tfs:
+                    candles = self._fetch_klines(symbol, tf)
+                    if len(candles) < 10:
+                        continue
+                    patterns = self._find_double_touches(candles, ticker['price'])
+                    for p in patterns:
+                        cooldown_key = f"{symbol}_{tf}_{p['type']}"
+                        with self._lock:
+                            if not self.is_in_cooldown(cooldown_key):
+                                self.mark_alerted(cooldown_key)
+                                found.append({'symbol': symbol, 'tf': tf,
+                                              'price': ticker['price'],
+                                              'volume': ticker['volume'],
+                                              'change_pct': ticker.get('change_pct', 0.0), **p})
                 # Gentle rate limit
                 if (i + 1) % 10 == 0:
                     time.sleep(0.5)
@@ -277,9 +278,10 @@ class DoubleTouchScanner:
             return
         for p in patterns[:3]:
             sym  = p['symbol']
+            tf   = p.get('tf', self.scan_tfs[0])
             note = '3tplus' if p['type'] == 'resistance' else '3tminus'
             caption = build_caption(sym, p.get('change_pct', 0.0), note, self.ha_url)
-            img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ema'})
+            img = get_chart(sym, interval=tf, signal={'type': 'ema'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
