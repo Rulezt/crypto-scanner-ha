@@ -99,31 +99,18 @@ def _compute_ema(prices, period):
         ema = p * k + ema * (1 - k)
     return round(ema, 8)
 
-def _compute_ema_series(prices, period):
-    if len(prices) < period:
-        return [None] * len(prices)
-    k = 2 / (period + 1)
-    series = [None] * (period - 1)
-    ema = sum(prices[:period]) / period
-    series.append(ema)
-    for p in prices[period:]:
-        ema = p * k + ema * (1 - k)
-        series.append(ema)
-    return series
-
-def _count_ema_touches(klines, period=60, window=100):
-    """Count candles in last `window` where candle range (low-high) crossed EMA."""
-    if len(klines) < period:
+def _count_ema_touches_daily(klines_1m, ema_value):
+    """Count 1m candles from midnight UTC today where low <= ema_value <= high."""
+    import datetime
+    if not klines_1m or ema_value is None:
         return None
-    closes = [k['close'] for k in klines]
-    ema_series = _compute_ema_series(closes, period)
-    start = max(0, len(klines) - window)
+    now = datetime.datetime.utcnow()
+    midnight_ts = int(datetime.datetime(now.year, now.month, now.day).timestamp())
     count = 0
-    for i in range(start, len(klines)):
-        ema_val = ema_series[i]
-        if ema_val is None:
+    for k in klines_1m:
+        if k['time'] < midnight_ts:
             continue
-        if klines[i]['low'] <= ema_val <= klines[i]['high']:
+        if k['low'] <= ema_value <= k['high']:
             count += 1
     return count
 
@@ -313,7 +300,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.9.2',
+        'version': '3.9.3',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -526,20 +513,21 @@ def get_high_volume():
 
         coins.sort(key=lambda x: x['volume_24h'], reverse=True)
 
-        # Subscribe to 30m klines for coins not yet tracked (seeds cache from REST, then WS)
+        # Subscribe to 30m and 1m klines for coins not yet tracked
         new_syms = [c['symbol'] for c in coins if c['symbol'] not in _hv_klines_subscribed]
         if new_syms:
-            ws_manager.subscribe_klines(new_syms, intervals=['30'])
+            ws_manager.subscribe_klines(new_syms, intervals=['30', '1'])
             _hv_klines_subscribed.update(new_syms)
 
-        # Attach EMA60(30m) computed from in-memory kline cache
+        # Attach EMA60(30m) and daily 1m touch count
         for coin in coins:
-            klines = ws_manager.get_klines(coin['symbol'], '30')
-            closes = [k['close'] for k in klines]
+            klines_30m = ws_manager.get_klines(coin['symbol'], '30')
+            closes = [k['close'] for k in klines_30m]
             ema = _compute_ema(closes, 60)
             coin['ema60_30m'] = ema
             coin['ema60_dist'] = round((coin['price'] - ema) / ema * 100, 2) if ema else None
-            coin['ema_touch_count'] = _count_ema_touches(klines, period=60, window=100)
+            klines_1m = ws_manager.get_klines(coin['symbol'], '1')
+            coin['ema_touch_count'] = _count_ema_touches_daily(klines_1m, ema)
 
         return jsonify({'success': True, 'data': coins, 'count': len(coins)})
     except Exception as e:
