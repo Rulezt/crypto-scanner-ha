@@ -285,7 +285,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.9.0',
+        'version': '3.9.1',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -508,7 +508,9 @@ def get_high_volume():
         for coin in coins:
             klines = ws_manager.get_klines(coin['symbol'], '60')
             closes = [k['close'] for k in klines]
-            coin['ema60_1h'] = _compute_ema(closes, 60)
+            ema = _compute_ema(closes, 60)
+            coin['ema60_1h'] = ema
+            coin['ema60_dist'] = round((coin['price'] - ema) / ema * 100, 2) if ema else None
 
         return jsonify({'success': True, 'data': coins, 'count': len(coins)})
     except Exception as e:
