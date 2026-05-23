@@ -200,10 +200,11 @@
                             <th class="px-4 py-2 text-right">Prezzo</th>
                             <th class="px-4 py-2 text-right">Var 24h</th>
                             <th class="px-4 py-2 text-right">Volume 24h</th>
+                            <th class="px-4 py-2 text-right">EMA60 1h</th>
                         </tr>
                     </thead>
                     <tbody id="hv-tbody">
-                        <tr><td colspan="5" class="text-center py-8 text-gray-500 text-sm">Caricamento...</td></tr>
+                        <tr><td colspan="6" class="text-center py-8 text-gray-500 text-sm">Caricamento...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -454,12 +455,17 @@
                         const positive = c.change_24h >= 0;
                         const chgClass = positive ? 'text-emerald-400' : 'text-red-400';
                         const chgStr   = (positive ? '+' : '') + c.change_24h.toFixed(2) + '%';
+                        const emaTxt   = c.ema60_1h != null ? '$' + fmtPrice(c.ema60_1h) : '-';
+                        const emaClass = c.ema60_1h != null
+                            ? (c.price >= c.ema60_1h ? 'text-emerald-400' : 'text-red-400')
+                            : 'text-gray-600';
                         return `<tr class="border-b border-dark-border/40 hover:bg-dark-hover/60 cursor-pointer" onclick="window.open('mtf?symbol=${c.symbol}','_blank')">
                             <td class="px-4 py-2.5 text-gray-600 text-xs w-10">${i + 1}</td>
                             <td class="px-4 py-2.5 font-medium text-gray-200">${coin}</td>
                             <td id="hvp-${c.symbol}" class="px-4 py-2.5 text-right text-gray-300 font-mono text-xs">$${fmtPrice(c.price)}</td>
                             <td id="hvc-${c.symbol}" class="px-4 py-2.5 text-right ${chgClass} font-medium text-xs">${chgStr}</td>
                             <td id="hvv-${c.symbol}" class="px-4 py-2.5 text-right text-gray-400 text-xs">${fmtVol(c.volume_24h)}</td>
+                            <td id="hve-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${emaClass}">${emaTxt}</td>
                         </tr>`;
                     }).join('');
                 } else {
@@ -468,6 +474,7 @@
                         const priceEl = document.getElementById(`hvp-${c.symbol}`);
                         const chgEl   = document.getElementById(`hvc-${c.symbol}`);
                         const volEl   = document.getElementById(`hvv-${c.symbol}`);
+                        const emaEl   = document.getElementById(`hve-${c.symbol}`);
 
                         if (priceEl) {
                             const newTxt = '$' + fmtPrice(c.price);
@@ -485,6 +492,14 @@
                             chgEl.className = `px-4 py-2.5 text-right font-medium text-xs ${positive ? 'text-emerald-400' : 'text-red-400'}`;
                         }
                         if (volEl) volEl.textContent = fmtVol(c.volume_24h);
+                        if (emaEl) {
+                            emaEl.textContent = c.ema60_1h != null ? '$' + fmtPrice(c.ema60_1h) : '-';
+                            emaEl.className = `px-4 py-2.5 text-right font-mono text-xs ${
+                                c.ema60_1h != null
+                                    ? (c.price >= c.ema60_1h ? 'text-emerald-400' : 'text-red-400')
+                                    : 'text-gray-600'
+                            }`;
+                        }
                     });
                 }
 

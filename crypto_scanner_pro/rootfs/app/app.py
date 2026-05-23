@@ -88,6 +88,17 @@ ws_manager = BybitWSManager()
 _triggered_lock = threading.Lock()
 _recently_triggered = []
 
+_hv_klines_subscribed = set()
+
+def _compute_ema(prices, period):
+    if len(prices) < period:
+        return None
+    k = 2 / (period + 1)
+    ema = sum(prices[:period]) / period
+    for p in prices[period:]:
+        ema = p * k + ema * (1 - k)
+    return round(ema, 8)
+
 def load_config():
     """Load config from file"""
     global config
@@ -274,7 +285,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.8.99',
+        'version': '3.9.0',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -486,6 +497,19 @@ def get_high_volume():
                 })
 
         coins.sort(key=lambda x: x['volume_24h'], reverse=True)
+
+        # Subscribe to 1h klines for coins not yet tracked (seeds cache from REST, then WS)
+        new_syms = [c['symbol'] for c in coins if c['symbol'] not in _hv_klines_subscribed]
+        if new_syms:
+            ws_manager.subscribe_klines(new_syms, intervals=['60'])
+            _hv_klines_subscribed.update(new_syms)
+
+        # Attach EMA60(1h) computed from in-memory kline cache
+        for coin in coins:
+            klines = ws_manager.get_klines(coin['symbol'], '60')
+            closes = [k['close'] for k in klines]
+            coin['ema60_1h'] = _compute_ema(closes, 60)
+
         return jsonify({'success': True, 'data': coins, 'count': len(coins)})
     except Exception as e:
         logger.error(f"Error fetching high-volume coins: {e}")
