@@ -368,6 +368,7 @@ const fsBtn = document.createElement('button');
       prevHighLine:null, prevLowLine:null,
       rangeActive: false, rangeP1: null, rangeP2: null, _rangeSub: null, _rangeCsSub: null,
       dayPrimitive: null,
+      lastCandleStartUtc: null,
     });
     chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.cfg.tf), to: s.klineCount + 3 }); });
   });
@@ -468,6 +469,7 @@ function openWS() {
       close: parseFloat(b.close),
     };
     const s = slots[idx];
+    s.lastCandleStartUtc = candleStart;
     s.candleS.update(candle);
     for (const {p} of EMA_CFG) {
       if (s.lastEMA[p] === null) continue;
@@ -781,17 +783,24 @@ buildGrid();
 loadAll();
 
 function _tickTimers() {
-  const now = Math.floor(Date.now() / 1000);
+  const nowMs = Date.now();
+  const nowS  = Math.floor(nowMs / 1000);
   slots.forEach(s => {
     if (!s.timerEl) return;
     const dur = TF_SECONDS[s.cfg.tf];
     if (!dur) return;
-    const rem = dur - (now % dur);
+    let rem;
+    if (s.lastCandleStartUtc !== null) {
+      // Driven by actual Bybit candle open time — always in sync with chart
+      rem = dur - ((nowS - s.lastCandleStartUtc) % dur);
+    } else {
+      // Fallback before first WS message: UTC boundary formula
+      rem = dur - (nowS % dur);
+    }
     s.timerEl.textContent = fmtCountdown(rem);
     s.timerEl.style.color = rem <= 30 ? '#f59e0b' : '#4B5563';
   });
-  // Reschedule 10ms after next second boundary (stays aligned to UTC seconds)
-  setTimeout(_tickTimers, 1010 - (Date.now() % 1000));
+  setTimeout(_tickTimers, 1010 - (nowMs % 1000));
 }
 _tickTimers();
 
