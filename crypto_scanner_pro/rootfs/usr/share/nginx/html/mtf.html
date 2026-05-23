@@ -287,7 +287,7 @@ function buildGrid() {
     const dur0 = TF_SECONDS[cfg.tf];
     if (dur0) {
       const now0 = Math.floor(Date.now()/1000);
-      timerEl.textContent = fmtCountdown((Math.floor(now0/dur0)*dur0 + dur0) - now0);
+      timerEl.textContent = fmtCountdown(dur0 - (now0 % dur0));
     }
 
     const pctEl = document.createElement('span');
@@ -363,7 +363,6 @@ const fsBtn = document.createElement('button');
     slots.push({
       cfg, chart, candleS, emaS, cell, rangeCanvas, rangeBtn, timerEl,
       klineCount: 0,
-      candleEnd: dur0 ? (Math.floor(Math.floor(Date.now()/1000)/dur0)*dur0 + dur0) : null,
       lastEMA: {5:null,10:null,60:null,223:null},
       dayHighLine:null, dayLowLine:null,
       prevHighLine:null, prevLowLine:null,
@@ -469,8 +468,6 @@ function openWS() {
       close: parseFloat(b.close),
     };
     const s = slots[idx];
-    const tfDur = TF_SECONDS[tf];
-    if (tfDur) s.candleEnd = candleStart + tfDur;
     s.candleS.update(candle);
     for (const {p} of EMA_CFG) {
       if (s.lastEMA[p] === null) continue;
@@ -789,11 +786,7 @@ setInterval(() => {
     if (!s.timerEl) return;
     const dur = TF_SECONDS[s.cfg.tf];
     if (!dur) return;
-    // Ricalcola candleEnd se scaduto (nuova candela aperta)
-    if (!s.candleEnd || now >= s.candleEnd) {
-      s.candleEnd = Math.floor(now / dur) * dur + dur;
-    }
-    const rem = s.candleEnd - now;
+    const rem = dur - (now % dur);
     s.timerEl.textContent = fmtCountdown(rem);
     s.timerEl.style.color = rem <= 30 ? '#f59e0b' : '#4B5563';
   });
