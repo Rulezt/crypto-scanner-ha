@@ -89,6 +89,7 @@ _triggered_lock = threading.Lock()
 _recently_triggered = []
 
 _hv_klines_subscribed = set()
+_mtf_klines_subscribed = set()  # (symbol, interval) tuples for MTF live polling
 
 def _compute_ema(prices, period):
     if len(prices) < period:
@@ -317,7 +318,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '4.0.1',
+        'version': '4.0.2',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -890,6 +891,47 @@ def get_klines():
     except Exception as e:
         logger.error(f"Error fetching klines for {symbol}: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/klines/live', methods=['GET'])
+def get_klines_live():
+    """Return last 10 klines from ws_manager cache (live, updated via backend WS to Bybit)."""
+    import re
+    symbol   = request.args.get('symbol', 'BTCUSDT').upper()
+    interval = request.args.get('interval', '1')
+
+    if not re.match(r'^[A-Z0-9]{3,20}$', symbol) or not symbol.endswith('USDT'):
+        return jsonify({'error': 'Invalid symbol'}), 400
+    if interval not in {'1', '5', '15', '30', '60', '240', 'D'}:
+        return jsonify({'error': 'Invalid interval'}), 400
+
+    key = (symbol, interval)
+    if key not in _mtf_klines_subscribed:
+        ws_manager.subscribe_klines([symbol], intervals=[interval])
+        _mtf_klines_subscribed.add(key)
+
+    klines = ws_manager.get_klines(symbol, interval)
+
+    utc_off = config.get('general', {}).get('utc_offset', 2)
+    try:
+        utc_off = float(utc_off)
+    except (TypeError, ValueError):
+        utc_off = 2
+    tz_s = int(utc_off * 3600)
+
+    tail = klines[-10:] if klines else []
+    result = [{
+        'time':   k['time'] + tz_s,
+        'open':   k['open'],
+        'high':   k['high'],
+        'low':    k['low'],
+        'close':  k['close'],
+        'volume': k['volume'],
+    } for k in tail]
+
+    resp = jsonify({'success': True, 'data': result, 'utc_offset_s': tz_s})
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
 
 
 @app.route('/api/ticker', methods=['GET'])

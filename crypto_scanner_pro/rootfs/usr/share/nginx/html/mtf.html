@@ -442,6 +442,8 @@ async function loadSlot(idx, dailyData) {
 }
 
 // ── WebSocket ──────────────────────────────────────────────────────────────────
+let _wsPingTimer = null;
+
 function openWS() {
   closeWS();
   setWSDot('connecting');
@@ -452,6 +454,10 @@ function openWS() {
       op: 'subscribe',
       args: TF_SLOTS.map(s => `kline.${s.tf}.${SYM}`),
     }));
+    // Bybit requires application-level ping every 20s to keep connection alive
+    _wsPingTimer = setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send('{"op":"ping"}');
+    }, 20000);
   };
   ws.onmessage = ev => {
     let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
@@ -482,11 +488,16 @@ function openWS() {
     }
   };
   ws.onerror = () => setWSDot('error');
-  ws.onclose = () => { setWSDot('off'); wsTimer = setTimeout(openWS, 5000); };
+  ws.onclose = () => {
+    setWSDot('off');
+    clearInterval(_wsPingTimer); _wsPingTimer = null;
+    wsTimer = setTimeout(openWS, 5000);
+  };
 }
 
 function closeWS() {
   clearTimeout(wsTimer);
+  clearInterval(_wsPingTimer); _wsPingTimer = null;
   if (ws) { try { ws.close(); } catch(e) {} ws = null; }
 }
 
@@ -783,37 +794,37 @@ function closeFSModal() {
 
 buildGrid();
 loadAll().then(() => {
-  // Fallback REST poller: if a fast TF slot gets no WS update for 65s, reload from REST
-  async function _restFallback() {
-    const now = Date.now();
+  // Live polling via backend ws_manager — runs every 5s for 1m and 5m slots.
+  // The backend WS (with ping_interval=20) stays connected reliably to Bybit;
+  // the frontend polls it instead of depending on a direct browser→Bybit WS.
+  async function _livePoll() {
     for (let i = 0; i < slots.length; i++) {
       const s = slots[i];
-      const dur = TF_SECONDS[s.cfg.tf];
-      if (!dur || dur > 300) continue; // only 1m and 5m
-      if (now - s.lastWsMs < 65000) continue; // WS active, skip
+      if (s.cfg.tf !== '1' && s.cfg.tf !== '5') continue;
       try {
-        const r = await fetch(`api/klines?symbol=${SYM}&interval=${s.cfg.tf}&_t=${Date.now()}`);
+        const r = await fetch(`api/klines/live?symbol=${SYM}&interval=${s.cfg.tf}&_t=${Date.now()}`);
         const j = await r.json();
-        if (!j.success || !j.data.length) continue;
-        // Full reload to fill any gaps
-        s.candleS.setData(j.data);
-        s.klineCount = j.data.length;
-        s.dayPrimitive = attachDayLines(s.candleS, s.chart, j.data, s.cfg.tf, s.dayPrimitive);
-        s.candleS.applyOptions({ priceFormat: getPriceFormat(j.data[j.data.length-1]?.close) });
+        if (!j.success || !j.data || !j.data.length) continue;
+        // Update last 10 candles — fills any gap and keeps live candle current
+        for (const c of j.data) s.candleS.update(c);
+        // Show live EMA for the current open candle
+        const lc = j.data[j.data.length - 1];
         for (const {p} of EMA_CFG) {
-          const ema = calcEMA(j.data, p);
-          s.emaS[p].setData(ema);
-          s.lastEMA[p] = ema[ema.length-1].value;
+          if (s.lastEMA[p] === null) continue;
+          const kk = 2/(p+1);
+          s.emaS[p].update({time: lc.time, value: lc.close * kk + s.lastEMA[p] * (1-kk)});
         }
-        // Update timer state from REST last candle
-        const lc = j.data[j.data.length-1];
-        s.lastCandleStartUtc = lc.time - TZ_OFFSET_S;
-        s.lastWsMs = Date.now(); // prevent repeated reloads this cycle
+        // Sync timer with actual Bybit candle start time from backend
+        const utcStart = lc.time - (TZ_OFFSET_S || j.utc_offset_s || 0);
+        if (s.lastCandleStartUtc === null || utcStart >= s.lastCandleStartUtc) {
+          s.lastCandleStartUtc = utcStart;
+          s.lastWsMs = Date.now();
+        }
       } catch(e) {}
     }
-    setTimeout(_restFallback, 30000);
+    setTimeout(_livePoll, 5000);
   }
-  setTimeout(_restFallback, 65000); // first check 65s after load
+  setTimeout(_livePoll, 3000); // first poll 3s after initial load
 });
 
 function _tickTimers() {
