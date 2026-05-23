@@ -318,7 +318,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '4.0.2',
+        'version': '4.0.3',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -895,8 +895,9 @@ def get_klines():
 
 @app.route('/api/klines/live', methods=['GET'])
 def get_klines_live():
-    """Return last 10 klines from ws_manager cache (live, updated via backend WS to Bybit)."""
-    import re
+    """Return last 10 live klines for fast-TF polling.
+    Uses ws_manager cache when seeded; falls back to Bybit REST immediately otherwise."""
+    import requests as req, re
     symbol   = request.args.get('symbol', 'BTCUSDT').upper()
     interval = request.args.get('interval', '1')
 
@@ -905,6 +906,13 @@ def get_klines_live():
     if interval not in {'1', '5', '15', '30', '60', '240', 'D'}:
         return jsonify({'error': 'Invalid interval'}), 400
 
+    utc_off = config.get('general', {}).get('utc_offset', 2)
+    try:
+        utc_off = float(utc_off)
+    except (TypeError, ValueError):
+        utc_off = 2
+    tz_s = int(utc_off * 3600)
+
     key = (symbol, interval)
     if key not in _mtf_klines_subscribed:
         ws_manager.subscribe_klines([symbol], intervals=[interval])
@@ -912,12 +920,22 @@ def get_klines_live():
 
     klines = ws_manager.get_klines(symbol, interval)
 
-    utc_off = config.get('general', {}).get('utc_offset', 2)
-    try:
-        utc_off = float(utc_off)
-    except (TypeError, ValueError):
-        utc_off = 2
-    tz_s = int(utc_off * 3600)
+    if not klines:
+        # ws_manager seed not ready yet — call Bybit REST directly
+        try:
+            r = req.get('https://api.bybit.com/v5/market/kline',
+                        params={'category': 'linear', 'symbol': symbol,
+                                'interval': interval, 'limit': 10},
+                        timeout=6)
+            data = r.json()
+            if data.get('retCode') == 0:
+                klines = [{'time': int(k[0]) // 1000,
+                           'open': float(k[1]), 'high': float(k[2]),
+                           'low':  float(k[3]), 'close': float(k[4]),
+                           'volume': float(k[5])}
+                          for k in reversed(data['result']['list'])]
+        except Exception as e:
+            logger.warning(f'klines/live REST fallback error: {e}')
 
     tail = klines[-10:] if klines else []
     result = [{
@@ -929,7 +947,7 @@ def get_klines_live():
         'volume': k['volume'],
     } for k in tail]
 
-    resp = jsonify({'success': True, 'data': result, 'utc_offset_s': tz_s})
+    resp = jsonify({'success': bool(result), 'data': result, 'utc_offset_s': tz_s})
     resp.headers['Cache-Control'] = 'no-store'
     return resp
 
