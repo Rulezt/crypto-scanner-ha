@@ -780,7 +780,7 @@ function closeFSModal() {
 buildGrid();
 loadAll();
 
-setInterval(() => {
+function _tickTimers() {
   const now = Math.floor(Date.now() / 1000);
   slots.forEach(s => {
     if (!s.timerEl) return;
@@ -790,7 +790,10 @@ setInterval(() => {
     s.timerEl.textContent = fmtCountdown(rem);
     s.timerEl.style.color = rem <= 30 ? '#f59e0b' : '#4B5563';
   });
-}, 1000);
+  // Reschedule 10ms after next second boundary (stays aligned to UTC seconds)
+  setTimeout(_tickTimers, 1010 - (Date.now() % 1000));
+}
+_tickTimers();
 
 // ── mobile single-chart navigation ────────────────────────────────────────────
 function mobilePrevSlot() {
