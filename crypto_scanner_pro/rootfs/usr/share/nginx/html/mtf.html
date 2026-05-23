@@ -148,8 +148,7 @@ const EMA_CFG = [
 ];
 
 let slots   = [];
-let isSyncing = false;
-let _syncRaf = null;
+let _mouseOverSlot = -1;
 let ws      = null;
 let wsTimer = null;
 let mobileSlotIdx = 0;
@@ -322,6 +321,8 @@ const fsBtn = document.createElement('button');
     cell.appendChild(body);
     if (isMobile) cell.style.display = i === 0 ? 'flex' : 'none';
     grid.appendChild(cell);
+    cell.addEventListener('mouseenter', () => { _mouseOverSlot = i; });
+    cell.addEventListener('mouseleave', () => { _mouseOverSlot = -1; });
 
     // ── create chart ───────────────────────────────────────────────────────
     const chart   = makeChart(chartEl, isBig);
@@ -346,8 +347,7 @@ const fsBtn = document.createElement('button');
         } else {
           pctEl.textContent = ''; }
       }
-      if (isSyncing) return;
-      isSyncing = true;
+      if (_mouseOverSlot !== i) return;
       const time  = param?.time;
       const price = param?.point ? candleS.coordinateToPrice(param.point.y) : null;
       slots.forEach((other, j) => {
@@ -358,8 +358,6 @@ const fsBtn = document.createElement('button');
           try { other.chart.setCrosshairPosition(price, time, other.candleS); } catch(e) {}
         }
       });
-      cancelAnimationFrame(_syncRaf);
-      _syncRaf = requestAnimationFrame(() => { isSyncing = false; });
     });
 
     slots.push({
