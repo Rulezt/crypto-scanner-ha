@@ -200,12 +200,13 @@
                             <th class="px-4 py-2 text-right">Prezzo</th>
                             <th class="px-4 py-2 text-right">Var 24h</th>
                             <th class="px-4 py-2 text-right">Volume 24h</th>
-                            <th class="px-4 py-2 text-right">EMA60 1h</th>
+                            <th class="px-4 py-2 text-right">EMA60 30m</th>
                             <th class="px-4 py-2 text-right">Dist EMA</th>
+                            <th class="px-4 py-2 text-right">Tocchi EMA</th>
                         </tr>
                     </thead>
                     <tbody id="hv-tbody">
-                        <tr><td colspan="7" class="text-center py-8 text-gray-500 text-sm">Caricamento...</td></tr>
+                        <tr><td colspan="8" class="text-center py-8 text-gray-500 text-sm">Caricamento...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -456,13 +457,14 @@
                         const positive = c.change_24h >= 0;
                         const chgClass = positive ? 'text-emerald-400' : 'text-red-400';
                         const chgStr   = (positive ? '+' : '') + c.change_24h.toFixed(2) + '%';
-                        const emaTxt   = c.ema60_1h != null ? '$' + fmtPrice(c.ema60_1h) : '-';
-                        const emaClass = c.ema60_1h != null
-                            ? (c.price >= c.ema60_1h ? 'text-emerald-400' : 'text-red-400')
+                        const emaTxt   = c.ema60_30m != null ? '$' + fmtPrice(c.ema60_30m) : '-';
+                        const emaClass = c.ema60_30m != null
+                            ? (c.price >= c.ema60_30m ? 'text-emerald-400' : 'text-red-400')
                             : 'text-gray-600';
                         const distVal  = c.ema60_dist != null ? c.ema60_dist : null;
                         const distTxt  = distVal != null ? (distVal >= 0 ? '+' : '') + distVal.toFixed(2) + '%' : '-';
                         const distClass = distVal != null ? (distVal >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600';
+                        const touchTxt = c.ema_touch_count != null ? c.ema_touch_count : '-';
                         return `<tr class="border-b border-dark-border/40 hover:bg-dark-hover/60 cursor-pointer" onclick="window.open('mtf?symbol=${c.symbol}','_blank')">
                             <td class="px-4 py-2.5 text-gray-600 text-xs w-10">${i + 1}</td>
                             <td class="px-4 py-2.5 font-medium text-gray-200">${coin}</td>
@@ -471,6 +473,7 @@
                             <td id="hvv-${c.symbol}" class="px-4 py-2.5 text-right text-gray-400 text-xs">${fmtVol(c.volume_24h)}</td>
                             <td id="hve-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${emaClass}">${emaTxt}</td>
                             <td id="hvd-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${distClass}">${distTxt}</td>
+                            <td id="hvt-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs text-gray-400">${touchTxt}</td>
                         </tr>`;
                     }).join('');
                 } else {
@@ -481,6 +484,7 @@
                         const volEl   = document.getElementById(`hvv-${c.symbol}`);
                         const emaEl   = document.getElementById(`hve-${c.symbol}`);
                         const distEl  = document.getElementById(`hvd-${c.symbol}`);
+                        const touchEl = document.getElementById(`hvt-${c.symbol}`);
 
                         if (priceEl) {
                             const newTxt = '$' + fmtPrice(c.price);
@@ -499,10 +503,10 @@
                         }
                         if (volEl) volEl.textContent = fmtVol(c.volume_24h);
                         if (emaEl) {
-                            emaEl.textContent = c.ema60_1h != null ? '$' + fmtPrice(c.ema60_1h) : '-';
+                            emaEl.textContent = c.ema60_30m != null ? '$' + fmtPrice(c.ema60_30m) : '-';
                             emaEl.className = `px-4 py-2.5 text-right font-mono text-xs ${
-                                c.ema60_1h != null
-                                    ? (c.price >= c.ema60_1h ? 'text-emerald-400' : 'text-red-400')
+                                c.ema60_30m != null
+                                    ? (c.price >= c.ema60_30m ? 'text-emerald-400' : 'text-red-400')
                                     : 'text-gray-600'
                             }`;
                         }
@@ -510,6 +514,9 @@
                             const d = c.ema60_dist;
                             distEl.textContent = d != null ? (d >= 0 ? '+' : '') + d.toFixed(2) + '%' : '-';
                             distEl.className = `px-4 py-2.5 text-right font-mono text-xs ${d != null ? (d >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600'}`;
+                        }
+                        if (touchEl && c.ema_touch_count != null) {
+                            touchEl.textContent = c.ema_touch_count;
                         }
                     });
                 }
