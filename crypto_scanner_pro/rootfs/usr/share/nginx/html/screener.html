@@ -177,6 +177,35 @@
         </div>
     </div>
 
+    <!-- High Volume Table -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
+            <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-sm font-medium">📊 Volume &gt; $10M</h3>
+                    <span id="hv-count" class="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full hidden">-</span>
+                </div>
+                <span id="hv-updated" class="text-xs text-gray-500"></span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-dark-border text-xs text-gray-500 uppercase tracking-wider">
+                            <th class="px-4 py-2 text-left w-10">#</th>
+                            <th class="px-4 py-2 text-left">Coin</th>
+                            <th class="px-4 py-2 text-right">Prezzo</th>
+                            <th class="px-4 py-2 text-right">Var 24h</th>
+                            <th class="px-4 py-2 text-right">Volume 24h</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hv-tbody">
+                        <tr><td colspan="5" class="text-center py-8 text-gray-500 text-sm">Caricamento...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Config Modal -->
     <div id="config-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeConfigModalOutside(event)">
         <div class="modal-inner" style="max-width:440px;margin:48px auto 48px;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
@@ -377,8 +406,57 @@
         async function init() {
             await loadConfig();
             await loadAlerts();
+            await loadHighVolume();
             checkTelegramStatus();
             setInterval(loadAlerts, 60000);
+            setInterval(loadHighVolume, 60000);
+        }
+
+        function fmtPrice(p) {
+            if (p >= 10000) return p.toLocaleString('en-US', {maximumFractionDigits: 0});
+            if (p >= 1)     return p.toFixed(3);
+            if (p >= 0.01)  return p.toFixed(5);
+            return p.toFixed(7);
+        }
+
+        function fmtVol(v) {
+            if (v >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
+            return '$' + (v / 1e6).toFixed(1) + 'M';
+        }
+
+        async function loadHighVolume() {
+            try {
+                const res = await fetch(`${API_URL}/api/high-volume`);
+                const data = await res.json();
+                const tbody   = document.getElementById('hv-tbody');
+                const countEl = document.getElementById('hv-count');
+                const updEl   = document.getElementById('hv-updated');
+
+                if (!data.success || !data.data || data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500 text-sm">Nessuna coin trovata</td></tr>';
+                    return;
+                }
+
+                countEl.textContent = data.count + ' coin';
+                countEl.classList.remove('hidden');
+                updEl.textContent = 'Aggiornato: ' + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'});
+
+                tbody.innerHTML = data.data.map((c, i) => {
+                    const coin     = c.symbol.replace('USDT', '');
+                    const positive = c.change_24h >= 0;
+                    const chgClass = positive ? 'text-emerald-400' : 'text-red-400';
+                    const chgStr   = (positive ? '+' : '') + c.change_24h.toFixed(2) + '%';
+                    return `<tr class="border-b border-dark-border/40 hover:bg-dark-hover cursor-pointer transition-colors" onclick="window.open('mtf?symbol=${c.symbol}','_blank')">
+                        <td class="px-4 py-2.5 text-gray-600 text-xs">${i + 1}</td>
+                        <td class="px-4 py-2.5 font-medium text-gray-200">${coin}</td>
+                        <td class="px-4 py-2.5 text-right text-gray-300 font-mono text-xs">$${fmtPrice(c.price)}</td>
+                        <td class="px-4 py-2.5 text-right ${chgClass} font-medium text-xs">${chgStr}</td>
+                        <td class="px-4 py-2.5 text-right text-gray-400 text-xs">${fmtVol(c.volume_24h)}</td>
+                    </tr>`;
+                }).join('');
+            } catch (e) {
+                console.error('Error loading high volume:', e);
+            }
         }
 
         async function loadAlerts() {

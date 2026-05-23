@@ -274,7 +274,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '3.8.97',
+        'version': '3.8.98',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -438,6 +438,38 @@ def get_top_coins():
         return jsonify({'success': True, 'data': coins[:limit]})
     except Exception as e:
         logger.error(f"Error fetching top coins: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/high-volume', methods=['GET'])
+def get_high_volume():
+    """Return all USDT perpetuals with 24h volume >= min_volume, sorted by volume desc"""
+    import requests as req
+    try:
+        min_vol = float(request.args.get('min_volume', config['general'].get('min_volume_24h', 10_000_000)))
+        response = req.get('https://api.bybit.com/v5/market/tickers',
+                           params={'category': 'linear'}, timeout=10)
+        data = response.json()
+        if data.get('retCode') != 0:
+            return jsonify({'error': 'Bybit API error'}), 502
+        coins = []
+        for item in data['result']['list']:
+            if not item['symbol'].endswith('USDT'):
+                continue
+            last_price = float(item['lastPrice'])
+            vol_24h = float(item.get('volume24h', 0)) * last_price
+            if vol_24h < min_vol:
+                continue
+            coins.append({
+                'symbol': item['symbol'],
+                'price': last_price,
+                'change_24h': round(float(item.get('price24hPcnt', 0)) * 100, 2),
+                'volume_24h': vol_24h,
+            })
+        coins.sort(key=lambda x: x['volume_24h'], reverse=True)
+        return jsonify({'success': True, 'data': coins, 'count': len(coins)})
+    except Exception as e:
+        logger.error(f"Error fetching high-volume coins: {e}")
         return jsonify({'error': str(e)}), 500
 
 
