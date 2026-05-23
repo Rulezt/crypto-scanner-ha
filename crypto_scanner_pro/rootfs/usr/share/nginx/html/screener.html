@@ -196,13 +196,13 @@
                     <thead>
                         <tr class="border-b border-dark-border text-xs text-gray-500 uppercase tracking-wider">
                             <th class="px-4 py-2 text-left w-10">#</th>
-                            <th class="px-4 py-2 text-left">Coin</th>
-                            <th class="px-4 py-2 text-right">Prezzo</th>
-                            <th class="px-4 py-2 text-right">Var 24h</th>
-                            <th class="px-4 py-2 text-right">Volume 24h</th>
-                            <th class="px-4 py-2 text-right">EMA60 30m</th>
-                            <th class="px-4 py-2 text-right">Dist EMA</th>
-                            <th class="px-4 py-2 text-right">Tocchi EMA</th>
+                            <th id="hv-th-symbol"        class="px-4 py-2 text-left  cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('symbol')">Coin<span class="hv-arrow"> ⇅</span></th>
+                            <th id="hv-th-price"         class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('price')">Prezzo<span class="hv-arrow"> ⇅</span></th>
+                            <th id="hv-th-change_24h"    class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('change_24h')">Var 24h<span class="hv-arrow"> ⇅</span></th>
+                            <th id="hv-th-volume_24h"    class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('volume_24h')">Volume 24h<span class="hv-arrow"> ⇅</span></th>
+                            <th id="hv-th-ema60_30m"     class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('ema60_30m')">EMA60 30m<span class="hv-arrow"> ⇅</span></th>
+                            <th id="hv-th-ema60_dist"    class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('ema60_dist')">Dist EMA<span class="hv-arrow"> ⇅</span></th>
+                            <th id="hv-th-ema_touch_count" class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('ema_touch_count')">Tocchi EMA<span class="hv-arrow"> ⇅</span></th>
                         </tr>
                     </thead>
                     <tbody id="hv-tbody">
@@ -431,53 +431,102 @@
             return '$' + (v / 1e6).toFixed(1) + 'M';
         }
 
-        let _hvKey = null;
+        let _hvData = [];
+        let _hvKey  = null;
+        let _hvSort = { col: null, dir: -1 };
+
+        function sortHvData(data) {
+            if (!_hvSort.col) return data;
+            const { col, dir } = _hvSort;
+            return [...data].sort((a, b) => {
+                const av = a[col], bv = b[col];
+                if (av == null && bv == null) return 0;
+                if (av == null) return 1;
+                if (bv == null) return -1;
+                if (typeof av === 'string') return dir * av.localeCompare(bv);
+                return dir * (av - bv);
+            });
+        }
+
+        function setHvSort(col) {
+            if (_hvSort.col === col) {
+                _hvSort.dir *= -1;
+            } else {
+                _hvSort.col = col;
+                _hvSort.dir = col === 'symbol' ? 1 : -1;
+            }
+            updateHvSortHeaders();
+            rebuildHvTable();
+        }
+
+        function updateHvSortHeaders() {
+            ['symbol','price','change_24h','volume_24h','ema60_30m','ema60_dist','ema_touch_count'].forEach(col => {
+                const th = document.getElementById(`hv-th-${col}`);
+                if (!th) return;
+                const span = th.querySelector('.hv-arrow');
+                if (_hvSort.col === col) {
+                    span.textContent = _hvSort.dir === -1 ? ' ▼' : ' ▲';
+                    span.style.color = '#60a5fa';
+                    th.style.color = '#93c5fd';
+                } else {
+                    span.textContent = ' ⇅';
+                    span.style.color = '';
+                    th.style.color = '';
+                }
+            });
+        }
+
+        function renderHvRow(c, i) {
+            const coin      = c.symbol.replace('USDT', '');
+            const positive  = c.change_24h >= 0;
+            const chgClass  = positive ? 'text-emerald-400' : 'text-red-400';
+            const chgStr    = (positive ? '+' : '') + c.change_24h.toFixed(2) + '%';
+            const emaTxt    = c.ema60_30m != null ? '$' + fmtPrice(c.ema60_30m) : '-';
+            const emaClass  = c.ema60_30m != null ? (c.price >= c.ema60_30m ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600';
+            const distVal   = c.ema60_dist != null ? c.ema60_dist : null;
+            const distTxt   = distVal != null ? (distVal >= 0 ? '+' : '') + distVal.toFixed(2) + '%' : '-';
+            const distClass = distVal != null ? (distVal >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600';
+            const touchTxt  = c.ema_touch_count != null ? c.ema_touch_count : '-';
+            return `<tr class="border-b border-dark-border/40 hover:bg-dark-hover/60 cursor-pointer" onclick="window.open('mtf?symbol=${c.symbol}','_blank')">
+                <td class="px-4 py-2.5 text-gray-600 text-xs w-10">${i + 1}</td>
+                <td class="px-4 py-2.5 font-medium text-gray-200">${coin}</td>
+                <td id="hvp-${c.symbol}" class="px-4 py-2.5 text-right text-gray-300 font-mono text-xs">$${fmtPrice(c.price)}</td>
+                <td id="hvc-${c.symbol}" class="px-4 py-2.5 text-right ${chgClass} font-medium text-xs">${chgStr}</td>
+                <td id="hvv-${c.symbol}" class="px-4 py-2.5 text-right text-gray-400 text-xs">${fmtVol(c.volume_24h)}</td>
+                <td id="hve-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${emaClass}">${emaTxt}</td>
+                <td id="hvd-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${distClass}">${distTxt}</td>
+                <td id="hvt-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs text-gray-400">${touchTxt}</td>
+            </tr>`;
+        }
+
+        function rebuildHvTable() {
+            const sorted = sortHvData(_hvData);
+            document.getElementById('hv-tbody').innerHTML = sorted.map((c, i) => renderHvRow(c, i)).join('');
+        }
 
         async function loadHighVolume() {
             try {
                 const res = await fetch(`${API_URL}/api/high-volume`);
                 const data = await res.json();
-                const tbody   = document.getElementById('hv-tbody');
                 const countEl = document.getElementById('hv-count');
                 const updEl   = document.getElementById('hv-updated');
 
                 if (!data.success || !data.data || data.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500 text-sm">Nessuna coin trovata</td></tr>';
-                    _hvKey = null;
+                    document.getElementById('hv-tbody').innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500 text-sm">Nessuna coin trovata</td></tr>';
+                    _hvData = []; _hvKey = null;
                     return;
                 }
 
-                const newKey = data.data.map(c => c.symbol).join(',');
+                // Order-independent key: changes only when symbol set changes
+                const newKey = data.data.map(c => c.symbol).sort().join(',');
 
                 if (_hvKey !== newKey) {
-                    // First load or symbol list changed — rebuild full table
-                    _hvKey = newKey;
-                    tbody.innerHTML = data.data.map((c, i) => {
-                        const coin     = c.symbol.replace('USDT', '');
-                        const positive = c.change_24h >= 0;
-                        const chgClass = positive ? 'text-emerald-400' : 'text-red-400';
-                        const chgStr   = (positive ? '+' : '') + c.change_24h.toFixed(2) + '%';
-                        const emaTxt   = c.ema60_30m != null ? '$' + fmtPrice(c.ema60_30m) : '-';
-                        const emaClass = c.ema60_30m != null
-                            ? (c.price >= c.ema60_30m ? 'text-emerald-400' : 'text-red-400')
-                            : 'text-gray-600';
-                        const distVal  = c.ema60_dist != null ? c.ema60_dist : null;
-                        const distTxt  = distVal != null ? (distVal >= 0 ? '+' : '') + distVal.toFixed(2) + '%' : '-';
-                        const distClass = distVal != null ? (distVal >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600';
-                        const touchTxt = c.ema_touch_count != null ? c.ema_touch_count : '-';
-                        return `<tr class="border-b border-dark-border/40 hover:bg-dark-hover/60 cursor-pointer" onclick="window.open('mtf?symbol=${c.symbol}','_blank')">
-                            <td class="px-4 py-2.5 text-gray-600 text-xs w-10">${i + 1}</td>
-                            <td class="px-4 py-2.5 font-medium text-gray-200">${coin}</td>
-                            <td id="hvp-${c.symbol}" class="px-4 py-2.5 text-right text-gray-300 font-mono text-xs">$${fmtPrice(c.price)}</td>
-                            <td id="hvc-${c.symbol}" class="px-4 py-2.5 text-right ${chgClass} font-medium text-xs">${chgStr}</td>
-                            <td id="hvv-${c.symbol}" class="px-4 py-2.5 text-right text-gray-400 text-xs">${fmtVol(c.volume_24h)}</td>
-                            <td id="hve-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${emaClass}">${emaTxt}</td>
-                            <td id="hvd-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${distClass}">${distTxt}</td>
-                            <td id="hvt-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs text-gray-400">${touchTxt}</td>
-                        </tr>`;
-                    }).join('');
+                    _hvKey  = newKey;
+                    _hvData = data.data;
+                    rebuildHvTable();
                 } else {
-                    // Update only changed cells in-place
+                    _hvData = data.data;
+                    // Update cells in-place (row order stays as currently sorted)
                     data.data.forEach(c => {
                         const priceEl = document.getElementById(`hvp-${c.symbol}`);
                         const chgEl   = document.getElementById(`hvc-${c.symbol}`);
@@ -485,7 +534,6 @@
                         const emaEl   = document.getElementById(`hve-${c.symbol}`);
                         const distEl  = document.getElementById(`hvd-${c.symbol}`);
                         const touchEl = document.getElementById(`hvt-${c.symbol}`);
-
                         if (priceEl) {
                             const newTxt = '$' + fmtPrice(c.price);
                             if (priceEl.textContent !== newTxt) {
@@ -504,20 +552,14 @@
                         if (volEl) volEl.textContent = fmtVol(c.volume_24h);
                         if (emaEl) {
                             emaEl.textContent = c.ema60_30m != null ? '$' + fmtPrice(c.ema60_30m) : '-';
-                            emaEl.className = `px-4 py-2.5 text-right font-mono text-xs ${
-                                c.ema60_30m != null
-                                    ? (c.price >= c.ema60_30m ? 'text-emerald-400' : 'text-red-400')
-                                    : 'text-gray-600'
-                            }`;
+                            emaEl.className = `px-4 py-2.5 text-right font-mono text-xs ${c.ema60_30m != null ? (c.price >= c.ema60_30m ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600'}`;
                         }
                         if (distEl) {
                             const d = c.ema60_dist;
                             distEl.textContent = d != null ? (d >= 0 ? '+' : '') + d.toFixed(2) + '%' : '-';
                             distEl.className = `px-4 py-2.5 text-right font-mono text-xs ${d != null ? (d >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600'}`;
                         }
-                        if (touchEl && c.ema_touch_count != null) {
-                            touchEl.textContent = c.ema_touch_count;
-                        }
+                        if (touchEl && c.ema_touch_count != null) touchEl.textContent = c.ema_touch_count;
                     });
                 }
 
