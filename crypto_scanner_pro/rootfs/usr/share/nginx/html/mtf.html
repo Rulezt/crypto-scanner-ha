@@ -283,7 +283,7 @@ function buildGrid() {
     spacer.style.flex = '1';
 
     const timerEl = document.createElement('span');
-    timerEl.style.cssText = 'font-size:10px;font-family:monospace;color:#4B5563;margin-left:5px;flex-shrink:0;letter-spacing:.5px;';
+    timerEl.style.cssText = 'font-size:13px;font-family:monospace;color:#4B5563;margin-left:5px;flex-shrink:0;letter-spacing:.5px;';
     const dur0 = TF_SECONDS[cfg.tf];
     if (dur0) {
       const now0 = Math.floor(Date.now()/1000);
@@ -786,8 +786,14 @@ loadAll();
 setInterval(() => {
   const now = Math.floor(Date.now() / 1000);
   slots.forEach(s => {
-    if (!s.timerEl || !s.candleEnd) return;
-    const rem = Math.max(0, s.candleEnd - now);
+    if (!s.timerEl) return;
+    const dur = TF_SECONDS[s.cfg.tf];
+    if (!dur) return;
+    // Ricalcola candleEnd se scaduto (nuova candela aperta)
+    if (!s.candleEnd || now >= s.candleEnd) {
+      s.candleEnd = Math.floor(now / dur) * dur + dur;
+    }
+    const rem = s.candleEnd - now;
     s.timerEl.textContent = fmtCountdown(rem);
     s.timerEl.style.color = rem <= 30 ? '#f59e0b' : '#4B5563';
   });
