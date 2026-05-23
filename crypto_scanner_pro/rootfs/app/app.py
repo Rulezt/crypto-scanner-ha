@@ -317,7 +317,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '4.0.0',
+        'version': '4.0.1',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -882,8 +882,10 @@ def get_klines():
             'volume': float(k[5]),
         } for k in klines]
 
-        return jsonify({'success': True, 'data': result, 'symbol': symbol,
+        resp = jsonify({'success': True, 'data': result, 'symbol': symbol,
                         'interval': interval, 'utc_offset_s': tz_s})
+        resp.headers['Cache-Control'] = 'no-store'
+        return resp
 
     except Exception as e:
         logger.error(f"Error fetching klines for {symbol}: {e}")

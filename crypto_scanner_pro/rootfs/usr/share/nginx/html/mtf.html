@@ -369,6 +369,7 @@ const fsBtn = document.createElement('button');
       rangeActive: false, rangeP1: null, rangeP2: null, _rangeSub: null, _rangeCsSub: null,
       dayPrimitive: null,
       lastCandleStartUtc: null,
+      lastWsMs: 0,
     });
     chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.cfg.tf), to: s.klineCount + 3 }); });
   });
@@ -412,7 +413,7 @@ async function loadAll() {
 async function loadSlot(idx, dailyData) {
   const s = slots[idx];
   try {
-    const r = await fetch(`api/klines?symbol=${SYM}&interval=${s.cfg.tf}`);
+    const r = await fetch(`api/klines?symbol=${SYM}&interval=${s.cfg.tf}&_t=${Date.now()}`);
     const j = await r.json();
     if (!j.success) return;
     const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
@@ -470,6 +471,7 @@ function openWS() {
     };
     const s = slots[idx];
     s.lastCandleStartUtc = candleStart;
+    s.lastWsMs = Date.now();
     s.candleS.update(candle);
     for (const {p} of EMA_CFG) {
       if (s.lastEMA[p] === null) continue;
@@ -780,7 +782,39 @@ function closeFSModal() {
 }
 
 buildGrid();
-loadAll();
+loadAll().then(() => {
+  // Fallback REST poller: if a fast TF slot gets no WS update for 65s, reload from REST
+  async function _restFallback() {
+    const now = Date.now();
+    for (let i = 0; i < slots.length; i++) {
+      const s = slots[i];
+      const dur = TF_SECONDS[s.cfg.tf];
+      if (!dur || dur > 300) continue; // only 1m and 5m
+      if (now - s.lastWsMs < 65000) continue; // WS active, skip
+      try {
+        const r = await fetch(`api/klines?symbol=${SYM}&interval=${s.cfg.tf}&_t=${Date.now()}`);
+        const j = await r.json();
+        if (!j.success || !j.data.length) continue;
+        // Full reload to fill any gaps
+        s.candleS.setData(j.data);
+        s.klineCount = j.data.length;
+        s.dayPrimitive = attachDayLines(s.candleS, s.chart, j.data, s.cfg.tf, s.dayPrimitive);
+        s.candleS.applyOptions({ priceFormat: getPriceFormat(j.data[j.data.length-1]?.close) });
+        for (const {p} of EMA_CFG) {
+          const ema = calcEMA(j.data, p);
+          s.emaS[p].setData(ema);
+          s.lastEMA[p] = ema[ema.length-1].value;
+        }
+        // Update timer state from REST last candle
+        const lc = j.data[j.data.length-1];
+        s.lastCandleStartUtc = lc.time - TZ_OFFSET_S;
+        s.lastWsMs = Date.now(); // prevent repeated reloads this cycle
+      } catch(e) {}
+    }
+    setTimeout(_restFallback, 30000);
+  }
+  setTimeout(_restFallback, 65000); // first check 65s after load
+});
 
 function _tickTimers() {
   const nowMs = Date.now();
