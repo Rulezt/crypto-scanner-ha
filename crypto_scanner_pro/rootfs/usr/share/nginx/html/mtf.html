@@ -120,6 +120,7 @@ const TF_SLOTS = isMobile ? [
 ];
 
 const DEFAULT_CANDLES = {'1':80,'5':80,'30':60,'60':60,'240':50,'D':40};
+const TF_SECONDS = {'1':60,'5':300,'30':1800,'60':3600,'240':14400,'D':86400};
 function getCandlesForTF(tf) {
   try {
     const s = JSON.parse(localStorage.getItem('chart_candles_per_tf'));
@@ -247,6 +248,17 @@ function fmtVol(v) {
   return '$'+(v/1e3).toFixed(0)+'K';
 }
 
+function fmtCountdown(secs) {
+  if (secs <= 0) return '00:00';
+  if (secs >= 3600) {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  return `${String(Math.floor(secs/60)).padStart(2,'0')}:${String(secs%60).padStart(2,'0')}`;
+}
+
 // ── build grid ─────────────────────────────────────────────────────────────────
 function buildGrid() {
   const grid = document.getElementById('grid');
@@ -270,6 +282,14 @@ function buildGrid() {
     const spacer = document.createElement('div');
     spacer.style.flex = '1';
 
+    const timerEl = document.createElement('span');
+    timerEl.style.cssText = 'font-size:10px;font-family:monospace;color:#4B5563;margin-left:5px;flex-shrink:0;letter-spacing:.5px;';
+    const dur0 = TF_SECONDS[cfg.tf];
+    if (dur0) {
+      const now0 = Math.floor(Date.now()/1000);
+      timerEl.textContent = fmtCountdown((Math.floor(now0/dur0)*dur0 + dur0) - now0);
+    }
+
     const pctEl = document.createElement('span');
     pctEl.style.cssText = 'font-size:13px;font-family:monospace;min-width:52px;text-align:right;white-space:nowrap;';
 
@@ -286,7 +306,7 @@ const fsBtn = document.createElement('button');
     rangeBtn.onmouseenter = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#B2B5BE'; };
     rangeBtn.onmouseleave = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#4B5563'; };
     rangeBtn.onclick = () => toggleSlotRange(i);
-    hdr.append(tfLbl, spacer, pctEl, rangeBtn, fsBtn);
+    hdr.append(tfLbl, timerEl, spacer, pctEl, rangeBtn, fsBtn);
     cell.appendChild(hdr);
 
     // ── chart body ─────────────────────────────────────────────────────────
@@ -341,8 +361,9 @@ const fsBtn = document.createElement('button');
     });
 
     slots.push({
-      cfg, chart, candleS, emaS, cell, rangeCanvas, rangeBtn,
+      cfg, chart, candleS, emaS, cell, rangeCanvas, rangeBtn, timerEl,
       klineCount: 0,
+      candleEnd: dur0 ? (Math.floor(Math.floor(Date.now()/1000)/dur0)*dur0 + dur0) : null,
       lastEMA: {5:null,10:null,60:null,223:null},
       dayHighLine:null, dayLowLine:null,
       prevHighLine:null, prevLowLine:null,
@@ -439,14 +460,17 @@ function openWS() {
     if (idx === -1) return;
     const b = msg.data[0];
     const confirmed = b.confirm === true || b.confirm === 'true';
+    const candleStart = Math.floor(parseInt(b.start)/1000);
     const candle = {
-      time:  Math.floor(parseInt(b.start)/1000) + TZ_OFFSET_S,
+      time:  candleStart + TZ_OFFSET_S,
       open:  parseFloat(b.open),
       high:  parseFloat(b.high),
       low:   parseFloat(b.low),
       close: parseFloat(b.close),
     };
     const s = slots[idx];
+    const tfDur = TF_SECONDS[tf];
+    if (tfDur) s.candleEnd = candleStart + tfDur;
     s.candleS.update(candle);
     for (const {p} of EMA_CFG) {
       if (s.lastEMA[p] === null) continue;
@@ -758,6 +782,16 @@ function closeFSModal() {
 
 buildGrid();
 loadAll();
+
+setInterval(() => {
+  const now = Math.floor(Date.now() / 1000);
+  slots.forEach(s => {
+    if (!s.timerEl || !s.candleEnd) return;
+    const rem = Math.max(0, s.candleEnd - now);
+    s.timerEl.textContent = fmtCountdown(rem);
+    s.timerEl.style.color = rem <= 30 ? '#f59e0b' : '#4B5563';
+  });
+}, 1000);
 
 // ── mobile single-chart navigation ────────────────────────────────────────────
 function mobilePrevSlot() {
