@@ -552,7 +552,7 @@
             'METAUSDT':'Meta',     'MRVLUSDT':'Marvell',    'MSFTUSDT':'Microsoft',
             'MSTRUSDT':'MicroStrategy','MUUSDT':'Micron',   'NVDAUSDT':'Nvidia',
             'ORCLUSDT':'Oracle',   'PLTRUSDT':'Palantir',   'QQQUSDT':'Nasdaq ETF',
-            'SNDKUSDT':'SanDisk',  'SPYUSDT':'S&P 500',     'TSLAUSDT':'Tesla',
+            'SNDKUSDT':'SanDisk',  'SPCXUSDT':'S&P 500 3x', 'SPYUSDT':'S&P 500',     'TSLAUSDT':'Tesla',
             'TSMUSDT':'TSMC',
             'XAUUSDT':'Gold',      'XAGUSDT':'Silver',      'CLUSDT':'Crude Oil',
         };
@@ -654,13 +654,28 @@
             document.getElementById(`content-${tab}`).classList.remove('hidden');
         }
 
+        async function fetchAllInstruments() {
+            const all = [];
+            let cursor = '';
+            for (let i = 0; i < 10; i++) {
+                const url = 'https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000' + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : '');
+                const r = await fetch(url);
+                const j = await r.json();
+                all.push(...(j.result?.list || []));
+                cursor = j.result?.nextPageCursor || '';
+                if (!cursor) break;
+            }
+            return all;
+        }
+
         async function loadStockCommodityData() {
             try {
-                const [ri, rt] = await Promise.all([
-                    fetch('https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000'),
+                const [instruments, rt] = await Promise.all([
+                    fetchAllInstruments(),
                     fetch('https://api.bybit.com/v5/market/tickers?category=linear'),
                 ]);
-                const ji = await ri.json(); const jt = await rt.json();
+                const ji = { result: { list: instruments } };
+                const jt = await rt.json();
                 const stockSyms = new Set(ji.result.list.filter(x => x.symbolType === 'stock').map(x => x.symbol));
                 const commSyms  = new Set(ji.result.list.filter(x => x.symbolType === 'commodity').map(x => x.symbol));
                 const mapCoin = x => ({
