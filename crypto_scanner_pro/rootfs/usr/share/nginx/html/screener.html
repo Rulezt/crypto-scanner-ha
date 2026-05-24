@@ -203,10 +203,11 @@
                             <th id="hv-th-ema60_30m"     class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('ema60_30m')">EMA60 30m<span class="hv-arrow"> ⇅</span></th>
                             <th id="hv-th-ema60_dist"    class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('ema60_dist')">Dist EMA<span class="hv-arrow"> ⇅</span></th>
                             <th id="hv-th-ema_touch_count" class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('ema_touch_count')">Tocchi EMA<span class="hv-arrow"> ⇅</span></th>
+                            <th class="px-4 py-2 text-right"></th>
                         </tr>
                     </thead>
                     <tbody id="hv-tbody">
-                        <tr><td colspan="8" class="text-center py-8 text-gray-500 text-sm">Caricamento...</td></tr>
+                        <tr><td colspan="9" class="text-center py-8 text-gray-500 text-sm">Caricamento...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -487,7 +488,7 @@
             const distTxt   = distVal != null ? (distVal >= 0 ? '+' : '') + distVal.toFixed(2) + '%' : '-';
             const distClass = distVal != null ? (distVal >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600';
             const touchTxt  = c.ema_touch_count != null ? c.ema_touch_count : '-';
-            return `<tr class="border-b border-dark-border/40 hover:bg-dark-hover/60 cursor-pointer" onclick="window.open('mtf?symbol=${c.symbol}','_blank')">
+            return `<tr class="border-b border-dark-border/40 hover:bg-dark-hover/60">
                 <td class="px-4 py-2.5 text-gray-600 text-xs w-10">${i + 1}</td>
                 <td class="px-4 py-2.5 font-medium text-gray-200">${coin}</td>
                 <td id="hvp-${c.symbol}" class="px-4 py-2.5 text-right text-gray-300 font-mono text-xs">$${fmtPrice(c.price)}</td>
@@ -496,6 +497,10 @@
                 <td id="hve-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${emaClass}">${emaTxt}</td>
                 <td id="hvd-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${distClass}">${distTxt}</td>
                 <td id="hvt-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs text-gray-400">${touchTxt}</td>
+                <td class="px-4 py-2.5 text-right whitespace-nowrap">
+                    <a href="https://www.bybit.com/trade/usdt/${c.symbol}" target="_blank" rel="noopener" style="font-size:10px;color:#f59e0b;background:#1E2230;border-radius:3px;padding:1px 6px;text-decoration:none;white-space:nowrap;">Bybit ↗</a>
+                    <a href="mtf?symbol=${c.symbol}" target="_blank" rel="noopener" style="font-size:10px;color:#60a5fa;background:#1E2230;border-radius:3px;padding:1px 6px;text-decoration:none;white-space:nowrap;">MTF ↗</a>
+                </td>
             </tr>`;
         }
 
@@ -597,6 +602,7 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
+                            <a href="https://www.bybit.com/trade/usdt/${a.symbol}" target="_blank" rel="noopener" style="font-size:10px;color:#f59e0b;background:#1E2230;border-radius:3px;padding:1px 6px;text-decoration:none;white-space:nowrap;">Bybit ↗</a>
                             <a href="mtf?symbol=${a.symbol}" target="_blank" style="font-size:10px;color:#60a5fa;background:#1E2230;border-radius:3px;padding:1px 6px;text-decoration:none;white-space:nowrap;">MTF ↗</a>
                             <span class="text-xs text-gray-500">${ago}</span>
                         </div>
