@@ -43,13 +43,10 @@ def mtf_link(symbol, ha_url=''):
 def build_caption(symbol, change_pct, note, ha_url=''):
     """Standard 🔔 Alert caption format used by all scanners."""
     lines = ['🔔 Alert', '', f'Coin: {symbol}', f'Vol 24h: {change_pct:+.2f}%', f'Segnale: {note}', '']
+    lines.append(f'<a href="https://www.bybit.com/trade/usdt/{symbol}">View Bybit</a>')
     if ha_url:
         base = ha_url.rstrip('/')
-        lines.append(f'<a href="{base}/chart?symbol={symbol}">View Chart</a>')
         lines.append(f'<a href="{base}/mtf?symbol={symbol}">View MultiTimeframe</a>')
-    else:
-        lines.append('View Chart')
-        lines.append('View MultiTimeframe')
     return '\n'.join(lines)
 
 

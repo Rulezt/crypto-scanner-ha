@@ -294,8 +294,8 @@ class DoubleTouchScanner:
                 '',
             ]
             base = self.ha_url.rstrip('/') if self.ha_url else ''
+            lines.append(f'<a href="https://www.bybit.com/trade/usdt/{sym}">View Bybit</a>')
             if base:
-                lines.append(f'<a href="{base}/chart?symbol={sym}">View Chart</a>')
                 lines.append(f'<a href="{base}/mtf?symbol={sym}">View MultiTimeframe</a>')
             caption = '\n'.join(lines)
             img = get_chart(sym, interval=tf, signal={
