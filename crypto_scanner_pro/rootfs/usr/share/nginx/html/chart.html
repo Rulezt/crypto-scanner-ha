@@ -180,7 +180,7 @@
 <button id="nav-next" class="side-nav" onclick="nextPage()">&#8250;</button>
 
 <!-- ===== GRID ===== -->
-<div id="grid" style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);overflow:hidden;min-height:0;"></div>
+<div id="grid" style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:calc((100vh - 48px) / 3);overflow-y:auto;overflow-x:hidden;min-height:0;"></div>
 
 <!-- Empty state notice -->
 <div id="fav-empty" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;z-index:5;">
@@ -292,7 +292,6 @@ const INSTRUMENT_NAMES = {
     'TSMUSDT':'TSMC',
     'XAUUSDT':'Gold',     'XAGUSDT':'Silver',      'CLUSDT':'Crude Oil',
 };
-const SLOTS_TOTAL = 18;
 const EMA_CFG     = [
     {p:5,   color:'#ef4444', width:2},
     {p:10,  color:'#fbbf24', width:2},
@@ -767,13 +766,14 @@ function toggleFsOBLevels() {
     }
 }
 
-// ── build grid (once — 18 slots) ──────────────────────────────────────────────
-function buildGrid() {
+// ── build grid (dynamic) ──────────────────────────────────────────────────────
+function buildGrid(n) {
+    for (const s of slots) { try { s.chart.remove(); } catch(e) {} }
     const grid = document.getElementById('grid');
     grid.innerHTML = '';
     slots = [];
 
-    for (let i = 0; i < SLOTS_TOTAL; i++) {
+    for (let i = 0; i < n; i++) {
         const cell = document.createElement('div');
         cell.style.cssText = 'display:flex;flex-direction:column;border:1px solid #2A2E39;overflow:hidden;';
 
@@ -938,21 +938,20 @@ const mtfEl = document.createElement('button');
 
 // ── view layout ───────────────────────────────────────────────────────────────
 function applyView() {
-    const is18  = viewMode === '18';
-    const grid  = document.getElementById('grid');
+    const is18 = viewMode === '18';
+    const grid = document.getElementById('grid');
 
     if (IS_MOBILE) {
         grid.style.gridTemplateColumns = '1fr';
-        grid.style.gridTemplateRows    = 'repeat(3, 1fr)';
-        const visible = is18 ? 18 : 9;
+        grid.style.gridAutoRows        = 'calc((100vh - 48px) / 3)';
         slots.forEach((s, i) => {
-            const show = i >= mobileChartIdx && i < mobileChartIdx + 3 && i < visible;
+            const show = i >= mobileChartIdx && i < mobileChartIdx + 3;
             s.cell.style.display = show ? 'flex' : 'none';
         });
         document.getElementById('nav-prev').style.display = 'block';
         document.getElementById('nav-next').style.display = 'block';
         const total = allCoins.length;
-        const first = curPage * 9 + mobileChartIdx + 1;
+        const first = mobileChartIdx + 1;
         const last  = Math.min(first + 2, total);
         updateMobileNavIndicator(first, last, total);
         return;
@@ -960,12 +959,10 @@ function applyView() {
 
     const cols = is18 ? 6 : 3;
     grid.style.gridTemplateColumns = `repeat(${cols},1fr)`;
-    grid.style.gridTemplateRows    = 'repeat(3,1fr)';
-    const visible = is18 ? 18 : 9;
-    slots.forEach((s, i) => { s.cell.style.display = i < visible ? 'flex' : 'none'; });
-    const showArrows = !is18;
-    document.getElementById('nav-prev').style.display = showArrows ? 'block' : 'none';
-    document.getElementById('nav-next').style.display = showArrows ? 'block' : 'none';
+    grid.style.gridAutoRows        = 'calc((100vh - 48px) / 3)';
+    slots.forEach(s => s.cell.style.display = 'flex');
+    document.getElementById('nav-prev').style.display = 'none';
+    document.getElementById('nav-next').style.display = 'none';
     document.getElementById('btn-view').textContent = is18 ? '⊟ 9' : '⊞ 18';
     document.getElementById('btn-view').className   =
         `px-3 py-1 rounded text-xs font-medium transition-colors ${is18 ? 'btn-view-active' : 'btn-view-idle'}`;
@@ -1017,13 +1014,11 @@ async function switchSlotTF(idx, tf) {
 // ── load page ──────────────────────────────────────────────────────────────────
 async function loadPage() {
     closeWS();
-    applyView();
 
-    const is18      = viewMode === '18';
-    const visible   = is18 ? 18 : 9;
-    const pageCoins = is18
-        ? allCoins.slice(0, 18)
-        : allCoins.slice(curPage * 9, curPage * 9 + 9);
+    if (allCoins.length !== slots.length) {
+        buildGrid(allCoins.length);
+    }
+    applyView();
 
     const isEmpty = (curMode === 'favorites' || curMode === 'ico') && allCoins.length === 0;
     if (isEmpty) {
@@ -1035,7 +1030,7 @@ async function loadPage() {
     document.getElementById('fav-empty').style.display = isEmpty ? 'block' : 'none';
     document.getElementById('grid').style.opacity = isEmpty ? '0.15' : '1';
 
-    for (let i = 0; i < visible; i++) {
+    for (let i = 0; i < slots.length; i++) {
         const s = slots[i];
         s.symbol = null; s.coin = null; s.curTF = curTF;
         s.starEl.textContent = '☆'; s.starEl.style.color = '#4B5563';
@@ -1061,11 +1056,8 @@ async function loadPage() {
 
     if (!isEmpty) {
         setStatus('Caricamento grafici...');
-        await Promise.all(pageCoins.map((coin, i) => loadSlot(i, coin)));
+        await Promise.all(allCoins.map((coin, i) => loadSlot(i, coin)));
         setStatus('');
-        for (let i = 0; i < visible; i++) {
-            if (!slots[i].coin) slots[i].cell.style.display = 'none';
-        }
         openWS();
         await syncAllAlertLines();
     }
@@ -1390,28 +1382,19 @@ function setWSDot(state) {
         `<span class="text-xs ${tcol}">${label}</span>`;
 }
 
-// ── navigation ─────────────────────────────────────────────────────────────────
+// ── navigation (mobile only) ──────────────────────────────────────────────────
 async function prevPage() {
-    if (IS_MOBILE && viewMode !== '18') { await mobilePrevChart(); return; }
-    if (curPage === 0 || viewMode === '18') return;
-    curPage--; await loadPage();
+    if (IS_MOBILE) await mobilePrevChart();
 }
 
 async function nextPage() {
-    if (IS_MOBILE && viewMode !== '18') { await mobileNextChart(); return; }
-    const maxPage = Math.ceil(allCoins.length / 9) - 1;
-    if (curPage >= maxPage || viewMode === '18') return;
-    curPage++; await loadPage();
+    if (IS_MOBILE) await mobileNextChart();
 }
 
 async function mobileNextChart() {
-    const coinsOnPage = allCoins.slice(curPage * 9, curPage * 9 + 9).length;
-    if (mobileChartIdx + 3 < coinsOnPage) {
+    if (mobileChartIdx + 3 < allCoins.length) {
         mobileChartIdx += 3;
         applyView();
-    } else {
-        const maxPage = Math.ceil(allCoins.length / 9) - 1;
-        if (curPage < maxPage) { curPage++; mobileChartIdx = 0; await loadPage(); }
     }
 }
 
@@ -1419,15 +1402,13 @@ async function mobilePrevChart() {
     if (mobileChartIdx >= 3) {
         mobileChartIdx -= 3;
         applyView();
-    } else if (curPage > 0) {
-        curPage--; mobileChartIdx = 6; await loadPage();
     }
 }
 
 async function toggleView() {
     viewMode = viewMode === '9' ? '18' : '9';
-    curPage  = 0; mobileChartIdx = 0;
-    await loadPage();
+    mobileChartIdx = 0;
+    applyView();
 }
 
 async function switchTF(tf) {
@@ -1437,7 +1418,7 @@ async function switchTF(tf) {
 
 async function switchMode(mode) {
     if (mode === curMode) return;
-    curMode = mode; curPage = 0; mobileChartIdx = 0;
+    curMode = mode; mobileChartIdx = 0;
     renderModeButtons();
     await fetchCoins(); await loadPage();
 }
@@ -1489,7 +1470,7 @@ async function fetchCoins() {
             .sort((a, b) => b.volume_24h - a.volume_24h);
         await fetchFavoritesList();
     } else {
-        const r = await fetch(`api/top-coins?limit=18&min_volume=10000000&sort=${curMode}`);
+        const r = await fetch(`api/top-coins?min_volume=10000000&sort=${curMode}`);
         const j = await r.json();
         if (!j.success) throw new Error('API error');
         allCoins = j.data;
@@ -1604,7 +1585,6 @@ document.addEventListener('keydown', e => {
 // ── bootstrap ──────────────────────────────────────────────────────────────────
 async function init() {
     renderTFBar(); renderModeButtons();
-    buildGrid(); applyView();
     await initNotifications();
     pollTriggeredAlerts();
     try { await fetchCoins(); } catch(e) { setStatus('Errore caricamento coin'); return; }

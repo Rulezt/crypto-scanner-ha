@@ -451,7 +451,7 @@ def get_top_coins():
     """Return top N coins sorted by 24h change % (gainers or losers), filtered by min volume"""
     import requests as req
     try:
-        limit = min(int(request.args.get('limit', 18)), 50)
+        limit = min(int(request.args.get('limit', 500)), 500)
         min_vol = float(request.args.get('min_volume', 10_000_000))
         sort = request.args.get('sort', 'gainers')  # 'gainers' | 'losers'
 
