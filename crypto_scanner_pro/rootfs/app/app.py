@@ -858,7 +858,7 @@ def get_klines():
     if not re.match(r'^[A-Z0-9]{3,20}$', symbol) or not symbol.endswith('USDT'):
         return jsonify({'error': 'Invalid symbol'}), 400
 
-    if interval not in {'1', '5', '15', '30', '60', '240', 'D'}:
+    if interval not in {'1', '5', '15', '30', '60', '240', 'D', 'W', 'M'}:
         return jsonify({'error': 'Invalid interval'}), 400
 
     try:
@@ -907,7 +907,7 @@ def get_klines_live():
 
     if not re.match(r'^[A-Z0-9]{3,20}$', symbol) or not symbol.endswith('USDT'):
         return jsonify({'error': 'Invalid symbol'}), 400
-    if interval not in {'1', '5', '15', '30', '60', '240', 'D'}:
+    if interval not in {'1', '5', '15', '30', '60', '240', 'D', 'W', 'M'}:
         return jsonify({'error': 'Invalid interval'}), 400
 
     utc_off = config.get('general', {}).get('utc_offset', 2)

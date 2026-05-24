@@ -276,8 +276,8 @@
 // ── constants ─────────────────────────────────────────────────────────────────
 const LC          = LightweightCharts;
 let TZ_OFFSET_S   = 0;
-const TIMEFRAMES  = ['1','5','30','60','240','D'];
-const TF_LABEL    = {'1':'1m','5':'5m','30':'30m','60':'1h','240':'4h','D':'1D'};
+const TIMEFRAMES  = ['1','5','30','60','240','D','W','M'];
+const TF_LABEL    = {'1':'1m','5':'5m','30':'30m','60':'1h','240':'4h','D':'1D','W':'1W','M':'1M'};
 const INSTRUMENT_NAMES = {
     'AAPLUSDT':'Apple',   'AMZNUSDT':'Amazon',    'ARMUSDT':'ARM',
     'AVGOUSDT':'Broadcom','BABAUSDT':'Alibaba',    'BMNRUSDT':'BMNR',
@@ -299,7 +299,7 @@ const EMA_CFG     = [
     {p:223, color:'#a855f7', width:2.5},
 ];
 
-const DEFAULT_CANDLES = {'1':100,'5':100,'30':80,'60':80,'240':60,'D':50};
+const DEFAULT_CANDLES = {'1':100,'5':100,'30':80,'60':80,'240':60,'D':50,'W':52,'M':24};
 function getCandlesForTF(tf) {
     try {
         const s = JSON.parse(localStorage.getItem('chart_candles_per_tf'));
@@ -683,7 +683,7 @@ class DayLinesPrimitive {
 }
 function attachDayLines(series, chart, klines, tf, prev) {
     if (prev) { try { series.detachPrimitive(prev); } catch(e) {} }
-    if (tf === 'D' || !klines || klines.length < 2) return null;
+    if (tf === 'D' || tf === 'W' || tf === 'M' || !klines || klines.length < 2) return null;
     const dayTs = getDayTimestamps(klines);
     if (!dayTs.length) return null;
     const prim = new DayLinesPrimitive(dayTs, chart);
