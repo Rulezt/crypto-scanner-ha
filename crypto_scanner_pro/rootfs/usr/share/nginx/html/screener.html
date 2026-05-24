@@ -32,10 +32,6 @@
             .modal-scanner-inner { width: calc(100% - 24px) !important; margin: 48px auto !important; }
         }
         thead th { position: sticky; top: 0; z-index: 10; background-color: #161A1E; }
-        @keyframes flash-up   { 0%,100%{background:transparent} 25%{background:rgba(52,211,153,.22)} }
-        @keyframes flash-down { 0%,100%{background:transparent} 25%{background:rgba(239,68,68,.22)}  }
-        .flash-up   { animation: flash-up   .7s ease }
-        .flash-down { animation: flash-down .7s ease }
     </style>
 </head>
 <body class="bg-dark-bg text-gray-100">
@@ -541,14 +537,7 @@
                         const distEl  = document.getElementById(`hvd-${c.symbol}`);
                         const touchEl = document.getElementById(`hvt-${c.symbol}`);
                         if (priceEl) {
-                            const newTxt = '$' + fmtPrice(c.price);
-                            if (priceEl.textContent !== newTxt) {
-                                const dir = c.change_24h >= 0 ? 'flash-up' : 'flash-down';
-                                priceEl.classList.remove('flash-up', 'flash-down');
-                                void priceEl.offsetWidth;
-                                priceEl.textContent = newTxt;
-                                priceEl.classList.add(dir);
-                            }
+                            priceEl.textContent = '$' + fmtPrice(c.price);
                         }
                         if (chgEl) {
                             const positive = c.change_24h >= 0;
