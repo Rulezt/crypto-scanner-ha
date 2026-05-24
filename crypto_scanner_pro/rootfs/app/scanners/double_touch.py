@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 COOLDOWN_FILE = '/data/double_touch_cooldown.json'
-MAX_COINS = 200
+MAX_COINS = 1000
 
 
 class DoubleTouchScanner:

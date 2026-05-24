@@ -97,8 +97,8 @@
                         <button onclick="switchMarketTab('commodity')" id="tab-commodity" class="flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-300">
                             ⬡ <span class="hidden sm:inline">Commodity</span><span class="sm:hidden">Comm.</span>
                         </button>
-                        <button onclick="switchMarketTab('monitored')" id="tab-monitored" class="flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-300">
-                            👁️ <span class="hidden sm:inline">Monitorate (</span>40<span class="hidden sm:inline">)</span>
+                        <button onclick="switchMarketTab('ico')" id="tab-ico" class="flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-300">
+                            ◆ ICO
                         </button>
                     </div>
 
@@ -178,8 +178,8 @@
                         </table>
                     </div>
 
-                    <!-- Monitored Table -->
-                    <div id="content-monitored" class="overflow-x-auto hidden">
+                    <!-- ICO Table -->
+                    <div id="content-ico" class="overflow-x-auto hidden">
                         <table class="w-full">
                             <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                 <tr>
@@ -187,12 +187,12 @@
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left">Coin</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right">Prezzo</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right"><span class="hidden sm:inline">Var. </span>24h</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell">Volume</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell">Listata</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
-                            <tbody id="monitored-tbody" class="text-sm">
-                                <tr><td colspan="6" class="text-center py-8 text-gray-500">Caricamento dati mercato...</td></tr>
+                            <tbody id="ico-tbody" class="text-sm">
+                                <tr><td colspan="6" class="text-center py-8 text-gray-500">Caricamento...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -559,16 +559,58 @@
 
         async function loadMarketData() {
             try {
-                const res = await fetch(`${API_URL}/scanner-api/ath-atl/status`);
+                const [res, icoRes] = await Promise.all([
+                    fetch(`${API_URL}/scanner-api/ath-atl/status`),
+                    fetch(`${API_URL}/api/new-listings?days=90`),
+                ]);
                 const data = await res.json();
                 if (data.success) {
                     renderTable('gainers-tbody', data.top_gainers || []);
                     renderTable('losers-tbody', data.top_losers || []);
-                    renderTable('monitored-tbody', data.monitored_coins || []);
+                }
+                const icoData = await icoRes.json();
+                if (icoData.success) {
+                    renderICOTable('ico-tbody', icoData.data || []);
                 }
             } catch (e) {
                 console.error('Error loading market data:', e);
             }
+        }
+
+        function renderICOTable(tbodyId, coins) {
+            const tbody = document.getElementById(tbodyId);
+            if (!coins || coins.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Nessuna ICO disponibile</td></tr>';
+                return;
+            }
+            const now = Date.now();
+            tbody.innerHTML = coins.map((coin, index) => {
+                const isPositive = coin.change_24h >= 0;
+                const changeColor = isPositive ? 'text-emerald-400' : 'text-red-400';
+                const bgColor = isPositive ? 'bg-emerald-400/5' : 'bg-red-400/5';
+                const launchMs = coin.launch_time || 0;
+                let listataDays = '';
+                if (launchMs > 0) {
+                    const diffDays = Math.floor((now - launchMs) / 86400000);
+                    listataDays = diffDays === 0 ? 'oggi' : diffDays === 1 ? '1 giorno fa' : `${diffDays} gg fa`;
+                }
+                return `
+                    <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-gray-500 hidden sm:table-cell">${index + 1}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium">${coin.symbol.replace('USDT', '')}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-300 text-sm">$${formatPrice(coin.price)}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-right">
+                            <span class="${changeColor} ${bgColor} px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs sm:text-sm font-medium">
+                                ${isPositive ? '+' : ''}${coin.change_24h.toFixed(2)}%
+                            </span>
+                        </td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-400 text-sm hidden md:table-cell">${listataDays}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-center">
+                            <a href="mtf?symbol=${coin.symbol}" target="_blank" rel="noopener" class="text-xs text-blue-400 hover:text-blue-300 hover:bg-dark-hover px-2 py-1 rounded transition-colors">▶</a>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         function renderTable(tbodyId, coins) {
@@ -602,11 +644,11 @@
 
         function switchMarketTab(tab) {
             const inactiveClass = 'flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-300';
-            ['gainers', 'losers', 'stock', 'commodity', 'monitored'].forEach(t => {
+            ['gainers', 'losers', 'stock', 'commodity', 'ico'].forEach(t => {
                 document.getElementById(`tab-${t}`).className = inactiveClass;
                 document.getElementById(`content-${t}`).classList.add('hidden');
             });
-            const colors = { gainers:'emerald', losers:'red', stock:'blue', commodity:'yellow', monitored:'blue' };
+            const colors = { gainers:'emerald', losers:'red', stock:'blue', commodity:'yellow', ico:'purple' };
             const color = colors[tab] || 'gray';
             document.getElementById(`tab-${tab}`).className = `flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium bg-dark-hover text-${color}-400 border-b-2 border-${color}-400`;
             document.getElementById(`content-${tab}`).classList.remove('hidden');

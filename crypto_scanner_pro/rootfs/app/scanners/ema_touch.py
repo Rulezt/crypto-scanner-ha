@@ -12,7 +12,7 @@ COOLDOWN_FILE = None  # set in __init__
 ZONE_FILE = '/data/ema_zone.json'
 
 # How many top coins to subscribe klines for
-TOP_KLINE_SYMBOLS = 40
+TOP_KLINE_SYMBOLS = 500
 # Refresh kline subscription list every N seconds
 KLINE_SUB_REFRESH = 4 * 3600
 

@@ -274,7 +274,7 @@ class ATHATLScanner:
                                       'change_pct': change_pct, 'volume_24h_usd': vol_usd})
 
             all_pairs.sort(key=lambda x: x['change_pct'], reverse=True)
-            pairs_to_analyze = all_pairs[:20] + (all_pairs[-20:] if len(all_pairs) >= 20 else [])
+            pairs_to_analyze = all_pairs
 
             ath_coins, atl_coins = [], []
             for pair in pairs_to_analyze:

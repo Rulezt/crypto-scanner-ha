@@ -411,23 +411,17 @@ def get_ath_atl_status():
                 'volume_24h': volume_24h_usd
             })
 
-        # Sort by change %
-        all_pairs.sort(key=lambda x: x['change_24h'], reverse=True)
-
-        # Get top 20 gainers and losers
-        top_gainers = all_pairs[:20]
-        top_losers = all_pairs[-20:] if len(all_pairs) >= 20 else []
-        top_losers.reverse()  # Most negative first
-
-        # Combine for monitoring (what scanner analyzes)
-        monitored_coins = top_gainers + top_losers
+        # Split into gainers (positive) and losers (negative)
+        top_gainers = [c for c in all_pairs if c['change_24h'] > 0]
+        top_gainers.sort(key=lambda x: x['change_24h'], reverse=True)
+        top_losers  = [c for c in all_pairs if c['change_24h'] < 0]
+        top_losers.sort(key=lambda x: x['change_24h'])  # most negative first
 
         return jsonify({
             'success': True,
             'config': config.get('ath_atl', {}),
-            'monitored_coins': monitored_coins,
-            'top_gainers': top_gainers[:20],
-            'top_losers': top_losers[:20],
+            'top_gainers': top_gainers,
+            'top_losers': top_losers,
             'total_pairs': len(all_pairs)
         })
 
@@ -562,7 +556,7 @@ def get_new_listings():
     import requests as req
     try:
         days  = int(request.args.get('days', 90))
-        limit = min(int(request.args.get('limit', 18)), 50)
+        limit = min(int(request.args.get('limit', 500)), 500)
         cutoff_ms = (time.time() - days * 86400) * 1000
 
         resp_i = req.get('https://api.bybit.com/v5/market/instruments-info',
