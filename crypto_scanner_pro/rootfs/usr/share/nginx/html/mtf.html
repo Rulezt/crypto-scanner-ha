@@ -233,9 +233,9 @@ function makeChart(el, bigSlot) {
     layout: { background:{color:'#0F0F0F'}, textColor:'#B2B5BE', fontSize: 13 },
     grid:   { vertLines:{color:'#FFFFFF0F'}, horzLines:{color:'#FFFFFF0F'} },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
-    rightPriceScale: { borderColor:'#2A2E39', scaleMargins:{top:0.05,bottom:0.05} },
+    rightPriceScale: { borderVisible:false, scaleMargins:{top:0.05,bottom:0.05} },
     timeScale: {
-      borderColor:'#2A2E39', visible:true, timeVisible:true, secondsVisible:false,
+      borderVisible:false, visible:true, timeVisible:true, secondsVisible:false,
       barSpacing: bigSlot ? 8 : 6, rightOffset: bigSlot ? 20 : 15,
     },
   });
