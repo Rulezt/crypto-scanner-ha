@@ -29,6 +29,7 @@
         }
         .glow-green { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
         .glow-red   { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+        thead th { position: sticky; top: 0; z-index: 10; }
         @media (max-width: 639px) {
             .modal-inner         { width: calc(100% - 24px) !important; margin: 12px auto !important; }
             .modal-scanner-inner { width: calc(100% - 24px) !important; margin: 48px auto !important; }
@@ -103,7 +104,7 @@
                     </div>
 
                     <!-- Gainers Table -->
-                    <div id="content-gainers" class="overflow-x-auto">
+                    <div id="content-gainers" class="overflow-auto max-h-96">
                         <table class="w-full">
                             <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                 <tr>
@@ -122,7 +123,7 @@
                     </div>
 
                     <!-- Losers Table -->
-                    <div id="content-losers" class="overflow-x-auto hidden">
+                    <div id="content-losers" class="overflow-auto max-h-96 hidden">
                         <table class="w-full">
                             <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                 <tr>
@@ -141,7 +142,7 @@
                     </div>
 
                     <!-- Stock Table -->
-                    <div id="content-stock" class="overflow-x-auto hidden">
+                    <div id="content-stock" class="overflow-auto max-h-96 hidden">
                         <table class="w-full">
                             <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                 <tr>
@@ -160,7 +161,7 @@
                     </div>
 
                     <!-- Commodity Table -->
-                    <div id="content-commodity" class="overflow-x-auto hidden">
+                    <div id="content-commodity" class="overflow-auto max-h-96 hidden">
                         <table class="w-full">
                             <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                 <tr>
@@ -179,7 +180,7 @@
                     </div>
 
                     <!-- ICO Table -->
-                    <div id="content-ico" class="overflow-x-auto hidden">
+                    <div id="content-ico" class="overflow-auto max-h-96 hidden">
                         <table class="w-full">
                             <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                 <tr>
