@@ -119,8 +119,8 @@ const TF_SLOTS = isMobile ? [
   { tf:'1',   label:'1m',  col:'3/span 2',row:'2' },
 ];
 
-const DEFAULT_CANDLES = {'1':80,'5':80,'30':60,'60':60,'240':50,'D':40};
-const TF_SECONDS = {'1':60,'5':300,'30':1800,'60':3600,'240':14400,'D':86400};
+const DEFAULT_CANDLES = {'1':80,'5':80,'30':60,'60':60,'240':50,'D':40,'W':52,'M':24};
+const TF_SECONDS = {'1':60,'5':300,'30':1800,'60':3600,'240':14400,'D':86400,'W':604800,'M':2592000};
 function getCandlesForTF(tf) {
   try {
     const s = JSON.parse(localStorage.getItem('chart_candles_per_tf'));
@@ -157,6 +157,12 @@ let mobileSlotIdx = 0;
 const OB_TFS = [
   {tf:'1',label:'1m'},{tf:'5',label:'5m'},{tf:'30',label:'30m'},
   {tf:'60',label:'1h'},{tf:'240',label:'4h'},{tf:'D',label:'1D'},
+  {tf:'W',label:'1W'},{tf:'M',label:'1M'},
+];
+const FS_TFS = [
+  {tf:'1',label:'1m'},{tf:'5',label:'5m'},{tf:'30',label:'30m'},
+  {tf:'60',label:'1h'},{tf:'240',label:'4h'},{tf:'D',label:'1D'},
+  {tf:'W',label:'1W'},{tf:'M',label:'1M'},
 ];
 let obChart = null, obCandleS = null, obEmaS = {}, obLastEMA = {};
 let obTF = '30', obWS = null, obWsTimer = null;
@@ -202,7 +208,7 @@ class DayLinesPrimitive {
 }
 function attachDayLines(series, chart, klines, tf, prev) {
     if (prev) { try { series.detachPrimitive(prev); } catch(e) {} }
-    if (tf === 'D' || !klines || klines.length < 2) return null;
+    if (tf === 'D' || tf === 'W' || tf === 'M' || !klines || klines.length < 2) return null;
     const dayTs = getDayTimestamps(klines);
     if (!dayTs.length) return null;
     const prim = new DayLinesPrimitive(dayTs, chart);
@@ -684,7 +690,7 @@ function initFSChart() {
 }
 
 function renderFSTFBar() {
-    document.getElementById('fs-tf-bar').innerHTML = TF_SLOTS.map(({tf, label}) => {
+    document.getElementById('fs-tf-bar').innerHTML = FS_TFS.map(({tf, label}) => {
         const active = tf === fsTF;
         return `<button onclick="switchFSTF('${tf}')" style="font-size:11px;padding:2px 8px;border-radius:3px;border:none;cursor:pointer;background:${active?'#2563EB':'#2A2E39'};color:${active?'#fff':'#B2B5BE'};">${label}</button>`;
     }).join('');
