@@ -15,7 +15,7 @@
   }
   #hdr {
     height:44px; flex-shrink:0;
-    background:#0F0F0F; border-bottom:2px solid #2C2C2C;
+    background:#0F0F0F;
     display:flex; align-items:center; gap:8px; padding:0 14px;
   }
   #grid {
@@ -23,16 +23,17 @@
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: 1fr 1fr;
     overflow:hidden; min-height:0;
+    background:#2A2E39;
   }
   .cell {
     display:flex; flex-direction:column;
     border:1px solid #2A2E39; overflow:hidden;
+    border-radius:5px;
   }
   .cell-hdr {
     height:26px; flex-shrink:0;
     display:flex; align-items:center; gap:5px;
     padding:0 7px; background:#0F0F0F;
-    border-bottom:2px solid #2C2C2C;
   }
   .cell-body { flex:1; position:relative; min-height:0; }
   .chart-el  { position:absolute; inset:0; }
