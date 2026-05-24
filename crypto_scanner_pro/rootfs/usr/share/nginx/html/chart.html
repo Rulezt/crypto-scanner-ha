@@ -180,7 +180,7 @@
 <button id="nav-next" class="side-nav" onclick="nextPage()">&#8250;</button>
 
 <!-- ===== GRID ===== -->
-<div id="grid" style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:calc((100vh - 48px) / 3);overflow-y:auto;overflow-x:hidden;min-height:0;"></div>
+<div id="grid" style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);overflow:hidden;min-height:0;"></div>
 
 <!-- Empty state notice -->
 <div id="fav-empty" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;z-index:5;">
@@ -766,14 +766,14 @@ function toggleFsOBLevels() {
     }
 }
 
-// ── build grid (dynamic) ──────────────────────────────────────────────────────
-function buildGrid(n) {
-    for (const s of slots) { try { s.chart.remove(); } catch(e) {} }
+// ── build grid (once — 18 slots) ──────────────────────────────────────────────
+const SLOTS_TOTAL = 18;
+function buildGrid() {
     const grid = document.getElementById('grid');
     grid.innerHTML = '';
     slots = [];
 
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < SLOTS_TOTAL; i++) {
         const cell = document.createElement('div');
         cell.style.cssText = 'display:flex;flex-direction:column;border:1px solid #2A2E39;overflow:hidden;';
 
@@ -938,20 +938,21 @@ const mtfEl = document.createElement('button');
 
 // ── view layout ───────────────────────────────────────────────────────────────
 function applyView() {
-    const is18 = viewMode === '18';
-    const grid = document.getElementById('grid');
+    const is18  = viewMode === '18';
+    const grid  = document.getElementById('grid');
 
     if (IS_MOBILE) {
         grid.style.gridTemplateColumns = '1fr';
-        grid.style.gridAutoRows        = 'calc((100vh - 48px) / 3)';
+        grid.style.gridTemplateRows    = 'repeat(3, 1fr)';
+        const visible = is18 ? 18 : 9;
         slots.forEach((s, i) => {
-            const show = i >= mobileChartIdx && i < mobileChartIdx + 3;
+            const show = i >= mobileChartIdx && i < mobileChartIdx + 3 && i < visible;
             s.cell.style.display = show ? 'flex' : 'none';
         });
         document.getElementById('nav-prev').style.display = 'block';
         document.getElementById('nav-next').style.display = 'block';
         const total = allCoins.length;
-        const first = mobileChartIdx + 1;
+        const first = curPage * 9 + mobileChartIdx + 1;
         const last  = Math.min(first + 2, total);
         updateMobileNavIndicator(first, last, total);
         return;
@@ -959,10 +960,12 @@ function applyView() {
 
     const cols = is18 ? 6 : 3;
     grid.style.gridTemplateColumns = `repeat(${cols},1fr)`;
-    grid.style.gridAutoRows        = 'calc((100vh - 48px) / 3)';
-    slots.forEach(s => s.cell.style.display = 'flex');
-    document.getElementById('nav-prev').style.display = 'none';
-    document.getElementById('nav-next').style.display = 'none';
+    grid.style.gridTemplateRows    = 'repeat(3,1fr)';
+    const visible = is18 ? 18 : 9;
+    slots.forEach((s, i) => { s.cell.style.display = i < visible ? 'flex' : 'none'; });
+    const showArrows = !is18;
+    document.getElementById('nav-prev').style.display = showArrows ? 'block' : 'none';
+    document.getElementById('nav-next').style.display = showArrows ? 'block' : 'none';
     document.getElementById('btn-view').textContent = is18 ? '⊟ 9' : '⊞ 18';
     document.getElementById('btn-view').className   =
         `px-3 py-1 rounded text-xs font-medium transition-colors ${is18 ? 'btn-view-active' : 'btn-view-idle'}`;
@@ -1014,11 +1017,13 @@ async function switchSlotTF(idx, tf) {
 // ── load page ──────────────────────────────────────────────────────────────────
 async function loadPage() {
     closeWS();
-
-    if (allCoins.length !== slots.length) {
-        buildGrid(allCoins.length);
-    }
     applyView();
+
+    const is18      = viewMode === '18';
+    const visible   = is18 ? 18 : 9;
+    const pageCoins = is18
+        ? allCoins.slice(curPage * 18, curPage * 18 + 18)
+        : allCoins.slice(curPage * 9, curPage * 9 + 9);
 
     const isEmpty = (curMode === 'favorites' || curMode === 'ico') && allCoins.length === 0;
     if (isEmpty) {
@@ -1030,7 +1035,7 @@ async function loadPage() {
     document.getElementById('fav-empty').style.display = isEmpty ? 'block' : 'none';
     document.getElementById('grid').style.opacity = isEmpty ? '0.15' : '1';
 
-    for (let i = 0; i < slots.length; i++) {
+    for (let i = 0; i < visible; i++) {
         const s = slots[i];
         s.symbol = null; s.coin = null; s.curTF = curTF;
         s.starEl.textContent = '☆'; s.starEl.style.color = '#4B5563';
@@ -1056,8 +1061,11 @@ async function loadPage() {
 
     if (!isEmpty) {
         setStatus('Caricamento grafici...');
-        await Promise.all(allCoins.map((coin, i) => loadSlot(i, coin)));
+        await Promise.all(pageCoins.map((coin, i) => loadSlot(i, coin)));
         setStatus('');
+        for (let i = 0; i < visible; i++) {
+            if (!slots[i].coin) slots[i].cell.style.display = 'none';
+        }
         openWS();
         await syncAllAlertLines();
     }
@@ -1382,19 +1390,29 @@ function setWSDot(state) {
         `<span class="text-xs ${tcol}">${label}</span>`;
 }
 
-// ── navigation (mobile only) ──────────────────────────────────────────────────
+// ── navigation ─────────────────────────────────────────────────────────────────
 async function prevPage() {
-    if (IS_MOBILE) await mobilePrevChart();
+    if (IS_MOBILE && viewMode !== '18') { await mobilePrevChart(); return; }
+    if (curPage === 0 || viewMode === '18') return;
+    curPage--; await loadPage();
 }
 
 async function nextPage() {
-    if (IS_MOBILE) await mobileNextChart();
+    if (IS_MOBILE && viewMode !== '18') { await mobileNextChart(); return; }
+    const perPage = viewMode === '18' ? 18 : 9;
+    const maxPage = Math.ceil(allCoins.length / perPage) - 1;
+    if (curPage >= maxPage) return;
+    curPage++; await loadPage();
 }
 
 async function mobileNextChart() {
-    if (mobileChartIdx + 3 < allCoins.length) {
+    const coinsOnPage = allCoins.slice(curPage * 9, curPage * 9 + 9).length;
+    if (mobileChartIdx + 3 < coinsOnPage) {
         mobileChartIdx += 3;
         applyView();
+    } else {
+        const maxPage = Math.ceil(allCoins.length / 9) - 1;
+        if (curPage < maxPage) { curPage++; mobileChartIdx = 0; await loadPage(); }
     }
 }
 
@@ -1402,13 +1420,15 @@ async function mobilePrevChart() {
     if (mobileChartIdx >= 3) {
         mobileChartIdx -= 3;
         applyView();
+    } else if (curPage > 0) {
+        curPage--; mobileChartIdx = 6; await loadPage();
     }
 }
 
 async function toggleView() {
     viewMode = viewMode === '9' ? '18' : '9';
-    mobileChartIdx = 0;
-    applyView();
+    curPage  = 0; mobileChartIdx = 0;
+    await loadPage();
 }
 
 async function switchTF(tf) {
@@ -1418,7 +1438,7 @@ async function switchTF(tf) {
 
 async function switchMode(mode) {
     if (mode === curMode) return;
-    curMode = mode; mobileChartIdx = 0;
+    curMode = mode; curPage = 0; mobileChartIdx = 0;
     renderModeButtons();
     await fetchCoins(); await loadPage();
 }
@@ -1585,6 +1605,7 @@ document.addEventListener('keydown', e => {
 // ── bootstrap ──────────────────────────────────────────────────────────────────
 async function init() {
     renderTFBar(); renderModeButtons();
+    buildGrid(); applyView();
     await initNotifications();
     pollTriggeredAlerts();
     try { await fetchCoins(); } catch(e) { setStatus('Errore caricamento coin'); return; }
