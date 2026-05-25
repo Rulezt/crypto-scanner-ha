@@ -4,7 +4,7 @@
 body.orderbook-page {
     margin: 0;
     padding: 0;
-    background: #1f2937;
+    background: #0B0E11;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     overflow: hidden;
 }
@@ -21,7 +21,7 @@ body.orderbook-page #app {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: #1f2937;
+    background: #0B0E11;
     color: #f9fafb;
 }
 
@@ -39,7 +39,7 @@ body.orderbook-page #app {
     z-index: 1000;
 }
 .orderbook-modal {
-    background: #1f2937;
+    background: #0B0E11;
     color: #f9fafb;
     border-radius: 1rem;
     width: 95%;
@@ -79,18 +79,18 @@ body.orderbook-page #app {
     overflow-y: auto;
     padding: 0 0.5rem 1rem 0.5rem;
     scrollbar-width: thin;
-    scrollbar-color: #4b5563 #1f2937;
+    scrollbar-color: #4b5563 #0B0E11;
 }
 .orderbook-container::-webkit-scrollbar {
     width: 8px;
 }
 .orderbook-container::-webkit-scrollbar-track {
-    background: #1f2937;
+    background: #0B0E11;
 }
 .orderbook-container::-webkit-scrollbar-thumb {
     background-color: #4b5563;
     border-radius: 20px;
-    border: 3px solid #1f2937;
+    border: 3px solid #0B0E11;
 }
 .orderbook-side {
     display: flex;
@@ -469,7 +469,7 @@ body.orderbook-page #app {
     flex-direction: column;
     min-width: 0;
     border-right: 1px solid #2A2E39;
-    background: #0F0F0F;
+    background: #0B0E11;
 }
 
 .ob-chart-topbar {
@@ -479,7 +479,7 @@ body.orderbook-page #app {
     padding: 4px 8px;
     height: 32px;
     flex-shrink: 0;
-    background: #0F0F0F;
+    background: #0B0E11;
     border-bottom: 1px solid #2A2E39;
 }
 
@@ -538,7 +538,7 @@ body.orderbook-page #app {
     flex-direction: column;
     min-width: 200px;
     overflow: hidden;
-    background: #1f2937;
+    background: #0B0E11;
 }
 
 /* book panel fills height when split */
