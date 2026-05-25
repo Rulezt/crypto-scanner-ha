@@ -97,6 +97,10 @@ createApp({
         let obAskLine = null;
         let obBidLine = null;
         const showObLines = ref(false);
+        let pocBuyLine = null;
+        let pocSellLine = null;
+        const showPocLines = ref(false);
+        let penultimateKline = null;
 
         // ── book state ────────────────────────────────────────────────────────
         const displayLevels  = ref(20);
@@ -193,6 +197,7 @@ createApp({
 
                 candleS.setData(klines);
                 obKlineCount = klines.length;
+                penultimateKline = klines.length >= 2 ? klines[klines.length - 2] : null;
                 candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length - 1]?.close) });
 
                 for (const { p } of EMA_CFG) {
@@ -205,6 +210,7 @@ createApp({
                 obChart.timeScale().setVisibleLogicalRange({ from: klines.length - n, to: klines.length + 3 });
 
                 connectChartWS(tf);
+                if (showPocLines.value) computePoc();
             } catch (e) { console.error('Chart load error:', e); }
         };
 
@@ -231,6 +237,10 @@ createApp({
                     const live = candle.close * k + lastEMA[p] * (1 - k);
                     emaS[p].update({ time: candle.time, value: live });
                     if (confirmed) lastEMA[p] = live;
+                }
+                if (confirmed) {
+                    penultimateKline = { ...candle };
+                    if (showPocLines.value) computePoc();
                 }
             };
             chartWS.onerror = () => {};
@@ -553,6 +563,72 @@ createApp({
         };
 
         // ============================
+        //  POC LINES (1m / 5m only)
+        // ============================
+        const getBucketSize = (price) => {
+            if (price >= 10000) return 0.1;
+            if (price >= 1000)  return 0.01;
+            if (price >= 100)   return 0.01;
+            if (price >= 10)    return 0.001;
+            if (price >= 1)     return 0.0001;
+            if (price >= 0.1)   return 0.00001;
+            return 0.000001;
+        };
+
+        const clearPocLines = () => {
+            if (pocBuyLine  && candleS) { try { candleS.removePriceLine(pocBuyLine);  } catch(e) {} pocBuyLine  = null; }
+            if (pocSellLine && candleS) { try { candleS.removePriceLine(pocSellLine); } catch(e) {} pocSellLine = null; }
+        };
+
+        const computePoc = async () => {
+            if (!showPocLines.value || !candleS || !penultimateKline) return;
+            if (chartTF.value !== '1' && chartTF.value !== '5') { clearPocLines(); return; }
+            clearPocLines();
+            try {
+                const r = await fetch(`https://api.bybit.com/v5/market/recent-trade?category=linear&symbol=${symbol.value}&limit=1000`);
+                const j = await r.json();
+                if (!j.result?.list?.length) return;
+
+                const tfMs         = parseInt(chartTF.value) * 60 * 1000;
+                const candleOpenMs = penultimateKline.time * 1000;
+                const candleCloseMs = candleOpenMs + tfMs;
+
+                const inCandle = j.result.list.filter(t => {
+                    const ts = parseInt(t.time);
+                    return ts >= candleOpenMs && ts < candleCloseMs;
+                });
+                if (inCandle.length === 0) return;
+
+                const bucket  = getBucketSize(penultimateKline.close);
+                const buyVol  = new Map();
+                const sellVol = new Map();
+
+                for (const t of inCandle) {
+                    const price = Math.round(parseFloat(t.price) / bucket) * bucket;
+                    const size  = parseFloat(t.size);
+                    if (t.side === 'Buy') buyVol.set(price,  (buyVol.get(price)  || 0) + size);
+                    else                  sellVol.set(price, (sellVol.get(price) || 0) + size);
+                }
+
+                let maxBuyPrice = null, maxBuyVol = 0;
+                buyVol.forEach((v, p) => { if (v > maxBuyVol)  { maxBuyVol  = v; maxBuyPrice  = p; } });
+
+                let maxSellPrice = null, maxSellVol = 0;
+                sellVol.forEach((v, p) => { if (v > maxSellVol) { maxSellVol = v; maxSellPrice = p; } });
+
+                const lineOpts = { lineWidth: 1, lineStyle: LC.LineStyle ? LC.LineStyle.Solid : 0, axisLabelVisible: false, title: '' };
+                if (maxBuyPrice  != null) pocBuyLine  = candleS.createPriceLine({ price: maxBuyPrice,  color: '#10b981', ...lineOpts });
+                if (maxSellPrice != null) pocSellLine = candleS.createPriceLine({ price: maxSellPrice, color: '#ef4444', ...lineOpts });
+            } catch(e) { console.error('POC error:', e); }
+        };
+
+        const togglePoc = () => {
+            showPocLines.value = !showPocLines.value;
+            if (showPocLines.value) computePoc();
+            else clearPocLines();
+        };
+
+        // ============================
         //  CLEANUP
         // ============================
         const cleanup = () => {
@@ -560,6 +636,7 @@ createApp({
             if (reconnectTimer)  clearTimeout(reconnectTimer);
             closeChartWS();
             clearObLines();
+            clearPocLines();
             asksMap.clear();
             bidsMap.clear();
         };
@@ -595,6 +672,7 @@ createApp({
             fetchOrderBook, updateDisplay, changeChartTF,
             setHoverLine, clearHoverLine,
             showObLines, toggleObLines,
+            showPocLines, togglePoc,
         };
     }
 }).mount('#app');
