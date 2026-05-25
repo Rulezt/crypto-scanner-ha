@@ -97,19 +97,6 @@ createApp({
         let obAskLine = null;
         let obBidLine = null;
         const showObLines = ref(false);
-        let pocBuyLine = null;
-        let pocSellLine = null;
-        const showPocLines = ref(false);
-        let penultimateKline = null;
-        const tradeBuffer = [];
-        let tradeWS = null;
-        let tradeWsTimer = null;
-        let pocRetryTimer = null;
-        let pocCurrentBuyVol = new Map();
-        let pocCurrentSellVol = new Map();
-        let pocCurrentCandleStartMs = 0;
-        let pocPrevBuyPrice = null;
-        let pocPrevSellPrice = null;
 
         // ── book state ────────────────────────────────────────────────────────
         const displayLevels  = ref(20);
@@ -194,7 +181,6 @@ createApp({
             });
 
             loadChartData(chartTF.value);
-            connectTradeWS();
         };
 
         const loadChartData = async (tf) => {
@@ -207,7 +193,6 @@ createApp({
 
                 candleS.setData(klines);
                 obKlineCount = klines.length;
-                penultimateKline = klines.length >= 2 ? klines[klines.length - 2] : null;
                 candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length - 1]?.close) });
 
                 for (const { p } of EMA_CFG) {
@@ -220,11 +205,6 @@ createApp({
                 obChart.timeScale().setVisibleLogicalRange({ from: klines.length - n, to: klines.length + 3 });
 
                 connectChartWS(tf);
-                if (showPocLines.value) {
-                    clearInterval(pocRetryTimer);
-                    pocRetryTimer = setInterval(computePoc, 5000);
-                    computePoc();
-                }
             } catch (e) { console.error('Chart load error:', e); }
         };
 
@@ -252,10 +232,6 @@ createApp({
                     emaS[p].update({ time: candle.time, value: live });
                     if (confirmed) lastEMA[p] = live;
                 }
-                if (confirmed) {
-                    penultimateKline = { ...candle };
-                    if (showPocLines.value) computePoc();
-                }
             };
             chartWS.onerror = () => {};
             chartWS.onclose = () => { chartWsTimer = setTimeout(() => connectChartWS(chartTF.value), 5000); };
@@ -273,9 +249,6 @@ createApp({
             candleS.setData([]);
             for (const { p } of EMA_CFG) { emaS[p].setData([]); lastEMA[p] = null; }
             ohlc.value = { o: '', h: '', l: '', c: '', pct: '', color: '#9ca3af' };
-            pocCurrentBuyVol = new Map(); pocCurrentSellVol = new Map();
-            pocCurrentCandleStartMs = 0; pocPrevBuyPrice = null; pocPrevSellPrice = null;
-            clearPocLines();
             loadChartData(tf);
         };
 
@@ -579,109 +552,6 @@ createApp({
             else clearObLines();
         };
 
-        // ============================
-        //  TRADE STREAM (buffer per POC)
-        // ============================
-        const connectTradeWS = () => {
-            if (tradeWS) return;
-            tradeWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-            tradeWS.onopen = () => {
-                tradeWS.send(JSON.stringify({ op: 'subscribe', args: [`publicTrade.${symbol.value}`] }));
-            };
-            tradeWS.onmessage = (ev) => {
-                let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
-                if (!msg.topic?.startsWith('publicTrade.') || !msg.data) return;
-                const cutoff = Date.now() - 15 * 60 * 1000;
-                const tfMs = (chartTF.value === '1' || chartTF.value === '5') ? parseInt(chartTF.value) * 60 * 1000 : 0;
-                for (const t of msg.data) {
-                    const tradeMs = parseInt(t.T);
-                    tradeBuffer.push({ price: parseFloat(t.p), size: parseFloat(t.v), side: t.S, time: tradeMs });
-                    if (tfMs > 0) {
-                        const candleStart = Math.floor(tradeMs / tfMs) * tfMs;
-                        if (candleStart !== pocCurrentCandleStartMs) {
-                            if (pocCurrentCandleStartMs > 0) {
-                                let maxBuyVol = 0; pocPrevBuyPrice = null;
-                                pocCurrentBuyVol.forEach((v, p) => { if (v > maxBuyVol) { maxBuyVol = v; pocPrevBuyPrice = p; } });
-                                let maxSellVol = 0; pocPrevSellPrice = null;
-                                pocCurrentSellVol.forEach((v, p) => { if (v > maxSellVol) { maxSellVol = v; pocPrevSellPrice = p; } });
-                                if (showPocLines.value) computePoc();
-                            }
-                            pocCurrentCandleStartMs = candleStart;
-                            pocCurrentBuyVol = new Map();
-                            pocCurrentSellVol = new Map();
-                        }
-                        const bucket = getBucketSize(parseFloat(t.p));
-                        const price = Math.round(parseFloat(t.p) / bucket) * bucket;
-                        if (t.S === 'Buy') pocCurrentBuyVol.set(price, (pocCurrentBuyVol.get(price) || 0) + parseFloat(t.v));
-                        else pocCurrentSellVol.set(price, (pocCurrentSellVol.get(price) || 0) + parseFloat(t.v));
-                    }
-                }
-                while (tradeBuffer.length > 0 && tradeBuffer[0].time < cutoff) tradeBuffer.shift();
-            };
-            tradeWS.onerror = () => {};
-            tradeWS.onclose = () => { tradeWS = null; tradeWsTimer = setTimeout(connectTradeWS, 3000); };
-        };
-
-        const closeTradeWS = () => {
-            clearTimeout(tradeWsTimer);
-            if (tradeWS) { try { tradeWS.close(); } catch(e) {} tradeWS = null; }
-        };
-
-        // ============================
-        //  POC LINES (1m / 5m only)
-        // ============================
-        const getBucketSize = (price) => {
-            if (price >= 10000) return 0.1;
-            if (price >= 1000)  return 0.01;
-            if (price >= 100)   return 0.01;
-            if (price >= 10)    return 0.001;
-            if (price >= 1)     return 0.0001;
-            if (price >= 0.1)   return 0.00001;
-            return 0.000001;
-        };
-
-        const clearPocLines = () => {
-            if (pocBuyLine  && candleS) { try { candleS.removePriceLine(pocBuyLine);  } catch(e) {} pocBuyLine  = null; }
-            if (pocSellLine && candleS) { try { candleS.removePriceLine(pocSellLine); } catch(e) {} pocSellLine = null; }
-        };
-
-        const computePoc = () => {
-            if (!showPocLines.value || !candleS) return;
-            if (chartTF.value !== '1' && chartTF.value !== '5') { clearPocLines(); return; }
-            clearPocLines();
-
-            // Usa la candela precedente confermata; fallback sulla candela corrente (in formazione)
-            let buyPrice = pocPrevBuyPrice;
-            let sellPrice = pocPrevSellPrice;
-
-            if (buyPrice == null && sellPrice == null) {
-                let maxBuyVol = 0;
-                pocCurrentBuyVol.forEach((v, p) => { if (v > maxBuyVol)  { maxBuyVol  = v; buyPrice  = p; } });
-                let maxSellVol = 0;
-                pocCurrentSellVol.forEach((v, p) => { if (v > maxSellVol) { maxSellVol = v; sellPrice = p; } });
-                if (buyPrice == null && sellPrice == null) return;
-            }
-
-            const lineOpts = { lineWidth: 1, lineStyle: LC.LineStyle ? LC.LineStyle.Solid : 0, axisLabelVisible: false, title: '' };
-            if (buyPrice  != null) pocBuyLine  = candleS.createPriceLine({ price: buyPrice,  color: '#10b981', ...lineOpts });
-            if (sellPrice != null) pocSellLine = candleS.createPriceLine({ price: sellPrice, color: '#ef4444', ...lineOpts });
-            if (pocBuyLine || pocSellLine) {
-                clearInterval(pocRetryTimer);
-                pocRetryTimer = null;
-            }
-        };
-
-        const togglePoc = () => {
-            showPocLines.value = !showPocLines.value;
-            if (showPocLines.value) {
-                computePoc();
-                if (!pocRetryTimer) pocRetryTimer = setInterval(computePoc, 5000);
-            } else {
-                clearInterval(pocRetryTimer);
-                pocRetryTimer = null;
-                clearPocLines();
-            }
-        };
 
         // ============================
         //  CLEANUP
@@ -690,13 +560,7 @@ createApp({
             if (bookWS)        { bookWS.close(); bookWS = null; }
             if (reconnectTimer)  clearTimeout(reconnectTimer);
             closeChartWS();
-            closeTradeWS();
-            clearInterval(pocRetryTimer); pocRetryTimer = null;
-            tradeBuffer.length = 0;
-            pocCurrentBuyVol = new Map(); pocCurrentSellVol = new Map();
-            pocCurrentCandleStartMs = 0; pocPrevBuyPrice = null; pocPrevSellPrice = null;
             clearObLines();
-            clearPocLines();
             asksMap.clear();
             bidsMap.clear();
         };
@@ -732,7 +596,6 @@ createApp({
             fetchOrderBook, updateDisplay, changeChartTF,
             setHoverLine, clearHoverLine,
             showObLines, toggleObLines,
-            showPocLines, togglePoc,
         };
     }
 }).mount('#app');

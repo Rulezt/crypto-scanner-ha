@@ -124,13 +124,6 @@
                             :class="['imbalance-toggle', showObLines ? 'active' : '']">
                         OB
                     </button>
-                    <button v-if="isStandalone" @click="togglePoc()"
-                            :disabled="chartTF !== '1' && chartTF !== '5'"
-                            :class="['imbalance-toggle', showPocLines ? 'active' : '']"
-                            :style="{ opacity: (chartTF !== '1' && chartTF !== '5') ? 0.35 : 1, cursor: (chartTF !== '1' && chartTF !== '5') ? 'not-allowed' : 'pointer' }"
-                            title="Max acquisti/vendite candela precedente (solo 1m/5m)">
-                        POC
-                    </button>
                 </div>
             </div>
 
