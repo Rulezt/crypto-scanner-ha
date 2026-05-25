@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terzo Tocco Scanner - Crypto Scanner Pro v4.5.1</title>
+    <title>Terzo Tocco Scanner - Crypto Scanner Pro v4.5.2</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161A1E'/%3E%3Crect x='4' y='19' width='5' height='9' rx='1' fill='%233b82f6'/%3E%3Crect x='11' y='13' width='5' height='15' rx='1' fill='%238b5cf6'/%3E%3Crect x='18' y='8' width='5' height='20' rx='1' fill='%2310b981'/%3E%3Cpolyline points='4,23 11,17 18,11 26,5' stroke='%23fbbf24' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
@@ -213,7 +213,7 @@
                 {{ scanning ? '⏳ Scansione...' : '🔍 Avvia Scan' }}
             </button>
             <button v-if="scanning" @click="stopScan" class="btn danger">⏹ Stop</button>
-            <a href="./" class="btn">← Dashboard</a>
+            <a href="./" class="btn" title="Dashboard" style="display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" width="16" height="16"><path d="M16.612 2.214a1.01 1.01 0 0 0-1.242 0L1 13.419l1.243 1.572L4 13.621V26a2.004 2.004 0 0 0 2 2h20a2.004 2.004 0 0 0 2-2V13.63L29.757 15L31 13.428ZM18 26h-4v-8h4Zm2 0v-8a2.002 2.002 0 0 0-2-2h-4a2.002 2.002 0 0 0-2 2v8H6V12.062l10-7.79l10 7.8V26Z"/></svg></a>
         </div>
     </div>
 
