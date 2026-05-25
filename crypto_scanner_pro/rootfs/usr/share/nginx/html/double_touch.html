@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terzo Tocco Scanner - Crypto Scanner Pro v4.4.8</title>
+    <title>Terzo Tocco Scanner - Crypto Scanner Pro v4.4.9</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161A1E'/%3E%3Crect x='4' y='19' width='5' height='9' rx='1' fill='%233b82f6'/%3E%3Crect x='11' y='13' width='5' height='15' rx='1' fill='%238b5cf6'/%3E%3Crect x='18' y='8' width='5' height='20' rx='1' fill='%2310b981'/%3E%3Cpolyline points='4,23 11,17 18,11 26,5' stroke='%23fbbf24' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
     <script src="https://unpkg.com/lightweight-charts@4.3.4/dist/lightweight-charts.standalone.production.js"></script>
@@ -784,27 +784,12 @@ createApp({
             const container = document.getElementById('lwc-popup-chart');
             if (!container || typeof LightweightCharts === 'undefined') return;
 
-            const { width, height } = container.getBoundingClientRect();
-            const chart = LightweightCharts.createChart(container, {
-                width: width || 600, height: height || 310,
-                layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
-                grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
-                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-                handleScroll: true, handleScale: true,
-                rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },
-                timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 5, barSpacing: tf === 'D' ? 10 : 6 },
-                localization: { locale: 'it-IT' },
-            });
-
-            if (session !== buildSession) { try { chart.remove(); } catch(e) {} return; }
-            popupChart = chart;
-
             try {
                 const url = `api/klines?symbol=${result.symbol}&interval=${tf}`;
                 const res  = await fetch(url);
+                if (!res.ok) return;
                 const data = await res.json();
                 if (!data.success || !data.data?.length) return;
-
                 if (session !== buildSession) return;
 
                 const seen = new Set();
@@ -813,8 +798,20 @@ createApp({
                     seen.add(c.time);
                     return isFinite(c.open) && isFinite(c.close) && c.high >= c.low;
                 });
+                if (!klines.length || session !== buildSession) return;
 
-                if (!klines.length || !popupChart || session !== buildSession) return;
+                const chart = LightweightCharts.createChart(container, {
+                    width: 600, height: 310,
+                    layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
+                    grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
+                    crosshair: { mode: 1 },
+                    handleScroll: true, handleScale: true,
+                    rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },
+                    timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 5, barSpacing: tf === 'D' ? 10 : 6 },
+                });
+
+                if (session !== buildSession) { try { chart.remove(); } catch(e) {} return; }
+                popupChart = chart;
 
                 const cs = chart.addCandlestickSeries({
                     upColor: '#089981', downColor: '#F23645',
@@ -826,43 +823,33 @@ createApp({
                     const timeStep = klines.length > 1
                         ? klines[klines.length - 1].time - klines[klines.length - 2].time
                         : 86400;
-
-                    const touchATimeSec = result.touchATime;
-                    const touchBTimeSec = result.touchBTime;
-
-                    const hasA = klines.some(k => k.time === touchATimeSec);
-
-                    const lastTime   = klines[klines.length - 1].time;
-                    const futureTime = lastTime + timeStep * 20;
-
-                    const startTime = hasA ? touchATimeSec : klines[0].time;
-
-                    const projSeries = chart.addLineSeries({
+                    const hasA     = klines.some(k => k.time === result.touchATime);
+                    const lastTime = klines[klines.length - 1].time;
+                    const lvlS = chart.addLineSeries({
                         color: result.type === 'resistance' ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)',
                         lineWidth: 2, lineStyle: 0,
                         priceLineVisible: false, lastValueVisible: false,
                         crosshairMarkerVisible: false, title: '',
                     });
-                    projSeries.setData([
-                        { time: startTime,  value: result.level },
-                        { time: futureTime, value: result.level },
+                    lvlS.setData([
+                        { time: hasA ? result.touchATime : klines[0].time, value: result.level },
+                        { time: lastTime + timeStep * 20,                  value: result.level },
                     ]);
                 }
 
                 for (const cfg of EMA_CONFIG) {
                     const line = calcEMALine(klines, cfg.period);
-                    if (!line.length || !popupChart) continue;
-                    const s = chart.addLineSeries({
+                    if (!line.length) continue;
+                    chart.addLineSeries({
                         color: cfg.color, lineWidth: cfg.width,
                         priceLineVisible: false, lastValueVisible: false,
-                        crosshairMarkerVisible: false, title: '',
-                    });
-                    s.setData(line);
+                        crosshairMarkerVisible: false,
+                    }).setData(line);
                 }
 
                 chart.timeScale().fitContent();
                 chart.timeScale().scrollToPosition(5, false);
-            } catch(e) { console.error(e); }
+            } catch(e) { console.error('popup chart error:', e); }
         };
 
         const TF_LABEL = { '1': '1m', '5': '5m', '30': '30m', '60': '1h', '240': '4h', 'D': 'Daily' };
