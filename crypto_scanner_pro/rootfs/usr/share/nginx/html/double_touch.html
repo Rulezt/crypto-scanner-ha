@@ -197,7 +197,7 @@
     <!-- HEADER -->
     <div class="header">
         <div class="header-left">
-            <h1>🔁 Terzo Tocco Scanner</h1>
+            <h1>Terzo Tocco Scanner</h1>
             <span class="status">{{ statusMsg }}</span>
         </div>
         <div class="controls">
@@ -209,8 +209,9 @@
                     <label>Prossimità %</label>
                     <input type="number" v-model.number="proximity" min="0.1" max="10" step="0.1" style="width:60px">
                 </div>
-                <button @click="startScan" :disabled="scanning" class="btn primary">
-                {{ scanning ? '⏳ Scansione...' : '🔍 Avvia Scan' }}
+                <button @click="startScan" :disabled="scanning" class="btn primary" style="display:inline-flex;align-items:center;gap:6px">
+                <span v-if="scanning">⏳ Scansione...</span>
+                <span v-else style="display:inline-flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Avvia Scan</span>
             </button>
             <button v-if="scanning" @click="stopScan" class="btn danger">⏹ Stop</button>
             <a href="./" class="btn" title="Dashboard" style="display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" width="16" height="16"><path d="M16.612 2.214a1.01 1.01 0 0 0-1.242 0L1 13.419l1.243 1.572L4 13.621V26a2.004 2.004 0 0 0 2 2h20a2.004 2.004 0 0 0 2-2V13.63L29.757 15L31 13.428ZM18 26h-4v-8h4Zm2 0v-8a2.002 2.002 0 0 0-2-2h-4a2.002 2.002 0 0 0-2 2v8H6V12.062l10-7.79l10 7.8V26Z"/></svg></a>
@@ -259,13 +260,12 @@
 
     <!-- INITIAL -->
     <div v-if="!scanning && results.length === 0 && !initialDone" class="loading-overlay">
-        <div style="font-size:2.5rem">🔁</div>
         <p style="font-weight:600">Terzo Tocco Pattern Scanner</p>
         <p style="font-size:0.78rem;color:#4b5563;max-width:420px;text-align:center;line-height:1.6">
             Individua coin con due tocchi precisi dello stesso livello di prezzo (High o Low) su daily,
             senza violazione del livello tra i due tocchi — setup ideale per anticipare un breakout al terzo tocco.
         </p>
-        <button @click="startScan" class="btn primary" style="margin-top:8px">🔍 Avvia Scan</button>
+        <button @click="startScan" class="btn primary" style="margin-top:8px;display:inline-flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Avvia Scan</button>
     </div>
 
     <!-- EMPTY AFTER SCAN -->
