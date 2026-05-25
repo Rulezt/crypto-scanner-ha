@@ -104,6 +104,7 @@ createApp({
         const tradeBuffer = [];
         let tradeWS = null;
         let tradeWsTimer = null;
+        let pocRetryTimer = null;
 
         // ── book state ────────────────────────────────────────────────────────
         const displayLevels  = ref(20);
@@ -214,7 +215,11 @@ createApp({
                 obChart.timeScale().setVisibleLogicalRange({ from: klines.length - n, to: klines.length + 3 });
 
                 connectChartWS(tf);
-                if (showPocLines.value) computePoc();
+                if (showPocLines.value) {
+                    clearInterval(pocRetryTimer);
+                    pocRetryTimer = setInterval(computePoc, 5000);
+                    computePoc();
+                }
             } catch (e) { console.error('Chart load error:', e); }
         };
 
@@ -657,12 +662,22 @@ createApp({
             const lineOpts = { lineWidth: 1, lineStyle: LC.LineStyle ? LC.LineStyle.Solid : 0, axisLabelVisible: false, title: '' };
             if (maxBuyPrice  != null) pocBuyLine  = candleS.createPriceLine({ price: maxBuyPrice,  color: '#10b981', ...lineOpts });
             if (maxSellPrice != null) pocSellLine = candleS.createPriceLine({ price: maxSellPrice, color: '#ef4444', ...lineOpts });
+            if (pocBuyLine || pocSellLine) {
+                clearInterval(pocRetryTimer);
+                pocRetryTimer = null;
+            }
         };
 
         const togglePoc = () => {
             showPocLines.value = !showPocLines.value;
-            if (showPocLines.value) computePoc();
-            else clearPocLines();
+            if (showPocLines.value) {
+                computePoc();
+                if (!pocRetryTimer) pocRetryTimer = setInterval(computePoc, 5000);
+            } else {
+                clearInterval(pocRetryTimer);
+                pocRetryTimer = null;
+                clearPocLines();
+            }
         };
 
         // ============================
@@ -673,6 +688,7 @@ createApp({
             if (reconnectTimer)  clearTimeout(reconnectTimer);
             closeChartWS();
             closeTradeWS();
+            clearInterval(pocRetryTimer); pocRetryTimer = null;
             tradeBuffer.length = 0;
             clearObLines();
             clearPocLines();
