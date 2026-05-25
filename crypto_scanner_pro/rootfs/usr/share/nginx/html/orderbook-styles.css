@@ -51,6 +51,7 @@ body.orderbook-page #app {
 }
 .orderbook-header {
     padding: 0.6rem 1rem;
+    background: #161A1E;
     border-bottom: 1px solid #4b5563;
     display: flex;
     justify-content: space-between;
