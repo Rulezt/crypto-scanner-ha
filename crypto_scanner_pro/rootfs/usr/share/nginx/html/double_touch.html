@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terzo Tocco Scanner - Crypto Scanner Pro v4.5.0</title>
+    <title>Terzo Tocco Scanner - Crypto Scanner Pro v4.5.1</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161A1E'/%3E%3Crect x='4' y='19' width='5' height='9' rx='1' fill='%233b82f6'/%3E%3Crect x='11' y='13' width='5' height='15' rx='1' fill='%238b5cf6'/%3E%3Crect x='18' y='8' width='5' height='20' rx='1' fill='%2310b981'/%3E%3Cpolyline points='4,23 11,17 18,11 26,5' stroke='%23fbbf24' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
@@ -825,7 +825,7 @@ createApp({
                     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
                     handleScroll: true, handleScale: true,
                     rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },
-                    timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 5, barSpacing: tf === 'D' ? 10 : 6 },
+                    timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 10, barSpacing: tf === 'D' ? 12 : 8 },
                 });
 
                 if (session !== buildSession) { try { chart.remove(); } catch(e) {} return; }
@@ -865,8 +865,8 @@ createApp({
                     }).setData(line);
                 }
 
-                chart.timeScale().fitContent();
-                chart.timeScale().scrollToPosition(5, false);
+                const visibleBars = tf === 'D' ? 40 : tf === '240' ? 50 : 60;
+                chart.timeScale().setVisibleLogicalRange({ from: klines.length - visibleBars, to: klines.length + 10 });
             } catch(e) {
                 console.error('popup chart error:', e);
                 container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ef4444;font-size:11px;padding:8px;text-align:center;">${e.message}</div>`;
