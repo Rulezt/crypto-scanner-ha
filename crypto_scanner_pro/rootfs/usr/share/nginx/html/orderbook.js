@@ -101,6 +101,9 @@ createApp({
         let pocSellLine = null;
         const showPocLines = ref(false);
         let penultimateKline = null;
+        const tradeBuffer = [];
+        let tradeWS = null;
+        let tradeWsTimer = null;
 
         // ── book state ────────────────────────────────────────────────────────
         const displayLevels  = ref(20);
@@ -185,6 +188,7 @@ createApp({
             });
 
             loadChartData(chartTF.value);
+            connectTradeWS();
         };
 
         const loadChartData = async (tf) => {
@@ -563,6 +567,33 @@ createApp({
         };
 
         // ============================
+        //  TRADE STREAM (buffer per POC)
+        // ============================
+        const connectTradeWS = () => {
+            if (tradeWS) return;
+            tradeWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+            tradeWS.onopen = () => {
+                tradeWS.send(JSON.stringify({ op: 'subscribe', args: [`publicTrade.${symbol.value}`] }));
+            };
+            tradeWS.onmessage = (ev) => {
+                let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
+                if (!msg.topic?.startsWith('publicTrade.') || !msg.data) return;
+                const cutoff = Date.now() - 15 * 60 * 1000;
+                for (const t of msg.data) {
+                    tradeBuffer.push({ price: parseFloat(t.p), size: parseFloat(t.v), side: t.S, time: parseInt(t.T) });
+                }
+                while (tradeBuffer.length > 0 && tradeBuffer[0].time < cutoff) tradeBuffer.shift();
+            };
+            tradeWS.onerror = () => {};
+            tradeWS.onclose = () => { tradeWS = null; tradeWsTimer = setTimeout(connectTradeWS, 3000); };
+        };
+
+        const closeTradeWS = () => {
+            clearTimeout(tradeWsTimer);
+            if (tradeWS) { try { tradeWS.close(); } catch(e) {} tradeWS = null; }
+        };
+
+        // ============================
         //  POC LINES (1m / 5m only)
         // ============================
         const getBucketSize = (price) => {
@@ -584,42 +615,48 @@ createApp({
             if (!showPocLines.value || !candleS || !penultimateKline) return;
             if (chartTF.value !== '1' && chartTF.value !== '5') { clearPocLines(); return; }
             clearPocLines();
-            try {
-                const r = await fetch(`https://api.bybit.com/v5/market/recent-trade?category=linear&symbol=${symbol.value}&limit=1000`);
-                const j = await r.json();
-                if (!j.result?.list?.length) return;
 
-                const tfMs         = parseInt(chartTF.value) * 60 * 1000;
-                const candleOpenMs = penultimateKline.time * 1000;
-                const candleCloseMs = candleOpenMs + tfMs;
+            const tfMs          = parseInt(chartTF.value) * 60 * 1000;
+            const candleOpenMs  = penultimateKline.time * 1000;
+            const candleCloseMs = candleOpenMs + tfMs;
 
-                const inCandle = j.result.list.filter(t => {
-                    const ts = parseInt(t.time);
-                    return ts >= candleOpenMs && ts < candleCloseMs;
-                });
-                if (inCandle.length === 0) return;
+            // Fonte primaria: buffer WS (copre monete ad alto volume come BTC)
+            let trades = tradeBuffer.filter(t => t.time >= candleOpenMs && t.time < candleCloseMs);
 
-                const bucket  = getBucketSize(penultimateKline.close);
-                const buyVol  = new Map();
-                const sellVol = new Map();
+            // Fallback REST: utile per monete a bassa liquidità o all'avvio
+            if (trades.length === 0) {
+                try {
+                    const r = await fetch(`https://api.bybit.com/v5/market/recent-trade?category=linear&symbol=${symbol.value}&limit=1000`);
+                    const j = await r.json();
+                    if (j.result?.list?.length) {
+                        trades = j.result.list
+                            .filter(t => { const ts = parseInt(t.time); return ts >= candleOpenMs && ts < candleCloseMs; })
+                            .map(t => ({ price: parseFloat(t.price), size: parseFloat(t.size), side: t.side, time: parseInt(t.time) }));
+                    }
+                } catch(e) {}
+            }
 
-                for (const t of inCandle) {
-                    const price = Math.round(parseFloat(t.price) / bucket) * bucket;
-                    const size  = parseFloat(t.size);
-                    if (t.side === 'Buy') buyVol.set(price,  (buyVol.get(price)  || 0) + size);
-                    else                  sellVol.set(price, (sellVol.get(price) || 0) + size);
-                }
+            if (trades.length === 0) return;
 
-                let maxBuyPrice = null, maxBuyVol = 0;
-                buyVol.forEach((v, p) => { if (v > maxBuyVol)  { maxBuyVol  = v; maxBuyPrice  = p; } });
+            const bucket  = getBucketSize(penultimateKline.close);
+            const buyVol  = new Map();
+            const sellVol = new Map();
 
-                let maxSellPrice = null, maxSellVol = 0;
-                sellVol.forEach((v, p) => { if (v > maxSellVol) { maxSellVol = v; maxSellPrice = p; } });
+            for (const t of trades) {
+                const price = Math.round(t.price / bucket) * bucket;
+                if (t.side === 'Buy') buyVol.set(price,  (buyVol.get(price)  || 0) + t.size);
+                else                  sellVol.set(price, (sellVol.get(price) || 0) + t.size);
+            }
 
-                const lineOpts = { lineWidth: 1, lineStyle: LC.LineStyle ? LC.LineStyle.Solid : 0, axisLabelVisible: false, title: '' };
-                if (maxBuyPrice  != null) pocBuyLine  = candleS.createPriceLine({ price: maxBuyPrice,  color: '#10b981', ...lineOpts });
-                if (maxSellPrice != null) pocSellLine = candleS.createPriceLine({ price: maxSellPrice, color: '#ef4444', ...lineOpts });
-            } catch(e) { console.error('POC error:', e); }
+            let maxBuyPrice = null, maxBuyVol = 0;
+            buyVol.forEach((v, p) => { if (v > maxBuyVol)  { maxBuyVol  = v; maxBuyPrice  = p; } });
+
+            let maxSellPrice = null, maxSellVol = 0;
+            sellVol.forEach((v, p) => { if (v > maxSellVol) { maxSellVol = v; maxSellPrice = p; } });
+
+            const lineOpts = { lineWidth: 1, lineStyle: LC.LineStyle ? LC.LineStyle.Solid : 0, axisLabelVisible: false, title: '' };
+            if (maxBuyPrice  != null) pocBuyLine  = candleS.createPriceLine({ price: maxBuyPrice,  color: '#10b981', ...lineOpts });
+            if (maxSellPrice != null) pocSellLine = candleS.createPriceLine({ price: maxSellPrice, color: '#ef4444', ...lineOpts });
         };
 
         const togglePoc = () => {
@@ -635,6 +672,8 @@ createApp({
             if (bookWS)        { bookWS.close(); bookWS = null; }
             if (reconnectTimer)  clearTimeout(reconnectTimer);
             closeChartWS();
+            closeTradeWS();
+            tradeBuffer.length = 0;
             clearObLines();
             clearPocLines();
             asksMap.clear();
