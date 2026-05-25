@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terzo Tocco Scanner - Crypto Scanner Pro v4.4.9</title>
+    <title>Terzo Tocco Scanner - Crypto Scanner Pro v4.5.0</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161A1E'/%3E%3Crect x='4' y='19' width='5' height='9' rx='1' fill='%233b82f6'/%3E%3Crect x='11' y='13' width='5' height='15' rx='1' fill='%238b5cf6'/%3E%3Crect x='18' y='8' width='5' height='20' rx='1' fill='%2310b981'/%3E%3Cpolyline points='4,23 11,17 18,11 26,5' stroke='%23fbbf24' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
-    <script src="https://unpkg.com/lightweight-charts@4.3.4/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -777,19 +777,37 @@ createApp({
             if (el) el.innerHTML = '';
         };
 
+        const LC = LightweightCharts;
+        const addS = (chart, type, opts) => {
+            if (typeof chart.addSeries === 'function' && LC[type]) return chart.addSeries(LC[type], opts);
+            const m = { CandlestickSeries: 'addCandlestickSeries', LineSeries: 'addLineSeries' };
+            return chart[m[type]](opts);
+        };
+
         const buildPopupChart = async (result, tf) => {
             const session = ++buildSession;
             destroyPopupChart();
 
             const container = document.getElementById('lwc-popup-chart');
-            if (!container || typeof LightweightCharts === 'undefined') return;
+            if (!container) return;
+
+            if (typeof LightweightCharts === 'undefined') {
+                container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ef4444;font-size:12px;">LightweightCharts non caricato</div>';
+                return;
+            }
 
             try {
                 const url = `api/klines?symbol=${result.symbol}&interval=${tf}`;
                 const res  = await fetch(url);
-                if (!res.ok) return;
+                if (!res.ok) {
+                    container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ef4444;font-size:12px;">Errore HTTP ${res.status}</div>`;
+                    return;
+                }
                 const data = await res.json();
-                if (!data.success || !data.data?.length) return;
+                if (!data.success || !data.data?.length) {
+                    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#6b7280;font-size:12px;">Nessun dato</div>';
+                    return;
+                }
                 if (session !== buildSession) return;
 
                 const seen = new Set();
@@ -800,11 +818,11 @@ createApp({
                 });
                 if (!klines.length || session !== buildSession) return;
 
-                const chart = LightweightCharts.createChart(container, {
+                const chart = LC.createChart(container, {
                     width: 600, height: 310,
                     layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
                     grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
-                    crosshair: { mode: 1 },
+                    crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
                     handleScroll: true, handleScale: true,
                     rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },
                     timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 5, barSpacing: tf === 'D' ? 10 : 6 },
@@ -813,7 +831,7 @@ createApp({
                 if (session !== buildSession) { try { chart.remove(); } catch(e) {} return; }
                 popupChart = chart;
 
-                const cs = chart.addCandlestickSeries({
+                const cs = addS(chart, 'CandlestickSeries', {
                     upColor: '#089981', downColor: '#F23645',
                     borderVisible: false, wickUpColor: '#089981', wickDownColor: '#F23645',
                 });
@@ -825,7 +843,7 @@ createApp({
                         : 86400;
                     const hasA     = klines.some(k => k.time === result.touchATime);
                     const lastTime = klines[klines.length - 1].time;
-                    const lvlS = chart.addLineSeries({
+                    const lvlS = addS(chart, 'LineSeries', {
                         color: result.type === 'resistance' ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)',
                         lineWidth: 2, lineStyle: 0,
                         priceLineVisible: false, lastValueVisible: false,
@@ -840,7 +858,7 @@ createApp({
                 for (const cfg of EMA_CONFIG) {
                     const line = calcEMALine(klines, cfg.period);
                     if (!line.length) continue;
-                    chart.addLineSeries({
+                    addS(chart, 'LineSeries', {
                         color: cfg.color, lineWidth: cfg.width,
                         priceLineVisible: false, lastValueVisible: false,
                         crosshairMarkerVisible: false,
@@ -849,7 +867,10 @@ createApp({
 
                 chart.timeScale().fitContent();
                 chart.timeScale().scrollToPosition(5, false);
-            } catch(e) { console.error('popup chart error:', e); }
+            } catch(e) {
+                console.error('popup chart error:', e);
+                container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ef4444;font-size:11px;padding:8px;text-align:center;">${e.message}</div>`;
+            }
         };
 
         const TF_LABEL = { '1': '1m', '5': '5m', '30': '30m', '60': '1h', '240': '4h', 'D': 'Daily' };
