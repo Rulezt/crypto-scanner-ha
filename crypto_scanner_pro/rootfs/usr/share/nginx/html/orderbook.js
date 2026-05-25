@@ -93,6 +93,9 @@ createApp({
         let chartWsTimer = null;
         let obKlineCount = 0;
         let hoverPriceLine = null;
+        let obAskLine = null;
+        let obBidLine = null;
+        const showObLines = ref(false);
 
         // ── book state ────────────────────────────────────────────────────────
         const displayLevels  = ref(20);
@@ -375,6 +378,8 @@ createApp({
                 depthPercent: (amount / maxBid) * 100,
                 isMaxLevel:   amount === maxBid,
             }));
+
+            updateObLines();
         };
 
         const formatPrice = (price) => {
@@ -510,8 +515,8 @@ createApp({
                 price,
                 color: color || '#94a3b8',
                 lineWidth: 1,
-                lineStyle: LC.LineStyle ? LC.LineStyle.Dashed : 2,
-                axisLabelVisible: true,
+                lineStyle: LC.LineStyle ? LC.LineStyle.Solid : 0,
+                axisLabelVisible: false,
                 title: '',
             });
         };
@@ -523,12 +528,37 @@ createApp({
         };
 
         // ============================
+        //  OB LEVEL LINES
+        // ============================
+        const updateObLines = () => {
+            if (!obChart || !candleS || !showObLines.value) return;
+            const askPrice = maxLevelDistance.value.askPrice;
+            const bidPrice = maxLevelDistance.value.bidPrice;
+            if (obAskLine) { try { candleS.removePriceLine(obAskLine); } catch(e) {} obAskLine = null; }
+            if (obBidLine) { try { candleS.removePriceLine(obBidLine); } catch(e) {} obBidLine = null; }
+            if (askPrice) obAskLine = candleS.createPriceLine({ price: askPrice, color: '#ef4444', lineWidth: 1, lineStyle: LC.LineStyle ? LC.LineStyle.Solid : 0, axisLabelVisible: false, title: '' });
+            if (bidPrice) obBidLine = candleS.createPriceLine({ price: bidPrice, color: '#10b981', lineWidth: 1, lineStyle: LC.LineStyle ? LC.LineStyle.Solid : 0, axisLabelVisible: false, title: '' });
+        };
+
+        const clearObLines = () => {
+            if (obAskLine && candleS) { try { candleS.removePriceLine(obAskLine); } catch(e) {} obAskLine = null; }
+            if (obBidLine && candleS) { try { candleS.removePriceLine(obBidLine); } catch(e) {} obBidLine = null; }
+        };
+
+        const toggleObLines = () => {
+            showObLines.value = !showObLines.value;
+            if (showObLines.value) updateObLines();
+            else clearObLines();
+        };
+
+        // ============================
         //  CLEANUP
         // ============================
         const cleanup = () => {
             if (bookWS)        { bookWS.close(); bookWS = null; }
             if (reconnectTimer)  clearTimeout(reconnectTimer);
             closeChartWS();
+            clearObLines();
             asksMap.clear();
             bidsMap.clear();
         };
@@ -563,6 +593,7 @@ createApp({
             maxLevelDistance, showBook,
             fetchOrderBook, updateDisplay, changeChartTF,
             setHoverLine, clearHoverLine,
+            showObLines, toggleObLines,
         };
     }
 }).mount('#app');

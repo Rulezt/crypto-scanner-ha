@@ -120,6 +120,10 @@
                             :class="['imbalance-toggle', showImbalance ? 'active' : '']">
                         IMB
                     </button>
+                    <button v-if="isStandalone" @click="toggleObLines()"
+                            :class="['imbalance-toggle', showObLines ? 'active' : '']">
+                        OB
+                    </button>
                 </div>
             </div>
 
