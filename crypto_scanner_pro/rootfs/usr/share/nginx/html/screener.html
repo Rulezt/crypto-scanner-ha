@@ -62,7 +62,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.5.2</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.5.3</div>
                 </div>
             </div>
         </div>
@@ -77,7 +77,7 @@
                     <!-- EMA Scanner -->
                     <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-blue-500 transition-all">
                         <div class="flex items-center justify-between mb-2">
-                            <div class="text-blue-400 text-xs sm:text-sm font-medium">🎯 EMA</div>
+                            <div class="text-blue-400 text-xs sm:text-sm font-medium">EMA</div>
                             <div class="flex items-center gap-1.5">
                                 <button onclick="openScannerModal('ema')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
                                 <span class="text-gray-700 text-xs">|</span>
@@ -96,7 +96,7 @@
                     <!-- ATH/ATL Scanner -->
                     <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-amber-500 transition-all">
                         <div class="flex items-center justify-between mb-2">
-                            <div class="text-amber-400 text-xs sm:text-sm font-medium">🏆 ATH/ATL</div>
+                            <div class="text-amber-400 text-xs sm:text-sm font-medium">ATH/ATL</div>
                             <div class="flex items-center gap-1.5">
                                 <button onclick="openScannerModal('ath')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
                                 <span class="text-gray-700 text-xs">|</span>
@@ -115,7 +115,7 @@
                     <!-- ICO Levels Scanner -->
                     <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-pink-500 transition-all">
                         <div class="flex items-center justify-between mb-2">
-                            <div class="text-pink-400 text-xs sm:text-sm font-medium">🚀 ICO</div>
+                            <div class="text-pink-400 text-xs sm:text-sm font-medium">ICO</div>
                             <div class="flex items-center gap-1.5">
                                 <button onclick="openScannerModal('ico')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
                                 <span class="text-gray-700 text-xs">|</span>
@@ -134,7 +134,7 @@
                     <!-- Terzo Tocco Scanner -->
                     <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-cyan-500 transition-all">
                         <div class="flex items-center justify-between mb-2">
-                            <div class="text-cyan-400 text-xs sm:text-sm font-medium">🔁 Terzo Tocco</div>
+                            <div class="text-cyan-400 text-xs sm:text-sm font-medium">Terzo Tocco</div>
                             <div class="flex items-center gap-1.5">
                                 <button onclick="openScannerModal('dt')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
                                 <span class="text-gray-700 text-xs">|</span>
@@ -168,7 +168,7 @@
             <div class="space-y-6">
                 <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
                     <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between">
-                        <h3 class="text-sm font-medium flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none" style="flex-shrink:0"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5m-2.031 1.324.002-.003v-.008z"/></svg> Alert Recenti</h3>
+                        <h3 class="text-sm font-medium">Alert Recenti</h3>
                         <span class="text-xs text-gray-500">Live</span>
                     </div>
                     <div id="alerts-container" class="p-4 space-y-3 max-h-96 overflow-y-auto">
@@ -184,7 +184,7 @@
         <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
             <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                    <h3 class="text-sm font-medium flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10 4H14V20H10V4Z"/><path d="M14 9H18V20H14V9Z"/><path d="M6 13H10V20H6V13Z"/><path d="M3 20H21"/></svg> Volume &gt; $10M</h3>
+                    <h3 class="text-sm font-medium">Volume &gt; $10M</h3>
                     <span id="hv-count" class="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full hidden">-</span>
                 </div>
                 <span id="hv-updated" class="text-xs text-gray-500"></span>
