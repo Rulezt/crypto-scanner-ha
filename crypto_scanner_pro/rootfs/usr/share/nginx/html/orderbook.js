@@ -92,6 +92,7 @@ createApp({
         let chartWS   = null;
         let chartWsTimer = null;
         let obKlineCount = 0;
+        let hoverPriceLine = null;
 
         // ── book state ────────────────────────────────────────────────────────
         const displayLevels  = ref(20);
@@ -358,6 +359,7 @@ createApp({
 
             displayAsks.value = [...asksArray].reverse().map(([price, amount]) => ({
                 price:        formatPrice(price),
+                rawPrice:     price,
                 amount:       amount > 0 ? amount.toFixed(4) : '-',
                 total:        amount > 0 ? (price * amount).toFixed(2) : '-',
                 depthPercent: amount > 0 ? (amount / maxAsk) * 100 : 0,
@@ -367,6 +369,7 @@ createApp({
 
             displayBids.value = bidsArray.map(([price, amount]) => ({
                 price:        formatPrice(price),
+                rawPrice:     price,
                 amount:       amount.toFixed(4),
                 total:        (price * amount).toFixed(2),
                 depthPercent: (amount / maxBid) * 100,
@@ -495,6 +498,31 @@ createApp({
         };
 
         // ============================
+        //  HOVER PRICE LINE
+        // ============================
+        const setHoverLine = (price, color) => {
+            if (!obChart || !candleS) return;
+            if (hoverPriceLine) {
+                try { candleS.removePriceLine(hoverPriceLine); } catch(e) {}
+                hoverPriceLine = null;
+            }
+            hoverPriceLine = candleS.createPriceLine({
+                price,
+                color: color || '#94a3b8',
+                lineWidth: 1,
+                lineStyle: LC.LineStyle ? LC.LineStyle.Dashed : 2,
+                axisLabelVisible: true,
+                title: '',
+            });
+        };
+
+        const clearHoverLine = () => {
+            if (!hoverPriceLine || !candleS) return;
+            try { candleS.removePriceLine(hoverPriceLine); } catch(e) {}
+            hoverPriceLine = null;
+        };
+
+        // ============================
         //  CLEANUP
         // ============================
         const cleanup = () => {
@@ -534,6 +562,7 @@ createApp({
             imbalance, showImbalance, isPaused,
             maxLevelDistance, showBook,
             fetchOrderBook, updateDisplay, changeChartTF,
+            setHoverLine, clearHoverLine,
         };
     }
 }).mount('#app');

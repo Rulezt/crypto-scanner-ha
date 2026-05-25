@@ -193,7 +193,9 @@
                             <div class="orderbook-side">
                                 <div v-for="(ask, index) in displayAsks" :key="'ask-'+index"
                                      class="book-row"
-                                     :class="{ 'max-level': ask.isMaxLevel, 'empty-level': ask.isEmpty }">
+                                     :class="{ 'max-level': ask.isMaxLevel, 'empty-level': ask.isEmpty }"
+                                     @mouseenter="setHoverLine(ask.rawPrice, '#ef4444')"
+                                     @mouseleave="clearHoverLine()">
                                     <div class="depth-bar ask-bar">
                                         <div class="depth-filler" :style="{ width: ask.depthPercent + '%' }"></div>
                                     </div>
@@ -209,7 +211,9 @@
                             <div class="orderbook-side">
                                 <div v-for="(bid, index) in displayBids" :key="'bid-'+index"
                                      class="book-row"
-                                     :class="{ 'max-level': bid.isMaxLevel }">
+                                     :class="{ 'max-level': bid.isMaxLevel }"
+                                     @mouseenter="setHoverLine(bid.rawPrice, '#10b981')"
+                                     @mouseleave="clearHoverLine()">
                                     <div class="depth-bar bid-bar">
                                         <div class="depth-filler" :style="{ width: bid.depthPercent + '%' }"></div>
                                     </div>
