@@ -12,6 +12,7 @@ const EMA_CFG = [
 ];
 
 const TF_OPTIONS = [
+    { v: '1',   l: '1m'  },
     { v: '5',   l: '5m'  },
     { v: '30',  l: '30m' },
     { v: '60',  l: '1h'  },
@@ -19,7 +20,7 @@ const TF_OPTIONS = [
     { v: 'D',   l: '1D'  },
 ];
 
-const DEFAULT_CANDLES = { '5': 100, '30': 80, '60': 80, '240': 60, 'D': 50 };
+const DEFAULT_CANDLES = { '1': 120, '5': 100, '30': 80, '60': 80, '240': 60, 'D': 50 };
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function calcEMA(bars, period) {
