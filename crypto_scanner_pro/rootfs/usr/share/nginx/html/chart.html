@@ -974,40 +974,59 @@ const mtfEl = document.createElement('button');
 
 // ── landscape resize helper ────────────────────────────────────────────────────
 function _forceLandscapeResize() {
-    const doResize = () => {
-        const headerEl = document.querySelector('header');
-        const headerH  = headerEl ? headerEl.offsetHeight : 44;
-        const W        = window.innerWidth;
-        const availH   = window.innerHeight - headerH;
-        if (W <= 0 || availH <= 0) return;
-        slots.forEach(s => {
-            if (s.cell.style.display === 'none' || !s.chart) return;
-            const hdrEl = s.cell.querySelector('.slot-hdr');
-            const hdrH  = hdrEl ? hdrEl.offsetHeight : 24;
-            const H     = availH - hdrH;
-            if (H <= 0) return;
-            // Force body to explicit pixel size (bypasses flex:1 ambiguity on Chrome mobile)
-            const bodyEl = s.chartEl.parentElement;
-            if (bodyEl) {
-                bodyEl.style.flex     = 'none';
-                bodyEl.style.width    = W + 'px';
-                bodyEl.style.height   = H + 'px';
-                bodyEl.style.overflow = 'hidden';
+    const headerEl = document.querySelector('header');
+    const headerH  = headerEl ? headerEl.offsetHeight : 44;
+    const W        = window.innerWidth;
+    const availH   = window.innerHeight - headerH;
+    if (W <= 0 || availH <= 0) return;
+
+    slots.forEach(s => {
+        if (s.cell.style.display === 'none' || !s.chart) return;
+        const hdrEl = s.cell.querySelector('.slot-hdr');
+        const hdrH  = hdrEl ? hdrEl.offsetHeight : 24;
+        const H     = availH - hdrH;
+        if (H <= 0) return;
+
+        // Step 1: forza dimensioni esplicite in pixel su body e chartEl
+        const bodyEl = s.chartEl.parentElement;
+        if (bodyEl) {
+            bodyEl.style.flex     = 'none';
+            bodyEl.style.width    = W + 'px';
+            bodyEl.style.height   = H + 'px';
+            bodyEl.style.overflow = 'hidden';
+        }
+        s.chartEl.style.cssText = `position:absolute;top:0;left:0;width:${W}px;height:${H}px;`;
+
+        // Step 2: disabilita autoSize — in LC v5 chart.resize() è no-op quando autoSize:true
+        try { s.chart.applyOptions({ autoSize: false }); } catch(e) {}
+
+        // Step 3: ResizeObserver personalizzato (sostituisce quello interno di LC rimosso con autoSize:false)
+        // Garantisce il resize anche se il layout finisce dopo questo frame
+        if (!s._lmRO) {
+            const chart = s.chart;
+            const ro = new ResizeObserver(entries => {
+                for (const entry of entries) {
+                    const { width, height } = entry.contentRect;
+                    if (width > 0 && height > 0 && chart) {
+                        try { chart.resize(width, height); } catch(e) {}
+                    }
+                }
+            });
+            ro.observe(s.chartEl);
+            s._lmRO = ro;
+        }
+
+        // Step 4: poll finché getBoundingClientRect() ha dimensioni reali, poi resize
+        const tryResize = (attempts) => {
+            const rect = s.chartEl.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0 && s.chart) {
+                try { s.chart.resize(rect.width, rect.height); } catch(e) {}
+            } else if (attempts > 0) {
+                requestAnimationFrame(() => tryResize(attempts - 1));
             }
-            // Force chartEl to explicit pixel size (bypasses position:absolute;inset:0 ambiguity)
-            s.chartEl.style.position = 'absolute';
-            s.chartEl.style.top      = '0';
-            s.chartEl.style.left     = '0';
-            s.chartEl.style.width    = W + 'px';
-            s.chartEl.style.height   = H + 'px';
-            // LC v5: resize() is a no-op when autoSize:true → disable autoSize first (separate try/catch
-            // so that even if applyOptions throws, resize still runs)
-            try { s.chart.applyOptions({ autoSize: false }); } catch(e) {}
-            try { s.chart.resize(W, H); } catch(e) {}
-        });
-    };
-    requestAnimationFrame(() => requestAnimationFrame(doResize));
-    setTimeout(doResize, 400);
+        };
+        requestAnimationFrame(() => tryResize(30));
+    });
 }
 
 // ── view layout ───────────────────────────────────────────────────────────────
