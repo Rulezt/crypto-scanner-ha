@@ -61,6 +61,16 @@
     }
     #ob-modal > div:last-child { flex: 0 0 50% !important; }
   }
+  /* Landscape mobile: 1 grafico per volta */
+  @media (orientation: landscape) and (max-height: 500px) {
+    #grid {
+      grid-template-columns: 1fr !important;
+      grid-template-rows: 1fr !important;
+    }
+    #hdr { height: 36px; }
+    #mtf-label { display: none; }
+    #hdr > div[style*="flex:1"] { flex: 0 0 6px !important; min-width: 6px; }
+  }
 </style>
 </head>
 <body>
@@ -101,7 +111,7 @@ const LC  = LightweightCharts;
 let TZ_OFFSET_S = 0;
 const SYM = new URLSearchParams(location.search).get('symbol') || 'BTCUSDT';
 
-const isMobile = window.innerWidth < 640;
+const isMobile = window.innerWidth < 640 || window.innerHeight < 500;
 
 // Desktop: 4 col × 2 row | Mobile: 2 col × 3 row
 const TF_SLOTS = isMobile ? [
@@ -523,6 +533,7 @@ function setWSDot(state) {
 }
 
 window.addEventListener('beforeunload', closeWS);
+window.addEventListener('orientationchange', () => setTimeout(() => location.reload(), 350));
 
 // ── Order Book fullscreen ─────────────────────────────────────────────────────
 function initOBChart() {
