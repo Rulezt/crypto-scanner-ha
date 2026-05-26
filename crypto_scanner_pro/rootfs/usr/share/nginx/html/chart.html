@@ -1007,8 +1007,20 @@ function applyView() {
         const visible = is18 ? 18 : 9;
         slots.forEach((s, i) => {
             const show = i >= mobileChartIdx && i < mobileChartIdx + step && i < visible;
-            s.cell.style.display = show ? 'flex' : 'none';
+            if (IS_LANDSCAPE_MOBILE) {
+                if (show) {
+                    s.cell.style.cssText = 'display:flex;flex-direction:column;border:1px solid #2A2E39;overflow:hidden;border-radius:5px;position:absolute;inset:0;z-index:1;';
+                } else {
+                    s.cell.style.display = 'none';
+                    s.cell.style.position = '';
+                    s.cell.style.inset = '';
+                    s.cell.style.zIndex = '';
+                }
+            } else {
+                s.cell.style.cssText = 'display:' + (show ? 'flex' : 'none') + ';flex-direction:column;border:1px solid #2A2E39;overflow:hidden;border-radius:5px;';
+            }
         });
+        if (IS_LANDSCAPE_MOBILE) grid.style.position = 'relative';
         document.getElementById('nav-prev').style.display = 'block';
         document.getElementById('nav-next').style.display = 'block';
         const total = allCoins.length;
