@@ -972,6 +972,34 @@ const mtfEl = document.createElement('button');
     }
 }
 
+// ── landscape resize helper ────────────────────────────────────────────────────
+function _forceLandscapeResize() {
+    // Double rAF: primo frame calcola layout, secondo frame legge le dimensioni reali
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        const gridEl = document.getElementById('grid');
+        if (!gridEl) return;
+        const gridH = gridEl.clientHeight;
+        const gridW = gridEl.clientWidth;
+        if (gridH === 0 || gridW === 0) return;
+        slots.forEach(s => {
+            if (s.cell.style.display === 'none') return;
+            // Forza dimensioni esplicite sulla cella
+            s.cell.style.width  = gridW + 'px';
+            s.cell.style.height = gridH + 'px';
+            // Resize esplicito del grafico
+            if (s.chart && s.chartEl) {
+                const w = s.chartEl.clientWidth;
+                const h = s.chartEl.clientHeight;
+                if (w > 0 && h > 0) {
+                    s.chart.applyOptions({ autoSize: false });
+                    s.chart.resize(w, h);
+                    s.chart.applyOptions({ autoSize: true });
+                }
+            }
+        });
+    }));
+}
+
 // ── view layout ───────────────────────────────────────────────────────────────
 function applyView() {
     const is18  = viewMode === '18';
@@ -992,12 +1020,7 @@ function applyView() {
         const first = curPage * 9 + mobileChartIdx + 1;
         const last  = Math.min(first + step - 1, total);
         updateMobileNavIndicator(first, last, total);
-        // Forza il resize del grafico visibile dopo cambio layout
-        if (IS_LANDSCAPE_MOBILE) {
-            setTimeout(() => {
-                slots.forEach(s => { if (s.cell.style.display !== 'none' && s.chart) s.chart.applyOptions({}); });
-            }, 50);
-        }
+        if (IS_LANDSCAPE_MOBILE) _forceLandscapeResize();
         return;
     }
 
