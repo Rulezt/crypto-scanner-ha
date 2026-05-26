@@ -996,20 +996,12 @@ function applyView() {
     if (IS_MOBILE) {
         const step = IS_LANDSCAPE_MOBILE ? 1 : 3;
         grid.style.gridTemplateColumns = '1fr';
-        grid.style.gridTemplateRows    = IS_LANDSCAPE_MOBILE ? '1fr' : 'repeat(3, 1fr)';
+        // setProperty con 'important' batte il CSS !important del media query portrait
+        grid.style.setProperty('grid-template-rows', IS_LANDSCAPE_MOBILE ? '1fr' : 'repeat(3, 1fr)', IS_LANDSCAPE_MOBILE ? 'important' : '');
         const visible = is18 ? 18 : 9;
-        const hdrOffset = IS_LANDSCAPE_MOBILE ? (document.querySelector('header')?.offsetHeight || 48) : 0;
         slots.forEach((s, i) => {
             const show = i >= mobileChartIdx && i < mobileChartIdx + step && i < visible;
-            if (IS_LANDSCAPE_MOBILE) {
-                if (show) {
-                    s.cell.style.cssText = 'display:flex;flex-direction:column;border:1px solid #2A2E39;overflow:hidden;border-radius:0;position:fixed;top:' + hdrOffset + 'px;left:0;right:0;bottom:0;z-index:50;background:#0B0E11;';
-                } else {
-                    s.cell.style.cssText = 'display:none;position:static;';
-                }
-            } else {
-                s.cell.style.cssText = 'display:' + (show ? 'flex' : 'none') + ';flex-direction:column;border:1px solid #2A2E39;overflow:hidden;border-radius:5px;';
-            }
+            s.cell.style.display = show ? 'flex' : 'none';
         });
         document.getElementById('nav-prev').style.display = 'block';
         document.getElementById('nav-next').style.display = 'block';
