@@ -975,11 +975,21 @@ const mtfEl = document.createElement('button');
 // ── landscape resize helper ────────────────────────────────────────────────────
 function _forceLandscapeResize() {
     requestAnimationFrame(() => requestAnimationFrame(() => {
+        const headerEl = document.querySelector('header');
+        const headerH  = headerEl ? headerEl.offsetHeight : 48;
+        const w        = document.documentElement.clientWidth;
+        const availH   = window.innerHeight - headerH;
+        if (w <= 0 || availH <= 0) return;
         slots.forEach(s => {
             if (s.cell.style.display === 'none' || !s.chart) return;
-            const w = s.chartEl.clientWidth;
-            const h = s.chartEl.clientHeight;
-            if (w <= 0 || h <= 0) return;
+            const hdrEl = s.cell.querySelector('.slot-hdr');
+            const hdrH  = hdrEl ? hdrEl.offsetHeight : 24;
+            const h     = availH - hdrH;
+            if (h <= 0) return;
+            // Altezza esplicita sul container flex: risolve il bug
+            // position:absolute;inset:0 senza altezza definitiva sul parent
+            const bodyEl = s.chartEl.parentElement;
+            if (bodyEl) { bodyEl.style.flex = 'none'; bodyEl.style.height = h + 'px'; }
             try {
                 s.chart.applyOptions({ autoSize: false });
                 s.chart.resize(w, h);
