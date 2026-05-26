@@ -1026,7 +1026,10 @@ function applyView() {
         const first = curPage * 9 + mobileChartIdx + 1;
         const last  = Math.min(first + step - 1, total);
         updateMobileNavIndicator(first, last, total);
-        if (IS_LANDSCAPE_MOBILE) _forceLandscapeResize();
+        if (IS_LANDSCAPE_MOBILE) {
+            _forceLandscapeResize();
+            setTimeout(_forceLandscapeResize, 600);  // fallback: Chrome mobile finisce layout in ritardo
+        }
         return;
     }
 
