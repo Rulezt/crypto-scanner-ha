@@ -133,6 +133,11 @@
             header .flex-1 { flex: 0 0 8px !important; min-width: 8px; }
             #status { display: none; }
             #btn-view { display: none !important; }
+            /* Forza grid a 1 cella che occupa tutto lo spazio */
+            #grid {
+                grid-template-columns: 1fr !important;
+                grid-template-rows: 1fr !important;
+            }
             .side-nav {
                 top: auto !important;
                 bottom: 72px !important;
@@ -987,6 +992,12 @@ function applyView() {
         const first = curPage * 9 + mobileChartIdx + 1;
         const last  = Math.min(first + step - 1, total);
         updateMobileNavIndicator(first, last, total);
+        // Forza il resize del grafico visibile dopo cambio layout
+        if (IS_LANDSCAPE_MOBILE) {
+            setTimeout(() => {
+                slots.forEach(s => { if (s.cell.style.display !== 'none' && s.chart) s.chart.applyOptions({}); });
+            }, 50);
+        }
         return;
     }
 
