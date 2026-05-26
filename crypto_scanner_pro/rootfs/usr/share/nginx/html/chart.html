@@ -14,6 +14,8 @@
         }
     </script>
     <style>
+        /* Catena altezze: html → body → grid → cell → bodyEl → chartEl */
+        html { height: 100%; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         .btn-page-active  { background: #2563EB; color: #fff; }
         .btn-page-idle    { color: #6B7280; background: #1E222D; }
@@ -120,10 +122,12 @@
                 background: rgba(22,26,30,0.92) !important;
             }
             #btn-view { display: none !important; }
+        }
 
-        /* Landscape mobile: 1 grafico per volta */
+        /* Landscape mobile: 1 grafico per volta — SEPARATO da max-width:639px perché in landscape
+           la larghezza è > 639px e il blocco portrait non si attiva */
         @media (orientation: landscape) and (pointer: coarse) and (max-height: 700px) {
-            body { height: 100dvh !important; }
+            html, body { height: 100dvh !important; }
             .btn-lbl { display: none !important; }
             header {
                 overflow-x: auto; overflow-y: hidden;
@@ -133,10 +137,14 @@
             header .flex-1 { flex: 0 0 8px !important; min-width: 8px; }
             #status { display: none; }
             #btn-view { display: none !important; }
-            /* Forza grid a 1 cella che occupa tutto lo spazio */
             #grid {
                 grid-template-columns: 1fr !important;
                 grid-template-rows: 1fr !important;
+            }
+            /* Catena altezze: cell deve passare altezza a bodyEl */
+            #grid > div {
+                height: 100%;
+                min-height: 0;
             }
             .side-nav {
                 top: auto !important;
@@ -146,6 +154,15 @@
                 font-size: 22px;
                 background: rgba(22,26,30,0.92) !important;
             }
+            .slot-hdr {
+                overflow-x: auto !important;
+                overflow-y: hidden !important;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            .slot-hdr::-webkit-scrollbar { display: none; }
+            .slot-hdr > * { flex-shrink: 0 !important; }
+            .slot-hdr-right { margin-left: 8px !important; }
         }
     </style>
 </head>
@@ -893,9 +910,10 @@ const mtfEl = document.createElement('button');
 
         // ── chart body ───────────────────────────────────────────────────────
         const body = document.createElement('div');
-        body.style.cssText = 'flex:1;position:relative;min-height:0;';
+        body.style.cssText = 'flex:1;position:relative;min-height:0;overflow:hidden;';
         const chartEl = document.createElement('div');
-        chartEl.style.cssText = 'position:absolute;inset:0;';
+        // width/height:100% (non position:absolute;inset:0) — dipende dall'altezza definitiva del parent
+        chartEl.style.cssText = 'width:100%;height:100%;';
         body.appendChild(chartEl);
         const rangeCanvas = document.createElement('canvas');
         rangeCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;';
@@ -994,7 +1012,8 @@ function _forceLandscapeResize() {
     const availH   = window.innerHeight - headerH;
     if (W <= 0 || availH <= 0) return;
 
-    // Imposta dimensioni esplicite in pixel su body e chartEl di ogni slot visibile
+    // Fallback: se la catena CSS non ha propagato l'altezza, la forziamo in pixel su bodyEl.
+    // chartEl ha width/height:100% quindi segue bodyEl automaticamente.
     slots.forEach(s => {
         if (s.cell.style.display === 'none' || !s.chart) return;
         const hdrEl = s.cell.querySelector('.slot-hdr');
@@ -1003,15 +1022,12 @@ function _forceLandscapeResize() {
         if (H <= 0) return;
         const bodyEl = s.chartEl.parentElement;
         if (bodyEl) {
-            bodyEl.style.flex     = 'none';
-            bodyEl.style.width    = W + 'px';
-            bodyEl.style.height   = H + 'px';
-            bodyEl.style.overflow = 'hidden';
+            bodyEl.style.flex   = 'none';
+            bodyEl.style.width  = W + 'px';
+            bodyEl.style.height = H + 'px';
         }
-        s.chartEl.style.cssText = `position:absolute;top:0;left:0;width:${W}px;height:${H}px;`;
     });
 
-    // Dopo un frame (layout applicato) chiama forceResizeAllCharts con dimensioni reali
     requestAnimationFrame(forceResizeAllCharts);
 }
 
