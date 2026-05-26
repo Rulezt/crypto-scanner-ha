@@ -972,6 +972,20 @@ const mtfEl = document.createElement('button');
     }
 }
 
+// ── landscape: resize tutti i chart visibili usando dimensioni reali ──────────
+function forceResizeAllCharts() {
+    if (!IS_LANDSCAPE_MOBILE) return;
+    slots.forEach(s => {
+        if (!s.chart || s.cell.style.display === 'none') return;
+        const rect = s.chartEl.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+            // LC v5: resize() è no-op quando autoSize:true → disabilitiamo prima
+            try { s.chart.applyOptions({ autoSize: false }); } catch(e) {}
+            try { s.chart.resize(rect.width, rect.height); } catch(e) {}
+        }
+    });
+}
+
 // ── landscape resize helper ────────────────────────────────────────────────────
 function _forceLandscapeResize() {
     const headerEl = document.querySelector('header');
@@ -980,14 +994,13 @@ function _forceLandscapeResize() {
     const availH   = window.innerHeight - headerH;
     if (W <= 0 || availH <= 0) return;
 
+    // Imposta dimensioni esplicite in pixel su body e chartEl di ogni slot visibile
     slots.forEach(s => {
         if (s.cell.style.display === 'none' || !s.chart) return;
         const hdrEl = s.cell.querySelector('.slot-hdr');
         const hdrH  = hdrEl ? hdrEl.offsetHeight : 24;
         const H     = availH - hdrH;
         if (H <= 0) return;
-
-        // Step 1: forza dimensioni esplicite in pixel su body e chartEl
         const bodyEl = s.chartEl.parentElement;
         if (bodyEl) {
             bodyEl.style.flex     = 'none';
@@ -996,37 +1009,10 @@ function _forceLandscapeResize() {
             bodyEl.style.overflow = 'hidden';
         }
         s.chartEl.style.cssText = `position:absolute;top:0;left:0;width:${W}px;height:${H}px;`;
-
-        // Step 2: disabilita autoSize — in LC v5 chart.resize() è no-op quando autoSize:true
-        try { s.chart.applyOptions({ autoSize: false }); } catch(e) {}
-
-        // Step 3: ResizeObserver personalizzato (sostituisce quello interno di LC rimosso con autoSize:false)
-        // Garantisce il resize anche se il layout finisce dopo questo frame
-        if (!s._lmRO) {
-            const chart = s.chart;
-            const ro = new ResizeObserver(entries => {
-                for (const entry of entries) {
-                    const { width, height } = entry.contentRect;
-                    if (width > 0 && height > 0 && chart) {
-                        try { chart.resize(width, height); } catch(e) {}
-                    }
-                }
-            });
-            ro.observe(s.chartEl);
-            s._lmRO = ro;
-        }
-
-        // Step 4: poll finché getBoundingClientRect() ha dimensioni reali, poi resize
-        const tryResize = (attempts) => {
-            const rect = s.chartEl.getBoundingClientRect();
-            if (rect.width > 0 && rect.height > 0 && s.chart) {
-                try { s.chart.resize(rect.width, rect.height); } catch(e) {}
-            } else if (attempts > 0) {
-                requestAnimationFrame(() => tryResize(attempts - 1));
-            }
-        };
-        requestAnimationFrame(() => tryResize(30));
     });
+
+    // Dopo un frame (layout applicato) chiama forceResizeAllCharts con dimensioni reali
+    requestAnimationFrame(forceResizeAllCharts);
 }
 
 // ── view layout ───────────────────────────────────────────────────────────────
@@ -1713,7 +1699,16 @@ document.addEventListener('keydown', e => {
 // ── bootstrap ──────────────────────────────────────────────────────────────────
 async function init() {
     renderTFBar(); renderModeButtons();
-    buildGrid(); applyView();
+    buildGrid();
+
+    // ResizeObserver globale su tutti i chartEl: intercetta qualsiasi cambio di dimensione
+    // (incluso il layout ritardato di Chrome mobile che causa il chart statico)
+    if (IS_LANDSCAPE_MOBILE) {
+        const _lmGlobalRO = new ResizeObserver(forceResizeAllCharts);
+        slots.forEach(s => { if (s.chartEl) _lmGlobalRO.observe(s.chartEl); });
+    }
+
+    applyView();
     await initNotifications();
     pollTriggeredAlerts();
     try { await fetchCoins(); } catch(e) { setStatus('Errore caricamento coin'); return; }
@@ -1722,6 +1717,10 @@ async function init() {
 
 init();
 
+if (IS_LANDSCAPE_MOBILE) {
+    window.addEventListener('load',   () => setTimeout(forceResizeAllCharts, 500));
+    window.addEventListener('resize', () => setTimeout(forceResizeAllCharts, 300));
+}
 window.addEventListener('orientationchange', () => setTimeout(() => location.reload(), 350));
 
 // ── Order Book fullscreen ─────────────────────────────────────────────────────
