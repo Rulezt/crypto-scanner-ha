@@ -75,6 +75,8 @@
 </head>
 <body>
 
+<div id="dbg" style="position:fixed;bottom:4px;left:4px;z-index:9999;background:rgba(0,0,0,0.85);color:#facc15;font-size:10px;padding:3px 7px;border-radius:4px;pointer-events:none;font-family:monospace;line-height:1.6;"></div>
+
 <div id="hdr">
   <button onclick="window.opener ? window.close() : history.length > 1 ? history.back() : location.href='./'"
     style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;">
@@ -115,6 +117,13 @@ const SYM = new URLSearchParams(location.search).get('symbol') || 'BTCUSDT';
 const isMobile = window.matchMedia(
   '(max-width: 639px), (orientation: landscape) and (pointer: coarse) and (max-height: 700px)'
 ).matches;
+
+// DEBUG — rimuovere dopo diagnosi
+setTimeout(() => {
+  const el = document.getElementById('dbg');
+  if (el) el.innerHTML =
+    `mob:${isMobile?1:0} iw:${innerWidth} ih:${innerHeight}<br>sw:${screen.width} sh:${screen.height}<br>ptr:${window.matchMedia('(pointer:coarse)').matches?'coarse':'fine'} ori:${window.matchMedia('(orientation:landscape)').matches?'land':'port'}`;
+}, 200);
 
 // Desktop: 4 col × 2 row | Mobile: 2 col × 3 row
 const TF_SLOTS = isMobile ? [
