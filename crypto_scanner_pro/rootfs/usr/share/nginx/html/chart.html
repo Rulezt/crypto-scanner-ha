@@ -975,17 +975,11 @@ const mtfEl = document.createElement('button');
 // ── landscape resize helper ────────────────────────────────────────────────────
 function _forceLandscapeResize() {
     requestAnimationFrame(() => requestAnimationFrame(() => {
-        const headerEl = document.querySelector('header');
-        const headerH = headerEl ? headerEl.offsetHeight : 48;
-        const w = window.innerWidth;
-        const totalH = window.innerHeight - headerH;
-        if (w <= 0 || totalH <= 0) return;
         slots.forEach(s => {
             if (s.cell.style.display === 'none' || !s.chart) return;
-            const hdrEl = s.cell.querySelector('.slot-hdr');
-            const hdrH  = hdrEl ? hdrEl.offsetHeight : 24;
-            const h = totalH - hdrH;
-            if (h <= 0) return;
+            const w = s.chartEl.clientWidth;
+            const h = s.chartEl.clientHeight;
+            if (w <= 0 || h <= 0) return;
             try {
                 s.chart.applyOptions({ autoSize: false });
                 s.chart.resize(w, h);
