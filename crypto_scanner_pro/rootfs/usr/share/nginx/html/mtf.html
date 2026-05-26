@@ -62,7 +62,7 @@
     #ob-modal > div:last-child { flex: 0 0 50% !important; }
   }
   /* Landscape mobile: 1 grafico per volta */
-  @media (orientation: landscape) and (max-height: 500px) {
+  @media (orientation: landscape) and (max-height: 600px) {
     #grid {
       grid-template-columns: 1fr !important;
       grid-template-rows: 1fr !important;
@@ -111,7 +111,8 @@ const LC  = LightweightCharts;
 let TZ_OFFSET_S = 0;
 const SYM = new URLSearchParams(location.search).get('symbol') || 'BTCUSDT';
 
-const isMobile = window.innerWidth < 640 || window.innerHeight < 500;
+// Rileva telefono dalla dimensione fisica del dispositivo (indipendente dall'orientamento)
+const isMobile = Math.min(screen.width, screen.height) < 600;
 
 // Desktop: 4 col × 2 row | Mobile: 2 col × 3 row
 const TF_SLOTS = isMobile ? [
@@ -279,6 +280,10 @@ function fmtCountdown(secs) {
 // ── build grid ─────────────────────────────────────────────────────────────────
 function buildGrid() {
   const grid = document.getElementById('grid');
+  if (isMobile) {
+    grid.style.gridTemplateColumns = '1fr';
+    grid.style.gridTemplateRows = '1fr';
+  }
 
   TF_SLOTS.forEach((cfg, i) => {
     const isBig = cfg.row === '2';   // bottom row: wider slot
