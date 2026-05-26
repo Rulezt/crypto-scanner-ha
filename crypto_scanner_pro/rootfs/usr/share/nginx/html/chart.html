@@ -878,7 +878,7 @@ function buildGrid() {
 
 const mtfEl = document.createElement('button');
         mtfEl.textContent = '⊞'; mtfEl.title = 'Multi Timeframe';
-        mtfEl.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+        mtfEl.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;' + (IS_MOBILE ? 'display:none;' : '');
         mtfEl.onmouseenter = () => mtfEl.style.color = '#B2B5BE';
         mtfEl.onmouseleave = () => mtfEl.style.color = '#4B5563';
         mtfEl.onclick = () => { const s = slots[i]; if (s && s.symbol) window.open(`mtf?symbol=${s.symbol}`, '_blank'); };
@@ -904,7 +904,11 @@ const mtfEl = document.createElement('button');
         rangeBtn.onmouseenter = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#B2B5BE'; };
         rangeBtn.onmouseleave = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#4B5563'; };
         rangeBtn.onclick = () => toggleSlotRange(i);
-        rightGroup.append(candlePctEl, sep(), mtfEl, sep(), obEl, sep(), rangeBtn, sep(), expandEl);
+        if (IS_MOBILE) {
+            rightGroup.append(candlePctEl, sep(), obEl, sep(), rangeBtn, sep(), expandEl);
+        } else {
+            rightGroup.append(candlePctEl, sep(), mtfEl, sep(), obEl, sep(), rangeBtn, sep(), expandEl);
+        }
         hdr.append(starEl, titleEl, changeEl, sep1, volEl, sep2, tfEl, sep3, bybitEl, rightGroup);
         cell.appendChild(hdr);
 
