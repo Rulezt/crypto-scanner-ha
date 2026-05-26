@@ -974,28 +974,40 @@ const mtfEl = document.createElement('button');
 
 // ── landscape resize helper ────────────────────────────────────────────────────
 function _forceLandscapeResize() {
-    requestAnimationFrame(() => requestAnimationFrame(() => {
+    const doResize = () => {
         const headerEl = document.querySelector('header');
-        const headerH  = headerEl ? headerEl.offsetHeight : 48;
-        const w        = document.documentElement.clientWidth;
+        const headerH  = headerEl ? headerEl.offsetHeight : 44;
+        const W        = window.innerWidth;
         const availH   = window.innerHeight - headerH;
-        if (w <= 0 || availH <= 0) return;
+        if (W <= 0 || availH <= 0) return;
         slots.forEach(s => {
             if (s.cell.style.display === 'none' || !s.chart) return;
             const hdrEl = s.cell.querySelector('.slot-hdr');
             const hdrH  = hdrEl ? hdrEl.offsetHeight : 24;
-            const h     = availH - hdrH;
-            if (h <= 0) return;
-            // Altezza esplicita sul container flex: risolve il bug
-            // position:absolute;inset:0 senza altezza definitiva sul parent
+            const H     = availH - hdrH;
+            if (H <= 0) return;
+            // Force body to explicit pixel size (bypasses flex:1 ambiguity on Chrome mobile)
             const bodyEl = s.chartEl.parentElement;
-            if (bodyEl) { bodyEl.style.flex = 'none'; bodyEl.style.height = h + 'px'; }
-            try {
-                s.chart.applyOptions({ autoSize: false });
-                s.chart.resize(w, h);
-            } catch(e) {}
+            if (bodyEl) {
+                bodyEl.style.flex     = 'none';
+                bodyEl.style.width    = W + 'px';
+                bodyEl.style.height   = H + 'px';
+                bodyEl.style.overflow = 'hidden';
+            }
+            // Force chartEl to explicit pixel size (bypasses position:absolute;inset:0 ambiguity)
+            s.chartEl.style.position = 'absolute';
+            s.chartEl.style.top      = '0';
+            s.chartEl.style.left     = '0';
+            s.chartEl.style.width    = W + 'px';
+            s.chartEl.style.height   = H + 'px';
+            // LC v5: resize() is a no-op when autoSize:true → disable autoSize first (separate try/catch
+            // so that even if applyOptions throws, resize still runs)
+            try { s.chart.applyOptions({ autoSize: false }); } catch(e) {}
+            try { s.chart.resize(W, H); } catch(e) {}
         });
-    }));
+    };
+    requestAnimationFrame(() => requestAnimationFrame(doResize));
+    setTimeout(doResize, 400);
 }
 
 // ── view layout ───────────────────────────────────────────────────────────────
