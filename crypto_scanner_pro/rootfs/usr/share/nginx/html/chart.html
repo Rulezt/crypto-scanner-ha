@@ -120,6 +120,28 @@
                 background: rgba(22,26,30,0.92) !important;
             }
             #btn-view { display: none !important; }
+
+        /* Landscape mobile: 1 grafico per volta */
+        @media (orientation: landscape) and (pointer: coarse) and (max-height: 700px) {
+            body { height: 100dvh !important; }
+            .btn-lbl { display: none !important; }
+            header {
+                overflow-x: auto; overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+                height: auto !important; min-height: 44px;
+            }
+            header .flex-1 { flex: 0 0 8px !important; min-width: 8px; }
+            #status { display: none; }
+            #btn-view { display: none !important; }
+            .side-nav {
+                top: auto !important;
+                bottom: 72px !important;
+                transform: none !important;
+                padding: 20px 16px !important;
+                font-size: 22px;
+                background: rgba(22,26,30,0.92) !important;
+            }
+        }
     </style>
 </head>
 <body class="bg-dark-bg text-gray-100" style="height:100vh;display:flex;flex-direction:column;overflow:hidden;">
@@ -343,7 +365,8 @@ let fsMidLines = [], obMidLines = []; // kept for compat, no longer used
 let fsDayPrimitive = null, obDayPrimitive = null;
 let fsObActive = false, fsObBidLine = null, fsObAskLine = null, fsObTimer = null;
 
-const IS_MOBILE = window.innerWidth < 640;
+const IS_LANDSCAPE_MOBILE = window.matchMedia('(orientation: landscape) and (pointer: coarse) and (max-height: 700px)').matches;
+const IS_MOBILE = window.innerWidth < 640 || IS_LANDSCAPE_MOBILE;
 let mobileChartIdx = 0;
 
 // price alerts
@@ -950,18 +973,19 @@ function applyView() {
     const grid  = document.getElementById('grid');
 
     if (IS_MOBILE) {
+        const step = IS_LANDSCAPE_MOBILE ? 1 : 3;
         grid.style.gridTemplateColumns = '1fr';
-        grid.style.gridTemplateRows    = 'repeat(3, 1fr)';
+        grid.style.gridTemplateRows    = IS_LANDSCAPE_MOBILE ? '1fr' : 'repeat(3, 1fr)';
         const visible = is18 ? 18 : 9;
         slots.forEach((s, i) => {
-            const show = i >= mobileChartIdx && i < mobileChartIdx + 3 && i < visible;
+            const show = i >= mobileChartIdx && i < mobileChartIdx + step && i < visible;
             s.cell.style.display = show ? 'flex' : 'none';
         });
         document.getElementById('nav-prev').style.display = 'block';
         document.getElementById('nav-next').style.display = 'block';
         const total = allCoins.length;
         const first = curPage * 9 + mobileChartIdx + 1;
-        const last  = Math.min(first + 2, total);
+        const last  = Math.min(first + step - 1, total);
         updateMobileNavIndicator(first, last, total);
         return;
     }
@@ -1414,9 +1438,10 @@ async function nextPage() {
 }
 
 async function mobileNextChart() {
+    const step = IS_LANDSCAPE_MOBILE ? 1 : 3;
     const coinsOnPage = allCoins.slice(curPage * 9, curPage * 9 + 9).length;
-    if (mobileChartIdx + 3 < coinsOnPage) {
-        mobileChartIdx += 3;
+    if (mobileChartIdx + step < coinsOnPage) {
+        mobileChartIdx += step;
         applyView();
     } else {
         const maxPage = Math.ceil(allCoins.length / 9) - 1;
@@ -1425,11 +1450,12 @@ async function mobileNextChart() {
 }
 
 async function mobilePrevChart() {
-    if (mobileChartIdx >= 3) {
-        mobileChartIdx -= 3;
+    const step = IS_LANDSCAPE_MOBILE ? 1 : 3;
+    if (mobileChartIdx >= step) {
+        mobileChartIdx -= step;
         applyView();
     } else if (curPage > 0) {
-        curPage--; mobileChartIdx = 6; await loadPage();
+        curPage--; mobileChartIdx = IS_LANDSCAPE_MOBILE ? 8 : 6; await loadPage();
     }
 }
 
@@ -1621,6 +1647,8 @@ async function init() {
 }
 
 init();
+
+window.addEventListener('orientationchange', () => setTimeout(() => location.reload(), 350));
 
 // ── Order Book fullscreen ─────────────────────────────────────────────────────
 function initOBChart() {

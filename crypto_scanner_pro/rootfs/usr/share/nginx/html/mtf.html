@@ -61,21 +61,9 @@
     }
     #ob-modal > div:last-child { flex: 0 0 50% !important; }
   }
-  /* Landscape touch device (telefono): 1 grafico per volta */
-  @media (orientation: landscape) and (pointer: coarse) and (max-height: 700px) {
-    #grid {
-      grid-template-columns: 1fr !important;
-      grid-template-rows: 1fr !important;
-    }
-    #hdr { height: 36px; }
-    #mtf-label { display: none; }
-    #hdr > div[style*="flex:1"] { flex: 0 0 6px !important; min-width: 6px; }
-  }
 </style>
 </head>
 <body>
-
-<div id="dbg" style="position:fixed;bottom:4px;left:4px;z-index:9999;background:rgba(0,0,0,0.85);color:#facc15;font-size:10px;padding:3px 7px;border-radius:4px;pointer-events:none;font-family:monospace;line-height:1.6;"></div>
 
 <div id="hdr">
   <button onclick="window.opener ? window.close() : history.length > 1 ? history.back() : location.href='./'"
@@ -113,17 +101,7 @@ const LC  = LightweightCharts;
 let TZ_OFFSET_S = 0;
 const SYM = new URLSearchParams(location.search).get('symbol') || 'BTCUSDT';
 
-// pointer:coarse = touch device | max-height:700px in landscape = telefono (non tablet/desktop)
-const isMobile = window.matchMedia(
-  '(max-width: 639px), (orientation: landscape) and (pointer: coarse) and (max-height: 700px)'
-).matches;
-
-// DEBUG — rimuovere dopo diagnosi
-setTimeout(() => {
-  const el = document.getElementById('dbg');
-  if (el) el.innerHTML =
-    `mob:${isMobile?1:0} iw:${innerWidth} ih:${innerHeight}<br>sw:${screen.width} sh:${screen.height}<br>ptr:${window.matchMedia('(pointer:coarse)').matches?'coarse':'fine'} ori:${window.matchMedia('(orientation:landscape)').matches?'land':'port'}`;
-}, 200);
+const isMobile = window.innerWidth < 640;
 
 // Desktop: 4 col × 2 row | Mobile: 2 col × 3 row
 const TF_SLOTS = isMobile ? [
@@ -291,10 +269,6 @@ function fmtCountdown(secs) {
 // ── build grid ─────────────────────────────────────────────────────────────────
 function buildGrid() {
   const grid = document.getElementById('grid');
-  if (isMobile) {
-    grid.style.gridTemplateColumns = '1fr';
-    grid.style.gridTemplateRows = '1fr';
-  }
 
   TF_SLOTS.forEach((cfg, i) => {
     const isBig = cfg.row === '2';   // bottom row: wider slot
@@ -549,7 +523,6 @@ function setWSDot(state) {
 }
 
 window.addEventListener('beforeunload', closeWS);
-window.addEventListener('orientationchange', () => setTimeout(() => location.reload(), 350));
 
 // ── Order Book fullscreen ─────────────────────────────────────────────────────
 function initOBChart() {
