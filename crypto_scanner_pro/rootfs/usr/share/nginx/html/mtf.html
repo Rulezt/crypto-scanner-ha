@@ -61,8 +61,8 @@
     }
     #ob-modal > div:last-child { flex: 0 0 50% !important; }
   }
-  /* Landscape mobile: 1 grafico per volta */
-  @media (orientation: landscape) and (max-height: 600px) {
+  /* Landscape touch device (telefono): 1 grafico per volta */
+  @media (orientation: landscape) and (pointer: coarse) and (max-height: 700px) {
     #grid {
       grid-template-columns: 1fr !important;
       grid-template-rows: 1fr !important;
@@ -111,8 +111,10 @@ const LC  = LightweightCharts;
 let TZ_OFFSET_S = 0;
 const SYM = new URLSearchParams(location.search).get('symbol') || 'BTCUSDT';
 
-// Rileva telefono dalla dimensione fisica del dispositivo (indipendente dall'orientamento)
-const isMobile = Math.min(screen.width, screen.height) < 600;
+// pointer:coarse = touch device | max-height:700px in landscape = telefono (non tablet/desktop)
+const isMobile = window.matchMedia(
+  '(max-width: 639px), (orientation: landscape) and (pointer: coarse) and (max-height: 700px)'
+).matches;
 
 // Desktop: 4 col × 2 row | Mobile: 2 col × 3 row
 const TF_SLOTS = isMobile ? [
