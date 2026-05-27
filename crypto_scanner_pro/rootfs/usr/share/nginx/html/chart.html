@@ -766,8 +766,8 @@ async function fetchSlotOBLevels(idx) {
         if (!lv) return;
         if (s.obBidLine) { try { s.candleS.removePriceLine(s.obBidLine); } catch(e) {} }
         if (s.obAskLine) { try { s.candleS.removePriceLine(s.obAskLine); } catch(e) {} }
-        s.obBidLine = s.candleS.createPriceLine({ price: lv.bid, color:'#10b981', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'Bid' });
-        s.obAskLine = s.candleS.createPriceLine({ price: lv.ask, color:'#ef4444', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'Ask' });
+        s.obBidLine = s.candleS.createPriceLine({ price: lv.bid, color:'#10b981', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'' });
+        s.obAskLine = s.candleS.createPriceLine({ price: lv.ask, color:'#ef4444', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'' });
     } catch(e) {}
 }
 
@@ -800,8 +800,8 @@ async function fetchFsOBLevels() {
         if (!lv) return;
         if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} }
         if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} }
-        fsObBidLine = fsCandleS.createPriceLine({ price: lv.bid, color:'#10b981', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'Bid' });
-        fsObAskLine = fsCandleS.createPriceLine({ price: lv.ask, color:'#ef4444', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'Ask' });
+        fsObBidLine = fsCandleS.createPriceLine({ price: lv.bid, color:'#10b981', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'' });
+        fsObAskLine = fsCandleS.createPriceLine({ price: lv.ask, color:'#ef4444', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'' });
     } catch(e) {}
 }
 
@@ -906,7 +906,7 @@ const mtfEl = document.createElement('button');
         rangeBtn.onmouseleave = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#4B5563'; };
         rangeBtn.onclick = () => toggleSlotRange(i);
         if (IS_MOBILE) {
-            rightGroup.append(candlePctEl, sep(), obEl, sep(), rangeBtn, sep(), expandEl);
+            rightGroup.append(candlePctEl, sep(), obEl, sep(), rangeBtn);
         } else {
             rightGroup.append(candlePctEl, sep(), mtfEl, sep(), obEl, sep(), rangeBtn, sep(), expandEl);
         }
@@ -1898,8 +1898,8 @@ window.addEventListener('message', e => {
     const { bid, ask } = e.data;
     if (obBidLine) { try { obCandleS.removePriceLine(obBidLine); } catch(e) {} obBidLine = null; }
     if (obAskLine) { try { obCandleS.removePriceLine(obAskLine); } catch(e) {} obAskLine = null; }
-    if (bid != null) obBidLine = obCandleS.createPriceLine({ price: bid, color:'#10b981', lineWidth:2, lineStyle:1, axisLabelVisible:true, title:'Bid' });
-    if (ask != null) obAskLine = obCandleS.createPriceLine({ price: ask, color:'#ef4444', lineWidth:2, lineStyle:1, axisLabelVisible:true, title:'Ask' });
+    if (bid != null) obBidLine = obCandleS.createPriceLine({ price: bid, color:'#10b981', lineWidth:2, lineStyle:1, axisLabelVisible:true, title:'' });
+    if (ask != null) obAskLine = obCandleS.createPriceLine({ price: ask, color:'#ef4444', lineWidth:2, lineStyle:1, axisLabelVisible:true, title:'' });
 });
 
 document.addEventListener('keydown', e => {
