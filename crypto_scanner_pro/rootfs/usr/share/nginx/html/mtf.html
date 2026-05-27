@@ -81,9 +81,9 @@
   <div style="flex:1;"></div>
   <span id="mtf-label" style="font-size:9px;color:#4B5563;letter-spacing:.8px;text-transform:uppercase;">Multi Timeframe</span>
   <span style="color:#374151;font-size:11px;margin:0 6px;">|</span>
-  <button id="alert-btn" onclick="openAlertModal()"
-    style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;"
-    title="Alert Prezzo">🔔</button>
+  <button id="alerts-btn" onclick="openAlertsPanel()"
+    style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    title="Alert attivi"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none" style="display:block"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5z"/></svg></button>
   <span style="color:#374151;font-size:11px;margin:0 6px;">|</span>
   <button onclick="window.open('orderbook?symbol=' + SYM, '_blank')"
     style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;"
@@ -158,10 +158,10 @@ let ws      = null;
 let wsTimer = null;
 let mobileSlotIdx = 0;
 
-// ── Alert globals ──────────────────────────────────────────────────────────────
-const ALERT_STORAGE_KEY = `mtf_alerts_${SYM}`;
-let priceAlerts = [];
-let lastAlertPrice = null;
+// ── Price alerts ──────────────────────────────────────────────────────────────
+let pendingAlert = null;
+let notifyMode = 'both';
+let activeAlerts = [];
 
 // OB fullscreen
 const OB_TFS = [
@@ -334,6 +334,11 @@ const fsBtn = document.createElement('button');
     const rangeCanvas = document.createElement('canvas');
     rangeCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;';
     body.appendChild(rangeCanvas);
+    const alertBtnEl = document.createElement('div');
+    alertBtnEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="15" height="15" fill="none"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5z"/></svg>`;
+    alertBtnEl.title = 'Imposta alert prezzo';
+    alertBtnEl.style.cssText = 'position:absolute;right:2px;width:22px;height:22px;display:none;align-items:center;justify-content:center;background:rgba(11,14,17,0.88);border-radius:50%;z-index:10;padding:0;line-height:1;opacity:0.75;pointer-events:none;cursor:pointer;color:#B2B5BE;';
+    body.appendChild(alertBtnEl);
     cell.appendChild(body);
     if (isMobile) cell.style.display = i === 0 ? 'flex' : 'none';
     grid.appendChild(cell);
@@ -363,6 +368,19 @@ const fsBtn = document.createElement('button');
         } else {
           pctEl.textContent = ''; }
       }
+      const sl = slots[i];
+      if (sl && sl.alertBtn) {
+        if (param && param.point) {
+          const axisW = chart.priceScale('right').width();
+          sl.crosshairPrice = candleS.coordinateToPrice(param.point.y);
+          sl.alertBtn.style.right   = (axisW + 2) + 'px';
+          sl.alertBtn.style.top     = (param.point.y - 8) + 'px';
+          sl.alertBtn.style.display = 'flex';
+        } else {
+          sl.crosshairPrice = null;
+          sl.alertBtn.style.display = 'none';
+        }
+      }
       if (_mouseOverSlot !== i) return;
       const time  = param?.time;
       const price = param?.point ? candleS.coordinateToPrice(param.point.y) : null;
@@ -378,6 +396,7 @@ const fsBtn = document.createElement('button');
 
     slots.push({
       cfg, chart, candleS, emaS, cell, rangeCanvas, rangeBtn, timerEl,
+      alertBtn: alertBtnEl,
       klineCount: 0,
       lastEMA: {5:null,10:null,60:null,223:null},
       dayHighLine:null, dayLowLine:null,
@@ -386,7 +405,9 @@ const fsBtn = document.createElement('button');
       dayPrimitive: null,
       lastCandleStartUtc: null,
       lastWsMs: 0,
-      alertLines: {},
+      lastPrice: null,
+      crosshairPrice: null,
+      alertLines: new Map(),
     });
     chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.cfg.tf), to: s.klineCount + 3 }); });
   });
@@ -424,9 +445,10 @@ async function loadAll() {
 
   // Load all slots in parallel
   await Promise.all(slots.map((_, i) => loadSlot(i, dailyData)));
-  loadAlerts();
-  renderAllAlertLines();
   openWS();
+  syncAllAlertLines();
+  initNotifications();
+  setTimeout(pollTriggeredAlerts, 15000);
 }
 
 async function loadSlot(idx, dailyData) {
@@ -498,7 +520,7 @@ function openWS() {
     s.lastCandleStartUtc = candleStart;
     s.lastWsMs = Date.now();
     s.candleS.update(candle);
-    checkAlerts(candle.close);
+    s.lastPrice = candle.close;
     for (const {p} of EMA_CFG) {
       if (s.lastEMA[p] === null) continue;
       const k    = 2/(p+1);
@@ -680,8 +702,8 @@ document.addEventListener('keydown', e => {
         if (fs && fs.style.display !== 'none') { closeFSModal(); return; }
         const m = document.getElementById('ob-modal');
         if (m && m.style.display !== 'none') { closeOBModal(); return; }
-        const am = document.getElementById('alert-modal');
-        if (am && am.style.display !== 'none') { closeAlertModal(); return; }
+        if (document.getElementById('alerts-panel')?.style.display !== 'none') { closeAlertsPanel(); return; }
+        if (document.getElementById('alert-popover')?.style.display !== 'none') { closeAlertPopover(); return; }
     }
 });
 
@@ -691,7 +713,6 @@ let fsTF = 'D', fsWS = null, fsWsTimer = null, fsKlineCount = 0;
 let fsDayHighLine = null, fsDayLowLine = null, fsPrevHighLine = null, fsPrevLowLine = null;
 let fsDayPrimitive = null, obDayPrimitive = null;
 let fsRangeActive = false, fsRangeP1 = null, fsRangeP2 = null, _fsRangeSub = null, _fsRangeCsSub = null;
-let _fsAlertLines = {};
 
 function initFSChart() {
     if (fsChart) return;
@@ -721,7 +742,7 @@ async function switchFSTF(tf) {
     fsCandleS.setData([]);
     for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
     fsLastEMA = {};
-    await loadFSData(); connectFSWS(); renderAllAlertLines();
+    await loadFSData(); connectFSWS();
 }
 
 function _clearFSLines() {
@@ -799,7 +820,7 @@ function openFSModal(idx) {
     fsCandleS.setData([]);
     for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
     fsLastEMA = {};
-    loadFSData().then(() => { connectFSWS(); renderAllAlertLines(); });
+    loadFSData().then(() => connectFSWS());
 }
 
 function closeFSModal() {
@@ -1005,128 +1026,209 @@ function toggleFsRange() {
   }
 }
 
-// ── Alert System ───────────────────────────────────────────────────────────────
-function loadAlerts() {
-  try { priceAlerts = JSON.parse(localStorage.getItem(ALERT_STORAGE_KEY)) || []; } catch(e) { priceAlerts = []; }
+// ── Price alert helpers ────────────────────────────────────────────────────────
+function openAlertPopover(symbol, price, btn, slotIdx) {
+  pendingAlert = { symbol, price, slotIdx };
+  document.getElementById('alert-pop-symbol').textContent = symbol.replace('USDT','/USDT');
+  document.getElementById('alert-pop-price').textContent  = fmtPrice(price);
+  const pop  = document.getElementById('alert-popover');
+  const rect = btn.getBoundingClientRect();
+  const left = Math.max(4, Math.min(rect.left - 230, window.innerWidth - 250));
+  const top  = Math.max(52, rect.top - 130);
+  pop.style.left    = left + 'px';
+  pop.style.top     = top  + 'px';
+  pop.style.display = 'block';
 }
 
-function saveAlerts() {
-  localStorage.setItem(ALERT_STORAGE_KEY, JSON.stringify(priceAlerts));
+function closeAlertPopover() {
+  document.getElementById('alert-popover').style.display = 'none';
+  pendingAlert = null;
 }
 
-function _makeAlertLine(series, a) {
-  return series.createPriceLine({
-    price: a.price, color: '#f59e0b', lineWidth: 1, lineStyle: 2,
-    axisLabelVisible: true, title: '⚡',
-  });
-}
-
-function renderAllAlertLines() {
-  slots.forEach(s => {
-    for (const id in s.alertLines) { try { s.candleS.removePriceLine(s.alertLines[id]); } catch(e) {} }
-    s.alertLines = {};
-    for (const a of priceAlerts) { try { s.alertLines[a.id] = _makeAlertLine(s.candleS, a); } catch(e) {} }
-  });
-  if (fsCandleS) {
-    for (const id in _fsAlertLines) { try { fsCandleS.removePriceLine(_fsAlertLines[id]); } catch(e) {} }
-    _fsAlertLines = {};
-    for (const a of priceAlerts) { try { _fsAlertLines[a.id] = _makeAlertLine(fsCandleS, a); } catch(e) {} }
+function setNotifyMode(mode) {
+  notifyMode = mode;
+  const both    = document.getElementById('notify-both');
+  const browser = document.getElementById('notify-browser');
+  if (mode === 'both') {
+    both.style.background = '#1d4ed8'; both.style.color = '#fff';
+    browser.style.background = '#1E222D'; browser.style.color = '#6B7280';
+  } else {
+    both.style.background = '#1E222D'; both.style.color = '#6B7280';
+    browser.style.background = '#1d4ed8'; browser.style.color = '#fff';
   }
-  _updateAlertBtn();
 }
 
-function _updateAlertBtn() {
-  const btn = document.getElementById('alert-btn');
-  if (!btn) return;
-  btn.textContent = priceAlerts.length > 0 ? `🔔 ${priceAlerts.length}` : '🔔';
-  btn.style.color = priceAlerts.length > 0 ? '#f59e0b' : '#B2B5BE';
-}
-
-function addAlert(priceStr) {
-  const price = parseFloat(priceStr);
-  if (isNaN(price) || price <= 0) return;
-  const id = `${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
-  priceAlerts.push({ id, price });
-  saveAlerts();
-  renderAllAlertLines();
-  renderAlertList();
-}
-
-function removeAlert(id) {
-  priceAlerts = priceAlerts.filter(a => a.id !== id);
-  saveAlerts();
-  renderAllAlertLines();
-  renderAlertList();
-}
-
-function checkAlerts(closePrice) {
-  if (lastAlertPrice === null) { lastAlertPrice = closePrice; return; }
-  const prev = lastAlertPrice;
-  lastAlertPrice = closePrice;
-  const triggered = priceAlerts.filter(a =>
-    (prev < a.price && closePrice >= a.price) || (prev > a.price && closePrice <= a.price)
-  );
-  for (const a of triggered) {
-    const dir = closePrice >= a.price ? '▲' : '▼';
-    const msg = `${SYM.replace('USDT','')} ${dir} ${fmtPrice(closePrice)}  (alert: ${fmtPrice(a.price)})`;
-    _showAlertToast(msg);
-    if (Notification.permission === 'granted') {
-      try { new Notification('🔔 Alert MTF', { body: msg }); } catch(e) {}
+async function confirmAlert(condition) {
+  if (!pendingAlert) return;
+  const { symbol, price } = pendingAlert;
+  try {
+    const r = await fetch('api/price-alerts', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ symbol, price, condition, notify: notifyMode }),
+    });
+    const j = await r.json();
+    closeAlertPopover();
+    if (j.success) {
+      showToast('🔔 Alert impostato!');
+      if (j.alert) {
+        activeAlerts.push(j.alert);
+        updateAlertsBadge();
+        addAlertLineAllSlots(j.alert.id, price, condition);
+      }
+    } else {
+      showToast('❌ Errore alert');
     }
-    removeAlert(a.id);
+  } catch(e) { closeAlertPopover(); showToast('❌ Errore connessione'); }
+}
+
+async function initNotifications() {
+  if ('Notification' in window && Notification.permission === 'default')
+    await Notification.requestPermission();
+}
+
+function fireBrowserNotification(alert) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const coin = alert.symbol.replace('USDT', '');
+  const dir  = alert.condition === 'above' ? '📈' : '📉';
+  new Notification(`${dir} Alert: ${coin}/USDT`, {
+    body: `Prezzo ${alert.condition === 'above' ? 'sopra' : 'sotto'} ${alert.price}`,
+  });
+}
+
+async function pollTriggeredAlerts() {
+  try {
+    const r = await fetch('api/price-alerts/recent-triggered');
+    const j = await r.json();
+    if (j.success && j.data && j.data.length) {
+      for (const a of j.data) {
+        fireBrowserNotification(a);
+        for (const s of slots) {
+          if (s.alertLines.has(a.id)) {
+            try { s.candleS.removePriceLine(s.alertLines.get(a.id)); } catch(e) {}
+            s.alertLines.delete(a.id);
+          }
+        }
+        activeAlerts = activeAlerts.filter(x => x.id !== a.id);
+      }
+      updateAlertsBadge();
+    }
+  } catch(e) {}
+  setTimeout(pollTriggeredAlerts, 30000);
+}
+
+function addAlertLineAllSlots(alertId, price, condition) {
+  for (const s of slots) {
+    if (!s.candleS || s.alertLines.has(alertId)) continue;
+    try {
+      const pl = s.candleS.createPriceLine({
+        price,
+        color: condition === 'above' ? '#34d399' : '#f87171',
+        lineWidth: 1,
+        lineStyle: LC.LineStyle ? LC.LineStyle.Dashed : 2,
+        axisLabelVisible: true,
+        title: condition === 'above' ? '▲' : '▼',
+      });
+      s.alertLines.set(alertId, pl);
+    } catch(e) {}
   }
 }
 
-function _showAlertToast(msg) {
-  const t = document.createElement('div');
-  t.textContent = msg;
-  t.style.cssText = 'position:fixed;top:52px;left:50%;transform:translateX(-50%);background:#f59e0b;color:#000;padding:7px 18px;border-radius:6px;font-size:12px;font-weight:700;z-index:9999;pointer-events:none;white-space:nowrap;';
-  document.body.appendChild(t);
-  setTimeout(() => { t.style.transition='opacity .4s'; t.style.opacity='0'; setTimeout(()=>t.remove(),400); }, 4500);
+async function syncAllAlertLines() {
+  try {
+    const r = await fetch('api/price-alerts');
+    const j = await r.json();
+    if (!j.success) return;
+    activeAlerts = j.data;
+    updateAlertsBadge();
+    for (const a of j.data) {
+      if (a.symbol === SYM) addAlertLineAllSlots(a.id, a.price, a.condition);
+    }
+  } catch(e) {}
 }
 
-function renderAlertList() {
-  const list = document.getElementById('alert-list');
+function updateAlertsBadge() {
+  const btn = document.getElementById('alerts-btn');
+  if (!btn) return;
+  const n = activeAlerts.filter(a => a.symbol === SYM).length;
+  const svgBell = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none" style="display:block"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5z"/></svg>`;
+  btn.innerHTML = n > 0 ? `${svgBell}<span style="font-size:9px;line-height:1">${n}</span>` : svgBell;
+  btn.style.cssText += ';display:flex;align-items:center;gap:2px;';
+  btn.style.color = n > 0 ? '#fbbf24' : '';
+}
+
+function openAlertsPanel() {
+  renderAlertsList();
+  document.getElementById('alerts-panel').style.display = 'block';
+}
+
+function closeAlertsPanel() {
+  document.getElementById('alerts-panel').style.display = 'none';
+}
+
+function closePanelOutside(e) {
+  if (e.target === document.getElementById('alerts-panel')) closeAlertsPanel();
+}
+
+function renderAlertsList() {
+  const list = document.getElementById('alerts-list');
   if (!list) return;
-  if (!priceAlerts.length) {
-    list.innerHTML = '<div style="color:#4B5563;font-size:11px;text-align:center;padding:8px 0;">Nessun alert attivo</div>';
+  const mine = activeAlerts.filter(a => a.symbol === SYM);
+  if (!mine.length) {
+    list.innerHTML = '<div style="text-align:center;color:#6B7280;font-size:12px;padding:24px 0;">Nessun alert attivo</div>';
     return;
   }
-  list.innerHTML = [...priceAlerts].sort((a,b)=>b.price-a.price).map(a => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1E222D;">
-      <span style="font-size:12px;color:#f59e0b;font-weight:600;font-family:monospace;">${fmtPrice(a.price)}</span>
-      <button onclick="removeAlert('${a.id}')" style="background:none;border:none;color:#6B7280;cursor:pointer;font-size:14px;padding:0 4px;line-height:1;" title="Rimuovi">✕</button>
-    </div>
-  `).join('');
+  list.innerHTML = mine.map(a => {
+    const dirColor = a.condition === 'above' ? '#34d399' : '#f87171';
+    const dirLabel = a.condition === 'above' ? '▲ Sopra' : '▼ Sotto';
+    const notifyIcon = a.notify === 'browser' ? '🖥' : '📱';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #1E222D;">
+      <span style="font-size:11px;font-weight:700;color:#E5E7EB;min-width:76px;">${SYM.replace('USDT','/USDT')}</span>
+      <span style="font-size:11px;color:${dirColor};font-weight:600;min-width:52px;">${dirLabel}</span>
+      <span style="font-size:11px;font-family:monospace;color:#fbbf24;flex:1;">${fmtPrice(a.price)}</span>
+      <span style="font-size:12px;" title="${a.notify === 'browser' ? 'Solo PC' : 'Telegram + PC'}">${notifyIcon}</span>
+      <button onclick="deleteAlert('${a.id}')" style="background:#3f1515;color:#f87171;border:1px solid #7f1d1d;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;flex-shrink:0;" onmouseenter="this.style.background='#7f1d1d'" onmouseleave="this.style.background='#3f1515'">✕</button>
+    </div>`;
+  }).join('');
 }
 
-function openAlertModal() {
-  const modal = document.getElementById('alert-modal');
-  if (modal.style.display !== 'none') { closeAlertModal(); return; }
-  const inp = document.getElementById('alert-price-input');
-  if (inp && lastAlertPrice !== null) inp.value = fmtPrice(lastAlertPrice);
-  modal.style.display = 'flex';
-  renderAlertList();
-  if (inp) setTimeout(() => { inp.focus(); inp.select(); }, 50);
-  if (typeof Notification !== 'undefined' && Notification.permission === 'default') Notification.requestPermission();
+async function deleteAlert(id) {
+  try {
+    await fetch(`api/price-alerts/${id}`, { method: 'DELETE' });
+    for (const s of slots) {
+      if (s.alertLines.has(id)) {
+        try { s.candleS.removePriceLine(s.alertLines.get(id)); } catch(e) {}
+        s.alertLines.delete(id);
+      }
+    }
+    activeAlerts = activeAlerts.filter(a => a.id !== id);
+    updateAlertsBadge();
+    renderAlertsList();
+  } catch(e) { showToast('❌ Errore eliminazione'); }
 }
 
-function closeAlertModal() {
-  document.getElementById('alert-modal').style.display = 'none';
-}
-
-function submitAlert() {
-  const inp = document.getElementById('alert-price-input');
-  if (!inp || !inp.value.trim()) return;
-  addAlert(inp.value.trim());
-  inp.value = '';
-  inp.focus();
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1E222D;color:#E5E7EB;padding:8px 18px;border-radius:6px;font-size:13px;z-index:900;border:1px solid #2A2E39;pointer-events:none;opacity:1;transition:opacity .3s;';
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 2500);
 }
 
 document.addEventListener('click', e => {
-  const modal = document.getElementById('alert-modal');
-  const btn   = document.getElementById('alert-btn');
-  if (modal && modal.style.display !== 'none' && !modal.contains(e.target) && e.target !== btn) closeAlertModal();
+  const pop = document.getElementById('alert-popover');
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i];
+    if (!s.alertBtn || s.alertBtn.style.display === 'none') continue;
+    const r = s.alertBtn.getBoundingClientRect();
+    if (e.clientX >= r.left - 3 && e.clientX <= r.right  + 3 &&
+        e.clientY >= r.top  - 3 && e.clientY <= r.bottom + 3) {
+      const price = s.crosshairPrice || s.lastPrice;
+      if (price) openAlertPopover(SYM, price, s.alertBtn, i);
+      return;
+    }
+  }
+  if (pop && pop.style.display !== 'none' && !pop.contains(e.target)) closeAlertPopover();
 });
 
 if (isMobile) {
@@ -1167,22 +1269,34 @@ if (isMobile) {
     </div>
 </div>
 
-<!-- Alert modal -->
-<div id="alert-modal"
-     style="display:none;position:fixed;top:52px;right:10px;z-index:700;background:#161A1E;border:1px solid #2A2E39;border-radius:6px;padding:12px;min-width:220px;flex-direction:column;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,0.6);">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
-    <span style="font-size:12px;font-weight:700;color:#E5E7EB;">🔔 Alert Prezzo</span>
-    <button onclick="closeAlertModal()" style="background:none;border:none;color:#6B7280;cursor:pointer;font-size:15px;line-height:1;padding:0;">✕</button>
+<!-- Alert popover -->
+<div id="alert-popover" style="display:none;position:fixed;z-index:700;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;padding:14px 16px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.7);">
+  <div style="font-size:13px;font-weight:700;color:#E5E7EB;margin-bottom:6px;display:flex;align-items:center;gap:6px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none" style="flex-shrink:0"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5z"/></svg> Imposta Alert</div>
+  <div id="alert-pop-symbol" style="font-size:11px;color:#B2B5BE;margin-bottom:3px;"></div>
+  <div id="alert-pop-price"  style="font-size:17px;font-family:monospace;color:#fbbf24;margin-bottom:8px;"></div>
+  <div style="margin-bottom:10px;">
+    <div style="font-size:10px;color:#6B7280;margin-bottom:4px;">Notifica via:</div>
+    <div style="display:flex;gap:4px;">
+      <button id="notify-both"    onclick="setNotifyMode('both')"    style="flex:1;padding:5px 0;font-size:10px;background:#1d4ed8;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;">📱 Telegram + PC</button>
+      <button id="notify-browser" onclick="setNotifyMode('browser')" style="flex:1;padding:5px 0;font-size:10px;background:#1E222D;color:#6B7280;border:none;border-radius:4px;cursor:pointer;font-weight:600;">🖥 Solo PC</button>
+    </div>
   </div>
   <div style="display:flex;gap:6px;">
-    <input id="alert-price-input" type="number" placeholder="Prezzo..." step="any" min="0"
-      style="flex:1;background:#0B0E11;border:1px solid #2A2E39;border-radius:3px;padding:5px 8px;color:#E5E7EB;font-size:12px;outline:none;width:0;min-width:0;"
-      onkeydown="if(event.key==='Enter') submitAlert()">
-    <button onclick="submitAlert()"
-      style="background:#2563EB;border:none;border-radius:3px;padding:5px 12px;color:#fff;font-size:13px;cursor:pointer;font-weight:700;flex-shrink:0;">+</button>
+    <button onclick="confirmAlert('above')" style="flex:1;padding:7px 0;font-size:12px;background:#065f46;color:#34d399;border:none;border-radius:4px;cursor:pointer;font-weight:600;">↑ Sopra</button>
+    <button onclick="confirmAlert('below')" style="flex:1;padding:7px 0;font-size:12px;background:#7f1d1d;color:#f87171;border:none;border-radius:4px;cursor:pointer;font-weight:600;">↓ Sotto</button>
+    <button onclick="closeAlertPopover()"  style="flex:1;padding:7px 0;font-size:12px;background:#1E222D;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;">✕</button>
   </div>
-  <div id="alert-list"></div>
-  <div style="font-size:10px;color:#374151;margin-top:2px;">Linea gialla sul grafico. Notifica al tocco del prezzo.</div>
+</div>
+
+<!-- Alerts panel -->
+<div id="alerts-panel" style="display:none;position:fixed;inset:0;z-index:650;background:rgba(0,0,0,.55);" onclick="closePanelOutside(event)">
+  <div style="position:absolute;top:52px;right:12px;width:340px;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);">
+    <div style="padding:11px 14px;border-bottom:1px solid #2A2E39;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <span style="font-size:13px;font-weight:700;color:#E5E7EB;display:flex;align-items:center;gap:6px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none" style="flex-shrink:0"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5z"/></svg> Alert Attivi</span>
+      <button onclick="closeAlertsPanel()" style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
+    </div>
+    <div id="alerts-list" style="overflow-y:auto;flex:1;padding:4px 0;"></div>
+  </div>
 </div>
 
 <!-- Order Book fullscreen modal -->
