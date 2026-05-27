@@ -6,6 +6,7 @@
     <title>Crypto Scanner Pro - Dashboard Trading</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161A1E'/%3E%3Crect x='4' y='19' width='5' height='9' rx='1' fill='%233b82f6'/%3E%3Crect x='11' y='13' width='5' height='15' rx='1' fill='%238b5cf6'/%3E%3Crect x='18' y='8' width='5' height='20' rx='1' fill='%2310b981'/%3E%3Cpolyline points='4,23 11,17 18,11 26,5' stroke='%23fbbf24' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -75,7 +76,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.6.34</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.6.35</div>
                 </div>
             </div>
         </div>
@@ -603,7 +604,7 @@
                 return `
                     <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-gray-500 hidden sm:table-cell">${index + 1}</td>
-                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium">${coin.symbol.replace('USDT', '')}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium cursor-default" onmouseenter="showChartTooltip('${coin.symbol}',event)" onmouseleave="hideChartTooltip()">${coin.symbol.replace('USDT', '')}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-300 text-sm">$${formatPrice(coin.price)}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right">
                             <span class="${changeColor} ${bgColor} px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs sm:text-sm font-medium">
@@ -632,7 +633,7 @@
                 return `
                     <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-gray-500 hidden sm:table-cell">${index + 1}</td>
-                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium">${coin.name || coin.symbol.replace('USDT', '')}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium cursor-default" onmouseenter="showChartTooltip('${coin.symbol}',event)" onmouseleave="hideChartTooltip()">${coin.name || coin.symbol.replace('USDT', '')}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-300 text-sm">$${formatPrice(coin.price)}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right">
                             <span class="${changeColor} ${bgColor} px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs sm:text-sm font-medium">
@@ -828,6 +829,113 @@
         });
 
         init();
+
+        // ── Chart hover tooltip ───────────────────────────────────────────────
+        const _TT_EMA = [
+          {p:5,   color:'#ef4444', width:1.5},
+          {p:10,  color:'#fbbf24', width:1.5},
+          {p:60,  color:'#3b82f6', width:2},
+          {p:223, color:'#a855f7', width:1.5},
+        ];
+        let _ttChart = null, _ttSeries = null, _ttEmaS = {};
+        let _ttCache = {}, _ttShowTimer = null, _ttHideTimer = null, _ttCurrentSym = null;
+
+        function _calcEmaT(bars, p) {
+          const k = 2/(p+1); let v = bars[0].close;
+          return bars.map((b,i) => { if(i>0) v=b.close*k+v*(1-k); return {time:b.time,value:v}; });
+        }
+
+        function _initTTChart() {
+          if (_ttChart) return;
+          const LC = window.LightweightCharts;
+          if (!LC) return;
+          const el = document.getElementById('chart-tt-el');
+          _ttChart = LC.createChart(el, {
+            autoSize:false, width:300, height:170,
+            layout:{ background:{color:'#0B0E11'}, textColor:'#B2B5BE', fontSize:10 },
+            grid:{ vertLines:{color:'#FFFFFF08'}, horzLines:{color:'#FFFFFF08'} },
+            crosshair:{ mode:0 },
+            rightPriceScale:{ borderVisible:false, scaleMargins:{top:0.05,bottom:0.04} },
+            timeScale:{ borderVisible:false, timeVisible:false, rightOffset:2 },
+            handleScroll:false, handleScale:false,
+          });
+          const addS = (type, opts) => {
+            if (typeof _ttChart.addSeries==='function' && LC[type]) return _ttChart.addSeries(LC[type], opts);
+            return _ttChart[type==='CandlestickSeries'?'addCandlestickSeries':'addLineSeries'](opts);
+          };
+          _ttSeries = addS('CandlestickSeries', {
+            upColor:'#089981', downColor:'#F23645',
+            borderVisible:false, wickUpColor:'#089981', wickDownColor:'#F23645',
+          });
+          const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
+          for (const {p,color,width} of _TT_EMA)
+            _ttEmaS[p] = addS('LineSeries', {...lb, color, lineWidth:width});
+        }
+
+        function _positionTT(cx, cy) {
+          const tt = document.getElementById('chart-tt');
+          const W = 312, H = 196;
+          let x = cx + 18, y = cy - H/2;
+          if (x + W > window.innerWidth - 8) x = cx - W - 18;
+          if (y < 8) y = 8;
+          if (y + H > window.innerHeight - 8) y = window.innerHeight - H - 8;
+          tt.style.left = x + 'px';
+          tt.style.top  = y + 'px';
+        }
+
+        async function showChartTooltip(symbol, e) {
+          clearTimeout(_ttHideTimer);
+          clearTimeout(_ttShowTimer);
+          _ttCurrentSym = symbol;
+          const cx = e.clientX, cy = e.clientY;
+          _ttShowTimer = setTimeout(async () => {
+            const tt = document.getElementById('chart-tt');
+            document.getElementById('chart-tt-sym').textContent = symbol.replace('USDT','/USDT') + '  1D';
+            document.getElementById('chart-tt-change').textContent = '';
+            _positionTT(cx, cy);
+            tt.style.display = 'block';
+            _initTTChart();
+            if (!_ttChart) return;
+            let klines = _ttCache[symbol];
+            if (!klines) {
+              try {
+                const r = await fetch(`api/klines?symbol=${symbol}&interval=D`);
+                const j = await r.json();
+                if (!j.success || symbol !== _ttCurrentSym) return;
+                klines = j.data; _ttCache[symbol] = klines;
+              } catch(err) { return; }
+            }
+            if (symbol !== _ttCurrentSym) return;
+            _ttSeries.setData(klines);
+            for (const {p} of _TT_EMA) _ttEmaS[p].setData(_calcEmaT(klines, p));
+            _ttChart.timeScale().setVisibleLogicalRange({from: klines.length - 60, to: klines.length + 1});
+            if (klines.length >= 1) {
+              const last = klines[klines.length-1];
+              const pct = ((last.close - last.open) / last.open) * 100;
+              const chEl = document.getElementById('chart-tt-change');
+              chEl.textContent = (pct>=0?'+':'') + pct.toFixed(2) + '%';
+              chEl.style.color = pct>=0 ? '#34d399' : '#f87171';
+            }
+          }, 280);
+        }
+
+        function hideChartTooltip() {
+          clearTimeout(_ttShowTimer);
+          _ttHideTimer = setTimeout(() => {
+            document.getElementById('chart-tt').style.display = 'none';
+            _ttCurrentSym = null;
+          }, 120);
+        }
     </script>
+
+<!-- Chart hover tooltip -->
+<div id="chart-tt" style="display:none;position:fixed;z-index:9999;pointer-events:none;background:#0B0E11;border:1px solid #2A2E39;border-radius:6px;box-shadow:0 8px 28px rgba(0,0,0,0.8);overflow:hidden;width:300px;">
+  <div style="padding:5px 10px;background:#161A1E;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+    <span id="chart-tt-sym"    style="font-size:11px;font-weight:700;color:#E5E7EB;white-space:nowrap;"></span>
+    <span id="chart-tt-change" style="font-size:11px;font-weight:600;white-space:nowrap;"></span>
+  </div>
+  <div id="chart-tt-el" style="width:300px;height:170px;"></div>
+</div>
+
 </body>
 </html>
