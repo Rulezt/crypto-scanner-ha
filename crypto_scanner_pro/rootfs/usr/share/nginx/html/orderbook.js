@@ -93,6 +93,7 @@ createApp({
         let chartWS   = null;
         let chartWsTimer = null;
         let obKlineCount = 0;
+        let tzOffsetS = 0;
         let hoverPriceLine = null;
         let obAskLine = null;
         let obBidLine = null;
@@ -189,6 +190,7 @@ createApp({
                 const r = await fetch(`api/klines?symbol=${symbol.value}&interval=${tf}`);
                 const j = await r.json();
                 if (!j.success || !j.data || !j.data.length) return;
+                if (j.utc_offset_s) tzOffsetS = j.utc_offset_s;
                 const klines = j.data;
 
                 candleS.setData(klines);
@@ -220,7 +222,7 @@ createApp({
                 const b = msg.data[0];
                 const confirmed = b.confirm === true || b.confirm === 'true';
                 const candle = {
-                    time: Math.floor(parseInt(b.start) / 1000),
+                    time: Math.floor(parseInt(b.start) / 1000) + tzOffsetS,
                     open: parseFloat(b.open), high: parseFloat(b.high),
                     low:  parseFloat(b.low),  close: parseFloat(b.close),
                 };
