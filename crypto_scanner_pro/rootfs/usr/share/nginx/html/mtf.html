@@ -335,9 +335,9 @@ const fsBtn = document.createElement('button');
     rangeCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;';
     body.appendChild(rangeCanvas);
     const alertBtnEl = document.createElement('div');
-    alertBtnEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="15" height="15" fill="none"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5z"/></svg>`;
+    alertBtnEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="20" height="20"><path fill="currentColor" d="M13.5 6a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM4 14.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z"/><path fill="currentColor" d="M9 14h4v-4h1v4h4v1h-4v4h-1v-4H9v-1z"/></svg>`;
     alertBtnEl.title = 'Imposta alert prezzo';
-    alertBtnEl.style.cssText = 'position:absolute;right:2px;width:22px;height:22px;display:none;align-items:center;justify-content:center;background:rgba(11,14,17,0.88);border-radius:50%;z-index:10;padding:0;line-height:1;opacity:0.75;pointer-events:none;cursor:pointer;color:#B2B5BE;';
+    alertBtnEl.style.cssText = 'position:absolute;right:2px;width:20px;height:20px;display:none;align-items:center;justify-content:center;background:rgba(11,14,17,0.85);border-radius:50%;z-index:10;padding:0;line-height:1;opacity:0.7;pointer-events:none;';
     body.appendChild(alertBtnEl);
     cell.appendChild(body);
     if (isMobile) cell.style.display = i === 0 ? 'flex' : 'none';
@@ -1114,6 +1114,7 @@ async function pollTriggeredAlerts() {
       updateAlertsBadge();
     }
   } catch(e) {}
+  await syncAllAlertLines();
   setTimeout(pollTriggeredAlerts, 30000);
 }
 

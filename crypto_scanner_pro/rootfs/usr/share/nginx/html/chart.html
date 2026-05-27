@@ -496,6 +496,7 @@ async function pollTriggeredAlerts() {
             updateAlertsBadge();
         }
     } catch(e) {}
+    await syncAllAlertLines();
     setTimeout(pollTriggeredAlerts, 30000);
 }
 
