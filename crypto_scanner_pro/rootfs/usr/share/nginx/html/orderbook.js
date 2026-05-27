@@ -90,10 +90,9 @@ createApp({
         let candleS   = null;
         const emaS    = {};
         const lastEMA = {};
-        let chartWS   = null;
-        let chartWsTimer = null;
+        let chartPollTimer     = null;
+        let lastConfirmedTime  = 0;
         let obKlineCount = 0;
-        let tzOffsetS = 0;
         let hoverPriceLine = null;
         let obAskLine = null;
         let obBidLine = null;
@@ -190,7 +189,6 @@ createApp({
                 const r = await fetch(`api/klines?symbol=${symbol.value}&interval=${tf}`);
                 const j = await r.json();
                 if (!j.success || !j.data || !j.data.length) return;
-                if (j.utc_offset_s) tzOffsetS = j.utc_offset_s;
                 const klines = j.data;
 
                 candleS.setData(klines);
@@ -202,52 +200,62 @@ createApp({
                     emaS[p].setData(ema);
                     lastEMA[p] = ema[ema.length - 1].value;
                 }
+                lastConfirmedTime = klines[klines.length - 1].time;
 
                 const n = DEFAULT_CANDLES[tf] || 80;
                 obChart.timeScale().setVisibleLogicalRange({ from: klines.length - n, to: klines.length + 3 });
 
-                connectChartWS(tf);
+                startChartPolling(tf);
             } catch (e) { console.error('Chart load error:', e); }
         };
 
-        const connectChartWS = (tf) => {
-            closeChartWS();
-            chartWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-            chartWS.onopen = () => {
-                chartWS.send(JSON.stringify({ op: 'subscribe', args: [`kline.${tf}.${symbol.value}`] }));
+        const startChartPolling = (tf) => {
+            stopChartPolling();
+            const poll = async () => {
+                if (!candleS) return;
+                try {
+                    const r = await fetch(`api/klines/live?symbol=${symbol.value}&interval=${tf}`);
+                    const j = await r.json();
+                    if (j.success && j.data && j.data.length) {
+                        const candles = j.data;
+                        const last    = candles[candles.length - 1];
+                        const prev    = candles[candles.length - 2];
+                        // Update the last two candles (current forming + previous if just confirmed)
+                        for (const k of candles.slice(-2)) {
+                            try { candleS.update(k); } catch(e) {}
+                        }
+                        // Update EMAs: if a new candle started, lock in the previous EMA
+                        if (prev && prev.time > lastConfirmedTime) {
+                            for (const { p } of EMA_CFG) {
+                                if (lastEMA[p] == null) continue;
+                                const ek = 2 / (p + 1);
+                                lastEMA[p] = prev.close * ek + lastEMA[p] * (1 - ek);
+                            }
+                            lastConfirmedTime = prev.time;
+                        }
+                        // Live EMA for current forming candle
+                        for (const { p } of EMA_CFG) {
+                            if (lastEMA[p] == null) continue;
+                            const ek   = 2 / (p + 1);
+                            const live = last.close * ek + lastEMA[p] * (1 - ek);
+                            try { emaS[p].update({ time: last.time, value: live }); } catch(e) {}
+                        }
+                    }
+                } catch(e) {}
+                chartPollTimer = setTimeout(poll, 3000);
             };
-            chartWS.onmessage = (ev) => {
-                let msg; try { msg = JSON.parse(ev.data); } catch (e) { return; }
-                if (!msg.topic || !msg.topic.startsWith('kline.') || !candleS) return;
-                const b = msg.data[0];
-                const confirmed = b.confirm === true || b.confirm === 'true';
-                const candle = {
-                    time: Math.floor(parseInt(b.start) / 1000) + tzOffsetS,
-                    open: parseFloat(b.open), high: parseFloat(b.high),
-                    low:  parseFloat(b.low),  close: parseFloat(b.close),
-                };
-                candleS.update(candle);
-                for (const { p } of EMA_CFG) {
-                    if (lastEMA[p] == null) continue;
-                    const k    = 2 / (p + 1);
-                    const live = candle.close * k + lastEMA[p] * (1 - k);
-                    emaS[p].update({ time: candle.time, value: live });
-                    if (confirmed) lastEMA[p] = live;
-                }
-            };
-            chartWS.onerror = () => {};
-            chartWS.onclose = () => { chartWsTimer = setTimeout(() => connectChartWS(chartTF.value), 5000); };
+            poll();
         };
 
-        const closeChartWS = () => {
-            clearTimeout(chartWsTimer);
-            if (chartWS) { try { chartWS.close(); } catch (e) {} chartWS = null; }
+        const stopChartPolling = () => {
+            clearTimeout(chartPollTimer);
+            chartPollTimer = null;
         };
 
         const changeChartTF = (tf) => {
             if (tf === chartTF.value || !candleS) return;
             chartTF.value = tf;
-            closeChartWS();
+            stopChartPolling();
             candleS.setData([]);
             for (const { p } of EMA_CFG) { emaS[p].setData([]); lastEMA[p] = null; }
             ohlc.value = { o: '', h: '', l: '', c: '', pct: '', color: '#9ca3af' };
@@ -561,7 +569,7 @@ createApp({
         const cleanup = () => {
             if (bookWS)        { bookWS.close(); bookWS = null; }
             if (reconnectTimer)  clearTimeout(reconnectTimer);
-            closeChartWS();
+            stopChartPolling();
             clearObLines();
             asksMap.clear();
             bidsMap.clear();
