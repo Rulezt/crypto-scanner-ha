@@ -81,6 +81,10 @@
   <div style="flex:1;"></div>
   <span id="mtf-label" style="font-size:9px;color:#4B5563;letter-spacing:.8px;text-transform:uppercase;">Multi Timeframe</span>
   <span style="color:#374151;font-size:11px;margin:0 6px;">|</span>
+  <button id="alert-btn" onclick="openAlertModal()"
+    style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;"
+    title="Alert Prezzo">🔔</button>
+  <span style="color:#374151;font-size:11px;margin:0 6px;">|</span>
   <button onclick="window.open('orderbook?symbol=' + SYM, '_blank')"
     style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;"
     title="Order Book">
@@ -153,6 +157,11 @@ let _mouseOverSlot = -1;
 let ws      = null;
 let wsTimer = null;
 let mobileSlotIdx = 0;
+
+// ── Alert globals ──────────────────────────────────────────────────────────────
+const ALERT_STORAGE_KEY = `mtf_alerts_${SYM}`;
+let priceAlerts = [];
+let lastAlertPrice = null;
 
 // OB fullscreen
 const OB_TFS = [
@@ -377,6 +386,7 @@ const fsBtn = document.createElement('button');
       dayPrimitive: null,
       lastCandleStartUtc: null,
       lastWsMs: 0,
+      alertLines: {},
     });
     chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.cfg.tf), to: s.klineCount + 3 }); });
   });
@@ -414,6 +424,8 @@ async function loadAll() {
 
   // Load all slots in parallel
   await Promise.all(slots.map((_, i) => loadSlot(i, dailyData)));
+  loadAlerts();
+  renderAllAlertLines();
   openWS();
 }
 
@@ -486,6 +498,7 @@ function openWS() {
     s.lastCandleStartUtc = candleStart;
     s.lastWsMs = Date.now();
     s.candleS.update(candle);
+    checkAlerts(candle.close);
     for (const {p} of EMA_CFG) {
       if (s.lastEMA[p] === null) continue;
       const k    = 2/(p+1);
@@ -667,6 +680,8 @@ document.addEventListener('keydown', e => {
         if (fs && fs.style.display !== 'none') { closeFSModal(); return; }
         const m = document.getElementById('ob-modal');
         if (m && m.style.display !== 'none') { closeOBModal(); return; }
+        const am = document.getElementById('alert-modal');
+        if (am && am.style.display !== 'none') { closeAlertModal(); return; }
     }
 });
 
@@ -676,6 +691,7 @@ let fsTF = 'D', fsWS = null, fsWsTimer = null, fsKlineCount = 0;
 let fsDayHighLine = null, fsDayLowLine = null, fsPrevHighLine = null, fsPrevLowLine = null;
 let fsDayPrimitive = null, obDayPrimitive = null;
 let fsRangeActive = false, fsRangeP1 = null, fsRangeP2 = null, _fsRangeSub = null, _fsRangeCsSub = null;
+let _fsAlertLines = {};
 
 function initFSChart() {
     if (fsChart) return;
@@ -705,7 +721,7 @@ async function switchFSTF(tf) {
     fsCandleS.setData([]);
     for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
     fsLastEMA = {};
-    await loadFSData(); connectFSWS();
+    await loadFSData(); connectFSWS(); renderAllAlertLines();
 }
 
 function _clearFSLines() {
@@ -783,7 +799,7 @@ function openFSModal(idx) {
     fsCandleS.setData([]);
     for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
     fsLastEMA = {};
-    loadFSData().then(() => connectFSWS());
+    loadFSData().then(() => { connectFSWS(); renderAllAlertLines(); });
 }
 
 function closeFSModal() {
@@ -989,6 +1005,130 @@ function toggleFsRange() {
   }
 }
 
+// ── Alert System ───────────────────────────────────────────────────────────────
+function loadAlerts() {
+  try { priceAlerts = JSON.parse(localStorage.getItem(ALERT_STORAGE_KEY)) || []; } catch(e) { priceAlerts = []; }
+}
+
+function saveAlerts() {
+  localStorage.setItem(ALERT_STORAGE_KEY, JSON.stringify(priceAlerts));
+}
+
+function _makeAlertLine(series, a) {
+  return series.createPriceLine({
+    price: a.price, color: '#f59e0b', lineWidth: 1, lineStyle: 2,
+    axisLabelVisible: true, title: '⚡',
+  });
+}
+
+function renderAllAlertLines() {
+  slots.forEach(s => {
+    for (const id in s.alertLines) { try { s.candleS.removePriceLine(s.alertLines[id]); } catch(e) {} }
+    s.alertLines = {};
+    for (const a of priceAlerts) { try { s.alertLines[a.id] = _makeAlertLine(s.candleS, a); } catch(e) {} }
+  });
+  if (fsCandleS) {
+    for (const id in _fsAlertLines) { try { fsCandleS.removePriceLine(_fsAlertLines[id]); } catch(e) {} }
+    _fsAlertLines = {};
+    for (const a of priceAlerts) { try { _fsAlertLines[a.id] = _makeAlertLine(fsCandleS, a); } catch(e) {} }
+  }
+  _updateAlertBtn();
+}
+
+function _updateAlertBtn() {
+  const btn = document.getElementById('alert-btn');
+  if (!btn) return;
+  btn.textContent = priceAlerts.length > 0 ? `🔔 ${priceAlerts.length}` : '🔔';
+  btn.style.color = priceAlerts.length > 0 ? '#f59e0b' : '#B2B5BE';
+}
+
+function addAlert(priceStr) {
+  const price = parseFloat(priceStr);
+  if (isNaN(price) || price <= 0) return;
+  const id = `${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
+  priceAlerts.push({ id, price });
+  saveAlerts();
+  renderAllAlertLines();
+  renderAlertList();
+}
+
+function removeAlert(id) {
+  priceAlerts = priceAlerts.filter(a => a.id !== id);
+  saveAlerts();
+  renderAllAlertLines();
+  renderAlertList();
+}
+
+function checkAlerts(closePrice) {
+  if (lastAlertPrice === null) { lastAlertPrice = closePrice; return; }
+  const prev = lastAlertPrice;
+  lastAlertPrice = closePrice;
+  const triggered = priceAlerts.filter(a =>
+    (prev < a.price && closePrice >= a.price) || (prev > a.price && closePrice <= a.price)
+  );
+  for (const a of triggered) {
+    const dir = closePrice >= a.price ? '▲' : '▼';
+    const msg = `${SYM.replace('USDT','')} ${dir} ${fmtPrice(closePrice)}  (alert: ${fmtPrice(a.price)})`;
+    _showAlertToast(msg);
+    if (Notification.permission === 'granted') {
+      try { new Notification('🔔 Alert MTF', { body: msg }); } catch(e) {}
+    }
+    removeAlert(a.id);
+  }
+}
+
+function _showAlertToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;top:52px;left:50%;transform:translateX(-50%);background:#f59e0b;color:#000;padding:7px 18px;border-radius:6px;font-size:12px;font-weight:700;z-index:9999;pointer-events:none;white-space:nowrap;';
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.transition='opacity .4s'; t.style.opacity='0'; setTimeout(()=>t.remove(),400); }, 4500);
+}
+
+function renderAlertList() {
+  const list = document.getElementById('alert-list');
+  if (!list) return;
+  if (!priceAlerts.length) {
+    list.innerHTML = '<div style="color:#4B5563;font-size:11px;text-align:center;padding:8px 0;">Nessun alert attivo</div>';
+    return;
+  }
+  list.innerHTML = [...priceAlerts].sort((a,b)=>b.price-a.price).map(a => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1E222D;">
+      <span style="font-size:12px;color:#f59e0b;font-weight:600;font-family:monospace;">${fmtPrice(a.price)}</span>
+      <button onclick="removeAlert('${a.id}')" style="background:none;border:none;color:#6B7280;cursor:pointer;font-size:14px;padding:0 4px;line-height:1;" title="Rimuovi">✕</button>
+    </div>
+  `).join('');
+}
+
+function openAlertModal() {
+  const modal = document.getElementById('alert-modal');
+  if (modal.style.display !== 'none') { closeAlertModal(); return; }
+  const inp = document.getElementById('alert-price-input');
+  if (inp && lastAlertPrice !== null) inp.value = fmtPrice(lastAlertPrice);
+  modal.style.display = 'flex';
+  renderAlertList();
+  if (inp) setTimeout(() => { inp.focus(); inp.select(); }, 50);
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default') Notification.requestPermission();
+}
+
+function closeAlertModal() {
+  document.getElementById('alert-modal').style.display = 'none';
+}
+
+function submitAlert() {
+  const inp = document.getElementById('alert-price-input');
+  if (!inp || !inp.value.trim()) return;
+  addAlert(inp.value.trim());
+  inp.value = '';
+  inp.focus();
+}
+
+document.addEventListener('click', e => {
+  const modal = document.getElementById('alert-modal');
+  const btn   = document.getElementById('alert-btn');
+  if (modal && modal.style.display !== 'none' && !modal.contains(e.target) && e.target !== btn) closeAlertModal();
+});
+
 if (isMobile) {
   const mkBtn = (side, label, fn) => {
     const b = document.createElement('button');
@@ -1025,6 +1165,24 @@ if (isMobile) {
         <div id="fs-chart-el" style="position:absolute;inset:0;"></div>
         <canvas id="fs-range-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;display:none;"></canvas>
     </div>
+</div>
+
+<!-- Alert modal -->
+<div id="alert-modal"
+     style="display:none;position:fixed;top:52px;right:10px;z-index:700;background:#161A1E;border:1px solid #2A2E39;border-radius:6px;padding:12px;min-width:220px;flex-direction:column;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,0.6);">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+    <span style="font-size:12px;font-weight:700;color:#E5E7EB;">🔔 Alert Prezzo</span>
+    <button onclick="closeAlertModal()" style="background:none;border:none;color:#6B7280;cursor:pointer;font-size:15px;line-height:1;padding:0;">✕</button>
+  </div>
+  <div style="display:flex;gap:6px;">
+    <input id="alert-price-input" type="number" placeholder="Prezzo..." step="any" min="0"
+      style="flex:1;background:#0B0E11;border:1px solid #2A2E39;border-radius:3px;padding:5px 8px;color:#E5E7EB;font-size:12px;outline:none;width:0;min-width:0;"
+      onkeydown="if(event.key==='Enter') submitAlert()">
+    <button onclick="submitAlert()"
+      style="background:#2563EB;border:none;border-radius:3px;padding:5px 12px;color:#fff;font-size:13px;cursor:pointer;font-weight:700;flex-shrink:0;">+</button>
+  </div>
+  <div id="alert-list"></div>
+  <div style="font-size:10px;color:#374151;margin-top:2px;">Linea gialla sul grafico. Notifica al tocco del prezzo.</div>
 </div>
 
 <!-- Order Book fullscreen modal -->
