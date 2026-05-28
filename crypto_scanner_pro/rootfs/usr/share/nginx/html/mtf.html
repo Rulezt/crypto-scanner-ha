@@ -259,9 +259,9 @@ function toggleBB() {
   const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
   slots.forEach(s => {
     if (bbActive) {
-      s.bbSeries.upper = addS(s.chart,'LineSeries',{...lb,color:'#3b82f6',lineWidth:1});
-      s.bbSeries.mid   = addS(s.chart,'LineSeries',{...lb,color:'#3b82f6',lineWidth:1,lineStyle:2});
-      s.bbSeries.lower = addS(s.chart,'LineSeries',{...lb,color:'#3b82f6',lineWidth:1});
+      s.bbSeries.upper = addS(s.chart,'LineSeries',{...lb,color:'#161A1E',lineWidth:1});
+      s.bbSeries.mid   = addS(s.chart,'LineSeries',{...lb,color:'#161A1E',lineWidth:1,lineStyle:2});
+      s.bbSeries.lower = addS(s.chart,'LineSeries',{...lb,color:'#161A1E',lineWidth:1});
       if (s.klines.length >= 20) {
         const bb = calcBB(s.klines);
         s.bbSeries.upper.setData(bb.upper);
