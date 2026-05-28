@@ -52,6 +52,8 @@
     }
     #hdr > div[style*="flex:1"] { flex: 0 0 6px !important; min-width: 6px; }
     #mtf-label { display: none; }
+    #bb-btn    { display: none; }
+    #bb-sep    { display: none; }
     /* OB modal verticale */
     #ob-modal { flex-direction: column !important; }
     #ob-modal > div:first-child {
@@ -90,6 +92,10 @@
     title="Order Book">
     📖 OB
   </button>
+  <span id="bb-sep" style="color:#374151;font-size:11px;margin:0 6px;">|</span>
+  <button id="bb-btn" onclick="toggleBB()"
+    style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;"
+    title="Bande di Bollinger (20,2)">BB</button>
   <span style="color:#374151;font-size:11px;margin:0 6px;">|</span>
   <div id="ws-dot" style="display:flex;align-items:center;gap:5px;">
     <div style="width:7px;height:7px;background:#6B7280;border-radius:50%;transition:background .3s;" id="ws-circle"></div>
@@ -157,6 +163,7 @@ let _mouseOverSlot = -1;
 let ws      = null;
 let wsTimer = null;
 let mobileSlotIdx = 0;
+let bbActive = false;
 
 // ── Price alerts ──────────────────────────────────────────────────────────────
 let pendingAlert = null;
@@ -229,6 +236,44 @@ function attachDayLines(series, chart, klines, tf, prev) {
 function calcEMA(bars, period) {
   const k = 2/(period+1); let v = bars[0].close;
   return bars.map((b,i) => { if(i>0) v=b.close*k+v*(1-k); return {time:b.time,value:v}; });
+}
+
+function calcBB(klines, period=20, mult=2) {
+  const upper=[], mid=[], lower=[];
+  for (let i=period-1; i<klines.length; i++) {
+    const sl = klines.slice(i-period+1, i+1);
+    const mean = sl.reduce((s,c)=>s+c.close,0)/period;
+    const std  = Math.sqrt(sl.reduce((s,c)=>s+(c.close-mean)**2,0)/period);
+    upper.push({time:klines[i].time, value:mean+mult*std});
+    mid.push(  {time:klines[i].time, value:mean});
+    lower.push({time:klines[i].time, value:mean-mult*std});
+  }
+  return {upper, mid, lower};
+}
+
+function toggleBB() {
+  bbActive = !bbActive;
+  const btn = document.getElementById('bb-btn');
+  btn.style.color      = bbActive ? '#60a5fa' : '#B2B5BE';
+  btn.style.background = bbActive ? '#1a3a5c' : '#2A2E39';
+  const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
+  slots.forEach(s => {
+    if (bbActive) {
+      s.bbSeries.upper = addS(s.chart,'LineSeries',{...lb,color:'#3b82f6',lineWidth:1});
+      s.bbSeries.mid   = addS(s.chart,'LineSeries',{...lb,color:'#3b82f6',lineWidth:1,lineStyle:2});
+      s.bbSeries.lower = addS(s.chart,'LineSeries',{...lb,color:'#3b82f6',lineWidth:1});
+      if (s.klines.length >= 20) {
+        const bb = calcBB(s.klines);
+        s.bbSeries.upper.setData(bb.upper);
+        s.bbSeries.mid.setData(bb.mid);
+        s.bbSeries.lower.setData(bb.lower);
+      }
+    } else {
+      for (const k of ['upper','mid','lower']) {
+        if (s.bbSeries[k]) { try { s.chart.removeSeries(s.bbSeries[k]); } catch(e) {} s.bbSeries[k]=null; }
+      }
+    }
+  });
 }
 
 function addS(chart, type, opts) {
@@ -409,6 +454,8 @@ const fsBtn = document.createElement('button');
       lastPrice: null,
       crosshairPrice: null,
       alertLines: new Map(),
+      bbSeries: {upper:null, mid:null, lower:null},
+      klines: [],
     });
     chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.cfg.tf), to: s.klineCount + 3 }); });
   });
@@ -461,6 +508,7 @@ async function loadSlot(idx, dailyData) {
     const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
     s.candleS.setData(klines);
     s.klineCount = klines.length;
+    s.klines = klines.slice();
     s.dayPrimitive = attachDayLines(s.candleS, s.chart, klines, s.cfg.tf, s.dayPrimitive);
     s.candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
     for (const {p} of EMA_CFG) {
@@ -528,6 +576,23 @@ function openWS() {
       const live = candle.close * k + s.lastEMA[p] * (1-k);
       s.emaS[p].update({time: candle.time, value: live});
       if (confirmed) s.lastEMA[p] = live;
+    }
+    // aggiorna klines live
+    if (s.klines.length > 0) {
+      const last = s.klines[s.klines.length-1];
+      if (last.time === candle.time) {
+        s.klines[s.klines.length-1] = {time:candle.time,open:last.open,high:Math.max(last.high,candle.high),low:Math.min(last.low,candle.low),close:candle.close};
+      } else {
+        s.klines.push({...candle});
+      }
+    }
+    if (bbActive && s.bbSeries.upper && s.klines.length >= 20) {
+      const sl = s.klines.slice(-20);
+      const mean = sl.reduce((a,c)=>a+c.close,0)/20;
+      const std  = Math.sqrt(sl.reduce((a,c)=>a+(c.close-mean)**2,0)/20);
+      s.bbSeries.upper.update({time:candle.time, value:mean+2*std});
+      s.bbSeries.mid.update(  {time:candle.time, value:mean});
+      s.bbSeries.lower.update( {time:candle.time, value:mean-2*std});
     }
   };
   ws.onerror = () => setWSDot('error');
