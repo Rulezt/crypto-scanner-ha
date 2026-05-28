@@ -76,7 +76,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.6.40</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.6.41</div>
                 </div>
             </div>
         </div>
@@ -342,6 +342,10 @@
         let currentConfig = {};
         let isFormMode = false;
 
+        function chartUrl(symbol) {
+            return (window.innerWidth < 640 ? 'chart' : 'mtf') + '?symbol=' + symbol;
+        }
+
         async function init() {
             await loadConfig();
             await loadMarketData();
@@ -391,7 +395,7 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
-                            <a href="mtf?symbol=${a.symbol}" class="text-xs text-blue-400 hover:text-blue-300">Chart</a>
+                            <a href="${chartUrl(a.symbol)}" class="text-xs text-blue-400 hover:text-blue-300">Chart</a>
                             <span class="text-xs text-gray-500">${ago}</span>
                         </div>
                     </div>`;
@@ -613,7 +617,7 @@
                         </td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-400 text-sm hidden md:table-cell">${listataDays}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-center">
-                            <a href="mtf?symbol=${coin.symbol}" target="_blank" rel="noopener" class="text-xs text-blue-400 hover:text-blue-300 hover:bg-dark-hover px-2 py-1 rounded transition-colors">▶</a>
+                            <a href="${chartUrl(coin.symbol)}" class="text-xs text-blue-400 hover:text-blue-300 hover:bg-dark-hover px-2 py-1 rounded transition-colors">▶</a>
                         </td>
                     </tr>
                 `;
@@ -642,7 +646,7 @@
                         </td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-400 text-sm hidden md:table-cell">$${formatVolume(coin.volume_24h)}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-center">
-                            <a href="mtf?symbol=${coin.symbol}" target="_blank" rel="noopener" class="text-xs text-blue-400 hover:text-blue-300 hover:bg-dark-hover px-2 py-1 rounded transition-colors">▶</a>
+                            <a href="${chartUrl(coin.symbol)}" class="text-xs text-blue-400 hover:text-blue-300 hover:bg-dark-hover px-2 py-1 rounded transition-colors">▶</a>
                         </td>
                     </tr>
                 `;
@@ -820,7 +824,7 @@
 
         function selectSearchCoin(symbol) {
             closeSearch();
-            window.location.href = `mtf?symbol=${symbol}`;
+            window.location.href = chartUrl(symbol);
         }
 
         document.addEventListener('keydown', e => {
