@@ -1733,6 +1733,23 @@ async function init() {
     await initNotifications();
     pollTriggeredAlerts();
     try { await fetchCoins(); } catch(e) { setStatus('Errore caricamento coin'); return; }
+
+    const _urlSym = new URLSearchParams(location.search).get('symbol');
+    if (_urlSym) {
+        let idx = allCoins.findIndex(c => c.symbol === _urlSym);
+        if (idx < 0) {
+            try {
+                const _r = await fetch(`api/ticker?symbol=${_urlSym}`);
+                const _j = await _r.json();
+                if (_j.success) { allCoins.unshift(_j); idx = 0; }
+            } catch(e) {}
+        }
+        if (idx >= 0) {
+            curPage = Math.floor(idx / 9);
+            mobileChartIdx = idx % 9;
+        }
+    }
+
     await loadPage();
 }
 
