@@ -345,12 +345,23 @@ const INSTRUMENT_NAMES = {
     'TSMUSDT':'TSMC',
     'XAUUSDT':'Gold',     'XAGUSDT':'Silver',      'CLUSDT':'Crude Oil',
 };
-const EMA_CFG     = [
-    {p:5,   color:'#ef4444', width:2},
-    {p:10,  color:'#fbbf24', width:2},
-    {p:60,  color:'#3b82f6', width:3},
-    {p:223, color:'#a855f7', width:2.5},
+const DEFAULT_EMA_CFG = [
+    {p:5,   color:'#ef4444', style:0, width:2},
+    {p:10,  color:'#fbbf24', style:0, width:2},
+    {p:60,  color:'#3b82f6', style:0, width:3},
+    {p:223, color:'#a855f7', style:0, width:2.5},
 ];
+const DEFAULT_LEVELS_CFG = {
+    dayHigh:  {color:'#22c55e', style:0, width:2},
+    dayLow:   {color:'#ef4444', style:0, width:2},
+    prevHigh: {color:'#22c55e', style:2, width:2},
+    prevLow:  {color:'#ef4444', style:2, width:2},
+    obBid:    {color:'#10b981', style:1, width:1},
+    obAsk:    {color:'#ef4444', style:1, width:1},
+};
+function getEmaCfg() { try{const s=JSON.parse(localStorage.getItem('chart_ema_cfg'));if(s&&s.length===4)return s;}catch(e){}return DEFAULT_EMA_CFG.map(x=>({...x})); }
+function getLvCfg()  { try{const s=JSON.parse(localStorage.getItem('chart_levels_cfg'));if(s)return{...DEFAULT_LEVELS_CFG,...s};}catch(e){}return{...DEFAULT_LEVELS_CFG}; }
+let EMA_CFG = getEmaCfg();
 
 const DEFAULT_CANDLES = {'1':100,'5':100,'30':80,'60':80,'240':60,'D':50,'W':52,'M':24};
 function getCandlesForTF(tf) {
@@ -771,8 +782,9 @@ async function fetchSlotOBLevels(idx) {
         if (!lv) return;
         if (s.obBidLine) { try { s.candleS.removePriceLine(s.obBidLine); } catch(e) {} }
         if (s.obAskLine) { try { s.candleS.removePriceLine(s.obAskLine); } catch(e) {} }
-        s.obBidLine = s.candleS.createPriceLine({ price: lv.bid, color:'#10b981', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'' });
-        s.obAskLine = s.candleS.createPriceLine({ price: lv.ask, color:'#ef4444', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'' });
+        const _soblv = getLvCfg();
+        s.obBidLine = s.candleS.createPriceLine({ price: lv.bid, color:_soblv.obBid.color, lineWidth:_soblv.obBid.width, lineStyle:_soblv.obBid.style, axisLabelVisible:true, title:'' });
+        s.obAskLine = s.candleS.createPriceLine({ price: lv.ask, color:_soblv.obAsk.color, lineWidth:_soblv.obAsk.width, lineStyle:_soblv.obAsk.style, axisLabelVisible:true, title:'' });
     } catch(e) {}
 }
 
@@ -805,8 +817,9 @@ async function fetchFsOBLevels() {
         if (!lv) return;
         if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} }
         if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} }
-        fsObBidLine = fsCandleS.createPriceLine({ price: lv.bid, color:'#10b981', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'' });
-        fsObAskLine = fsCandleS.createPriceLine({ price: lv.ask, color:'#ef4444', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'' });
+        const _fsoblv = getLvCfg();
+        fsObBidLine = fsCandleS.createPriceLine({ price: lv.bid, color:_fsoblv.obBid.color, lineWidth:_fsoblv.obBid.width, lineStyle:_fsoblv.obBid.style, axisLabelVisible:true, title:'' });
+        fsObAskLine = fsCandleS.createPriceLine({ price: lv.ask, color:_fsoblv.obAsk.color, lineWidth:_fsoblv.obAsk.width, lineStyle:_fsoblv.obAsk.style, axisLabelVisible:true, title:'' });
     } catch(e) {}
 }
 
@@ -946,8 +959,8 @@ const mtfEl = document.createElement('button');
         });
         const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
         const emaSeries = {};
-        for (const {p, color, width} of EMA_CFG)
-            emaSeries[p] = addSeries(chart, 'LineSeries', {...lineBase, color, lineWidth:width});
+        for (const {p, color, width, style} of EMA_CFG)
+            emaSeries[p] = addSeries(chart, 'LineSeries', {...lineBase, color, lineWidth:width, lineStyle:style??0});
 
         chart.subscribeCrosshairMove(param => {
             const s = slots[i];
@@ -1241,12 +1254,13 @@ async function loadSlotData(idx) {
         if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} }
         if (jd.success && jd.data && jd.data.length) {
             const today = jd.data[jd.data.length - 1];
-            s.dayHighLine  = s.candleS.createPriceLine({ price: today.high, color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
-            s.dayLowLine   = s.candleS.createPriceLine({ price: today.low,  color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
+            const _slvl = getLvCfg();
+            s.dayHighLine  = s.candleS.createPriceLine({ price: today.high, color:_slvl.dayHigh.color,  lineWidth:_slvl.dayHigh.width,  lineStyle:_slvl.dayHigh.style,  axisLabelVisible:false, title:'' });
+            s.dayLowLine   = s.candleS.createPriceLine({ price: today.low,  color:_slvl.dayLow.color,   lineWidth:_slvl.dayLow.width,   lineStyle:_slvl.dayLow.style,   axisLabelVisible:false, title:'' });
             if (jd.data.length >= 2) {
                 const prev = jd.data[jd.data.length - 2];
-                s.prevHighLine = s.candleS.createPriceLine({ price: prev.high, color:'#22c55e', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
-                s.prevLowLine  = s.candleS.createPriceLine({ price: prev.low,  color:'#ef4444', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
+                s.prevHighLine = s.candleS.createPriceLine({ price: prev.high, color:_slvl.prevHigh.color, lineWidth:_slvl.prevHigh.width, lineStyle:_slvl.prevHigh.style, axisLabelVisible:false, title:'' });
+                s.prevLowLine  = s.candleS.createPriceLine({ price: prev.low,  color:_slvl.prevLow.color,  lineWidth:_slvl.prevLow.width,  lineStyle:_slvl.prevLow.style,  axisLabelVisible:false, title:'' });
             }
         }
     } catch(e) { console.error(`Error loading ${s.symbol}:`, e); }
@@ -1261,8 +1275,8 @@ function initFsChart() {
         borderVisible:false, wickUpColor:'#089981', wickDownColor:'#F23645',
     });
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
-    for (const {p, color, width} of EMA_CFG)
-        fsEmaS[p] = addSeries(fsChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
+    for (const {p, color, width, style} of EMA_CFG)
+        fsEmaS[p] = addSeries(fsChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5, lineStyle:style??0});
 
     fsChart.timeScale().subscribeVisibleTimeRangeChange(() => {});
     fsChart.subscribeDblClick(() => { if (fsKlineCount) fsChart.timeScale().setVisibleLogicalRange({ from: fsKlineCount - getCandlesForTF(fsTF), to: fsKlineCount + 3 }); });
@@ -1391,12 +1405,13 @@ async function loadFsData() {
         if (fsPrevLowLine)  { try { fsCandleS.removePriceLine(fsPrevLowLine);  } catch(e) {} }
         if (jd.success && jd.data && jd.data.length) {
             const today = jd.data[jd.data.length - 1];
-            fsDayHighLine  = fsCandleS.createPriceLine({ price: today.high, color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
-            fsDayLowLine   = fsCandleS.createPriceLine({ price: today.low,  color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
+            const _fslvl = getLvCfg();
+            fsDayHighLine  = fsCandleS.createPriceLine({ price: today.high, color:_fslvl.dayHigh.color,  lineWidth:_fslvl.dayHigh.width,  lineStyle:_fslvl.dayHigh.style,  axisLabelVisible:false, title:'' });
+            fsDayLowLine   = fsCandleS.createPriceLine({ price: today.low,  color:_fslvl.dayLow.color,   lineWidth:_fslvl.dayLow.width,   lineStyle:_fslvl.dayLow.style,   axisLabelVisible:false, title:'' });
             if (jd.data.length >= 2) {
                 const prev = jd.data[jd.data.length - 2];
-                fsPrevHighLine = fsCandleS.createPriceLine({ price: prev.high, color:'#22c55e', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
-                fsPrevLowLine  = fsCandleS.createPriceLine({ price: prev.low,  color:'#ef4444', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
+                fsPrevHighLine = fsCandleS.createPriceLine({ price: prev.high, color:_fslvl.prevHigh.color, lineWidth:_fslvl.prevHigh.width, lineStyle:_fslvl.prevHigh.style, axisLabelVisible:false, title:'' });
+                fsPrevLowLine  = fsCandleS.createPriceLine({ price: prev.low,  color:_fslvl.prevLow.color,  lineWidth:_fslvl.prevLow.width,  lineStyle:_fslvl.prevLow.style,  axisLabelVisible:false, title:'' });
             }
         }
     } catch(e) { console.error('FS load error:', e); }
@@ -1775,8 +1790,8 @@ function initOBChart() {
         borderVisible:false, wickUpColor:'#089981', wickDownColor:'#F23645',
     });
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
-    for (const {p, color, width} of EMA_CFG)
-        obEmaS[p] = addSeries(obChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5});
+    for (const {p, color, width, style} of EMA_CFG)
+        obEmaS[p] = addSeries(obChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5, lineStyle:style??0});
     obChart.timeScale().subscribeVisibleTimeRangeChange(() => {});
     obChart.subscribeDblClick(() => { if (obKlineCount) obChart.timeScale().setVisibleLogicalRange({ from: obKlineCount - getCandlesForTF(obTF), to: obKlineCount + 3 }); });
 }
@@ -1834,12 +1849,13 @@ async function loadOBData() {
         if (obPrevLowLine)  { try { obCandleS.removePriceLine(obPrevLowLine);  } catch(e) {} obPrevLowLine  = null; }
         if (jd.success && jd.data && jd.data.length) {
             const today = jd.data[jd.data.length - 1];
-            obDayHighLine  = obCandleS.createPriceLine({ price: today.high,  color:'#22c55e', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
-            obDayLowLine   = obCandleS.createPriceLine({ price: today.low,   color:'#ef4444', lineWidth:2, lineStyle:0, axisLabelVisible:false, title:'' });
+            const _oblvl = getLvCfg();
+            obDayHighLine  = obCandleS.createPriceLine({ price: today.high,  color:_oblvl.dayHigh.color,  lineWidth:_oblvl.dayHigh.width,  lineStyle:_oblvl.dayHigh.style,  axisLabelVisible:false, title:'' });
+            obDayLowLine   = obCandleS.createPriceLine({ price: today.low,   color:_oblvl.dayLow.color,   lineWidth:_oblvl.dayLow.width,   lineStyle:_oblvl.dayLow.style,   axisLabelVisible:false, title:'' });
             if (jd.data.length >= 2) {
                 const prev = jd.data[jd.data.length - 2];
-                obPrevHighLine = obCandleS.createPriceLine({ price: prev.high, color:'#22c55e', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
-                obPrevLowLine  = obCandleS.createPriceLine({ price: prev.low,  color:'#ef4444', lineWidth:2, lineStyle:2, axisLabelVisible:false, title:'' });
+                obPrevHighLine = obCandleS.createPriceLine({ price: prev.high, color:_oblvl.prevHigh.color, lineWidth:_oblvl.prevHigh.width, lineStyle:_oblvl.prevHigh.style, axisLabelVisible:false, title:'' });
+                obPrevLowLine  = obCandleS.createPriceLine({ price: prev.low,  color:_oblvl.prevLow.color,  lineWidth:_oblvl.prevLow.width,  lineStyle:_oblvl.prevLow.style,  axisLabelVisible:false, title:'' });
             }
         }
     } catch(e) { console.error('OB chart load error:', e); }
@@ -1920,8 +1936,9 @@ window.addEventListener('message', e => {
     const { bid, ask } = e.data;
     if (obBidLine) { try { obCandleS.removePriceLine(obBidLine); } catch(e) {} obBidLine = null; }
     if (obAskLine) { try { obCandleS.removePriceLine(obAskLine); } catch(e) {} obAskLine = null; }
-    if (bid != null) obBidLine = obCandleS.createPriceLine({ price: bid, color:'#10b981', lineWidth:2, lineStyle:1, axisLabelVisible:true, title:'' });
-    if (ask != null) obAskLine = obCandleS.createPriceLine({ price: ask, color:'#ef4444', lineWidth:2, lineStyle:1, axisLabelVisible:true, title:'' });
+    const _moblv = getLvCfg();
+    if (bid != null) obBidLine = obCandleS.createPriceLine({ price: bid, color:_moblv.obBid.color, lineWidth:_moblv.obBid.width, lineStyle:_moblv.obBid.style, axisLabelVisible:true, title:'' });
+    if (ask != null) obAskLine = obCandleS.createPriceLine({ price: ask, color:_moblv.obAsk.color, lineWidth:_moblv.obAsk.width, lineStyle:_moblv.obAsk.style, axisLabelVisible:true, title:'' });
 });
 
 document.addEventListener('keydown', e => {
