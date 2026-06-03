@@ -67,7 +67,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.5.4</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.6.65</div>
                 </div>
             </div>
         </div>
@@ -630,7 +630,7 @@
             const touchTxt  = c.ema_touch_count != null ? c.ema_touch_count : '-';
             return `<tr class="border-b border-dark-border/40 hover:bg-dark-hover/60">
                 <td class="px-4 py-2.5 text-gray-600 text-xs w-10">${i + 1}</td>
-                <td class="px-4 py-2.5 font-medium text-gray-200">${coin}</td>
+                <td class="px-4 py-2.5 font-medium text-gray-200 cursor-default" data-symbol="${c.symbol}" data-tf="30" onmouseenter="showScreenshotTip(this)" onmouseleave="hideScreenshotTip()">${coin}</td>
                 <td id="hvp-${c.symbol}" class="px-4 py-2.5 text-right text-gray-300 font-mono text-xs">$${fmtPrice(c.price)}</td>
                 <td id="hvc-${c.symbol}" class="px-4 py-2.5 text-right ${chgClass} font-medium text-xs">${chgStr}</td>
                 <td id="hvv-${c.symbol}" class="px-4 py-2.5 text-right text-gray-400 text-xs">${fmtVol(c.volume_24h)}</td>
