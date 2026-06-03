@@ -4,12 +4,23 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
 // ── Lightweight Charts ────────────────────────────────────────────────────────
 const LC = window.LightweightCharts;
 
-const EMA_CFG = [
-    { p: 5,   color: '#ef4444', width: 2   },
-    { p: 10,  color: '#fbbf24', width: 2   },
-    { p: 60,  color: '#3b82f6', width: 3   },
-    { p: 223, color: '#a855f7', width: 2.5 },
+const DEFAULT_EMA_CFG = [
+    { p: 5,   color: '#ef4444', style: 0, width: 2   },
+    { p: 10,  color: '#fbbf24', style: 0, width: 2   },
+    { p: 60,  color: '#3b82f6', style: 0, width: 3   },
+    { p: 223, color: '#a855f7', style: 0, width: 2.5 },
 ];
+const DEFAULT_LEVELS_CFG = {
+    dayHigh:  { color: '#22c55e', style: 0, width: 2 },
+    dayLow:   { color: '#ef4444', style: 0, width: 2 },
+    prevHigh: { color: '#22c55e', style: 2, width: 2 },
+    prevLow:  { color: '#ef4444', style: 2, width: 2 },
+    obBid:    { color: '#10b981', style: 0, width: 1 },
+    obAsk:    { color: '#ef4444', style: 0, width: 1 },
+};
+function getEmaCfg() { try{const s=JSON.parse(localStorage.getItem('chart_ema_cfg'));if(s&&s.length===4)return s;}catch(e){}return DEFAULT_EMA_CFG.map(x=>({...x})); }
+function getLvCfg()  { try{const s=JSON.parse(localStorage.getItem('chart_levels_cfg'));if(s)return{...DEFAULT_LEVELS_CFG,...s};}catch(e){}return{...DEFAULT_LEVELS_CFG}; }
+const EMA_CFG = getEmaCfg();
 
 const TF_OPTIONS = [
     { v: '1',   l: '1m'  },
@@ -17,7 +28,7 @@ const TF_OPTIONS = [
     { v: '30',  l: '30m' },
     { v: '60',  l: '1h'  },
     { v: '240', l: '4h'  },
-    { v: 'D',   l: '1D'  },
+    { v: 'D',   l: 'D'   },
 ];
 
 const DEFAULT_CANDLES = { '1': 120, '5': 100, '30': 80, '60': 80, '240': 60, 'D': 50 };
@@ -156,8 +167,8 @@ createApp({
                 borderVisible: false, wickUpColor: '#089981', wickDownColor: '#F23645',
             });
             const lineBase = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
-            for (const { p, color, width } of EMA_CFG)
-                emaS[p] = addSeries(obChart, 'LineSeries', { ...lineBase, color, lineWidth: width + 0.5 });
+            for (const { p, color, width, style } of EMA_CFG)
+                emaS[p] = addSeries(obChart, 'LineSeries', { ...lineBase, color, lineWidth: width + 0.5, lineStyle: style ?? 0 });
 
             obChart.subscribeDblClick(() => { if (obKlineCount) obChart.timeScale().setVisibleLogicalRange({ from: obKlineCount - (DEFAULT_CANDLES[chartTF.value] || 80), to: obKlineCount + 3 }); });
             obChart.subscribeCrosshairMove(param => {
@@ -547,8 +558,9 @@ createApp({
             const bidPrice = maxLevelDistance.value.bidPrice;
             if (obAskLine) { try { candleS.removePriceLine(obAskLine); } catch(e) {} obAskLine = null; }
             if (obBidLine) { try { candleS.removePriceLine(obBidLine); } catch(e) {} obBidLine = null; }
-            if (askPrice) obAskLine = candleS.createPriceLine({ price: askPrice, color: '#ef4444', lineWidth: 1, lineStyle: LC.LineStyle ? LC.LineStyle.Solid : 0, axisLabelVisible: false, title: '' });
-            if (bidPrice) obBidLine = candleS.createPriceLine({ price: bidPrice, color: '#10b981', lineWidth: 1, lineStyle: LC.LineStyle ? LC.LineStyle.Solid : 0, axisLabelVisible: false, title: '' });
+            const _oblv = getLvCfg();
+            if (askPrice) obAskLine = candleS.createPriceLine({ price: askPrice, color: _oblv.obAsk.color, lineWidth: _oblv.obAsk.width, lineStyle: _oblv.obAsk.style, axisLabelVisible: false, title: '' });
+            if (bidPrice) obBidLine = candleS.createPriceLine({ price: bidPrice, color: _oblv.obBid.color, lineWidth: _oblv.obBid.width, lineStyle: _oblv.obBid.style, axisLabelVisible: false, title: '' });
         };
 
         const clearObLines = () => {
