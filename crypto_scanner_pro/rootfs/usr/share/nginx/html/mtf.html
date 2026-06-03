@@ -420,7 +420,13 @@ const fsBtn = document.createElement('button');
         const cd = param.seriesData.get(candleS);
         if (cd && cd.open != null) {
           const pct = ((cd.close - cd.open) / cd.open) * 100;
-          pctEl.textContent = (pct>=0?'+':'')+pct.toFixed(2)+'%';
+          let txt = (pct>=0?'+':'')+pct.toFixed(2)+'%';
+          const _sl = slots[i];
+          if (_sl && _sl.avgVol > 0 && _sl.klinesVolMap) {
+            const _v = _sl.klinesVolMap.get(cd.time);
+            if (_v != null) txt += ' ('+Math.round(_v/_sl.avgVol*100)+'%V)';
+          }
+          pctEl.textContent = txt;
           pctEl.style.color = pct>=0 ? '#34d399' : '#f87171';
         } else {
           pctEl.textContent = ''; }
@@ -520,6 +526,9 @@ async function loadSlot(idx, dailyData) {
     s.candleS.setData(klines);
     s.klineCount = klines.length;
     s.klines = klines.slice();
+    s.klinesVolMap = new Map(klines.map(k => [k.time, k.volume]));
+    const _lastN = klines.slice(-20);
+    s.avgVol = _lastN.length > 0 ? _lastN.reduce((acc,k) => acc+(k.volume||0), 0) / _lastN.length : 0;
     s.dayPrimitive = attachDayLines(s.candleS, s.chart, klines, s.cfg.tf, s.dayPrimitive);
     s.candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
     for (const {p} of EMA_CFG) {
