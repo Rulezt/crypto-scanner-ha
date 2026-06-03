@@ -249,7 +249,7 @@
                         <div class="flex justify-between items-center"><span class="text-gray-500">30m:</span><span id="view-candles-30" class="text-gray-300">80</span></div>
                         <div class="flex justify-between items-center"><span class="text-gray-500">1h:</span><span id="view-candles-60" class="text-gray-300">80</span></div>
                         <div class="flex justify-between items-center"><span class="text-gray-500">4h:</span><span id="view-candles-240" class="text-gray-300">60</span></div>
-                        <div class="flex justify-between items-center"><span class="text-gray-500">1D:</span><span id="view-candles-D" class="text-gray-300">50</span></div>
+                        <div class="flex justify-between items-center"><span class="text-gray-500">D:</span><span id="view-candles-D" class="text-gray-300">50</span></div>
                     </div>
                 </div>
             </div>
@@ -286,7 +286,7 @@
                         <div><label class="text-xs text-gray-500 block mb-1 text-center">30m</label><input type="number" id="input-candles-30" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
                         <div><label class="text-xs text-gray-500 block mb-1 text-center">1h</label><input type="number" id="input-candles-60" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
                         <div><label class="text-xs text-gray-500 block mb-1 text-center">4h</label><input type="number" id="input-candles-240" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
-                        <div><label class="text-xs text-gray-500 block mb-1 text-center">1D</label><input type="number" id="input-candles-D" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
+                        <div><label class="text-xs text-gray-500 block mb-1 text-center">D</label><input type="number" id="input-candles-D" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
                     </div>
                     <div class="text-xs text-gray-600">Min 20 · Max 500 candele per timeframe</div>
                 </div>
@@ -352,7 +352,7 @@
                 <div><label class="text-xs text-gray-500 block mb-1">Soglia prossimità (%):</label><input type="number" step="0.1" id="ico-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"></div>
                 <div><label class="text-xs text-gray-500 block mb-1">Timeframe:</label>
                     <select id="ico-cfg-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none">
-                        <option value="D">Daily (1D)</option>
+                        <option value="D">Daily (D)</option>
                         <option value="240">4h</option>
                         <option value="60">1h</option>
                         <option value="30">30m</option>
@@ -384,7 +384,7 @@
                 <div>
                     <label class="text-xs text-gray-500 block mb-1">Timeframe (multi-selezione):</label>
                     <div id="dt-cfg-tf-group" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;background:#1E222D;border:1px solid #2B3139;border-radius:6px;">
-                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-D"   value="D"   style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">1D</span></label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-D"   value="D"   style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">D</span></label>
                         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-240" value="240" style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">4h</span></label>
                         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-60"  value="60"  style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">1h</span></label>
                         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-30"  value="30"  style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">30m</span></label>

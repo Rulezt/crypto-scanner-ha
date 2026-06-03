@@ -76,7 +76,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.6.53</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.6.54</div>
                 </div>
             </div>
         </div>
@@ -268,7 +268,7 @@
                         <div class="flex justify-between items-center"><span class="text-gray-500">30m:</span><span id="view-candles-30" class="text-gray-300">80</span></div>
                         <div class="flex justify-between items-center"><span class="text-gray-500">1h:</span><span id="view-candles-60" class="text-gray-300">80</span></div>
                         <div class="flex justify-between items-center"><span class="text-gray-500">4h:</span><span id="view-candles-240" class="text-gray-300">60</span></div>
-                        <div class="flex justify-between items-center"><span class="text-gray-500">1D:</span><span id="view-candles-D" class="text-gray-300">50</span></div>
+                        <div class="flex justify-between items-center"><span class="text-gray-500">D:</span><span id="view-candles-D" class="text-gray-300">50</span></div>
                     </div>
                 </div>
             </div>
@@ -305,7 +305,7 @@
                         <div><label class="text-xs text-gray-500 block mb-1 text-center">30m</label><input type="number" id="input-candles-30" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
                         <div><label class="text-xs text-gray-500 block mb-1 text-center">1h</label><input type="number" id="input-candles-60" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
                         <div><label class="text-xs text-gray-500 block mb-1 text-center">4h</label><input type="number" id="input-candles-240" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
-                        <div><label class="text-xs text-gray-500 block mb-1 text-center">1D</label><input type="number" id="input-candles-D" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
+                        <div><label class="text-xs text-gray-500 block mb-1 text-center">D</label><input type="number" id="input-candles-D" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
                     </div>
                     <div class="text-xs text-gray-600">Min 20 · Max 500 candele per timeframe</div>
                 </div>
@@ -929,7 +929,7 @@
           const cx = e.clientX, cy = e.clientY;
           _ttShowTimer = setTimeout(async () => {
             const tt = document.getElementById('chart-tt');
-            document.getElementById('chart-tt-sym').textContent = symbol.replace('USDT','/USDT') + '  1D';
+            document.getElementById('chart-tt-sym').textContent = symbol.replace('USDT','/USDT') + '  D';
             document.getElementById('chart-tt-change').textContent = '';
             _positionTT(cx, cy);
             tt.style.display = 'block';

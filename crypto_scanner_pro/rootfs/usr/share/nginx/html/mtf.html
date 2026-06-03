@@ -113,14 +113,14 @@ const isMobile = window.innerWidth < 640;
 
 // Desktop: 4 col × 2 row | Mobile: 2 col × 3 row
 const TF_SLOTS = isMobile ? [
-  { tf:'D',   label:'1D',  col:'1', row:'1' },
+  { tf:'D',   label:'D',   col:'1', row:'1' },
   { tf:'240', label:'4h',  col:'2', row:'1' },
   { tf:'60',  label:'1h',  col:'1', row:'2' },
   { tf:'30',  label:'30m', col:'2', row:'2' },
   { tf:'5',   label:'5m',  col:'1', row:'3' },
   { tf:'1',   label:'1m',  col:'2', row:'3' },
 ] : [
-  { tf:'D',   label:'1D',  col:'1',       row:'1' },
+  { tf:'D',   label:'D',   col:'1',       row:'1' },
   { tf:'240', label:'4h',  col:'2',       row:'1' },
   { tf:'60',  label:'1h',  col:'3',       row:'1' },
   { tf:'30',  label:'30m', col:'4',       row:'1' },
@@ -173,13 +173,13 @@ let activeAlerts = [];
 // OB fullscreen
 const OB_TFS = [
   {tf:'1',label:'1m'},{tf:'5',label:'5m'},{tf:'30',label:'30m'},
-  {tf:'60',label:'1h'},{tf:'240',label:'4h'},{tf:'D',label:'1D'},
-  {tf:'W',label:'1W'},{tf:'M',label:'1M'},
+  {tf:'60',label:'1h'},{tf:'240',label:'4h'},{tf:'D',label:'D'},
+  {tf:'W',label:'W'},{tf:'M',label:'M'},
 ];
 const FS_TFS = [
   {tf:'1',label:'1m'},{tf:'5',label:'5m'},{tf:'30',label:'30m'},
-  {tf:'60',label:'1h'},{tf:'240',label:'4h'},{tf:'D',label:'1D'},
-  {tf:'W',label:'1W'},{tf:'M',label:'1M'},
+  {tf:'60',label:'1h'},{tf:'240',label:'4h'},{tf:'D',label:'D'},
+  {tf:'W',label:'W'},{tf:'M',label:'M'},
 ];
 let obChart = null, obCandleS = null, obEmaS = {}, obLastEMA = {};
 let obTF = '30', obWS = null, obWsTimer = null;
