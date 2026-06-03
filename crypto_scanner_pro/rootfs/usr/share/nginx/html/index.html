@@ -72,7 +72,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.6.62</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.6.63</div>
                 </div>
             </div>
         </div>
@@ -341,6 +341,7 @@
         let _commSyms  = new Set();
         let _icoSyms   = new Set();
         let _coinChangeMap = {};
+        let _rawIcoData = [];
         const _CAT_ICONS = {
             gainers:   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="14" height="14" fill="currentColor" style="color:#34d399;flex-shrink:0"><path d="M63.029,42.285l-13.08-7.848c-0.175,4.299-0.787,8.26-1.494,11.562H64v-2C64,43.297,63.632,42.646,63.029,42.285z"/><path d="M46.905,52H62c1.104,0,2-0.896,2-2v-2H47.999C47.625,49.537,47.245,50.889,46.905,52z"/><path d="M14.051,34.438l-13.08,7.848C0.368,42.646,0,43.297,0,44v2h15.545C14.839,42.697,14.226,38.737,14.051,34.438z"/><path d="M0,48v2c0,1.104,0.896,2,2,2h15.095c-0.34-1.111-0.72-2.463-1.093-4H0z"/><path d="M32,64c2.06,0,4.239-2.343,4.837-6h-9.672C27.763,61.656,29.94,64,32,64z"/><path d="M33.109,0.336C32.773,0.112,32.387,0,32,0s-0.773,0.112-1.109,0.336C23.692,5.135,16,15.974,16,32c0,4.399,0.516,8.508,1.181,12h29.639C47.484,40.508,48,36.399,48,32C48,15.974,40.308,5.135,33.109,0.336zM32,30c-3.313,0-6-2.687-6-6s2.687-6,6-6s6,2.687,6,6S35.313,30,32,30z"/><circle cx="32" cy="24" r="4"/><path d="M20.143,54.742C20.447,55.502,21.183,56,22,56h20c0.817,0,1.553-0.498,1.857-1.258c0.097-0.24,1.427-3.62,2.554-8.742H17.589C18.716,51.122,20.046,54.502,20.143,54.742z"/></svg>`,
             losers:    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#f87171;flex-shrink:0"><path d="M21 17L13 9L9 13L3 7M21 17H15M21 17V11"/></svg>`,
@@ -595,6 +596,14 @@
         }
 
         // ── Market data ───────────────────────────────────────────────────────
+        function _applyIcoFilter() {
+            const _knownNonCrypto = new Set(Object.keys(INSTRUMENT_NAMES));
+            const filtered = _rawIcoData.filter(c =>
+                !_knownNonCrypto.has(c.symbol) && !_stockSyms.has(c.symbol) && !_commSyms.has(c.symbol)
+            );
+            _icoSyms = new Set(filtered.map(c => c.symbol));
+            renderICOTable('ico-tbody', filtered);
+        }
         const INSTRUMENT_NAMES = {
             'AAPLUSDT':'Apple',    'AMZNUSDT':'Amazon',     'ARMUSDT':'ARM',
             'AVGOUSDT':'Broadcom', 'BABAUSDT':'Alibaba',    'BMNRUSDT':'BMNR',
@@ -626,8 +635,8 @@
                 }
                 const icoData = await icoRes.json();
                 if (icoData.success) {
-                    _icoSyms = new Set((icoData.data || []).map(c => c.symbol));
-                    renderICOTable('ico-tbody', icoData.data || []);
+                    _rawIcoData = icoData.data || [];
+                    _applyIcoFilter();
                 }
             } catch (e) {
                 console.error('Error loading market data:', e);
@@ -751,6 +760,7 @@
                     .map(mapCoin).sort((a, b) => b.change_24h - a.change_24h);
                 renderTable('stock-tbody', stocks);
                 renderTable('commodity-tbody', comms);
+                if (_rawIcoData.length > 0) _applyIcoFilter();
             } catch(e) { console.error('Error loading stock/commodity data:', e); }
         }
 
