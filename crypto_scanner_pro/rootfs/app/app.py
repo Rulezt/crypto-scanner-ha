@@ -318,7 +318,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '4.6.63',
+        'version': '4.6.64',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -569,6 +569,8 @@ def get_new_listings():
         for item in instr_data['result']['list']:
             sym = item.get('symbol', '')
             if not sym.endswith('USDT') or item.get('status') != 'Trading':
+                continue
+            if item.get('symbolType') in ('stock', 'commodity'):
                 continue
             launch = int(item.get('launchTime', 0))
             if launch >= cutoff_ms:
