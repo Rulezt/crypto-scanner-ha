@@ -421,6 +421,32 @@ function fmtPrice(p) {
     return p.toFixed(7);
 }
 
+function getTFRemaining(tf) {
+    const nowMs = Date.now();
+    const nowSec = Math.floor(nowMs / 1000);
+    const TF_S = {'1':60,'5':300,'30':1800,'60':3600,'240':14400};
+    if (TF_S[tf]) return TF_S[tf] - (nowSec % TF_S[tf]);
+    const d = new Date(nowMs);
+    if (tf === 'D') return Math.max(0, Math.ceil((Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()+1) - nowMs) / 1000));
+    if (tf === 'W') {
+        const dow = d.getUTCDay();
+        const next = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + (dow === 0 ? 1 : 8 - dow));
+        return Math.max(0, Math.ceil((next - nowMs) / 1000));
+    }
+    if (tf === 'M') return Math.max(0, Math.ceil((Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+1, 1) - nowMs) / 1000));
+    return 0;
+}
+
+function fmtCountdown(s) {
+    if (s <= 0) return '00:00';
+    const p = n => String(n).padStart(2, '0');
+    const dd = Math.floor(s / 86400), hh = Math.floor((s % 86400) / 3600);
+    const mm = Math.floor((s % 3600) / 60), ss = s % 60;
+    if (dd > 0) return `${dd}d ${p(hh)}:${p(mm)}:${p(ss)}`;
+    if (hh > 0) return `${p(hh)}:${p(mm)}:${p(ss)}`;
+    return `${p(mm)}:${p(ss)}`;
+}
+
 function fmtVol(v) {
     if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B';
     if (v >= 1e6) return '$' + (v / 1e6).toFixed(0) + 'M';
@@ -1612,10 +1638,19 @@ function renderModeButtons() {
 }
 
 function renderTFBar() {
-    document.getElementById('tf-bar').innerHTML = TIMEFRAMES.map(tf => {
-        const cls = tf === curTF ? 'btn-tf-active' : 'btn-tf-idle';
-        return `<button onclick="switchTF('${tf}')" class="px-2 py-1 rounded text-xs font-medium transition-colors ${cls}">${TF_LABEL[tf]}</button>`;
-    }).join('');
+    document.getElementById('tf-bar').innerHTML =
+        TIMEFRAMES.map(tf => {
+            const cls = tf === curTF ? 'btn-tf-active' : 'btn-tf-idle';
+            return `<button onclick="switchTF('${tf}')" class="px-2 py-1 rounded text-xs font-medium transition-colors ${cls}">${TF_LABEL[tf]}</button>`;
+        }).join('') +
+        `<span style="margin:0 3px;color:#374151;font-size:12px;align-self:center;user-select:none;">|</span>` +
+        `<span id="tf-countdown" style="font-size:11px;font-family:monospace;color:#9CA3AF;align-self:center;min-width:48px;"></span>`;
+    updateCountdown();
+}
+
+function updateCountdown() {
+    const el = document.getElementById('tf-countdown');
+    if (el) el.textContent = fmtCountdown(getTFRemaining(curTF));
 }
 
 function setStatus(msg) { document.getElementById('status').textContent = msg; }
@@ -1759,6 +1794,8 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeChartSearch();
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openChartSearch(); }
 });
+
+setInterval(updateCountdown, 1000);
 
 // ── bootstrap ──────────────────────────────────────────────────────────────────
 async function init() {
