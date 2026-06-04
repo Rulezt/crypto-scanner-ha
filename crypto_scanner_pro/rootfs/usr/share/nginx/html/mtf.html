@@ -837,6 +837,7 @@ document.addEventListener('keydown', e => {
 let fsChart = null, fsCandleS = null, fsEmaS = {}, fsLastEMA = {};
 let fsTF = 'D', fsWS = null, fsWsTimer = null, fsKlineCount = 0;
 let fsDayHighLine = null, fsDayLowLine = null, fsPrevHighLine = null, fsPrevLowLine = null;
+let fsAthLine = null, fsAtlLine = null;
 let fsDayPrimitive = null, obDayPrimitive = null;
 let fsRangeActive = false, fsRangeP1 = null, fsRangeP2 = null, _fsRangeSub = null, _fsRangeCsSub = null;
 
@@ -872,9 +873,10 @@ async function switchFSTF(tf) {
 }
 
 function _clearFSLines() {
-    for (const ref of [fsDayHighLine, fsDayLowLine, fsPrevHighLine, fsPrevLowLine])
+    for (const ref of [fsDayHighLine, fsDayLowLine, fsPrevHighLine, fsPrevLowLine, fsAthLine, fsAtlLine])
         if (ref) try { fsCandleS.removePriceLine(ref); } catch(e) {}
     fsDayHighLine = fsDayLowLine = fsPrevHighLine = fsPrevLowLine = null;
+    fsAthLine = fsAtlLine = null;
 }
 
 async function loadFSData() {
@@ -947,7 +949,12 @@ function openFSModal(idx) {
     fsCandleS.setData([]);
     for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
     fsLastEMA = {};
-    loadFSData().then(() => connectFSWS());
+    loadFSData().then(() => {
+        connectFSWS();
+        const _fslv2 = getLvCfg();
+        if (_mtfAthVal != null && _fslv2.ath.vis?.mtf !== false) fsAthLine = fsCandleS.createPriceLine({price:_mtfAthVal, color:_fslv2.ath.color, lineWidth:_fslv2.ath.width, lineStyle:_fslv2.ath.style, axisLabelVisible:false, title:''});
+        if (_mtfAtlVal != null && _fslv2.atl.vis?.mtf !== false) fsAtlLine = fsCandleS.createPriceLine({price:_mtfAtlVal, color:_fslv2.atl.color, lineWidth:_fslv2.atl.width, lineStyle:_fslv2.atl.style, axisLabelVisible:false, title:''});
+    });
 }
 
 function closeFSModal() {
