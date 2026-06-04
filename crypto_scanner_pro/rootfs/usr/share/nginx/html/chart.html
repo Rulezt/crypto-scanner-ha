@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v4.6.82</title>
+    <title>Multi-Chart - Crypto Scanner Pro v4.6.83</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23F7931A'/%3E%3Cpath d='M67.8 44.3c.9-6.2-3.8-9.5-10.3-11.7l2.1-8.4-5.1-1.3-2 8.2c-1.4-.3-2.8-.6-4.2-1l2-8.2-5.1-1.3-2.1 8.4c-1.1-.3-2.2-.5-3.3-.8l-7-1.8-1.4 5.5s3.8.9 3.7.9c2.1.5 2.4 1.9 2.4 3l-2.4 9.7c.1 0 .3.1.5.2-.2 0-.3-.1-.5-.1l-3.4 13.6c-.3.7-.9 1.7-2.4 1.3.1.1-3.7-.9-3.7-.9l-2.5 5.9 6.6 1.6c1.2.3 2.4.6 3.6.9l-2.1 8.5 5.1 1.3 2.1-8.4c1.4.4 2.8.7 4.1 1l-2.1 8.4 5.1 1.3 2.1-8.5c8.7 1.6 15.2.9 18-6.9 2.2-6.3-.1-9.9-4.6-12.3 3.3-.8 5.8-3 6.4-7.5zm-11.5 16.1c-1.6 6.3-12.2 2.9-15.6 2l2.8-11.2c3.5.9 14.5 2.6 12.8 9.2zm1.6-16.2c-1.4 5.7-10.2 2.8-13.1 2.1l2.5-10.1c2.9.7 12.1 2 10.6 8z' fill='%23FFF'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
@@ -343,6 +343,7 @@
                         <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">Stile</th>
                         <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">Chart</th>
                         <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">MTF</th>
+                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">OB</th>
                     </tr>
                 </thead>
                 <tbody id="cfg-rows"></tbody>
@@ -382,14 +383,14 @@ const DEFAULT_EMA_CFG = [
     {p:223, color:'#a855f7', style:0, width:2.5},
 ];
 const DEFAULT_LEVELS_CFG = {
-    dayHigh:  {color:'#22c55e', style:0, width:2, vis:{chart:true, mtf:true}},
-    dayLow:   {color:'#ef4444', style:0, width:2, vis:{chart:true, mtf:true}},
-    prevHigh: {color:'#22c55e', style:2, width:2, vis:{chart:true, mtf:true}},
-    prevLow:  {color:'#ef4444', style:2, width:2, vis:{chart:true, mtf:true}},
-    obBid:    {color:'#10b981', style:1, width:1, vis:{chart:true, mtf:true}},
-    obAsk:    {color:'#ef4444', style:1, width:1, vis:{chart:true, mtf:true}},
-    ath:      {color:'#f59e0b', style:2, width:1, vis:{chart:true, mtf:true}},
-    atl:      {color:'#a855f7', style:2, width:1, vis:{chart:true, mtf:true}},
+    dayHigh:  {color:'#22c55e', style:0, width:2, vis:{chart:true, mtf:true, ob:true}},
+    dayLow:   {color:'#ef4444', style:0, width:2, vis:{chart:true, mtf:true, ob:true}},
+    prevHigh: {color:'#22c55e', style:2, width:2, vis:{chart:true, mtf:true, ob:true}},
+    prevLow:  {color:'#ef4444', style:2, width:2, vis:{chart:true, mtf:true, ob:true}},
+    obBid:    {color:'#10b981', style:1, width:1, vis:{chart:true, mtf:true, ob:true}},
+    obAsk:    {color:'#ef4444', style:1, width:1, vis:{chart:true, mtf:true, ob:true}},
+    ath:      {color:'#f59e0b', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
+    atl:      {color:'#a855f7', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
 };
 function getEmaCfg() { try{const s=JSON.parse(localStorage.getItem('chart_ema_cfg'));if(s&&s.length===4)return s;}catch(e){}return DEFAULT_EMA_CFG.map(x=>({...x})); }
 function getLvCfg() {
@@ -2335,6 +2336,7 @@ function openCfgPanel() {
             <td style="padding:6px 6px;text-align:center;"><select id="cfg-${key}-style" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${styles}</select></td>
             <td style="padding:6px 6px;text-align:center;"><input type="checkbox" id="cfg-${key}-vis-chart" ${c.vis?.chart!==false?'checked':''} style="cursor:pointer;width:14px;height:14px;accent-color:#2563eb;"></td>
             <td style="padding:6px 6px;text-align:center;"><input type="checkbox" id="cfg-${key}-vis-mtf" ${c.vis?.mtf!==false?'checked':''} style="cursor:pointer;width:14px;height:14px;accent-color:#2563eb;"></td>
+            <td style="padding:6px 6px;text-align:center;"><input type="checkbox" id="cfg-${key}-vis-ob" ${c.vis?.ob!==false?'checked':''} style="cursor:pointer;width:14px;height:14px;accent-color:#2563eb;"></td>
         </tr>`;
     }).join('');
 
@@ -2349,11 +2351,12 @@ function openCfgPanel() {
             <td style="padding:6px 6px;text-align:center;"><select id="cfg-ema-style-${e.p}" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${styles}</select></td>
             <td style="padding:6px 6px;"></td>
             <td style="padding:6px 6px;"></td>
+            <td style="padding:6px 6px;"></td>
         </tr>`;
     }).join('');
 
     rows += _sectionHdr('Candele al caricamento');
-    rows += `<tr><td colspan="6" style="padding:6px 6px;">
+    rows += `<tr><td colspan="7" style="padding:6px 6px;">
         <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;">
         ${TF_CANDLES_META.map(tf => `<div style="text-align:center;"><div style="font-size:10px;color:#6B7280;margin-bottom:2px;">${tf==='60'?'1h':tf==='240'?'4h':tf+'m'.replace('Dm','D')}</div><input type="number" id="cfg-candles-${tf}" min="20" max="500" value="${candlesCfg[tf]||defCandles[tf]}" style="width:100%;background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:3px;text-align:center;"></div>`).join('')}
         </div>
@@ -2377,6 +2380,7 @@ function saveCfgPanel() {
             vis: {
                 chart: document.getElementById(`cfg-${key}-vis-chart`).checked,
                 mtf:   document.getElementById(`cfg-${key}-vis-mtf`).checked,
+                ob:    document.getElementById(`cfg-${key}-vis-ob`).checked,
             },
         };
     }

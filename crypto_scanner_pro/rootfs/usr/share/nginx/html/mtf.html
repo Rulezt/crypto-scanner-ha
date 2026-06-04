@@ -156,14 +156,14 @@ const DEFAULT_EMA_CFG = [
   {p:223, color:'#a855f7', style:0, width:2.5},
 ];
 const DEFAULT_LEVELS_CFG = {
-  dayHigh:  {color:'#22c55e', style:0, width:2, vis:{chart:true, mtf:true}},
-  dayLow:   {color:'#ef4444', style:0, width:2, vis:{chart:true, mtf:true}},
-  prevHigh: {color:'#22c55e', style:2, width:2, vis:{chart:true, mtf:true}},
-  prevLow:  {color:'#ef4444', style:2, width:2, vis:{chart:true, mtf:true}},
-  obBid:    {color:'#10b981', style:1, width:1, vis:{chart:true, mtf:true}},
-  obAsk:    {color:'#ef4444', style:1, width:1, vis:{chart:true, mtf:true}},
-  ath:      {color:'#f59e0b', style:2, width:1, vis:{chart:true, mtf:true}},
-  atl:      {color:'#a855f7', style:2, width:1, vis:{chart:true, mtf:true}},
+  dayHigh:  {color:'#22c55e', style:0, width:2, vis:{chart:true, mtf:true, ob:true}},
+  dayLow:   {color:'#ef4444', style:0, width:2, vis:{chart:true, mtf:true, ob:true}},
+  prevHigh: {color:'#22c55e', style:2, width:2, vis:{chart:true, mtf:true, ob:true}},
+  prevLow:  {color:'#ef4444', style:2, width:2, vis:{chart:true, mtf:true, ob:true}},
+  obBid:    {color:'#10b981', style:1, width:1, vis:{chart:true, mtf:true, ob:true}},
+  obAsk:    {color:'#ef4444', style:1, width:1, vis:{chart:true, mtf:true, ob:true}},
+  ath:      {color:'#f59e0b', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
+  atl:      {color:'#a855f7', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
 };
 function getEmaCfg() { try{const s=JSON.parse(localStorage.getItem('chart_ema_cfg'));if(s&&s.length===4)return s;}catch(e){}return DEFAULT_EMA_CFG.map(x=>({...x})); }
 function getLvCfg() {

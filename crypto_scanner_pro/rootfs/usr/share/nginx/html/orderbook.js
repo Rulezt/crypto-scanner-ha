@@ -11,15 +11,31 @@ const DEFAULT_EMA_CFG = [
     { p: 223, color: '#a855f7', style: 0, width: 2.5 },
 ];
 const DEFAULT_LEVELS_CFG = {
-    dayHigh:  { color: '#22c55e', style: 0, width: 2 },
-    dayLow:   { color: '#ef4444', style: 0, width: 2 },
-    prevHigh: { color: '#22c55e', style: 2, width: 2 },
-    prevLow:  { color: '#ef4444', style: 2, width: 2 },
-    obBid:    { color: '#10b981', style: 0, width: 1 },
-    obAsk:    { color: '#ef4444', style: 0, width: 1 },
+    dayHigh:  { color: '#22c55e', style: 0, width: 2, vis:{chart:true, mtf:true, ob:true} },
+    dayLow:   { color: '#ef4444', style: 0, width: 2, vis:{chart:true, mtf:true, ob:true} },
+    prevHigh: { color: '#22c55e', style: 2, width: 2, vis:{chart:true, mtf:true, ob:true} },
+    prevLow:  { color: '#ef4444', style: 2, width: 2, vis:{chart:true, mtf:true, ob:true} },
+    obBid:    { color: '#10b981', style: 0, width: 1, vis:{chart:true, mtf:true, ob:true} },
+    obAsk:    { color: '#ef4444', style: 0, width: 1, vis:{chart:true, mtf:true, ob:true} },
+    ath:      { color: '#f59e0b', style: 2, width: 1, vis:{chart:true, mtf:true, ob:false} },
+    atl:      { color: '#a855f7', style: 2, width: 1, vis:{chart:true, mtf:true, ob:false} },
 };
 function getEmaCfg() { try{const s=JSON.parse(localStorage.getItem('chart_ema_cfg'));if(s&&s.length===4)return s;}catch(e){}return DEFAULT_EMA_CFG.map(x=>({...x})); }
-function getLvCfg()  { try{const s=JSON.parse(localStorage.getItem('chart_levels_cfg'));if(s)return{...DEFAULT_LEVELS_CFG,...s};}catch(e){}return{...DEFAULT_LEVELS_CFG}; }
+function getLvCfg() {
+    try {
+        const s = JSON.parse(localStorage.getItem('chart_levels_cfg'));
+        if (s) {
+            const out = {};
+            for (const k of Object.keys(DEFAULT_LEVELS_CFG)) {
+                out[k] = s[k]
+                    ? {...DEFAULT_LEVELS_CFG[k], ...s[k], vis:{...DEFAULT_LEVELS_CFG[k].vis, ...(s[k].vis||{})}}
+                    : {...DEFAULT_LEVELS_CFG[k]};
+            }
+            return out;
+        }
+    } catch(e) {}
+    return Object.fromEntries(Object.entries(DEFAULT_LEVELS_CFG).map(([k,v])=>[k,{...v,vis:{...v.vis}}]));
+}
 const EMA_CFG = getEmaCfg();
 
 const TF_OPTIONS = [
@@ -559,8 +575,8 @@ createApp({
             if (obAskLine) { try { candleS.removePriceLine(obAskLine); } catch(e) {} obAskLine = null; }
             if (obBidLine) { try { candleS.removePriceLine(obBidLine); } catch(e) {} obBidLine = null; }
             const _oblv = getLvCfg();
-            if (askPrice) obAskLine = candleS.createPriceLine({ price: askPrice, color: _oblv.obAsk.color, lineWidth: _oblv.obAsk.width, lineStyle: _oblv.obAsk.style, axisLabelVisible: false, title: '' });
-            if (bidPrice) obBidLine = candleS.createPriceLine({ price: bidPrice, color: _oblv.obBid.color, lineWidth: _oblv.obBid.width, lineStyle: _oblv.obBid.style, axisLabelVisible: false, title: '' });
+            if (askPrice && _oblv.obAsk.vis?.ob !== false) obAskLine = candleS.createPriceLine({ price: askPrice, color: _oblv.obAsk.color, lineWidth: _oblv.obAsk.width, lineStyle: _oblv.obAsk.style, axisLabelVisible: false, title: '' });
+            if (bidPrice && _oblv.obBid.vis?.ob !== false) obBidLine = candleS.createPriceLine({ price: bidPrice, color: _oblv.obBid.color, lineWidth: _oblv.obBid.width, lineStyle: _oblv.obBid.style, axisLabelVisible: false, title: '' });
         };
 
         const clearObLines = () => {
