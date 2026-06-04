@@ -145,10 +145,11 @@ class EMAScanner:
 
     # ── daily touch count ─────────────────────────────────────────────────────
 
-    @staticmethod
-    def _count_ema_touches_today(klines):
-        """Count closed 30m candles since midnight UTC where low <= EMA60 <= high.
+    def _count_ema_touches_today(self, klines):
+        """Count closed 30m candles since midnight UTC where close >= EMA60
+        and distance < threshold (same criterion as the scanner trigger).
         Excludes the current live candle (last entry)."""
+        import calendar
         from datetime import datetime
         period = 60
         past = klines[:-1]   # only closed candles
@@ -163,7 +164,7 @@ class EMAScanner:
             ema = p * k_mult + ema * (1.0 - k_mult)
             series.append(ema)
         now = datetime.utcnow()
-        midnight_ts = int(datetime(now.year, now.month, now.day).timestamp())
+        midnight_ts = calendar.timegm((now.year, now.month, now.day, 0, 0, 0, 0, 0, 0))
         count = 0
         for i, kl in enumerate(past):
             if kl['time'] < midnight_ts:
@@ -171,7 +172,7 @@ class EMAScanner:
             ev = series[i]
             if ev is None:
                 continue
-            if kl['low'] <= ev <= kl['high']:
+            if kl['close'] >= ev and abs((kl['close'] - ev) / ev * 100) < self.ema_touch_threshold:
                 count += 1
         return count
 
