@@ -123,7 +123,14 @@ createApp({
         let hoverPriceLine = null;
         let obAskLine = null;
         let obBidLine = null;
+        let dayHighLine = null, dayLowLine = null, prevHighLine = null, prevLowLine = null;
         const showObLines = ref(false);
+
+        const _clearDayLines = () => {
+            for (const ref of [dayHighLine, dayLowLine, prevHighLine, prevLowLine])
+                if (ref && candleS) try { candleS.removePriceLine(ref); } catch(e) {}
+            dayHighLine = dayLowLine = prevHighLine = prevLowLine = null;
+        };
 
         // ── book state ────────────────────────────────────────────────────────
         const displayLevels  = ref(20);
@@ -232,6 +239,24 @@ createApp({
                 const n = DEFAULT_CANDLES[tf] || 80;
                 obChart.timeScale().setVisibleLogicalRange({ from: klines.length - n, to: klines.length + 3 });
 
+                // Day / Prev H/L lines
+                _clearDayLines();
+                try {
+                    const rd = await fetch(`api/klines?symbol=${symbol.value}&interval=D`);
+                    const jd = await rd.json();
+                    if (jd.success && jd.data && jd.data.length) {
+                        const lv = getLvCfg();
+                        const today = jd.data[jd.data.length - 1];
+                        if (lv.dayHigh.vis?.ob !== false) dayHighLine  = candleS.createPriceLine({price:today.high, color:lv.dayHigh.color,  lineWidth:lv.dayHigh.width,  lineStyle:lv.dayHigh.style,  axisLabelVisible:false, title:''});
+                        if (lv.dayLow.vis?.ob  !== false) dayLowLine   = candleS.createPriceLine({price:today.low,  color:lv.dayLow.color,   lineWidth:lv.dayLow.width,   lineStyle:lv.dayLow.style,   axisLabelVisible:false, title:''});
+                        if (jd.data.length >= 2) {
+                            const prev = jd.data[jd.data.length - 2];
+                            if (lv.prevHigh.vis?.ob !== false) prevHighLine = candleS.createPriceLine({price:prev.high, color:lv.prevHigh.color, lineWidth:lv.prevHigh.width, lineStyle:lv.prevHigh.style, axisLabelVisible:false, title:''});
+                            if (lv.prevLow.vis?.ob  !== false) prevLowLine  = candleS.createPriceLine({price:prev.low,  color:lv.prevLow.color,  lineWidth:lv.prevLow.width,  lineStyle:lv.prevLow.style,  axisLabelVisible:false, title:''});
+                        }
+                    }
+                } catch(e) {}
+
                 startChartPolling(tf);
             } catch (e) { console.error('Chart load error:', e); }
         };
@@ -283,6 +308,7 @@ createApp({
             if (tf === chartTF.value || !candleS) return;
             chartTF.value = tf;
             stopChartPolling();
+            _clearDayLines();
             candleS.setData([]);
             for (const { p } of EMA_CFG) { emaS[p].setData([]); lastEMA[p] = null; }
             ohlc.value = { o: '', h: '', l: '', c: '', pct: '', color: '#9ca3af' };
@@ -598,6 +624,7 @@ createApp({
             if (bookWS)        { bookWS.close(); bookWS = null; }
             if (reconnectTimer)  clearTimeout(reconnectTimer);
             stopChartPolling();
+            _clearDayLines();
             clearObLines();
             asksMap.clear();
             bidsMap.clear();
