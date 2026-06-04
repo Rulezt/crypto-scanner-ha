@@ -248,24 +248,8 @@
                     <div class="flex justify-between items-center"><span class="text-gray-500">Fuso orario:</span><span id="view-utc-offset" class="text-gray-300">UTC+2</span></div>
                     <div class="flex justify-between items-center"><span class="text-gray-500">Orario attivo:</span><span id="view-schedule" class="text-gray-300">Sempre</span></div>
                 </div>
-                <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                    <div class="font-medium text-gray-400 mb-2">📊 Candele al caricamento</div>
-                    <div class="grid grid-cols-3 gap-x-4 gap-y-1">
-                        <div class="flex justify-between items-center"><span class="text-gray-500">1m:</span><span id="view-candles-1" class="text-gray-300">100</span></div>
-                        <div class="flex justify-between items-center"><span class="text-gray-500">5m:</span><span id="view-candles-5" class="text-gray-300">100</span></div>
-                        <div class="flex justify-between items-center"><span class="text-gray-500">30m:</span><span id="view-candles-30" class="text-gray-300">80</span></div>
-                        <div class="flex justify-between items-center"><span class="text-gray-500">1h:</span><span id="view-candles-60" class="text-gray-300">80</span></div>
-                        <div class="flex justify-between items-center"><span class="text-gray-500">4h:</span><span id="view-candles-240" class="text-gray-300">60</span></div>
-                        <div class="flex justify-between items-center"><span class="text-gray-500">D:</span><span id="view-candles-D" class="text-gray-300">50</span></div>
-                    </div>
-                </div>
-                <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                    <div class="font-medium text-gray-400 mb-2">📈 Stili EMA</div>
-                    <div id="view-ema-cfg" class="grid grid-cols-2 gap-x-4 gap-y-1"></div>
-                </div>
-                <div class="bg-dark-hover/50 rounded p-3 space-y-2">
-                    <div class="font-medium text-gray-400 mb-2">📏 Stili Livelli</div>
-                    <div id="view-levels-cfg" class="space-y-1"></div>
+                <div class="bg-dark-hover/50 rounded p-3">
+                    <div class="text-xs text-gray-500">Impostazioni grafici (EMA, Livelli, Candele) → <a href="chart" class="text-blue-400 hover:text-blue-300">⚙ su chart.html</a></div>
                 </div>
             </div>
             <!-- Edit Mode -->
@@ -292,88 +276,6 @@
                         <div><label class="text-xs text-gray-500 block mb-1">Fine:</label><input type="time" id="input-schedule-end" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none"></div>
                     </div>
                     <div class="text-xs text-gray-600">Fuori dall'orario i scanner saltano la scansione. Vuoti = attivi 24h.</div>
-                </div>
-                <div class="space-y-3">
-                    <div class="font-medium text-gray-400 text-sm">📊 Candele al caricamento</div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <div><label class="text-xs text-gray-500 block mb-1 text-center">1m</label><input type="number" id="input-candles-1" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
-                        <div><label class="text-xs text-gray-500 block mb-1 text-center">5m</label><input type="number" id="input-candles-5" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
-                        <div><label class="text-xs text-gray-500 block mb-1 text-center">30m</label><input type="number" id="input-candles-30" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
-                        <div><label class="text-xs text-gray-500 block mb-1 text-center">1h</label><input type="number" id="input-candles-60" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
-                        <div><label class="text-xs text-gray-500 block mb-1 text-center">4h</label><input type="number" id="input-candles-240" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
-                        <div><label class="text-xs text-gray-500 block mb-1 text-center">D</label><input type="number" id="input-candles-D" min="20" max="500" class="w-full px-2 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none text-center"></div>
-                    </div>
-                    <div class="text-xs text-gray-600">Min 20 · Max 500 candele per timeframe</div>
-                </div>
-                <div class="space-y-3">
-                    <div class="font-medium text-gray-400 text-sm">📈 EMA <span class="font-normal text-gray-600 text-xs">colore · stile · spessore</span></div>
-                    <div class="space-y-2">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-400 w-14 flex-shrink-0">EMA 5</span>
-                            <input type="color" id="ema-color-5" class="w-8 h-7 rounded cursor-pointer border-0 p-0 bg-transparent flex-shrink-0">
-                            <select id="ema-style-5" class="flex-1 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none"><option value="0">Solid</option><option value="2">Dashed</option><option value="1">Dotted</option><option value="3">Large Dashed</option><option value="4">Sparse</option></select>
-                            <input type="number" id="ema-width-5" min="0.5" max="5" step="0.5" class="w-14 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none text-center">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-400 w-14 flex-shrink-0">EMA 10</span>
-                            <input type="color" id="ema-color-10" class="w-8 h-7 rounded cursor-pointer border-0 p-0 bg-transparent flex-shrink-0">
-                            <select id="ema-style-10" class="flex-1 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none"><option value="0">Solid</option><option value="2">Dashed</option><option value="1">Dotted</option><option value="3">Large Dashed</option><option value="4">Sparse</option></select>
-                            <input type="number" id="ema-width-10" min="0.5" max="5" step="0.5" class="w-14 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none text-center">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-400 w-14 flex-shrink-0">EMA 60</span>
-                            <input type="color" id="ema-color-60" class="w-8 h-7 rounded cursor-pointer border-0 p-0 bg-transparent flex-shrink-0">
-                            <select id="ema-style-60" class="flex-1 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none"><option value="0">Solid</option><option value="2">Dashed</option><option value="1">Dotted</option><option value="3">Large Dashed</option><option value="4">Sparse</option></select>
-                            <input type="number" id="ema-width-60" min="0.5" max="5" step="0.5" class="w-14 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none text-center">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-400 w-14 flex-shrink-0">EMA 223</span>
-                            <input type="color" id="ema-color-223" class="w-8 h-7 rounded cursor-pointer border-0 p-0 bg-transparent flex-shrink-0">
-                            <select id="ema-style-223" class="flex-1 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none"><option value="0">Solid</option><option value="2">Dashed</option><option value="1">Dotted</option><option value="3">Large Dashed</option><option value="4">Sparse</option></select>
-                            <input type="number" id="ema-width-223" min="0.5" max="5" step="0.5" class="w-14 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none text-center">
-                        </div>
-                    </div>
-                </div>
-                <div class="space-y-3">
-                    <div class="font-medium text-gray-400 text-sm">📏 Livelli <span class="font-normal text-gray-600 text-xs">colore · stile · spessore</span></div>
-                    <div class="space-y-2">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-400 w-20 flex-shrink-0">Max Giorno</span>
-                            <input type="color" id="lvl-color-dayHigh" class="w-8 h-7 rounded cursor-pointer border-0 p-0 bg-transparent flex-shrink-0">
-                            <select id="lvl-style-dayHigh" class="flex-1 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none"><option value="0">Solid</option><option value="2">Dashed</option><option value="1">Dotted</option><option value="3">Large Dashed</option><option value="4">Sparse</option></select>
-                            <input type="number" id="lvl-width-dayHigh" min="1" max="5" step="1" class="w-14 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none text-center">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-400 w-20 flex-shrink-0">Min Giorno</span>
-                            <input type="color" id="lvl-color-dayLow" class="w-8 h-7 rounded cursor-pointer border-0 p-0 bg-transparent flex-shrink-0">
-                            <select id="lvl-style-dayLow" class="flex-1 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none"><option value="0">Solid</option><option value="2">Dashed</option><option value="1">Dotted</option><option value="3">Large Dashed</option><option value="4">Sparse</option></select>
-                            <input type="number" id="lvl-width-dayLow" min="1" max="5" step="1" class="w-14 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none text-center">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-400 w-20 flex-shrink-0">Max Prec.</span>
-                            <input type="color" id="lvl-color-prevHigh" class="w-8 h-7 rounded cursor-pointer border-0 p-0 bg-transparent flex-shrink-0">
-                            <select id="lvl-style-prevHigh" class="flex-1 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none"><option value="0">Solid</option><option value="2">Dashed</option><option value="1">Dotted</option><option value="3">Large Dashed</option><option value="4">Sparse</option></select>
-                            <input type="number" id="lvl-width-prevHigh" min="1" max="5" step="1" class="w-14 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none text-center">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-400 w-20 flex-shrink-0">Min Prec.</span>
-                            <input type="color" id="lvl-color-prevLow" class="w-8 h-7 rounded cursor-pointer border-0 p-0 bg-transparent flex-shrink-0">
-                            <select id="lvl-style-prevLow" class="flex-1 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none"><option value="0">Solid</option><option value="2">Dashed</option><option value="1">Dotted</option><option value="3">Large Dashed</option><option value="4">Sparse</option></select>
-                            <input type="number" id="lvl-width-prevLow" min="1" max="5" step="1" class="w-14 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none text-center">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-400 w-20 flex-shrink-0">OB Bid</span>
-                            <input type="color" id="lvl-color-obBid" class="w-8 h-7 rounded cursor-pointer border-0 p-0 bg-transparent flex-shrink-0">
-                            <select id="lvl-style-obBid" class="flex-1 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none"><option value="0">Solid</option><option value="2">Dashed</option><option value="1">Dotted</option><option value="3">Large Dashed</option><option value="4">Sparse</option></select>
-                            <input type="number" id="lvl-width-obBid" min="1" max="5" step="1" class="w-14 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none text-center">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-400 w-20 flex-shrink-0">OB Ask</span>
-                            <input type="color" id="lvl-color-obAsk" class="w-8 h-7 rounded cursor-pointer border-0 p-0 bg-transparent flex-shrink-0">
-                            <select id="lvl-style-obAsk" class="flex-1 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none"><option value="0">Solid</option><option value="2">Dashed</option><option value="1">Dotted</option><option value="3">Large Dashed</option><option value="4">Sparse</option></select>
-                            <input type="number" id="lvl-width-obAsk" min="1" max="5" step="1" class="w-14 px-2 py-1.5 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 focus:outline-none text-center">
-                        </div>
-                    </div>
                 </div>
                 <div class="flex gap-2 pt-4">
                     <button type="button" onclick="saveConfiguration()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
@@ -804,22 +706,6 @@
                 const sEnd   = currentConfig.general.schedule_end   || '';
                 document.getElementById('view-schedule').textContent = (sStart && sEnd) ? sStart + ' – ' + sEnd : 'Sempre';
             }
-            const _defC = {'1':100,'5':100,'30':80,'60':80,'240':60,'D':50};
-            const _storedC = JSON.parse(localStorage.getItem('chart_candles_per_tf') || 'null') || _defC;
-            ['1','5','30','60','240','D'].forEach(tf => {
-                const el = document.getElementById('view-candles-' + tf);
-                if (el) el.textContent = _storedC[tf] || _defC[tf];
-            });
-            const _emaStyleNames = {0:'Solid',1:'Dotted',2:'Dashed',3:'Large Dashed',4:'Sparse'};
-            const _defEmaV = [{p:5,color:'#ef4444',style:0,width:2},{p:10,color:'#fbbf24',style:0,width:2},{p:60,color:'#3b82f6',style:0,width:3},{p:223,color:'#a855f7',style:0,width:2.5}];
-            const _storedEma = (()=>{ try{const s=JSON.parse(localStorage.getItem('chart_ema_cfg'));if(s&&s.length===4)return s;}catch(e){}return _defEmaV; })();
-            const _emaViewEl = document.getElementById('view-ema-cfg');
-            if (_emaViewEl) _emaViewEl.innerHTML = _storedEma.map(e=>`<div class="flex items-center gap-1.5"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${e.color};flex-shrink:0;"></span><span class="text-gray-500">EMA ${e.p}</span></div><div class="text-gray-400 text-right">${_emaStyleNames[e.style]??'Solid'} ${e.width}px</div>`).join('');
-            const _defLvlV = {dayHigh:{color:'#22c55e',style:0,width:2},dayLow:{color:'#ef4444',style:0,width:2},prevHigh:{color:'#22c55e',style:2,width:2},prevLow:{color:'#ef4444',style:2,width:2},obBid:{color:'#10b981',style:1,width:1},obAsk:{color:'#ef4444',style:1,width:1}};
-            const _storedLvl = (()=>{ try{const s=JSON.parse(localStorage.getItem('chart_levels_cfg'));if(s)return{..._defLvlV,...s};}catch(e){}return _defLvlV; })();
-            const _lvlLabels = {dayHigh:'Max Giorno',dayLow:'Min Giorno',prevHigh:'Max Prec.',prevLow:'Min Prec.',obBid:'OB Bid',obAsk:'OB Ask'};
-            const _lvlViewEl = document.getElementById('view-levels-cfg');
-            if (_lvlViewEl) _lvlViewEl.innerHTML = Object.entries(_lvlLabels).map(([k,label])=>`<div class="flex justify-between items-center"><span class="flex items-center gap-1.5"><span style="width:10px;height:10px;border-radius:2px;background:${_storedLvl[k].color};display:inline-block;flex-shrink:0;"></span><span class="text-gray-500">${label}</span></span><span class="text-gray-400">${_emaStyleNames[_storedLvl[k].style]??'Solid'} ${_storedLvl[k].width}px</span></div>`).join('');
         }
 
         function openConfigModal() {
@@ -866,27 +752,6 @@
                 document.getElementById('input-schedule-start').value = currentConfig.general.schedule_start || '';
                 document.getElementById('input-schedule-end').value   = currentConfig.general.schedule_end || '';
             }
-            const _defC = {'1':100,'5':100,'30':80,'60':80,'240':60,'D':50};
-            const _storedC = JSON.parse(localStorage.getItem('chart_candles_per_tf') || 'null') || _defC;
-            ['1','5','30','60','240','D'].forEach(tf => {
-                const el = document.getElementById('input-candles-' + tf);
-                if (el) el.value = _storedC[tf] || _defC[tf];
-            });
-            const _defEmaF = [{p:5,color:'#ef4444',style:0,width:2},{p:10,color:'#fbbf24',style:0,width:2},{p:60,color:'#3b82f6',style:0,width:3},{p:223,color:'#a855f7',style:0,width:2.5}];
-            const _storedEmaF = (()=>{ try{const s=JSON.parse(localStorage.getItem('chart_ema_cfg'));if(s&&s.length===4)return s;}catch(e){}return _defEmaF; })();
-            _storedEmaF.forEach(e => {
-                const ce=document.getElementById('ema-color-'+e.p); if(ce) ce.value=e.color;
-                const se=document.getElementById('ema-style-'+e.p); if(se) se.value=String(e.style??0);
-                const we=document.getElementById('ema-width-'+e.p); if(we) we.value=e.width;
-            });
-            const _defLvlF = {dayHigh:{color:'#22c55e',style:0,width:2},dayLow:{color:'#ef4444',style:0,width:2},prevHigh:{color:'#22c55e',style:2,width:2},prevLow:{color:'#ef4444',style:2,width:2},obBid:{color:'#10b981',style:1,width:1},obAsk:{color:'#ef4444',style:1,width:1}};
-            const _storedLvlF = (()=>{ try{const s=JSON.parse(localStorage.getItem('chart_levels_cfg'));if(s)return{..._defLvlF,...s};}catch(e){}return _defLvlF; })();
-            Object.keys(_defLvlF).forEach(k => {
-                const lk=_storedLvlF[k];
-                const cl=document.getElementById('lvl-color-'+k); if(cl) cl.value=lk.color;
-                const sl=document.getElementById('lvl-style-'+k); if(sl) sl.value=String(lk.style??0);
-                const wl=document.getElementById('lvl-width-'+k); if(wl) wl.value=lk.width;
-            });
         }
 
         async function saveConfiguration() {
@@ -924,20 +789,6 @@
                     statusEl.className = 'p-3 rounded text-sm bg-emerald-500/20 text-emerald-300';
                     statusEl.textContent = '✅ Configurazione salvata!';
                     currentConfig = newConfig;
-                    const _defC = {'1':100,'5':100,'30':80,'60':80,'240':60,'D':50};
-                    const _candlesData = {};
-                    ['1','5','30','60','240','D'].forEach(tf => {
-                        const v = parseInt(document.getElementById('input-candles-' + tf)?.value);
-                        _candlesData[tf] = (v >= 20 && v <= 500) ? v : _defC[tf];
-                    });
-                    localStorage.setItem('chart_candles_per_tf', JSON.stringify(_candlesData));
-                    const _defEmaS=[{p:5,color:'#ef4444',style:0,width:2},{p:10,color:'#fbbf24',style:0,width:2},{p:60,color:'#3b82f6',style:0,width:3},{p:223,color:'#a855f7',style:0,width:2.5}];
-                    const _emaSave=_defEmaS.map(e=>({p:e.p,color:document.getElementById('ema-color-'+e.p)?.value||e.color,style:parseInt(document.getElementById('ema-style-'+e.p)?.value??e.style),width:parseFloat(document.getElementById('ema-width-'+e.p)?.value||e.width)}));
-                    localStorage.setItem('chart_ema_cfg',JSON.stringify(_emaSave));
-                    const _defLvlS={dayHigh:{color:'#22c55e',style:0,width:2},dayLow:{color:'#ef4444',style:0,width:2},prevHigh:{color:'#22c55e',style:2,width:2},prevLow:{color:'#ef4444',style:2,width:2},obBid:{color:'#10b981',style:1,width:1},obAsk:{color:'#ef4444',style:1,width:1}};
-                    const _lvlSave={};
-                    Object.keys(_defLvlS).forEach(k=>{_lvlSave[k]={color:document.getElementById('lvl-color-'+k)?.value||_defLvlS[k].color,style:parseInt(document.getElementById('lvl-style-'+k)?.value??_defLvlS[k].style),width:parseFloat(document.getElementById('lvl-width-'+k)?.value||_defLvlS[k].width)};});
-                    localStorage.setItem('chart_levels_cfg',JSON.stringify(_lvlSave));
                     updateDashboardInfo();
                     updateBotStatus();
                     setTimeout(() => { closeConfigModal(); statusEl.classList.add('hidden'); }, 2000);

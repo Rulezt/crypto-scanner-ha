@@ -2284,21 +2284,53 @@ const LEVEL_META = [
     {key:'obBid',    label:'OB Bid'},
     {key:'obAsk',    label:'OB Ask'},
 ];
+const EMA_META = [{p:5,defColor:'#ef4444'},{p:10,defColor:'#fbbf24'},{p:60,defColor:'#3b82f6'},{p:223,defColor:'#a855f7'}];
+const TF_CANDLES_META = ['1','5','30','60','240','D'];
 const STYLE_OPTS = [{v:0,l:'Continua'},{v:1,l:'Punteggiata'},{v:2,l:'Tratteggiata'},{v:3,l:'Tratto lungo'},{v:4,l:'Punti radi'}];
+
+function _sectionHdr(label) {
+    return `<tr><td colspan="4" style="padding:10px 6px 4px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #2A2E39;">${label}</td></tr>`;
+}
 
 function openCfgPanel() {
     const lv = getLvCfg();
-    document.getElementById('cfg-rows').innerHTML = LEVEL_META.map(({key, label}) => {
+    const emaCfg = getEmaCfg();
+    const candlesCfg = JSON.parse(localStorage.getItem('chart_candles_per_tf') || 'null') || {};
+    const defCandles = {'1':100,'5':100,'30':80,'60':80,'240':60,'D':50};
+
+    let rows = _sectionHdr('Livelli Prezzo');
+    rows += LEVEL_META.map(({key, label}) => {
         const c = lv[key] || DEFAULT_LEVELS_CFG[key];
         const widths = [1,2,3].map(w => `<option value="${w}"${c.width==w?' selected':''}>${w}px</option>`).join('');
         const styles = STYLE_OPTS.map(({v,l}) => `<option value="${v}"${c.style==v?' selected':''}>${l}</option>`).join('');
         return `<tr style="border-bottom:1px solid #1a1e24;">
-            <td style="padding:7px 6px;color:#D1D5DB;white-space:nowrap;">${label}</td>
-            <td style="padding:7px 6px;text-align:center;"><input type="color" id="cfg-${key}-color" value="${c.color}" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0;"></td>
-            <td style="padding:7px 6px;text-align:center;"><select id="cfg-${key}-width" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${widths}</select></td>
-            <td style="padding:7px 6px;text-align:center;"><select id="cfg-${key}-style" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${styles}</select></td>
+            <td style="padding:6px 6px;color:#D1D5DB;white-space:nowrap;">${label}</td>
+            <td style="padding:6px 6px;text-align:center;"><input type="color" id="cfg-${key}-color" value="${c.color}" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0;"></td>
+            <td style="padding:6px 6px;text-align:center;"><select id="cfg-${key}-width" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${widths}</select></td>
+            <td style="padding:6px 6px;text-align:center;"><select id="cfg-${key}-style" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${styles}</select></td>
         </tr>`;
     }).join('');
+
+    rows += _sectionHdr('EMA');
+    rows += emaCfg.map(e => {
+        const widths = [1,1.5,2,2.5,3,3.5,4].map(w => `<option value="${w}"${e.width==w?' selected':''}>${w}px</option>`).join('');
+        const styles = STYLE_OPTS.map(({v,l}) => `<option value="${v}"${e.style==v?' selected':''}>${l}</option>`).join('');
+        return `<tr style="border-bottom:1px solid #1a1e24;">
+            <td style="padding:6px 6px;color:#D1D5DB;">EMA ${e.p}</td>
+            <td style="padding:6px 6px;text-align:center;"><input type="color" id="cfg-ema-color-${e.p}" value="${e.color}" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0;"></td>
+            <td style="padding:6px 6px;text-align:center;"><select id="cfg-ema-width-${e.p}" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${widths}</select></td>
+            <td style="padding:6px 6px;text-align:center;"><select id="cfg-ema-style-${e.p}" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${styles}</select></td>
+        </tr>`;
+    }).join('');
+
+    rows += _sectionHdr('Candele al caricamento');
+    rows += `<tr><td colspan="4" style="padding:6px 6px;">
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;">
+        ${TF_CANDLES_META.map(tf => `<div style="text-align:center;"><div style="font-size:10px;color:#6B7280;margin-bottom:2px;">${tf==='60'?'1h':tf==='240'?'4h':tf+'m'.replace('Dm','D')}</div><input type="number" id="cfg-candles-${tf}" min="20" max="500" value="${candlesCfg[tf]||defCandles[tf]}" style="width:100%;background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:3px;text-align:center;"></div>`).join('')}
+        </div>
+    </td></tr>`;
+
+    document.getElementById('cfg-rows').innerHTML = rows;
     document.getElementById('cfg-panel').style.display = 'block';
 }
 
@@ -2306,27 +2338,55 @@ function closeCfgPanel() { document.getElementById('cfg-panel').style.display = 
 function closeCfgOutside(e) { if (e.target === document.getElementById('cfg-panel')) closeCfgPanel(); }
 
 function saveCfgPanel() {
-    const cfg = {};
+    // Levels
+    const lvCfg = {};
     for (const {key} of LEVEL_META) {
-        cfg[key] = {
+        lvCfg[key] = {
             color: document.getElementById(`cfg-${key}-color`).value,
             width: parseInt(document.getElementById(`cfg-${key}-width`).value),
             style: parseInt(document.getElementById(`cfg-${key}-style`).value),
         };
     }
-    localStorage.setItem('chart_levels_cfg', JSON.stringify(cfg));
+    localStorage.setItem('chart_levels_cfg', JSON.stringify(lvCfg));
+    // EMA
+    const emaSave = EMA_META.map(({p}) => ({
+        p,
+        color: document.getElementById(`cfg-ema-color-${p}`).value,
+        width: parseFloat(document.getElementById(`cfg-ema-width-${p}`).value),
+        style: parseInt(document.getElementById(`cfg-ema-style-${p}`).value),
+    }));
+    localStorage.setItem('chart_ema_cfg', JSON.stringify(emaSave));
+    EMA_CFG = emaSave;
+    // Candles
+    const defC = {'1':100,'5':100,'30':80,'60':80,'240':60,'D':50};
+    const candlesSave = {};
+    TF_CANDLES_META.forEach(tf => {
+        const v = parseInt(document.getElementById(`cfg-candles-${tf}`)?.value);
+        candlesSave[tf] = (v >= 20 && v <= 500) ? v : defC[tf];
+    });
+    localStorage.setItem('chart_candles_per_tf', JSON.stringify(candlesSave));
+
     applyCfgToAllSlots();
     closeCfgPanel();
 }
 
 function resetCfg() {
     localStorage.removeItem('chart_levels_cfg');
+    localStorage.removeItem('chart_ema_cfg');
+    localStorage.removeItem('chart_candles_per_tf');
+    EMA_CFG = getEmaCfg();
     applyCfgToAllSlots();
     openCfgPanel();
 }
 
 function applyCfgToAllSlots() {
     const lv = getLvCfg();
+    // Re-apply EMA styles
+    for (const {p, color, width, style} of EMA_CFG) {
+        for (const s of slots) {
+            if (s.emaSeries?.[p]) s.emaSeries[p].applyOptions({color, lineWidth: width, lineStyle: style ?? 0});
+        }
+    }
     const visible = viewMode === '18' ? 18 : 9;
     for (let i = 0; i < visible; i++) {
         const s = slots[i];
