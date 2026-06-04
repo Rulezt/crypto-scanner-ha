@@ -318,7 +318,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '4.6.78',
+        'version': '4.6.79',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -561,6 +561,20 @@ def get_high_volume():
     except Exception as e:
         logger.error(f"Error fetching high-volume coins: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/ath-atl')
+def get_ath_atl_symbol():
+    symbol = request.args.get('symbol', '').upper()
+    if not symbol:
+        return jsonify({'error': 'symbol required'}), 400
+    scanner = scanners.get('ath_atl')
+    if not scanner:
+        return jsonify({'error': 'scanner unavailable'}), 503
+    aa = scanner.get_ath_atl(symbol)
+    if aa is None:
+        return jsonify({'status': 'pending'})
+    return jsonify({'status': 'ok', 'ath': aa['ath'], 'atl': aa['atl']})
 
 
 @app.route('/api/new-listings', methods=['GET'])

@@ -201,6 +201,7 @@
 
     <button id="btn-mode-fav" onclick="switchMode('favorites')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-fav-idle">★<span class="btn-lbl"> Preferiti</span></button>
     <button id="alerts-btn" onclick="openAlertsPanel()" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Alert attivi"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none" style="display:block"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5m-2.031 1.324.002-.003v-.008z"/></svg></button>
+    <button id="cfg-btn" onclick="openCfgPanel()" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Impostazioni livelli"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 
     <div class="w-px h-5 bg-dark-border"></div>
 
@@ -325,6 +326,33 @@
     </div>
 </div>
 
+<!-- Config panel -->
+<div id="cfg-panel" style="display:none;position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.55);" onclick="closeCfgOutside(event)">
+    <div style="position:absolute;top:56px;left:50%;transform:translateX(-50%);width:420px;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);">
+        <div style="padding:11px 14px;border-bottom:1px solid #2A2E39;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+            <span style="font-size:13px;font-weight:700;color:#E5E7EB;">Impostazioni Livelli</span>
+            <button onclick="closeCfgPanel()" style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:12px 14px;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr style="border-bottom:1px solid #2A2E39;">
+                        <th style="text-align:left;padding:4px 6px;color:#6B7280;font-weight:500;">Livello</th>
+                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">Colore</th>
+                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">Spessore</th>
+                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">Stile</th>
+                    </tr>
+                </thead>
+                <tbody id="cfg-rows"></tbody>
+            </table>
+        </div>
+        <div style="padding:10px 14px;border-top:1px solid #2A2E39;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
+            <button onclick="resetCfg()" style="padding:5px 12px;border-radius:5px;border:1px solid #2A2E39;background:#1E222D;color:#9CA3AF;font-size:12px;cursor:pointer;">Reset</button>
+            <button onclick="saveCfgPanel()" style="padding:5px 12px;border-radius:5px;border:none;background:#2563EB;color:#fff;font-size:12px;cursor:pointer;font-weight:600;">Salva</button>
+        </div>
+    </div>
+</div>
+
 <script>
 // ── constants ─────────────────────────────────────────────────────────────────
 const LC          = LightweightCharts;
@@ -358,6 +386,8 @@ const DEFAULT_LEVELS_CFG = {
     prevLow:  {color:'#ef4444', style:2, width:2},
     obBid:    {color:'#10b981', style:1, width:1},
     obAsk:    {color:'#ef4444', style:1, width:1},
+    ath:      {color:'#f59e0b', style:2, width:1},
+    atl:      {color:'#a855f7', style:2, width:1},
 };
 function getEmaCfg() { try{const s=JSON.parse(localStorage.getItem('chart_ema_cfg'));if(s&&s.length===4)return s;}catch(e){}return DEFAULT_EMA_CFG.map(x=>({...x})); }
 function getLvCfg()  { try{const s=JSON.parse(localStorage.getItem('chart_levels_cfg'));if(s)return{...DEFAULT_LEVELS_CFG,...s};}catch(e){}return{...DEFAULT_LEVELS_CFG}; }
@@ -402,6 +432,7 @@ let obPrevHighLine = null, obPrevLowLine = null;
 let fsMidLines = [], obMidLines = []; // kept for compat, no longer used
 let fsDayPrimitive = null, obDayPrimitive = null;
 let fsObActive = false, fsObBidLine = null, fsObAskLine = null, fsObTimer = null;
+let fsAthLine = null, fsAtlLine = null;
 
 const IS_LANDSCAPE_MOBILE = window.matchMedia('(orientation: landscape) and (pointer: coarse) and (max-height: 700px)').matches;
 const IS_MOBILE = window.innerWidth < 640 || IS_LANDSCAPE_MOBILE;
@@ -832,12 +863,36 @@ async function fetchSlotOBLevels(idx) {
         const _soblv = getLvCfg();
         s.obBidLine = s.candleS.createPriceLine({ price: lv.bid, color:_soblv.obBid.color, lineWidth:_soblv.obBid.width, lineStyle:_soblv.obBid.style, axisLabelVisible:true, title:'' });
         s.obAskLine = s.candleS.createPriceLine({ price: lv.ask, color:_soblv.obAsk.color, lineWidth:_soblv.obAsk.width, lineStyle:_soblv.obAsk.style, axisLabelVisible:true, title:'' });
+        s.obBidVal = lv.bid; s.obAskVal = lv.ask;
     } catch(e) {}
 }
 
 function _clearSlotOBLines(s) {
     if (s.obBidLine) { try { s.candleS.removePriceLine(s.obBidLine); } catch(e) {} s.obBidLine = null; }
     if (s.obAskLine) { try { s.candleS.removePriceLine(s.obAskLine); } catch(e) {} s.obAskLine = null; }
+}
+
+function _clearSlotATHLines(s) {
+    if (s.athLine) { try { s.candleS.removePriceLine(s.athLine); } catch(e) {} s.athLine = null; }
+    if (s.atlLine) { try { s.candleS.removePriceLine(s.atlLine); } catch(e) {} s.atlLine = null; }
+}
+
+async function fetchSlotATHATL(idx) {
+    const s = slots[idx];
+    if (!s || !s.symbol || !s.candleS) return;
+    const sym = s.symbol;
+    try {
+        const r = await fetch(`api/ath-atl?symbol=${sym}`);
+        const j = await r.json();
+        if (j.status === 'pending') { setTimeout(() => { if (s.symbol === sym) fetchSlotATHATL(idx); }, 3000); return; }
+        if (j.status !== 'ok') return;
+        if (s.symbol !== sym) return;
+        _clearSlotATHLines(s);
+        const lv = getLvCfg();
+        s.athVal = j.ath; s.atlVal = j.atl;
+        s.athLine = s.candleS.createPriceLine({price: j.ath, color: lv.ath.color, lineWidth: lv.ath.width, lineStyle: lv.ath.style, axisLabelVisible: false, title: ''});
+        s.atlLine = s.candleS.createPriceLine({price: j.atl, color: lv.atl.color, lineWidth: lv.atl.width, lineStyle: lv.atl.style, axisLabelVisible: false, title: ''});
+    } catch(e) {}
 }
 
 function toggleSlotOBLevels(idx) {
@@ -1228,7 +1283,7 @@ async function loadPage() {
         if (s.dayLowLine)   { try { s.candleS.removePriceLine(s.dayLowLine);   } catch(e) {} s.dayLowLine   = null; }
         if (s.prevHighLine) { try { s.candleS.removePriceLine(s.prevHighLine); } catch(e) {} s.prevHighLine = null; }
         if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
-        clearInterval(s.obTimer); s.obTimer = null; _clearSlotOBLines(s);
+        clearInterval(s.obTimer); s.obTimer = null; _clearSlotOBLines(s); _clearSlotATHLines(s); s.athVal = null; s.atlVal = null;
         if (s.rangeActive) { s.rangeActive = false; s.rangeBtn.style.color = '#4B5563'; if (s._rangeSub) { try { s.chart.unsubscribeClick(s._rangeSub); } catch(e){} s._rangeSub = null; } if (s._rangeCsSub) { try { s.chart.unsubscribeCrosshairMove(s._rangeCsSub); } catch(e){} s._rangeCsSub = null; } }
         s.rangeP1 = null; s.rangeP2 = null; try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
         if (s.dayPrimitive) { try { s.candleS.detachPrimitive(s.dayPrimitive); } catch(e) {} s.dayPrimitive = null; }
@@ -1270,6 +1325,7 @@ async function loadSlot(idx, coin) {
         fetchSlotOBLevels(idx);
         s.obTimer = setInterval(() => fetchSlotOBLevels(idx), 15000);
     }
+    fetchSlotATHATL(idx);
 }
 
 async function loadSlotData(idx) {
@@ -1303,10 +1359,12 @@ async function loadSlotData(idx) {
         if (jd.success && jd.data && jd.data.length) {
             const today = jd.data[jd.data.length - 1];
             const _slvl = getLvCfg();
+            s.dayHighVal = today.high; s.dayLowVal = today.low;
             s.dayHighLine  = s.candleS.createPriceLine({ price: today.high, color:_slvl.dayHigh.color,  lineWidth:_slvl.dayHigh.width,  lineStyle:_slvl.dayHigh.style,  axisLabelVisible:false, title:'' });
             s.dayLowLine   = s.candleS.createPriceLine({ price: today.low,  color:_slvl.dayLow.color,   lineWidth:_slvl.dayLow.width,   lineStyle:_slvl.dayLow.style,   axisLabelVisible:false, title:'' });
             if (jd.data.length >= 2) {
                 const prev = jd.data[jd.data.length - 2];
+                s.prevHighVal = prev.high; s.prevLowVal = prev.low;
                 s.prevHighLine = s.candleS.createPriceLine({ price: prev.high, color:_slvl.prevHigh.color, lineWidth:_slvl.prevHigh.width, lineStyle:_slvl.prevHigh.style, axisLabelVisible:false, title:'' });
                 s.prevLowLine  = s.candleS.createPriceLine({ price: prev.low,  color:_slvl.prevLow.color,  lineWidth:_slvl.prevLow.width,  lineStyle:_slvl.prevLow.style,  axisLabelVisible:false, title:'' });
             }
@@ -2214,6 +2272,82 @@ function _openBTCTicker() {
     } catch(e) {}
     _openBTCTicker();
 })();
+
+// ── config panel ──────────────────────────────────────────────────────────────
+const LEVEL_META = [
+    {key:'ath',      label:'ATH (Massimo Storico)'},
+    {key:'atl',      label:'ATL (Minimo Storico)'},
+    {key:'dayHigh',  label:'High Giornaliero'},
+    {key:'dayLow',   label:'Low Giornaliero'},
+    {key:'prevHigh', label:'High Giorno Prec.'},
+    {key:'prevLow',  label:'Low Giorno Prec.'},
+    {key:'obBid',    label:'OB Bid'},
+    {key:'obAsk',    label:'OB Ask'},
+];
+const STYLE_OPTS = [{v:0,l:'Continua'},{v:1,l:'Punteggiata'},{v:2,l:'Tratteggiata'},{v:3,l:'Tratto lungo'},{v:4,l:'Punti radi'}];
+
+function openCfgPanel() {
+    const lv = getLvCfg();
+    document.getElementById('cfg-rows').innerHTML = LEVEL_META.map(({key, label}) => {
+        const c = lv[key] || DEFAULT_LEVELS_CFG[key];
+        const widths = [1,2,3].map(w => `<option value="${w}"${c.width==w?' selected':''}>${w}px</option>`).join('');
+        const styles = STYLE_OPTS.map(({v,l}) => `<option value="${v}"${c.style==v?' selected':''}>${l}</option>`).join('');
+        return `<tr style="border-bottom:1px solid #1a1e24;">
+            <td style="padding:7px 6px;color:#D1D5DB;white-space:nowrap;">${label}</td>
+            <td style="padding:7px 6px;text-align:center;"><input type="color" id="cfg-${key}-color" value="${c.color}" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0;"></td>
+            <td style="padding:7px 6px;text-align:center;"><select id="cfg-${key}-width" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${widths}</select></td>
+            <td style="padding:7px 6px;text-align:center;"><select id="cfg-${key}-style" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${styles}</select></td>
+        </tr>`;
+    }).join('');
+    document.getElementById('cfg-panel').style.display = 'block';
+}
+
+function closeCfgPanel() { document.getElementById('cfg-panel').style.display = 'none'; }
+function closeCfgOutside(e) { if (e.target === document.getElementById('cfg-panel')) closeCfgPanel(); }
+
+function saveCfgPanel() {
+    const cfg = {};
+    for (const {key} of LEVEL_META) {
+        cfg[key] = {
+            color: document.getElementById(`cfg-${key}-color`).value,
+            width: parseInt(document.getElementById(`cfg-${key}-width`).value),
+            style: parseInt(document.getElementById(`cfg-${key}-style`).value),
+        };
+    }
+    localStorage.setItem('chart_levels_cfg', JSON.stringify(cfg));
+    applyCfgToAllSlots();
+    closeCfgPanel();
+}
+
+function resetCfg() {
+    localStorage.removeItem('chart_levels_cfg');
+    applyCfgToAllSlots();
+    openCfgPanel();
+}
+
+function applyCfgToAllSlots() {
+    const lv = getLvCfg();
+    const visible = viewMode === '18' ? 18 : 9;
+    for (let i = 0; i < visible; i++) {
+        const s = slots[i];
+        if (!s || !s.candleS || !s.symbol) continue;
+        if (s.dayHighLine)  { try { s.candleS.removePriceLine(s.dayHighLine);  } catch(e) {} s.dayHighLine  = null; }
+        if (s.dayLowLine)   { try { s.candleS.removePriceLine(s.dayLowLine);   } catch(e) {} s.dayLowLine   = null; }
+        if (s.prevHighLine) { try { s.candleS.removePriceLine(s.prevHighLine); } catch(e) {} s.prevHighLine = null; }
+        if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
+        if (s.dayHighVal  != null) s.dayHighLine  = s.candleS.createPriceLine({price:s.dayHighVal,  color:lv.dayHigh.color,  lineWidth:lv.dayHigh.width,  lineStyle:lv.dayHigh.style,  axisLabelVisible:false, title:''});
+        if (s.dayLowVal   != null) s.dayLowLine   = s.candleS.createPriceLine({price:s.dayLowVal,   color:lv.dayLow.color,   lineWidth:lv.dayLow.width,   lineStyle:lv.dayLow.style,   axisLabelVisible:false, title:''});
+        if (s.prevHighVal != null) s.prevHighLine = s.candleS.createPriceLine({price:s.prevHighVal, color:lv.prevHigh.color, lineWidth:lv.prevHigh.width, lineStyle:lv.prevHigh.style, axisLabelVisible:false, title:''});
+        if (s.prevLowVal  != null) s.prevLowLine  = s.candleS.createPriceLine({price:s.prevLowVal,  color:lv.prevLow.color,  lineWidth:lv.prevLow.width,  lineStyle:lv.prevLow.style,  axisLabelVisible:false, title:''});
+        _clearSlotATHLines(s);
+        if (s.athVal != null) s.athLine = s.candleS.createPriceLine({price:s.athVal, color:lv.ath.color, lineWidth:lv.ath.width, lineStyle:lv.ath.style, axisLabelVisible:false, title:''});
+        if (s.atlVal != null) s.atlLine = s.candleS.createPriceLine({price:s.atlVal, color:lv.atl.color, lineWidth:lv.atl.width, lineStyle:lv.atl.style, axisLabelVisible:false, title:''});
+        if (s.obBidLine) { try { s.candleS.removePriceLine(s.obBidLine); } catch(e) {} s.obBidLine = null; }
+        if (s.obAskLine) { try { s.candleS.removePriceLine(s.obAskLine); } catch(e) {} s.obAskLine = null; }
+        if (s.obBidVal != null) s.obBidLine = s.candleS.createPriceLine({price:s.obBidVal, color:lv.obBid.color, lineWidth:lv.obBid.width, lineStyle:lv.obBid.style, axisLabelVisible:true, title:''});
+        if (s.obAskVal != null) s.obAskLine = s.candleS.createPriceLine({price:s.obAskVal, color:lv.obAsk.color, lineWidth:lv.obAsk.width, lineStyle:lv.obAsk.style, axisLabelVisible:true, title:''});
+    }
+}
 </script>
 
 <!-- Order Book fullscreen modal -->
