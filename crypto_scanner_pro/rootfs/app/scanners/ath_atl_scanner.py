@@ -247,7 +247,7 @@ class ATHATLScanner:
         try:
             r = requests.get('https://api.bybit.com/v5/market/kline',
                              params={'category': 'linear', 'symbol': symbol,
-                                     'interval': 'D', 'limit': min(days, 1000)},
+                                     'interval': 'W', 'limit': 1000},
                              timeout=10)
             data = r.json()
             if data['retCode'] != 0:
