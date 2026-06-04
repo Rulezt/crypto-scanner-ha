@@ -72,7 +72,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.6.64</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.6.66</div>
                 </div>
             </div>
         </div>
@@ -424,10 +424,8 @@
                 }
                 const now = Date.now();
                 container.innerHTML = data.alerts.map(a => {
-                    const diffMs  = now - new Date(a.time).getTime();
-                    const diffMin = Math.floor(diffMs / 60000);
-                    const diffH   = Math.floor(diffMin / 60);
-                    const ago = diffMin < 1 ? 'adesso' : diffH >= 1 ? `${diffH}h fa` : `${diffMin}m fa`;
+                    const _d = new Date(a.time);
+                    const timeStr = String(_d.getHours()).padStart(2,'0') + ':' + String(_d.getMinutes()).padStart(2,'0');
                     const coin = a.symbol.replace('USDT', '');
                     const tf   = a.tf ? a.tf.replace('m','').replace('h','60').replace('D','D') : '30';
                     return `<div class="flex items-center justify-between py-2 px-3 bg-dark-hover rounded-lg">
@@ -440,7 +438,7 @@
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <a href="${chartUrl(a.symbol)}" class="text-xs text-blue-400 hover:text-blue-300">Chart</a>
-                            <span class="text-xs text-gray-500">${ago}</span>
+                            <span class="text-xs text-gray-500">${timeStr}</span>
                         </div>
                     </div>`;
                 }).join('');
