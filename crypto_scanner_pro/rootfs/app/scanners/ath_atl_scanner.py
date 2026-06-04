@@ -253,7 +253,7 @@ class ATHATLScanner:
             if data['retCode'] != 0:
                 return None
             klines = data['result']['list']
-            return klines if len(klines) >= 2 else None
+            return klines if len(klines) >= 1 else None
         except Exception as e:
             print(f'❌ fetch_historical_data {symbol}: {e}')
             return None
