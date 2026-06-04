@@ -630,10 +630,14 @@
             const distTxt   = distVal != null ? (distVal >= 0 ? '+' : '') + distVal.toFixed(2) + '%' : '-';
             const distClass = distVal != null ? (distVal >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600';
             const touchTxt  = c.ema_touch_count != null ? c.ema_touch_count : '-';
-            const athTxt    = c.ath_dist != null ? '-' + c.ath_dist.toFixed(1) + '%' : '-';
-            const atlTxt    = c.atl_dist != null ? '+' + c.atl_dist.toFixed(1) + '%' : '-';
             const athClass  = c.ath_dist != null ? (c.ath_dist <= 5 ? 'text-orange-400' : 'text-gray-400') : 'text-gray-600';
             const atlClass  = c.atl_dist != null ? (c.atl_dist <= 20 ? 'text-emerald-400' : 'text-gray-400') : 'text-gray-600';
+            const athTxt    = c.ath_dist != null
+                ? `<span class="${athClass}">-${c.ath_dist.toFixed(1)}%</span><br><span class="text-gray-500" style="font-size:10px;">$${fmtPrice(c.ath_price)}</span>`
+                : '<span class="text-gray-600">-</span>';
+            const atlTxt    = c.atl_dist != null
+                ? `<span class="${atlClass}">+${c.atl_dist.toFixed(1)}%</span><br><span class="text-gray-500" style="font-size:10px;">$${fmtPrice(c.atl_price)}</span>`
+                : '<span class="text-gray-600">-</span>';
             return `<tr class="border-b border-dark-border/40 hover:bg-dark-hover/60">
                 <td class="px-4 py-2.5 text-gray-600 text-xs w-10">${i + 1}</td>
                 <td class="px-4 py-2.5 font-medium text-gray-200 cursor-default" data-symbol="${c.symbol}" data-tf="30" onmouseenter="showScreenshotTip(this)" onmouseleave="hideScreenshotTip()">${coin}</td>
@@ -643,8 +647,8 @@
                 <td id="hve-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${emaClass}">${emaTxt}</td>
                 <td id="hvd-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${distClass}">${distTxt}</td>
                 <td id="hvt-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs text-gray-400">${touchTxt}</td>
-                <td id="hvath-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${athClass}">${athTxt}</td>
-                <td id="hvatl-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${atlClass}">${atlTxt}</td>
+                <td id="hvath-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs leading-tight">${athTxt}</td>
+                <td id="hvatl-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs leading-tight">${atlTxt}</td>
                 <td class="px-4 py-2.5 text-right whitespace-nowrap">
                     <a href="https://www.bybit.com/trade/usdt/${c.symbol}" target="_blank" rel="noopener" style="font-size:10px;color:#f59e0b;background:#1E2230;border-radius:3px;padding:1px 6px;text-decoration:none;white-space:nowrap;">Bybit ↗</a>
                     <a href="mtf?symbol=${c.symbol}" target="_blank" rel="noopener" style="font-size:10px;color:#60a5fa;background:#1E2230;border-radius:3px;padding:1px 6px;text-decoration:none;white-space:nowrap;">MTF ↗</a>
@@ -709,12 +713,14 @@
                         const athEl = document.getElementById(`hvath-${c.symbol}`);
                         const atlEl = document.getElementById(`hvatl-${c.symbol}`);
                         if (athEl && c.ath_dist != null) {
-                            athEl.textContent = '-' + c.ath_dist.toFixed(1) + '%';
-                            athEl.className = `px-4 py-2.5 text-right font-mono text-xs ${c.ath_dist <= 5 ? 'text-orange-400' : 'text-gray-400'}`;
+                            const athCls = c.ath_dist <= 5 ? 'text-orange-400' : 'text-gray-400';
+                            athEl.innerHTML = `<span class="${athCls}">-${c.ath_dist.toFixed(1)}%</span><br><span class="text-gray-500" style="font-size:10px;">$${fmtPrice(c.ath_price)}</span>`;
+                            athEl.className = 'px-4 py-2.5 text-right font-mono text-xs leading-tight';
                         }
                         if (atlEl && c.atl_dist != null) {
-                            atlEl.textContent = '+' + c.atl_dist.toFixed(1) + '%';
-                            atlEl.className = `px-4 py-2.5 text-right font-mono text-xs ${c.atl_dist <= 20 ? 'text-emerald-400' : 'text-gray-400'}`;
+                            const atlCls = c.atl_dist <= 20 ? 'text-emerald-400' : 'text-gray-400';
+                            atlEl.innerHTML = `<span class="${atlCls}">+${c.atl_dist.toFixed(1)}%</span><br><span class="text-gray-500" style="font-size:10px;">$${fmtPrice(c.atl_price)}</span>`;
+                            atlEl.className = 'px-4 py-2.5 text-right font-mono text-xs leading-tight';
                         }
                     });
                 }

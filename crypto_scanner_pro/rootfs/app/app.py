@@ -318,7 +318,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '4.6.75',
+        'version': '4.6.76',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -547,11 +547,15 @@ def get_high_volume():
             aa = ath_scanner.get_ath_atl(coin['symbol']) if ath_scanner else None
             if aa:
                 p = coin['price']
-                coin['ath_dist'] = round((aa['ath'] - p) / aa['ath'] * 100, 2)
-                coin['atl_dist'] = round((p - aa['atl']) / aa['atl'] * 100, 2)
+                coin['ath_dist']  = round((aa['ath'] - p) / aa['ath'] * 100, 2)
+                coin['atl_dist']  = round((p - aa['atl']) / aa['atl'] * 100, 2)
+                coin['ath_price'] = aa['ath']
+                coin['atl_price'] = aa['atl']
             else:
-                coin['ath_dist'] = None
-                coin['atl_dist'] = None
+                coin['ath_dist']  = None
+                coin['atl_dist']  = None
+                coin['ath_price'] = None
+                coin['atl_price'] = None
 
         return jsonify({'success': True, 'data': coins, 'count': len(coins)})
     except Exception as e:
