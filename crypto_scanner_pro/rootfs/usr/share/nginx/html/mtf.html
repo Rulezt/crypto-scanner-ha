@@ -1248,13 +1248,16 @@ function updateAlertsBadge() {
   btn.style.color = n > 0 ? '#fbbf24' : '';
 }
 
+let _alertsPanelInterval = null;
 function openAlertsPanel() {
   renderAlertsList();
   document.getElementById('alerts-panel').style.display = 'block';
+  _alertsPanelInterval = setInterval(renderAlertsList, 2000);
 }
 
 function closeAlertsPanel() {
   document.getElementById('alerts-panel').style.display = 'none';
+  clearInterval(_alertsPanelInterval);
 }
 
 function closePanelOutside(e) {
@@ -1269,14 +1272,19 @@ function renderAlertsList() {
     list.innerHTML = '<div style="text-align:center;color:#6B7280;font-size:12px;padding:24px 0;">Nessun alert attivo</div>';
     return;
   }
+  const _lp = (slots.find(s => s.lastPrice) || {}).lastPrice;
   list.innerHTML = mine.map(a => {
     const dirColor = a.condition === 'above' ? '#34d399' : '#f87171';
     const dirLabel = a.condition === 'above' ? '▲ Sopra' : '▼ Sotto';
     const notifyIcon = a.notify === 'browser' ? '🖥' : TGSVG;
+    const dist = _lp ? ((a.price - _lp) / _lp * 100) : null;
+    const distStr = dist !== null ? (dist >= 0 ? `+${dist.toFixed(2)}%` : `${dist.toFixed(2)}%`) : '';
+    const distColor = dist === null ? '#6B7280' : dist >= 0 ? '#34d399' : '#f87171';
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #1E222D;">
       <span style="font-size:11px;font-weight:700;color:#E5E7EB;min-width:76px;">${SYM.replace('USDT','/USDT')}</span>
       <span style="font-size:11px;color:${dirColor};font-weight:600;min-width:52px;">${dirLabel}</span>
       <span style="font-size:11px;font-family:monospace;color:#fbbf24;flex:1;">${fmtPrice(a.price)}</span>
+      <span style="font-size:11px;font-family:monospace;color:${distColor};min-width:52px;text-align:right;">${distStr}</span>
       <span style="font-size:12px;" title="${a.notify === 'browser' ? 'Solo PC' : 'Telegram + PC'}">${notifyIcon}</span>
       <button onclick="deleteAlert('${a.id}')" style="background:#3f1515;color:#f87171;border:1px solid #7f1d1d;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;flex-shrink:0;" onmouseenter="this.style.background='#7f1d1d'" onmouseleave="this.style.background='#3f1515'">✕</button>
     </div>`;
