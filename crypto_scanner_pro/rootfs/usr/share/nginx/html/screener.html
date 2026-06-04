@@ -74,9 +74,9 @@
     </header>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Left/Main: Scanner Cards -->
-            <div class="lg:col-span-2 space-y-6">
+        <div>
+            <!-- Scanner Cards -->
+            <div class="space-y-6">
                 <!-- Scanner Cards Grid -->
                 <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
                     <!-- EMA Scanner -->
@@ -169,18 +169,6 @@
                 </div>
             </div>
 
-            <!-- Right Column: Alerts -->
-            <div class="space-y-6">
-                <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
-                    <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between">
-                        <h3 class="text-sm font-medium">Alert Recenti</h3>
-                        <span class="text-xs text-gray-500">Live</span>
-                    </div>
-                    <div id="alerts-container" class="p-4 space-y-3 max-h-96 overflow-y-auto">
-                        <div class="text-center py-8 text-gray-500 text-sm">In attesa di alert...</div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -396,40 +384,6 @@
         let currentConfig = {};
         let isFormMode = false;
 
-        const _CAT_ICONS = {
-            gainers:   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="14" height="14" fill="currentColor" style="color:#34d399;flex-shrink:0"><path d="M63.029,42.285l-13.08-7.848c-0.175,4.299-0.787,8.26-1.494,11.562H64v-2C64,43.297,63.632,42.646,63.029,42.285z"/><path d="M46.905,52H62c1.104,0,2-0.896,2-2v-2H47.999C47.625,49.537,47.245,50.889,46.905,52z"/><path d="M14.051,34.438l-13.08,7.848C0.368,42.646,0,43.297,0,44v2h15.545C14.839,42.697,14.226,38.737,14.051,34.438z"/><path d="M0,48v2c0,1.104,0.896,2,2,2h15.095c-0.34-1.111-0.72-2.463-1.093-4H0z"/><path d="M32,64c2.06,0,4.239-2.343,4.837-6h-9.672C27.763,61.656,29.94,64,32,64z"/><path d="M33.109,0.336C32.773,0.112,32.387,0,32,0s-0.773,0.112-1.109,0.336C23.692,5.135,16,15.974,16,32c0,4.399,0.516,8.508,1.181,12h29.639C47.484,40.508,48,36.399,48,32C48,15.974,40.308,5.135,33.109,0.336zM32,30c-3.313,0-6-2.687-6-6s2.687-6,6-6s6,2.687,6,6S35.313,30,32,30z"/><circle cx="32" cy="24" r="4"/><path d="M20.143,54.742C20.447,55.502,21.183,56,22,56h20c0.817,0,1.553-0.498,1.857-1.258c0.097-0.24,1.427-3.62,2.554-8.742H17.589C18.716,51.122,20.046,54.502,20.143,54.742z"/></svg>`,
-            losers:    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#f87171;flex-shrink:0"><path d="M21 17L13 9L9 13L3 7M21 17H15M21 17V11"/></svg>`,
-            stock:     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 386.651 386.651" width="14" height="14" fill="currentColor" style="color:#60a5fa;flex-shrink:0"><path d="M342.367,135.781c-2.674-1.367-5.889-1.122-8.324,0.635l-138.556,99.968l-89.233-83.725c-3.032-2.844-7.736-2.892-10.826-0.112l-74.395,66.959c-1.685,1.518-2.648,3.679-2.648,5.946v91.451c0,4.418,3.582,8,8,8h312.339c4.418,0,8-3.582,8-8v-174C346.724,139.899,345.041,137.149,342.367,135.781zM53.507,308.903H34.385v-79.889l19.122-17.211V308.903zM88.045,308.903H69.507v-111.5l18.538-16.685V308.903zM122.582,308.903h-18.538V172.526l18.538,17.393V308.903zM157.12,308.903h-18.538V204.931l18.538,17.394V308.903zM192.015,308.903H173.12v-71.565l16.227,15.226c0.791,0.741,1.702,1.288,2.667,1.65V308.903zM226.91,308.903h-18.896v-61.828l18.896-13.634V308.903zM261.806,308.903H242.91v-87.006l18.895-13.633V308.903zM296.701,308.903h-18.896V196.72l18.896-13.634V308.903zM330.724,308.903h-18.022v-137.36l18.022-13.003V308.903z"/><path d="M385.375,65.087c-1.439-2.148-3.904-3.404-6.461-3.337l-50.696,1.368c-3.471,0.094-6.429,2.547-7.161,5.941c-0.732,3.395,0.95,6.85,4.074,8.366l11.846,5.75L196.96,183.012l-95.409-86.504c-4.738-4.296-11.955-4.322-16.723-0.062L4.173,168.491c-5.149,4.599-5.594,12.501-0.995,17.649c4.598,5.148,12.499,5.594,17.649,0.995l72.265-64.55l94.533,85.709c2.369,2.147,5.376,3.239,8.398,3.239c2.532,0,5.074-0.767,7.255-2.322L350.82,104.01l0.701,11.074c0.22,3.464,2.777,6.329,6.193,6.939c0.444,0.079,0.889,0.118,1.328,0.118c2.938,0,5.662-1.724,6.885-4.483l20.077-45.327C387.052,69.968,386.815,67.234,385.375,65.087z"/></svg>`,
-            commodity: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="14" height="14" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="color:#fbbf24;flex-shrink:0"><path fill-rule="evenodd" clip-rule="evenodd" d="M22.2187 7.37842L33.8868 16.6216L36.1778 23.9998L25.2625 26.0852L12.5889 14.5312L15.281 9.00148L22.2187 7.37842Z"/><path d="M15.2808 9.00146L26.4862 18.6016"/><path d="M25.2625 26.0852L26.4864 18.1324L33.8867 16.6216"/><path d="M24.993 31.0228L27.2792 38.1032L15.601 40.3785L4 29.014L6.57052 22.6253L12.0285 21.3535"/><path d="M6.57056 22.625L17.284 32.7577"/><path d="M15.6011 39.8648L17.4865 32.1324L24.9908 31.0435"/><path fill-rule="evenodd" clip-rule="evenodd" d="M34.8868 29.6077L34 36.7999L43.236 34.9985L41.2813 28.1875L34.8868 29.6077Z"/></svg>`,
-            ico:       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" style="color:#c084fc;flex-shrink:0"><path d="M30,52.16c.81-2.07,7.06-17,19.76-19.86a.09.09,0,0,0,0-.18c-2.14-.86-15.22-6.57-19.38-20.26a.09.09,0,0,0-.18,0c-.51,2.27-3.94,14.43-20,20a.1.1,0,0,0,0,.19c2.24.38,13.48,3.14,19.62,20.15A.1.1,0,0,0,30,52.16Z"/><path d="M48.79,25.08c.29-.74,2.52-6.07,7.06-7.09a0,0,0,0,0,0-.07c-.76-.3-5.43-2.34-6.92-7.23a0,0,0,0,0-.07,0c-.18.82-1.4,5.16-7.14,7.13a0,0,0,0,0,0,.07c.8.14,4.81,1.12,7,7.2A0,0,0,0,0,48.79,25.08Z"/></svg>`,
-        };
-        let _stockSyms = new Set();
-        let _commSyms  = new Set();
-        let _icoSyms   = new Set();
-
-        function getCategoryIcon(symbol) {
-            if (_stockSyms.has(symbol)) return _CAT_ICONS.stock;
-            if (_commSyms.has(symbol))  return _CAT_ICONS.commodity;
-            if (_icoSyms.has(symbol))   return _CAT_ICONS.ico;
-            return _CAT_ICONS.gainers;
-        }
-
-        async function loadCategories() {
-            try {
-                const [ri, icoRes] = await Promise.all([
-                    fetch('https://api.bybit.com/v5/instruments-info?category=linear&limit=1000'),
-                    fetch(`${API_URL}/api/new-listings?days=90`),
-                ]);
-                const ji = await ri.json();
-                if (ji.retCode === 0) {
-                    _stockSyms = new Set(ji.result.list.filter(x => x.symbolType === 'stock').map(x => x.symbol));
-                    _commSyms  = new Set(ji.result.list.filter(x => x.symbolType === 'commodity').map(x => x.symbol));
-                }
-                const icoData = await icoRes.json();
-                if (icoData.success) _icoSyms = new Set((icoData.data || []).map(c => c.symbol));
-            } catch(e) { console.error('loadCategories error:', e); }
-        }
-
         let _tipTimer = null;
         function showScreenshotTip(el) {
             clearTimeout(_tipTimer);
@@ -456,11 +410,8 @@
 
         async function init() {
             await loadConfig();
-            await loadAlerts();
             await loadHighVolume();
             checkTelegramStatus();
-            loadCategories();
-            setInterval(loadAlerts, 60000);
             setInterval(loadHighVolume, 2000);
         }
 
@@ -633,41 +584,6 @@
                 updEl.style.color = '#34d399';
             } catch (e) {
                 console.error('Error loading high volume:', e);
-            }
-        }
-
-        async function loadAlerts() {
-            try {
-                const res = await fetch(`${API_URL}/scanner-api/alerts/recent`);
-                const data = await res.json();
-                const container = document.getElementById('alerts-container');
-                if (!data.success || !data.alerts || data.alerts.length === 0) {
-                    container.innerHTML = '<div class="text-center py-8 text-gray-500 text-sm">In attesa di alert...</div>';
-                    return;
-                }
-                const now = Date.now();
-                container.innerHTML = data.alerts.map(a => {
-                    const _d = new Date(a.time);
-                    const timeStr = String(_d.getHours()).padStart(2,'0') + ':' + String(_d.getMinutes()).padStart(2,'0');
-                    const coin = a.symbol.replace('USDT', '');
-                    const tf   = a.tf ? a.tf.replace('m','').replace('h','60').replace('D','D') : '30';
-                    return `<div class="flex items-center justify-between py-2 px-3 bg-dark-hover rounded-lg">
-                        <div class="flex items-center gap-2">
-                            ${getCategoryIcon(a.symbol)}
-                            <div>
-                                <span class="text-sm font-medium text-gray-200 cursor-default" data-symbol="${a.symbol}" data-tf="${tf}" onmouseenter="showScreenshotTip(this)" onmouseleave="hideScreenshotTip()">${coin}</span>
-                                <span class="text-xs text-gray-500 ml-1">${a.type}</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 flex-shrink-0">
-                            <a href="https://www.bybit.com/trade/usdt/${a.symbol}" target="_blank" rel="noopener" style="font-size:10px;color:#f59e0b;background:#1E2230;border-radius:3px;padding:1px 6px;text-decoration:none;white-space:nowrap;">Bybit ↗</a>
-                            <a href="mtf?symbol=${a.symbol}" target="_blank" style="font-size:10px;color:#60a5fa;background:#1E2230;border-radius:3px;padding:1px 6px;text-decoration:none;white-space:nowrap;">MTF ↗</a>
-                            <span class="text-xs text-gray-500">${timeStr}</span>
-                        </div>
-                    </div>`;
-                }).join('');
-            } catch (e) {
-                console.error('Error loading alerts:', e);
             }
         }
 
