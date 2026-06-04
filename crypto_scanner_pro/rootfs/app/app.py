@@ -112,23 +112,25 @@ def _compute_ema_series(prices, period):
         series.append(ema)
     return series
 
-def _count_ema_touches_daily(klines_30m, period=60):
-    """Count 30m candles from midnight UTC where low <= EMA(at that candle's time) <= high."""
-    import datetime
-    if len(klines_30m) < period:
+def _count_ema_touches_daily(klines_30m, period=60, threshold=2.0):
+    """Count closed 30m candles since midnight UTC where close >= EMA and dist < threshold%.
+    Uses the same criterion as the EMA scanner (v4.6.74 fix)."""
+    import calendar, datetime
+    past = klines_30m[:-1]  # exclude live candle
+    if len(past) < period:
         return None
     now = datetime.datetime.utcnow()
-    midnight_ts = int(datetime.datetime(now.year, now.month, now.day).timestamp())
-    closes = [k['close'] for k in klines_30m]
+    midnight_ts = calendar.timegm((now.year, now.month, now.day, 0, 0, 0, 0, 0, 0))
+    closes = [k['close'] for k in past]
     ema_series = _compute_ema_series(closes, period)
     count = 0
-    for i, k in enumerate(klines_30m):
+    for i, k in enumerate(past):
         if k['time'] < midnight_ts:
             continue
         ema_val = ema_series[i]
         if ema_val is None:
             continue
-        if k['low'] <= ema_val <= k['high']:
+        if k['close'] >= ema_val and abs((k['close'] - ema_val) / ema_val * 100) < threshold:
             count += 1
     return count
 
@@ -318,7 +320,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '4.6.84',
+        'version': '4.6.85',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -543,7 +545,7 @@ def get_high_volume():
             ema = _compute_ema(closes, 60)
             coin['ema60_30m'] = ema
             coin['ema60_dist'] = round((coin['price'] - ema) / ema * 100, 2) if ema else None
-            coin['ema_touch_count'] = _count_ema_touches_daily(klines_30m, period=60)
+            coin['ema_touch_count'] = _count_ema_touches_daily(klines_30m, period=60, threshold=config['ema_touch'].get('ema_touch_threshold', 2.0))
             aa = ath_scanner.get_ath_atl(coin['symbol']) if ath_scanner else None
             if aa:
                 p = coin['price']
