@@ -143,6 +143,38 @@ class EMAScanner:
         # Schedule next refresh
         threading.Timer(KLINE_SUB_REFRESH, self._refresh_kline_subs).start()
 
+    # ── daily touch count ─────────────────────────────────────────────────────
+
+    @staticmethod
+    def _count_ema_touches_today(klines):
+        """Count closed 30m candles since midnight UTC where low <= EMA60 <= high.
+        Excludes the current live candle (last entry)."""
+        from datetime import datetime
+        period = 60
+        past = klines[:-1]   # only closed candles
+        if len(past) < period:
+            return None
+        closes = [k['close'] for k in past]
+        k_mult = 2.0 / (period + 1)
+        series = [None] * (period - 1)
+        ema = sum(closes[:period]) / period
+        series.append(ema)
+        for p in closes[period:]:
+            ema = p * k_mult + ema * (1.0 - k_mult)
+            series.append(ema)
+        now = datetime.utcnow()
+        midnight_ts = int(datetime(now.year, now.month, now.day).timestamp())
+        count = 0
+        for i, kl in enumerate(past):
+            if kl['time'] < midnight_ts:
+                continue
+            ev = series[i]
+            if ev is None:
+                continue
+            if kl['low'] <= ev <= kl['high']:
+                count += 1
+        return count
+
     # ── EMA calculation ───────────────────────────────────────────────────────
 
     @staticmethod
@@ -214,6 +246,10 @@ class EMAScanner:
             return
 
         if distance_pct < self.ema_touch_threshold:
+            # Skip if EMA60 was already touched today on a previous closed candle
+            touch_count = self._count_ema_touches_today(klines)
+            if touch_count is None or touch_count > 0:
+                return
             coin = None
             with self._lock:
                 if symbol not in self._in_zone:
