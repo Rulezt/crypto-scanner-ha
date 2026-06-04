@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v4.4.7</title>
+    <title>Multi-Chart - Crypto Scanner Pro v4.6.81</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23F7931A'/%3E%3Cpath d='M67.8 44.3c.9-6.2-3.8-9.5-10.3-11.7l2.1-8.4-5.1-1.3-2 8.2c-1.4-.3-2.8-.6-4.2-1l2-8.2-5.1-1.3-2.1 8.4c-1.1-.3-2.2-.5-3.3-.8l-7-1.8-1.4 5.5s3.8.9 3.7.9c2.1.5 2.4 1.9 2.4 3l-2.4 9.7c.1 0 .3.1.5.2-.2 0-.3-.1-.5-.1l-3.4 13.6c-.3.7-.9 1.7-2.4 1.3.1.1-3.7-.9-3.7-.9l-2.5 5.9 6.6 1.6c1.2.3 2.4.6 3.6.9l-2.1 8.5 5.1 1.3 2.1-8.4c1.4.4 2.8.7 4.1 1l-2.1 8.4 5.1 1.3 2.1-8.5c8.7 1.6 15.2.9 18-6.9 2.2-6.3-.1-9.9-4.6-12.3 3.3-.8 5.8-3 6.4-7.5zm-11.5 16.1c-1.6 6.3-12.2 2.9-15.6 2l2.8-11.2c3.5.9 14.5 2.6 12.8 9.2zm1.6-16.2c-1.4 5.7-10.2 2.8-13.1 2.1l2.5-10.1c2.9.7 12.1 2 10.6 8z' fill='%23FFF'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
@@ -328,9 +328,9 @@
 
 <!-- Config panel -->
 <div id="cfg-panel" style="display:none;position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.55);" onclick="closeCfgOutside(event)">
-    <div style="position:absolute;top:56px;left:50%;transform:translateX(-50%);width:420px;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);">
+    <div style="position:absolute;top:56px;left:50%;transform:translateX(-50%);width:500px;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);">
         <div style="padding:11px 14px;border-bottom:1px solid #2A2E39;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-            <span style="font-size:13px;font-weight:700;color:#E5E7EB;">Impostazioni Livelli</span>
+            <span style="font-size:13px;font-weight:700;color:#E5E7EB;">Impostazioni Grafici</span>
             <button onclick="closeCfgPanel()" style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
         </div>
         <div style="overflow-y:auto;flex:1;padding:12px 14px;">
@@ -341,6 +341,8 @@
                         <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">Colore</th>
                         <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">Spessore</th>
                         <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">Stile</th>
+                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">Chart</th>
+                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">MTF</th>
                     </tr>
                 </thead>
                 <tbody id="cfg-rows"></tbody>
@@ -380,17 +382,31 @@ const DEFAULT_EMA_CFG = [
     {p:223, color:'#a855f7', style:0, width:2.5},
 ];
 const DEFAULT_LEVELS_CFG = {
-    dayHigh:  {color:'#22c55e', style:0, width:2},
-    dayLow:   {color:'#ef4444', style:0, width:2},
-    prevHigh: {color:'#22c55e', style:2, width:2},
-    prevLow:  {color:'#ef4444', style:2, width:2},
-    obBid:    {color:'#10b981', style:1, width:1},
-    obAsk:    {color:'#ef4444', style:1, width:1},
-    ath:      {color:'#f59e0b', style:2, width:1},
-    atl:      {color:'#a855f7', style:2, width:1},
+    dayHigh:  {color:'#22c55e', style:0, width:2, vis:{chart:true, mtf:true}},
+    dayLow:   {color:'#ef4444', style:0, width:2, vis:{chart:true, mtf:true}},
+    prevHigh: {color:'#22c55e', style:2, width:2, vis:{chart:true, mtf:true}},
+    prevLow:  {color:'#ef4444', style:2, width:2, vis:{chart:true, mtf:true}},
+    obBid:    {color:'#10b981', style:1, width:1, vis:{chart:true, mtf:true}},
+    obAsk:    {color:'#ef4444', style:1, width:1, vis:{chart:true, mtf:true}},
+    ath:      {color:'#f59e0b', style:2, width:1, vis:{chart:true, mtf:true}},
+    atl:      {color:'#a855f7', style:2, width:1, vis:{chart:true, mtf:true}},
 };
 function getEmaCfg() { try{const s=JSON.parse(localStorage.getItem('chart_ema_cfg'));if(s&&s.length===4)return s;}catch(e){}return DEFAULT_EMA_CFG.map(x=>({...x})); }
-function getLvCfg()  { try{const s=JSON.parse(localStorage.getItem('chart_levels_cfg'));if(s)return{...DEFAULT_LEVELS_CFG,...s};}catch(e){}return{...DEFAULT_LEVELS_CFG}; }
+function getLvCfg() {
+    try {
+        const s = JSON.parse(localStorage.getItem('chart_levels_cfg'));
+        if (s) {
+            const out = {};
+            for (const k of Object.keys(DEFAULT_LEVELS_CFG)) {
+                out[k] = s[k]
+                    ? {...DEFAULT_LEVELS_CFG[k], ...s[k], vis:{...DEFAULT_LEVELS_CFG[k].vis, ...(s[k].vis||{})}}
+                    : {...DEFAULT_LEVELS_CFG[k]};
+            }
+            return out;
+        }
+    } catch(e) {}
+    return Object.fromEntries(Object.entries(DEFAULT_LEVELS_CFG).map(([k,v])=>[k,{...v,vis:{...v.vis}}]));
+}
 let EMA_CFG = getEmaCfg();
 
 const DEFAULT_CANDLES = {'1':100,'5':100,'30':80,'60':80,'240':60,'D':50,'W':52,'M':24};
@@ -861,9 +877,9 @@ async function fetchSlotOBLevels(idx) {
         if (s.obBidLine) { try { s.candleS.removePriceLine(s.obBidLine); } catch(e) {} }
         if (s.obAskLine) { try { s.candleS.removePriceLine(s.obAskLine); } catch(e) {} }
         const _soblv = getLvCfg();
-        s.obBidLine = s.candleS.createPriceLine({ price: lv.bid, color:_soblv.obBid.color, lineWidth:_soblv.obBid.width, lineStyle:_soblv.obBid.style, axisLabelVisible:true, title:'' });
-        s.obAskLine = s.candleS.createPriceLine({ price: lv.ask, color:_soblv.obAsk.color, lineWidth:_soblv.obAsk.width, lineStyle:_soblv.obAsk.style, axisLabelVisible:true, title:'' });
         s.obBidVal = lv.bid; s.obAskVal = lv.ask;
+        if (_soblv.obBid.vis?.chart !== false) s.obBidLine = s.candleS.createPriceLine({ price: lv.bid, color:_soblv.obBid.color, lineWidth:_soblv.obBid.width, lineStyle:_soblv.obBid.style, axisLabelVisible:true, title:'' });
+        if (_soblv.obAsk.vis?.chart !== false) s.obAskLine = s.candleS.createPriceLine({ price: lv.ask, color:_soblv.obAsk.color, lineWidth:_soblv.obAsk.width, lineStyle:_soblv.obAsk.style, axisLabelVisible:true, title:'' });
     } catch(e) {}
 }
 
@@ -890,8 +906,8 @@ async function fetchSlotATHATL(idx) {
         _clearSlotATHLines(s);
         const lv = getLvCfg();
         s.athVal = j.ath; s.atlVal = j.atl;
-        s.athLine = s.candleS.createPriceLine({price: j.ath, color: lv.ath.color, lineWidth: lv.ath.width, lineStyle: lv.ath.style, axisLabelVisible: false, title: ''});
-        s.atlLine = s.candleS.createPriceLine({price: j.atl, color: lv.atl.color, lineWidth: lv.atl.width, lineStyle: lv.atl.style, axisLabelVisible: false, title: ''});
+        if (lv.ath.vis?.chart !== false) s.athLine = s.candleS.createPriceLine({price: j.ath, color: lv.ath.color, lineWidth: lv.ath.width, lineStyle: lv.ath.style, axisLabelVisible: false, title: ''});
+        if (lv.atl.vis?.chart !== false) s.atlLine = s.candleS.createPriceLine({price: j.atl, color: lv.atl.color, lineWidth: lv.atl.width, lineStyle: lv.atl.style, axisLabelVisible: false, title: ''});
     } catch(e) {}
 }
 
@@ -1360,13 +1376,13 @@ async function loadSlotData(idx) {
             const today = jd.data[jd.data.length - 1];
             const _slvl = getLvCfg();
             s.dayHighVal = today.high; s.dayLowVal = today.low;
-            s.dayHighLine  = s.candleS.createPriceLine({ price: today.high, color:_slvl.dayHigh.color,  lineWidth:_slvl.dayHigh.width,  lineStyle:_slvl.dayHigh.style,  axisLabelVisible:false, title:'' });
-            s.dayLowLine   = s.candleS.createPriceLine({ price: today.low,  color:_slvl.dayLow.color,   lineWidth:_slvl.dayLow.width,   lineStyle:_slvl.dayLow.style,   axisLabelVisible:false, title:'' });
+            if (_slvl.dayHigh.vis?.chart !== false) s.dayHighLine = s.candleS.createPriceLine({ price: today.high, color:_slvl.dayHigh.color,  lineWidth:_slvl.dayHigh.width,  lineStyle:_slvl.dayHigh.style,  axisLabelVisible:false, title:'' });
+            if (_slvl.dayLow.vis?.chart  !== false) s.dayLowLine  = s.candleS.createPriceLine({ price: today.low,  color:_slvl.dayLow.color,   lineWidth:_slvl.dayLow.width,   lineStyle:_slvl.dayLow.style,   axisLabelVisible:false, title:'' });
             if (jd.data.length >= 2) {
                 const prev = jd.data[jd.data.length - 2];
                 s.prevHighVal = prev.high; s.prevLowVal = prev.low;
-                s.prevHighLine = s.candleS.createPriceLine({ price: prev.high, color:_slvl.prevHigh.color, lineWidth:_slvl.prevHigh.width, lineStyle:_slvl.prevHigh.style, axisLabelVisible:false, title:'' });
-                s.prevLowLine  = s.candleS.createPriceLine({ price: prev.low,  color:_slvl.prevLow.color,  lineWidth:_slvl.prevLow.width,  lineStyle:_slvl.prevLow.style,  axisLabelVisible:false, title:'' });
+                if (_slvl.prevHigh.vis?.chart !== false) s.prevHighLine = s.candleS.createPriceLine({ price: prev.high, color:_slvl.prevHigh.color, lineWidth:_slvl.prevHigh.width, lineStyle:_slvl.prevHigh.style, axisLabelVisible:false, title:'' });
+                if (_slvl.prevLow.vis?.chart  !== false) s.prevLowLine  = s.candleS.createPriceLine({ price: prev.low,  color:_slvl.prevLow.color,  lineWidth:_slvl.prevLow.width,  lineStyle:_slvl.prevLow.style,  axisLabelVisible:false, title:'' });
             }
         }
     } catch(e) { console.error(`Error loading ${s.symbol}:`, e); }
@@ -2308,6 +2324,8 @@ function openCfgPanel() {
             <td style="padding:6px 6px;text-align:center;"><input type="color" id="cfg-${key}-color" value="${c.color}" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0;"></td>
             <td style="padding:6px 6px;text-align:center;"><select id="cfg-${key}-width" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${widths}</select></td>
             <td style="padding:6px 6px;text-align:center;"><select id="cfg-${key}-style" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${styles}</select></td>
+            <td style="padding:6px 6px;text-align:center;"><input type="checkbox" id="cfg-${key}-vis-chart" ${c.vis?.chart!==false?'checked':''} style="cursor:pointer;width:14px;height:14px;accent-color:#2563eb;"></td>
+            <td style="padding:6px 6px;text-align:center;"><input type="checkbox" id="cfg-${key}-vis-mtf" ${c.vis?.mtf!==false?'checked':''} style="cursor:pointer;width:14px;height:14px;accent-color:#2563eb;"></td>
         </tr>`;
     }).join('');
 
@@ -2320,11 +2338,13 @@ function openCfgPanel() {
             <td style="padding:6px 6px;text-align:center;"><input type="color" id="cfg-ema-color-${e.p}" value="${e.color}" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0;"></td>
             <td style="padding:6px 6px;text-align:center;"><select id="cfg-ema-width-${e.p}" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${widths}</select></td>
             <td style="padding:6px 6px;text-align:center;"><select id="cfg-ema-style-${e.p}" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${styles}</select></td>
+            <td style="padding:6px 6px;"></td>
+            <td style="padding:6px 6px;"></td>
         </tr>`;
     }).join('');
 
     rows += _sectionHdr('Candele al caricamento');
-    rows += `<tr><td colspan="4" style="padding:6px 6px;">
+    rows += `<tr><td colspan="6" style="padding:6px 6px;">
         <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;">
         ${TF_CANDLES_META.map(tf => `<div style="text-align:center;"><div style="font-size:10px;color:#6B7280;margin-bottom:2px;">${tf==='60'?'1h':tf==='240'?'4h':tf+'m'.replace('Dm','D')}</div><input type="number" id="cfg-candles-${tf}" min="20" max="500" value="${candlesCfg[tf]||defCandles[tf]}" style="width:100%;background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:3px;text-align:center;"></div>`).join('')}
         </div>
@@ -2345,6 +2365,10 @@ function saveCfgPanel() {
             color: document.getElementById(`cfg-${key}-color`).value,
             width: parseInt(document.getElementById(`cfg-${key}-width`).value),
             style: parseInt(document.getElementById(`cfg-${key}-style`).value),
+            vis: {
+                chart: document.getElementById(`cfg-${key}-vis-chart`).checked,
+                mtf:   document.getElementById(`cfg-${key}-vis-mtf`).checked,
+            },
         };
     }
     localStorage.setItem('chart_levels_cfg', JSON.stringify(lvCfg));
@@ -2395,17 +2419,17 @@ function applyCfgToAllSlots() {
         if (s.dayLowLine)   { try { s.candleS.removePriceLine(s.dayLowLine);   } catch(e) {} s.dayLowLine   = null; }
         if (s.prevHighLine) { try { s.candleS.removePriceLine(s.prevHighLine); } catch(e) {} s.prevHighLine = null; }
         if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
-        if (s.dayHighVal  != null) s.dayHighLine  = s.candleS.createPriceLine({price:s.dayHighVal,  color:lv.dayHigh.color,  lineWidth:lv.dayHigh.width,  lineStyle:lv.dayHigh.style,  axisLabelVisible:false, title:''});
-        if (s.dayLowVal   != null) s.dayLowLine   = s.candleS.createPriceLine({price:s.dayLowVal,   color:lv.dayLow.color,   lineWidth:lv.dayLow.width,   lineStyle:lv.dayLow.style,   axisLabelVisible:false, title:''});
-        if (s.prevHighVal != null) s.prevHighLine = s.candleS.createPriceLine({price:s.prevHighVal, color:lv.prevHigh.color, lineWidth:lv.prevHigh.width, lineStyle:lv.prevHigh.style, axisLabelVisible:false, title:''});
-        if (s.prevLowVal  != null) s.prevLowLine  = s.candleS.createPriceLine({price:s.prevLowVal,  color:lv.prevLow.color,  lineWidth:lv.prevLow.width,  lineStyle:lv.prevLow.style,  axisLabelVisible:false, title:''});
+        if (s.dayHighVal  != null && lv.dayHigh.vis?.chart  !== false) s.dayHighLine  = s.candleS.createPriceLine({price:s.dayHighVal,  color:lv.dayHigh.color,  lineWidth:lv.dayHigh.width,  lineStyle:lv.dayHigh.style,  axisLabelVisible:false, title:''});
+        if (s.dayLowVal   != null && lv.dayLow.vis?.chart   !== false) s.dayLowLine   = s.candleS.createPriceLine({price:s.dayLowVal,   color:lv.dayLow.color,   lineWidth:lv.dayLow.width,   lineStyle:lv.dayLow.style,   axisLabelVisible:false, title:''});
+        if (s.prevHighVal != null && lv.prevHigh.vis?.chart !== false) s.prevHighLine = s.candleS.createPriceLine({price:s.prevHighVal, color:lv.prevHigh.color, lineWidth:lv.prevHigh.width, lineStyle:lv.prevHigh.style, axisLabelVisible:false, title:''});
+        if (s.prevLowVal  != null && lv.prevLow.vis?.chart  !== false) s.prevLowLine  = s.candleS.createPriceLine({price:s.prevLowVal,  color:lv.prevLow.color,  lineWidth:lv.prevLow.width,  lineStyle:lv.prevLow.style,  axisLabelVisible:false, title:''});
         _clearSlotATHLines(s);
-        if (s.athVal != null) s.athLine = s.candleS.createPriceLine({price:s.athVal, color:lv.ath.color, lineWidth:lv.ath.width, lineStyle:lv.ath.style, axisLabelVisible:false, title:''});
-        if (s.atlVal != null) s.atlLine = s.candleS.createPriceLine({price:s.atlVal, color:lv.atl.color, lineWidth:lv.atl.width, lineStyle:lv.atl.style, axisLabelVisible:false, title:''});
+        if (s.athVal != null && lv.ath.vis?.chart !== false) s.athLine = s.candleS.createPriceLine({price:s.athVal, color:lv.ath.color, lineWidth:lv.ath.width, lineStyle:lv.ath.style, axisLabelVisible:false, title:''});
+        if (s.atlVal != null && lv.atl.vis?.chart !== false) s.atlLine = s.candleS.createPriceLine({price:s.atlVal, color:lv.atl.color, lineWidth:lv.atl.width, lineStyle:lv.atl.style, axisLabelVisible:false, title:''});
         if (s.obBidLine) { try { s.candleS.removePriceLine(s.obBidLine); } catch(e) {} s.obBidLine = null; }
         if (s.obAskLine) { try { s.candleS.removePriceLine(s.obAskLine); } catch(e) {} s.obAskLine = null; }
-        if (s.obBidVal != null) s.obBidLine = s.candleS.createPriceLine({price:s.obBidVal, color:lv.obBid.color, lineWidth:lv.obBid.width, lineStyle:lv.obBid.style, axisLabelVisible:true, title:''});
-        if (s.obAskVal != null) s.obAskLine = s.candleS.createPriceLine({price:s.obAskVal, color:lv.obAsk.color, lineWidth:lv.obAsk.width, lineStyle:lv.obAsk.style, axisLabelVisible:true, title:''});
+        if (s.obBidVal != null && lv.obBid.vis?.chart !== false) s.obBidLine = s.candleS.createPriceLine({price:s.obBidVal, color:lv.obBid.color, lineWidth:lv.obBid.width, lineStyle:lv.obBid.style, axisLabelVisible:true, title:''});
+        if (s.obAskVal != null && lv.obAsk.vis?.chart !== false) s.obAskLine = s.candleS.createPriceLine({price:s.obAskVal, color:lv.obAsk.color, lineWidth:lv.obAsk.width, lineStyle:lv.obAsk.style, axisLabelVisible:true, title:''});
     }
 }
 </script>

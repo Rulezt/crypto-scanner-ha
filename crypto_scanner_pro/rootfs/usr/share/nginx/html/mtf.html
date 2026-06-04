@@ -156,15 +156,31 @@ const DEFAULT_EMA_CFG = [
   {p:223, color:'#a855f7', style:0, width:2.5},
 ];
 const DEFAULT_LEVELS_CFG = {
-  dayHigh:  {color:'#22c55e', style:0, width:2},
-  dayLow:   {color:'#ef4444', style:0, width:2},
-  prevHigh: {color:'#22c55e', style:2, width:2},
-  prevLow:  {color:'#ef4444', style:2, width:2},
-  obBid:    {color:'#10b981', style:1, width:1},
-  obAsk:    {color:'#ef4444', style:1, width:1},
+  dayHigh:  {color:'#22c55e', style:0, width:2, vis:{chart:true, mtf:true}},
+  dayLow:   {color:'#ef4444', style:0, width:2, vis:{chart:true, mtf:true}},
+  prevHigh: {color:'#22c55e', style:2, width:2, vis:{chart:true, mtf:true}},
+  prevLow:  {color:'#ef4444', style:2, width:2, vis:{chart:true, mtf:true}},
+  obBid:    {color:'#10b981', style:1, width:1, vis:{chart:true, mtf:true}},
+  obAsk:    {color:'#ef4444', style:1, width:1, vis:{chart:true, mtf:true}},
+  ath:      {color:'#f59e0b', style:2, width:1, vis:{chart:true, mtf:true}},
+  atl:      {color:'#a855f7', style:2, width:1, vis:{chart:true, mtf:true}},
 };
 function getEmaCfg() { try{const s=JSON.parse(localStorage.getItem('chart_ema_cfg'));if(s&&s.length===4)return s;}catch(e){}return DEFAULT_EMA_CFG.map(x=>({...x})); }
-function getLvCfg()  { try{const s=JSON.parse(localStorage.getItem('chart_levels_cfg'));if(s)return{...DEFAULT_LEVELS_CFG,...s};}catch(e){}return{...DEFAULT_LEVELS_CFG}; }
+function getLvCfg() {
+  try {
+    const s = JSON.parse(localStorage.getItem('chart_levels_cfg'));
+    if (s) {
+      const out = {};
+      for (const k of Object.keys(DEFAULT_LEVELS_CFG)) {
+        out[k] = s[k]
+          ? {...DEFAULT_LEVELS_CFG[k], ...s[k], vis:{...DEFAULT_LEVELS_CFG[k].vis, ...(s[k].vis||{})}}
+          : {...DEFAULT_LEVELS_CFG[k]};
+      }
+      return out;
+    }
+  } catch(e) {}
+  return Object.fromEntries(Object.entries(DEFAULT_LEVELS_CFG).map(([k,v])=>[k,{...v,vis:{...v.vis}}]));
+}
 let EMA_CFG = getEmaCfg();
 
 const TGSVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="#29b6f6" style="flex-shrink:0;vertical-align:middle;"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.96 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>';
@@ -172,6 +188,7 @@ const TGSVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width
 let slots   = [];
 let _mouseOverSlot = -1;
 let ws      = null;
+let _mtfAthVal = null, _mtfAtlVal = null;
 let wsTimer = null;
 let mobileSlotIdx = 0;
 let bbActive = false;
@@ -464,6 +481,7 @@ const fsBtn = document.createElement('button');
       lastEMA: {5:null,10:null,60:null,223:null},
       dayHighLine:null, dayLowLine:null,
       prevHighLine:null, prevLowLine:null,
+      athLine:null, atlLine:null,
       rangeActive: false, rangeP1: null, rangeP2: null, _rangeSub: null, _rangeCsSub: null,
       dayPrimitive: null,
       lastCandleStartUtc: null,
@@ -476,6 +494,24 @@ const fsBtn = document.createElement('button');
     });
     chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.cfg.tf), to: s.klineCount + 3 }); });
   });
+}
+
+async function fetchMTFATHATL() {
+  try {
+    const r = await fetch(`api/ath-atl?symbol=${SYM}`);
+    const j = await r.json();
+    if (j.status === 'pending') { setTimeout(fetchMTFATHATL, 3000); return; }
+    if (j.status !== 'ok') return;
+    _mtfAthVal = j.ath; _mtfAtlVal = j.atl;
+    const lv = getLvCfg();
+    for (const s of slots) {
+      if (!s.candleS) continue;
+      if (s.athLine) { try { s.candleS.removePriceLine(s.athLine); } catch(e) {} s.athLine = null; }
+      if (s.atlLine) { try { s.candleS.removePriceLine(s.atlLine); } catch(e) {} s.atlLine = null; }
+      if (_mtfAthVal != null && lv.ath.vis?.mtf !== false) s.athLine = s.candleS.createPriceLine({price:_mtfAthVal, color:lv.ath.color, lineWidth:lv.ath.width, lineStyle:lv.ath.style, axisLabelVisible:false, title:''});
+      if (_mtfAtlVal != null && lv.atl.vis?.mtf !== false) s.atlLine = s.candleS.createPriceLine({price:_mtfAtlVal, color:lv.atl.color, lineWidth:lv.atl.width, lineStyle:lv.atl.style, axisLabelVisible:false, title:''});
+    }
+  } catch(e) {}
 }
 
 // ── data loading ───────────────────────────────────────────────────────────────
@@ -510,6 +546,7 @@ async function loadAll() {
 
   // Load all slots in parallel
   await Promise.all(slots.map((_, i) => loadSlot(i, dailyData)));
+  fetchMTFATHATL();
   openWS();
   syncAllAlertLines();
   initNotifications();
@@ -542,10 +579,10 @@ async function loadSlot(idx, dailyData) {
     if (dailyData) {
       const {today, prev} = dailyData;
       const _slvl = getLvCfg();
-      s.dayHighLine  = s.candleS.createPriceLine({price:today.high,color:_slvl.dayHigh.color, lineWidth:_slvl.dayHigh.width, lineStyle:_slvl.dayHigh.style, axisLabelVisible:false,title:''});
-      s.dayLowLine   = s.candleS.createPriceLine({price:today.low, color:_slvl.dayLow.color,  lineWidth:_slvl.dayLow.width,  lineStyle:_slvl.dayLow.style,  axisLabelVisible:false,title:''});
-      s.prevHighLine = s.candleS.createPriceLine({price:prev.high, color:_slvl.prevHigh.color,lineWidth:_slvl.prevHigh.width,lineStyle:_slvl.prevHigh.style,axisLabelVisible:false,title:''});
-      s.prevLowLine  = s.candleS.createPriceLine({price:prev.low,  color:_slvl.prevLow.color, lineWidth:_slvl.prevLow.width, lineStyle:_slvl.prevLow.style, axisLabelVisible:false,title:''});
+      if (_slvl.dayHigh.vis?.mtf  !== false) s.dayHighLine  = s.candleS.createPriceLine({price:today.high,color:_slvl.dayHigh.color, lineWidth:_slvl.dayHigh.width, lineStyle:_slvl.dayHigh.style, axisLabelVisible:false,title:''});
+      if (_slvl.dayLow.vis?.mtf   !== false) s.dayLowLine   = s.candleS.createPriceLine({price:today.low, color:_slvl.dayLow.color,  lineWidth:_slvl.dayLow.width,  lineStyle:_slvl.dayLow.style,  axisLabelVisible:false,title:''});
+      if (_slvl.prevHigh.vis?.mtf !== false) s.prevHighLine = s.candleS.createPriceLine({price:prev.high, color:_slvl.prevHigh.color,lineWidth:_slvl.prevHigh.width,lineStyle:_slvl.prevHigh.style,axisLabelVisible:false,title:''});
+      if (_slvl.prevLow.vis?.mtf  !== false) s.prevLowLine  = s.candleS.createPriceLine({price:prev.low,  color:_slvl.prevLow.color, lineWidth:_slvl.prevLow.width, lineStyle:_slvl.prevLow.style, axisLabelVisible:false,title:''});
     }
   } catch(e) {
     console.error(`MTF load ${s.cfg.label} error:`, e);
@@ -710,12 +747,12 @@ async function loadOBData() {
         if (jd.success && jd.data && jd.data.length) {
             const today = jd.data[jd.data.length - 1];
             const _oblvl = getLvCfg();
-            obDayHighLine  = obCandleS.createPriceLine({ price: today.high,  color:_oblvl.dayHigh.color,  lineWidth:_oblvl.dayHigh.width,  lineStyle:_oblvl.dayHigh.style,  axisLabelVisible:false, title:'' });
-            obDayLowLine   = obCandleS.createPriceLine({ price: today.low,   color:_oblvl.dayLow.color,   lineWidth:_oblvl.dayLow.width,   lineStyle:_oblvl.dayLow.style,   axisLabelVisible:false, title:'' });
+            if (_oblvl.dayHigh.vis?.mtf  !== false) obDayHighLine  = obCandleS.createPriceLine({ price: today.high,  color:_oblvl.dayHigh.color,  lineWidth:_oblvl.dayHigh.width,  lineStyle:_oblvl.dayHigh.style,  axisLabelVisible:false, title:'' });
+            if (_oblvl.dayLow.vis?.mtf   !== false) obDayLowLine   = obCandleS.createPriceLine({ price: today.low,   color:_oblvl.dayLow.color,   lineWidth:_oblvl.dayLow.width,   lineStyle:_oblvl.dayLow.style,   axisLabelVisible:false, title:'' });
             if (jd.data.length >= 2) {
                 const prev = jd.data[jd.data.length - 2];
-                obPrevHighLine = obCandleS.createPriceLine({ price: prev.high, color:_oblvl.prevHigh.color, lineWidth:_oblvl.prevHigh.width, lineStyle:_oblvl.prevHigh.style, axisLabelVisible:false, title:'' });
-                obPrevLowLine  = obCandleS.createPriceLine({ price: prev.low,  color:_oblvl.prevLow.color,  lineWidth:_oblvl.prevLow.width,  lineStyle:_oblvl.prevLow.style,  axisLabelVisible:false, title:'' });
+                if (_oblvl.prevHigh.vis?.mtf !== false) obPrevHighLine = obCandleS.createPriceLine({ price: prev.high, color:_oblvl.prevHigh.color, lineWidth:_oblvl.prevHigh.width, lineStyle:_oblvl.prevHigh.style, axisLabelVisible:false, title:'' });
+                if (_oblvl.prevLow.vis?.mtf  !== false) obPrevLowLine  = obCandleS.createPriceLine({ price: prev.low,  color:_oblvl.prevLow.color,  lineWidth:_oblvl.prevLow.width,  lineStyle:_oblvl.prevLow.style,  axisLabelVisible:false, title:'' });
             }
         }
     } catch(e) { console.error('OB chart load error:', e); }
@@ -781,8 +818,8 @@ window.addEventListener('message', e => {
     if (obBidLine) { try { obCandleS.removePriceLine(obBidLine); } catch(e) {} obBidLine = null; }
     if (obAskLine) { try { obCandleS.removePriceLine(obAskLine); } catch(e) {} obAskLine = null; }
     const _moblv = getLvCfg();
-    if (bid != null) obBidLine = obCandleS.createPriceLine({ price: bid, color:_moblv.obBid.color, lineWidth:_moblv.obBid.width, lineStyle:_moblv.obBid.style, axisLabelVisible:true, title:'Bid' });
-    if (ask != null) obAskLine = obCandleS.createPriceLine({ price: ask, color:_moblv.obAsk.color, lineWidth:_moblv.obAsk.width, lineStyle:_moblv.obAsk.style, axisLabelVisible:true, title:'Ask' });
+    if (bid != null && _moblv.obBid.vis?.mtf !== false) obBidLine = obCandleS.createPriceLine({ price: bid, color:_moblv.obBid.color, lineWidth:_moblv.obBid.width, lineStyle:_moblv.obBid.style, axisLabelVisible:true, title:'Bid' });
+    if (ask != null && _moblv.obAsk.vis?.mtf !== false) obAskLine = obCandleS.createPriceLine({ price: ask, color:_moblv.obAsk.color, lineWidth:_moblv.obAsk.width, lineStyle:_moblv.obAsk.style, axisLabelVisible:true, title:'Ask' });
 });
 
 document.addEventListener('keydown', e => {
@@ -861,12 +898,12 @@ async function loadFSData() {
         if (jd.success && jd.data && jd.data.length) {
             const today = jd.data[jd.data.length - 1];
             const _fslvl = getLvCfg();
-            fsDayHighLine = fsCandleS.createPriceLine({ price: today.high, color:_fslvl.dayHigh.color,  lineWidth:_fslvl.dayHigh.width,  lineStyle:_fslvl.dayHigh.style,  axisLabelVisible:false, title:'' });
-            fsDayLowLine  = fsCandleS.createPriceLine({ price: today.low,  color:_fslvl.dayLow.color,   lineWidth:_fslvl.dayLow.width,   lineStyle:_fslvl.dayLow.style,   axisLabelVisible:false, title:'' });
+            if (_fslvl.dayHigh.vis?.mtf  !== false) fsDayHighLine = fsCandleS.createPriceLine({ price: today.high, color:_fslvl.dayHigh.color,  lineWidth:_fslvl.dayHigh.width,  lineStyle:_fslvl.dayHigh.style,  axisLabelVisible:false, title:'' });
+            if (_fslvl.dayLow.vis?.mtf   !== false) fsDayLowLine  = fsCandleS.createPriceLine({ price: today.low,  color:_fslvl.dayLow.color,   lineWidth:_fslvl.dayLow.width,   lineStyle:_fslvl.dayLow.style,   axisLabelVisible:false, title:'' });
             if (jd.data.length >= 2) {
                 const prev = jd.data[jd.data.length - 2];
-                fsPrevHighLine = fsCandleS.createPriceLine({ price: prev.high, color:_fslvl.prevHigh.color, lineWidth:_fslvl.prevHigh.width, lineStyle:_fslvl.prevHigh.style, axisLabelVisible:false, title:'' });
-                fsPrevLowLine  = fsCandleS.createPriceLine({ price: prev.low,  color:_fslvl.prevLow.color,  lineWidth:_fslvl.prevLow.width,  lineStyle:_fslvl.prevLow.style,  axisLabelVisible:false, title:'' });
+                if (_fslvl.prevHigh.vis?.mtf !== false) fsPrevHighLine = fsCandleS.createPriceLine({ price: prev.high, color:_fslvl.prevHigh.color, lineWidth:_fslvl.prevHigh.width, lineStyle:_fslvl.prevHigh.style, axisLabelVisible:false, title:'' });
+                if (_fslvl.prevLow.vis?.mtf  !== false) fsPrevLowLine  = fsCandleS.createPriceLine({ price: prev.low,  color:_fslvl.prevLow.color,  lineWidth:_fslvl.prevLow.width,  lineStyle:_fslvl.prevLow.style,  axisLabelVisible:false, title:'' });
             }
         }
     } catch(e) { console.error('FS chart load error:', e); }
