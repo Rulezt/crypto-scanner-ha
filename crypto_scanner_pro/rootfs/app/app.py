@@ -318,7 +318,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '4.6.72',
+        'version': '4.6.73',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -535,7 +535,8 @@ def get_high_volume():
             ws_manager.subscribe_klines(new_syms, intervals=['30'])
             _hv_klines_subscribed.update(new_syms)
 
-        # Attach EMA60(30m) and daily touch count (30m candles, dynamic EMA series)
+        # Attach EMA60(30m), daily touch count, ATH/ATL distances
+        ath_scanner = scanners.get('ath_atl')
         for coin in coins:
             klines_30m = ws_manager.get_klines(coin['symbol'], '30')
             closes = [k['close'] for k in klines_30m]
@@ -543,6 +544,14 @@ def get_high_volume():
             coin['ema60_30m'] = ema
             coin['ema60_dist'] = round((coin['price'] - ema) / ema * 100, 2) if ema else None
             coin['ema_touch_count'] = _count_ema_touches_daily(klines_30m, period=60)
+            aa = ath_scanner.get_ath_atl(coin['symbol']) if ath_scanner else None
+            if aa:
+                p = coin['price']
+                coin['ath_dist'] = round((aa['ath'] - p) / aa['ath'] * 100, 2)
+                coin['atl_dist'] = round((p - aa['atl']) / aa['atl'] * 100, 2)
+            else:
+                coin['ath_dist'] = None
+                coin['atl_dist'] = None
 
         return jsonify({'success': True, 'data': coins, 'count': len(coins)})
     except Exception as e:

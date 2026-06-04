@@ -46,6 +46,9 @@ class ATHATLScanner:
         # ATH/ATL pre-computed cache: {symbol: {ath, atl, computed_at}}
         self._ath_cache      = {}
         self._ath_cache_lock = threading.Lock()
+        self._pending_fetch  = set()
+        self._pending_lock   = threading.Lock()
+        self._fetch_sem      = threading.Semaphore(5)  # max 5 concurrent REST fetches
 
         self._ws_manager = ws_manager
         if ws_manager is not None:
@@ -205,6 +208,38 @@ class ATHATLScanner:
             send_text(self.telegram_token, self.telegram_chat_id, caption)
         log_alert(sym, label, emoji=emoji, note=note)
         print(f'ATH/ATL alert: {sym} ({alert_type})')
+
+    # ── public cache accessor ─────────────────────────────────────────────────
+
+    def get_ath_atl(self, symbol):
+        """Return cached {ath, atl} for symbol; triggers background fetch if missing."""
+        with self._ath_cache_lock:
+            if symbol in self._ath_cache:
+                return self._ath_cache[symbol]
+        with self._pending_lock:
+            if symbol not in self._pending_fetch:
+                self._pending_fetch.add(symbol)
+                threading.Thread(target=self._fetch_and_cache_symbol,
+                                 args=(symbol,), daemon=True).start()
+        return None
+
+    def _fetch_and_cache_symbol(self, symbol):
+        with self._fetch_sem:
+            try:
+                klines = self.fetch_historical_data(symbol, self.lookback_days)
+                if klines:
+                    highs = [float(k[2]) for k in klines]
+                    lows  = [float(k[3]) for k in klines]
+                    with self._ath_cache_lock:
+                        self._ath_cache[symbol] = {
+                            'ath': max(highs), 'atl': min(lows),
+                            'computed_at': time.time()
+                        }
+            except Exception as e:
+                print(f'⚠️ ATH/ATL fetch {symbol}: {e}')
+            finally:
+                with self._pending_lock:
+                    self._pending_fetch.discard(symbol)
 
     # ── historical data helpers ───────────────────────────────────────────────
 

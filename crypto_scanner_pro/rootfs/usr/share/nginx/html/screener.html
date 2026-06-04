@@ -206,6 +206,8 @@
                             <th id="hv-th-ema60_30m"     class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('ema60_30m')">EMA60 30m<span class="hv-arrow"> ⇅</span></th>
                             <th id="hv-th-ema60_dist"    class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('ema60_dist')">Dist EMA<span class="hv-arrow"> ⇅</span></th>
                             <th id="hv-th-ema_touch_count" class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('ema_touch_count')">Tocchi EMA<span class="hv-arrow"> ⇅</span></th>
+                            <th id="hv-th-ath_dist" class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('ath_dist')">Dist ATH<span class="hv-arrow"> ⇅</span></th>
+                            <th id="hv-th-atl_dist" class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('atl_dist')">Dist ATL<span class="hv-arrow"> ⇅</span></th>
                             <th class="px-4 py-2 text-right"></th>
                         </tr>
                     </thead>
@@ -601,7 +603,7 @@
         }
 
         function updateHvSortHeaders() {
-            ['symbol','price','change_24h','volume_24h','ema60_30m','ema60_dist','ema_touch_count'].forEach(col => {
+            ['symbol','price','change_24h','volume_24h','ema60_30m','ema60_dist','ema_touch_count','ath_dist','atl_dist'].forEach(col => {
                 const th = document.getElementById(`hv-th-${col}`);
                 if (!th) return;
                 const span = th.querySelector('.hv-arrow');
@@ -628,6 +630,10 @@
             const distTxt   = distVal != null ? (distVal >= 0 ? '+' : '') + distVal.toFixed(2) + '%' : '-';
             const distClass = distVal != null ? (distVal >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600';
             const touchTxt  = c.ema_touch_count != null ? c.ema_touch_count : '-';
+            const athTxt    = c.ath_dist != null ? '-' + c.ath_dist.toFixed(1) + '%' : '-';
+            const atlTxt    = c.atl_dist != null ? '+' + c.atl_dist.toFixed(1) + '%' : '-';
+            const athClass  = c.ath_dist != null ? (c.ath_dist <= 5 ? 'text-orange-400' : 'text-gray-400') : 'text-gray-600';
+            const atlClass  = c.atl_dist != null ? (c.atl_dist <= 20 ? 'text-emerald-400' : 'text-gray-400') : 'text-gray-600';
             return `<tr class="border-b border-dark-border/40 hover:bg-dark-hover/60">
                 <td class="px-4 py-2.5 text-gray-600 text-xs w-10">${i + 1}</td>
                 <td class="px-4 py-2.5 font-medium text-gray-200 cursor-default" data-symbol="${c.symbol}" data-tf="30" onmouseenter="showScreenshotTip(this)" onmouseleave="hideScreenshotTip()">${coin}</td>
@@ -637,6 +643,8 @@
                 <td id="hve-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${emaClass}">${emaTxt}</td>
                 <td id="hvd-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${distClass}">${distTxt}</td>
                 <td id="hvt-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs text-gray-400">${touchTxt}</td>
+                <td id="hvath-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${athClass}">${athTxt}</td>
+                <td id="hvatl-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${atlClass}">${atlTxt}</td>
                 <td class="px-4 py-2.5 text-right whitespace-nowrap">
                     <a href="https://www.bybit.com/trade/usdt/${c.symbol}" target="_blank" rel="noopener" style="font-size:10px;color:#f59e0b;background:#1E2230;border-radius:3px;padding:1px 6px;text-decoration:none;white-space:nowrap;">Bybit ↗</a>
                     <a href="mtf?symbol=${c.symbol}" target="_blank" rel="noopener" style="font-size:10px;color:#60a5fa;background:#1E2230;border-radius:3px;padding:1px 6px;text-decoration:none;white-space:nowrap;">MTF ↗</a>
@@ -698,6 +706,16 @@
                             distEl.className = `px-4 py-2.5 text-right font-mono text-xs ${d != null ? (d >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600'}`;
                         }
                         if (touchEl && c.ema_touch_count != null) touchEl.textContent = c.ema_touch_count;
+                        const athEl = document.getElementById(`hvath-${c.symbol}`);
+                        const atlEl = document.getElementById(`hvatl-${c.symbol}`);
+                        if (athEl && c.ath_dist != null) {
+                            athEl.textContent = '-' + c.ath_dist.toFixed(1) + '%';
+                            athEl.className = `px-4 py-2.5 text-right font-mono text-xs ${c.ath_dist <= 5 ? 'text-orange-400' : 'text-gray-400'}`;
+                        }
+                        if (atlEl && c.atl_dist != null) {
+                            atlEl.textContent = '+' + c.atl_dist.toFixed(1) + '%';
+                            atlEl.className = `px-4 py-2.5 text-right font-mono text-xs ${c.atl_dist <= 20 ? 'text-emerald-400' : 'text-gray-400'}`;
+                        }
                     });
                 }
 
