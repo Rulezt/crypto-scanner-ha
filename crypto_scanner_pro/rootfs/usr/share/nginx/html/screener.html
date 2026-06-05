@@ -171,6 +171,10 @@
                         </div>
                         <div class="text-xl sm:text-2xl font-bold" id="emprox-count">-</div>
                         <div class="text-xs text-gray-500 mt-1">Alert oggi</div>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="text-xs text-gray-500">Monitorate:</span>
+                            <span class="text-xs font-medium text-emerald-400" id="emprox-monitored">-</span>
+                        </div>
                         <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Avvicinamento EMA60 30m — 0 tocchi oggi</div>
                     </div>
                 </div>
@@ -630,6 +634,9 @@
                 countEl.classList.remove('hidden');
                 updEl.textContent = '● Live';
                 updEl.style.color = '#34d399';
+
+                const monEl = document.getElementById('emprox-monitored');
+                if (monEl) monEl.textContent = _hvData.filter(c => c.ema_touch_count === 0).length;
             } catch (e) {
                 console.error('Error loading high volume:', e);
             }
