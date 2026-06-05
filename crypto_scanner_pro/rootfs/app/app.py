@@ -12,6 +12,7 @@ import time
 import logging
 import uuid
 from scanners.ema_touch import EMAScanner
+from scanners.ema_proximity import EMAProximityScanner
 from scanners.ath_atl_scanner import ATHATLScanner
 from scanners.ico_levels_scanner import ICOLevelsScanner
 from scanners.double_touch import DoubleTouchScanner
@@ -66,6 +67,11 @@ DEFAULT_CONFIG = {
         'scan_tf': ['D', '240'],
         'scan_interval_minutes': 240,
         'cooldown_hours': 12,
+    },
+    'ema_proximity': {
+        'enabled': True,
+        'proximity_threshold': 1.5,
+        'screenshot_tf': '30',
     },
     'general': {
         'min_volume_24h': 10000000,
@@ -243,6 +249,15 @@ def init_scanners():
             **{k: v for k, v in config['general'].items() if k in ('min_volume_24h', 'max_coins_per_alert')}
         )
 
+        scanners['ema_proximity'] = EMAProximityScanner(
+            telegram_config=telegram_config,
+            ws_manager=ws_manager,
+            live_config=config,
+            touch_threshold=config['ema_touch'].get('ema_touch_threshold', 2.0),
+            **config['ema_proximity'],
+            **config['general']
+        )
+
         logger.info("✅ Scanners initialized")
     except Exception as e:
         logger.error(f"❌ Error initializing scanners: {e}")
@@ -320,7 +335,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '4.6.87',
+        'version': '4.6.88',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -331,6 +346,7 @@ def health():
             'ath_atl': config['ath_atl']['enabled'],
             'ico_levels': config['ico_levels']['enabled'],
             'double_touch': config['double_touch']['enabled'],
+            'ema_proximity': config['ema_proximity']['enabled'],
         }
     })
 
@@ -430,6 +446,14 @@ def get_ath_atl_status():
     except Exception as e:
         logger.error(f"❌ Error getting ATH/ATL status: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/scanner-api/ema-proximity/status', methods=['GET'])
+def ema_proximity_status():
+    scanner = scanners.get('ema_proximity')
+    if not scanner:
+        return jsonify({'count': 0, 'alerts': []})
+    alerts = scanner.get_today_alerts()
+    return jsonify({'count': len(alerts), 'alerts': alerts})
 
 @app.route('/scanner-api/alerts/recent', methods=['GET'])
 def get_recent_alerts():
