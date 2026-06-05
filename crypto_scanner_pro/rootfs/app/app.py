@@ -11,7 +11,6 @@ import threading
 import time
 import logging
 import uuid
-from scanners.ema_touch import EMAScanner
 from scanners.ema_proximity import EMAProximityScanner
 from scanners.ath_atl_scanner import ATHATLScanner
 from scanners.ico_levels_scanner import ICOLevelsScanner
@@ -35,14 +34,6 @@ DEFAULT_CONFIG = {
         'chat_id': os.getenv('TELEGRAM_CHAT_ID', ''),
         'enabled': True,
         'ha_url': '',
-    },
-    'ema_touch': {
-        'enabled': True,
-        'ema_period': 60,
-        'ema_touch_candles': 3,
-        'ema_touch_threshold': 2.0,
-        'scan_interval_minutes': 30,
-        'screenshot_tf': '30',
     },
     'ath_atl': {
         'enabled': True,
@@ -71,6 +62,7 @@ DEFAULT_CONFIG = {
     'ema_proximity': {
         'enabled': True,
         'proximity_threshold': 1.5,
+        'touch_threshold': 2.0,
         'screenshot_tf': '30',
     },
     'general': {
@@ -219,14 +211,6 @@ def init_scanners():
         logger.info(f"✅ Telegram configured: {telegram_config['chat_id'][:8]}...")
     
     try:
-        scanners['ema'] = EMAScanner(
-            telegram_config=telegram_config,
-            ws_manager=ws_manager,
-            live_config=config,
-            **config['ema_touch'],
-            **config['general']
-        )
-
         scanners['ath_atl'] = ATHATLScanner(
             telegram_config=telegram_config,
             ws_manager=ws_manager,
@@ -253,7 +237,6 @@ def init_scanners():
             telegram_config=telegram_config,
             ws_manager=ws_manager,
             live_config=config,
-            touch_threshold=config['ema_touch'].get('ema_touch_threshold', 2.0),
             **config['ema_proximity'],
             **config['general']
         )
@@ -306,7 +289,6 @@ def start_scanners():
 
     # (config_name, scanner_key, interval)
     threads_config = [
-        ('ema_touch',      'ema',        config['ema_touch']['scan_interval_minutes']),
         ('ath_atl',        'ath_atl',    config['ath_atl']['scan_interval_minutes']),
         ('ico_levels',     'ico_levels',    config['ico_levels']['scan_interval_minutes']),
         ('double_touch',   'double_touch',  config['double_touch']['scan_interval_minutes']),
@@ -335,14 +317,13 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '4.6.89',
+        'version': '4.6.90',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
         'ws_connected': ws_manager.ready.is_set(),
         'ws_tickers': len(ws_manager.get_all_tickers()),
         'scanners': {
-            'ema_touch': config['ema_touch']['enabled'],
             'ath_atl': config['ath_atl']['enabled'],
             'ico_levels': config['ico_levels']['enabled'],
             'double_touch': config['double_touch']['enabled'],
@@ -569,7 +550,7 @@ def get_high_volume():
             ema = _compute_ema(closes, 60)
             coin['ema60_30m'] = ema
             coin['ema60_dist'] = round((coin['price'] - ema) / ema * 100, 2) if ema else None
-            coin['ema_touch_count'] = _count_ema_touches_daily(klines_30m, period=60, threshold=config['ema_touch'].get('ema_touch_threshold', 2.0))
+            coin['ema_touch_count'] = _count_ema_touches_daily(klines_30m, period=60, threshold=config['ema_proximity'].get('touch_threshold', 2.0))
             aa = ath_scanner.get_ath_atl(coin['symbol']) if ath_scanner else None
             if aa:
                 p = coin['price']
