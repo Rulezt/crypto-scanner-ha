@@ -66,7 +66,7 @@
                         <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                         <span class="text-sm text-gray-400 hidden sm:inline">Caricamento...</span>
                     </div>
-                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.6.65</div>
+                    <div class="text-xs text-gray-500 hidden sm:block" id="version">v4.6.91</div>
                 </div>
             </div>
         </div>
@@ -92,8 +92,12 @@
                                 <div id="ath-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
                             </div>
                         </div>
-                        <div class="text-xl sm:text-2xl font-bold" id="ath-count">40</div>
-                        <div class="text-xs text-gray-500 mt-1">Coin Monitorate</div>
+                        <div class="text-xl sm:text-2xl font-bold" id="ath-count">-</div>
+                        <div class="text-xs text-gray-500 mt-1">Alert oggi</div>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="text-xs text-gray-500">Monitorate:</span>
+                            <span class="text-xs font-medium text-amber-400" id="ath-monitored">-</span>
+                        </div>
                         <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Prezzo vicino al massimo/minimo storico annuale</div>
                     </div>
 
@@ -112,7 +116,11 @@
                             </div>
                         </div>
                         <div class="text-xl sm:text-2xl font-bold" id="ico-count">-</div>
-                        <div class="text-xs text-gray-500 mt-1">Listing Recenti</div>
+                        <div class="text-xs text-gray-500 mt-1">Alert oggi</div>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="text-xs text-gray-500">Monitorate:</span>
+                            <span class="text-xs font-medium text-pink-400" id="ico-monitored">-</span>
+                        </div>
                         <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Nuove coin vicino al prezzo di listing iniziale</div>
                     </div>
 
@@ -131,7 +139,11 @@
                             </div>
                         </div>
                         <div class="text-xl sm:text-2xl font-bold" id="dt-count">-</div>
-                        <div class="text-xs text-gray-500 mt-1">Pattern Daily</div>
+                        <div class="text-xs text-gray-500 mt-1">Alert oggi</div>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="text-xs text-gray-500">Monitorate:</span>
+                            <span class="text-xs font-medium text-cyan-400" id="dt-monitored">-</span>
+                        </div>
                         <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block">Due tocchi identici H/L — breakout atteso al terzo</div>
                         <a href="double-touch" class="mt-2 block text-xs text-cyan-500 hover:text-cyan-300">→ Scanner visuale</a>
                     </div>
@@ -416,8 +428,14 @@
             await loadHighVolume();
             checkTelegramStatus();
             loadEmaProxCount();
+            loadAthStatus();
+            loadIcoStatus();
+            loadDtStatus();
             setInterval(loadHighVolume, 2000);
             setInterval(loadEmaProxCount, 30000);
+            setInterval(loadAthStatus, 30000);
+            setInterval(loadIcoStatus, 30000);
+            setInterval(loadDtStatus, 30000);
         }
 
         async function loadEmaProxCount() {
@@ -425,6 +443,36 @@
                 const res = await fetch(`${API_URL}/scanner-api/ema-proximity/status`);
                 const data = await res.json();
                 document.getElementById('emprox-count').textContent = data.count ?? 0;
+            } catch (e) { /* ignore */ }
+        }
+
+        async function loadAthStatus() {
+            try {
+                const res = await fetch(`${API_URL}/scanner-api/ath-atl/alerts`);
+                const data = await res.json();
+                document.getElementById('ath-count').textContent = data.count ?? 0;
+                const monEl = document.getElementById('ath-monitored');
+                if (monEl) monEl.textContent = data.monitored ?? '-';
+            } catch (e) { /* ignore */ }
+        }
+
+        async function loadIcoStatus() {
+            try {
+                const res = await fetch(`${API_URL}/scanner-api/ico-levels/status`);
+                const data = await res.json();
+                document.getElementById('ico-count').textContent = data.count ?? 0;
+                const monEl = document.getElementById('ico-monitored');
+                if (monEl) monEl.textContent = data.monitored ?? '-';
+            } catch (e) { /* ignore */ }
+        }
+
+        async function loadDtStatus() {
+            try {
+                const res = await fetch(`${API_URL}/scanner-api/double-touch/status`);
+                const data = await res.json();
+                document.getElementById('dt-count').textContent = data.count ?? 0;
+                const monEl = document.getElementById('dt-monitored');
+                if (monEl) monEl.textContent = data.monitored ?? '-';
             } catch (e) { /* ignore */ }
         }
 

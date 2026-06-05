@@ -33,8 +33,9 @@ class DoubleTouchScanner:
         self.max_coins_per_alert = max_coins_per_alert
         self.cooldown_hours   = cooldown_hours
 
-        self.last_alerts = self._load_cooldown()
-        self._lock       = threading.Lock()
+        self.last_alerts     = self._load_cooldown()
+        self._lock           = threading.Lock()
+        self._last_scan_count = 0
 
         print(f'🔁 Terzo Tocco Scanner init — tol={self.tolerance}% prox={self.proximity}% tf={",".join(self.scan_tfs)}')
 
@@ -241,6 +242,7 @@ class DoubleTouchScanner:
         found = []
         try:
             tickers = self._fetch_tickers()
+            self._last_scan_count = len(tickers)
             for i, ticker in enumerate(tickers):
                 symbol = ticker['symbol']
                 for tf in self.scan_tfs:
@@ -311,3 +313,17 @@ class DoubleTouchScanner:
             segnale_label = '3tplus' if p['type'] == 'resistance' else '3tminus'
             log_alert(sym, 'Terzo Tocco', emoji='🔁', note=segnale_label, tf=tf_label)
             print(f'Terzo Tocco alert: {sym} ({p["type"]})')
+
+    # ── status ────────────────────────────────────────────────────────────────
+
+    def get_today_alerts(self):
+        today = datetime.utcnow().date()
+        symbols = set()
+        with self._lock:
+            for key, dt in self.last_alerts.items():
+                if dt.date() == today:
+                    symbols.add(key.rsplit('_', 2)[0])
+        return list(symbols)
+
+    def get_monitored_count(self):
+        return self._last_scan_count

@@ -317,7 +317,7 @@ def health():
     
     return jsonify({
         'status': 'ok',
-        'version': '4.6.90',
+        'version': '4.6.91',
         'telegram_configured': telegram_configured,
         'telegram_token_set': bool(config['telegram']['token']),
         'telegram_chat_id_set': bool(config['telegram']['chat_id']),
@@ -435,6 +435,30 @@ def ema_proximity_status():
         return jsonify({'count': 0, 'alerts': []})
     alerts = scanner.get_today_alerts()
     return jsonify({'count': len(alerts), 'alerts': alerts})
+
+@app.route('/scanner-api/ath-atl/alerts', methods=['GET'])
+def ath_atl_alerts():
+    scanner = scanners.get('ath_atl')
+    if not scanner:
+        return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
+    alerts = scanner.get_today_alerts()
+    return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count()})
+
+@app.route('/scanner-api/ico-levels/status', methods=['GET'])
+def ico_levels_status():
+    scanner = scanners.get('ico_levels')
+    if not scanner:
+        return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
+    alerts = scanner.get_today_alerts()
+    return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count()})
+
+@app.route('/scanner-api/double-touch/status', methods=['GET'])
+def double_touch_status():
+    scanner = scanners.get('double_touch')
+    if not scanner:
+        return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
+    alerts = scanner.get_today_alerts()
+    return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count()})
 
 @app.route('/scanner-api/alerts/recent', methods=['GET'])
 def get_recent_alerts():

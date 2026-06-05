@@ -403,3 +403,15 @@ class ATHATLScanner:
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
             if _log: _log(sym, 'ATL', emoji='⬇️', note=note)
+
+    # ── status ────────────────────────────────────────────────────────────────
+
+    def get_today_alerts(self):
+        today = datetime.utcnow().date()
+        ath = [s for s, dt in self.last_ath_alerts.items() if dt.date() == today]
+        atl = [s for s, dt in self.last_atl_alerts.items() if dt.date() == today]
+        return list(set(ath + atl))
+
+    def get_monitored_count(self):
+        with self._ath_cache_lock:
+            return len(self._ath_cache)

@@ -302,3 +302,21 @@ class ICOLevelsScanner:
             send_text(self.telegram_token, self.telegram_chat_id, caption)
         log_alert(sym, 'ICO Level', emoji='🚀', note=note)
         logger.info(f'ICO levels alert: {sym} {side} dist={dist:.2f}%')
+
+    # ── status ────────────────────────────────────────────────────────────────
+
+    def get_today_alerts(self):
+        today = datetime.utcnow().date()
+        symbols = set()
+        with self._alerted_lock:
+            for key, dt_str in self._alerted.items():
+                try:
+                    if datetime.fromisoformat(dt_str).date() == today:
+                        symbols.add(key.rsplit('_', 1)[0])
+                except Exception:
+                    pass
+        return list(symbols)
+
+    def get_monitored_count(self):
+        with self._levels_lock:
+            return len(self._levels)
