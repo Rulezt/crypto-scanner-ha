@@ -2865,14 +2865,14 @@ function _removeSlTpLine(kind) {
         if (_fsSlLabel) { _fsSlLabel.remove(); _fsSlLabel = null; }
         _fsSlPrice = null;
         const el = document.getElementById('fs-el-sl');
-        if (el) { el.style.color = '#ef4444'; el.style.pointerEvents = 'auto'; el.textContent = '+SL'; }
+        if (el) { el.style.display = ''; el.style.color = '#ef4444'; el.style.pointerEvents = 'auto'; el.textContent = '+SL'; }
         const si = document.getElementById('fs-sl-input'); if (si) si.value = '';
     } else {
         if (_fsTpLine && fsCandleS) { try { fsCandleS.removePriceLine(_fsTpLine); } catch(e){} _fsTpLine = null; }
         if (_fsTpLabel) { _fsTpLabel.remove(); _fsTpLabel = null; }
         _fsTpPrice = null;
         const el = document.getElementById('fs-el-tp');
-        if (el) { el.style.color = '#10b981'; el.style.pointerEvents = 'auto'; el.textContent = '+TP'; }
+        if (el) { el.style.display = ''; el.style.color = '#10b981'; el.style.pointerEvents = 'auto'; el.textContent = '+TP'; }
         const ti = document.getElementById('fs-tp-input'); if (ti) ti.value = '';
     }
     _syncPosBtns();
@@ -3065,16 +3065,16 @@ function _onSlTpInput(kind, val) {
     const p = parseFloat(val);
     if (kind === 'sl') {
         _fsSlPrice = (p > 0) ? p : null;
-        if (_fsSlPrice && _tradeSide) {
+        if (_tradeSide) {
             const el = document.getElementById('fs-el-sl');
-            if (el) { el.style.color = '#6B7280'; el.style.pointerEvents = 'none'; el.textContent = 'SL'; }
+            if (el) el.style.display = _fsSlPrice ? 'none' : '';
         }
         _drawSlTpLines();
     } else {
         _fsTpPrice = (p > 0) ? p : null;
-        if (_fsTpPrice && _tradeSide) {
+        if (_tradeSide) {
             const el = document.getElementById('fs-el-tp');
-            if (el) { el.style.color = '#6B7280'; el.style.pointerEvents = 'none'; el.textContent = 'TP'; }
+            if (el) el.style.display = _fsTpPrice ? 'none' : '';
         }
         _drawSlTpLines();
     }
@@ -3159,8 +3159,8 @@ function _createEntryLabel(long) {
         <div id="fs-el-side" onmousedown="_startEntryDrag(event)" style="padding:5px 9px;background:${sideBg};color:${sideColor};cursor:ns-resize;">${sideText}</div>
         <div id="fs-el-size" onclick="_editEntrySize(event)" title="Modifica size" style="${cell}${sep}color:#E5E7EB;min-width:24px;text-align:center;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">${sizeVal}</div>
         <div id="fs-el-type" onclick="_openEntryTypeMenu(event)" title="Cambia tipo ordine" style="${cell}${sep}color:#9CA3AF;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">${typeText}</div>
-        <div id="fs-el-tp" onclick="_addEntryTp()" title="+TP" style="${cell}${sep}color:#10b981;" onmouseenter="this.style.background='#1a3028'" onmouseleave="this.style.background='#1E222D'">+TP</div>
-        <div id="fs-el-sl" onclick="_addEntrySl()" title="+SL" style="${cell}${sep}color:#ef4444;" onmouseenter="this.style.background='#2d1717'" onmouseleave="this.style.background='#1E222D'">+SL</div>
+        <div id="fs-el-tp" onclick="_addEntryTp()" title="+TP" style="${cell}${sep}color:#10b981;${_fsTpPrice != null ? 'display:none;' : ''}" onmouseenter="this.style.background='#1a3028'" onmouseleave="this.style.background='#1E222D'">+TP</div>
+        <div id="fs-el-sl" onclick="_addEntrySl()" title="+SL" style="${cell}${sep}color:#ef4444;${_fsSlPrice != null ? 'display:none;' : ''}" onmouseenter="this.style.background='#2d1717'" onmouseleave="this.style.background='#1E222D'">+SL</div>
         <div onclick="resetTradeSide()" title="Rimuovi" style="${cell}${sep}color:#6B7280;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">✕</div>
     `;
     parent.appendChild(label);
@@ -3298,7 +3298,7 @@ function _addEntryTp() {
     if (_fsTpPrice == null) _fsTpPrice = _fsEntryPrice * (long ? 1.02 : 0.98);
     _drawSlTpLines();
     const el = document.getElementById('fs-el-tp');
-    if (el) { el.style.color = '#6B7280'; el.style.pointerEvents = 'none'; el.textContent = 'TP'; }
+    if (el) el.style.display = 'none';
     const ti = document.getElementById('fs-tp-input'); if (ti) ti.value = parseFloat(_fsTpPrice.toPrecision(8));
 }
 
@@ -3308,7 +3308,7 @@ function _addEntrySl() {
     if (_fsSlPrice == null) _fsSlPrice = _fsEntryPrice * (long ? 0.99 : 1.01);
     _drawSlTpLines();
     const el = document.getElementById('fs-el-sl');
-    if (el) { el.style.color = '#6B7280'; el.style.pointerEvents = 'none'; el.textContent = 'SL'; }
+    if (el) el.style.display = 'none';
     const si = document.getElementById('fs-sl-input'); if (si) si.value = parseFloat(_fsSlPrice.toPrecision(8));
 }
 
