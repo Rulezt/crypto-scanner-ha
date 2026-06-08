@@ -183,7 +183,6 @@
     <!-- BTC performance indicator -->
     <div id="btc-ticker" class="flex items-center gap-1.5 px-2 py-1 rounded flex-shrink-0" style="background:#151515;border:1px solid #2A2A2A;">
         <span style="color:#F7931A;font-size:11px;font-weight:800;">₿</span>
-        <span id="btc-price" class="text-xs font-mono btn-lbl" style="color:#D1D5DB;">---</span>
         <span id="btc-change" class="text-xs font-semibold" style="color:#6B7280;">---</span>
     </div>
 
@@ -205,7 +204,8 @@
 
     <div class="w-px h-5 bg-dark-border"></div>
 
-    <button id="btn-view" onclick="toggleView()" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Alterna tra 9 e 18 grafici">⊞ 18</button>
+    <button id="btn-view" onclick="toggleLayoutMenu(event)" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Layout grafici" style="display:flex;align-items:center;gap:3px;"><span id="layout-btn-icon" style="display:flex;align-items:center;"></span><span id="layout-btn-label" style="font-size:11px;"></span></button>
+<div id="layout-menu" style="display:none;position:fixed;z-index:300;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;padding:6px 0;box-shadow:0 8px 32px rgba(0,0,0,.85);max-height:80vh;overflow-y:auto;"></div>
 
     <div class="w-px h-5 bg-dark-border"></div>
 
@@ -253,6 +253,8 @@
         <span id="fs-vol"    style="font-size:11px;color:#60a5fa;"></span>
         <span style="color:#374151;font-size:11px;">|</span>
         <div  id="fs-tf-bar" style="display:flex;gap:3px;align-items:center;"></div>
+        <span style="margin:0 2px;color:#374151;font-size:11px;align-self:center;user-select:none;">|</span>
+        <span id="fs-countdown" style="font-family:monospace;color:#9CA3AF;align-self:center;min-width:48px;"></span>
         <span style="color:#374151;font-size:11px;">|</span>
         <a id="fs-bybit-link" href="#" target="_blank" rel="noopener noreferrer"
            style="font-size:10px;color:#f7a600;text-decoration:none;padding:2px 7px;border-radius:3px;background:#1E222D;white-space:nowrap;">Bybit ↗</a>
@@ -284,15 +286,167 @@
             title="Range Prezzo">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="14" height="14" style="vertical-align:middle"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg>
         </button>
+        <button id="fs-trade-btn" onclick="toggleTradePanel()"
+            style="display:none;margin-left:4px;padding:4px 10px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;"
+            title="Trading">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        </button>
         <button onclick="closeFullscreen()"
             style="margin-left:4px;padding:4px 10px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;">
             ✕
         </button>
     </div>
 
-    <div style="flex:1;position:relative;min-height:0;">
-        <div id="fs-chart-el" style="position:absolute;inset:0;"></div>
-        <canvas id="fs-range-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;display:none;"></canvas>
+    <div style="flex:1;display:flex;min-height:0;">
+        <div style="flex:1;position:relative;min-height:0;">
+            <div id="fs-chart-el" style="position:absolute;inset:0;"></div>
+            <canvas id="fs-range-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;display:none;"></canvas>
+        </div>
+
+        <!-- Trade Panel - vertical sidebar -->
+        <div id="fs-trade-panel" style="display:none;width:290px;flex-shrink:0;background:#101014;border-left:1px solid #2A2E39;flex-direction:column;overflow-y:auto;">
+            <!-- Balance -->
+            <div style="padding:10px 12px 8px;border-bottom:1px solid #2A2E39;">
+                <span id="fs-trade-balance" style="font-size:12px;color:#60a5fa;"></span>
+            </div>
+            <!-- Order form -->
+            <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
+                <!-- Leverage -->
+                <div style="display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:12px;color:#6B7280;">Leva</span>
+                    <input type="hidden" id="fs-order-lev" value="10">
+                    <div id="fs-lev-wrap" style="position:relative;">
+                        <button id="fs-lev-btn" onclick="toggleLevDropdown(event)"
+                            style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:12px;font-weight:600;background:#1E222D;color:#E5E7EB;border:1px solid #374151;border-radius:4px;cursor:pointer;box-sizing:border-box;">
+                            <span id="fs-lev-label" style="color:#FF9C2E;">10x</span>
+                            <span id="fs-lev-arrow" style="font-size:9px;color:#6B7280;transition:transform .15s;">▲</span>
+                        </button>
+                        <div id="fs-lev-panel" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;background:#161A1E;border:1px solid #2A2E39;border-radius:6px;z-index:200;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.7);">
+                            <div id="fs-lev-options" style="max-height:200px;overflow-y:auto;"></div>
+                            <div style="border-top:1px solid #2A2E39;">
+                                <div id="fs-lev-customize-row" onclick="toggleLevCustomize()"
+                                     style="padding:7px 12px;font-size:12px;color:#9CA3AF;cursor:pointer;user-select:none;"
+                                     onmouseover="this.style.background='#1E222D';this.style.color='#E5E7EB'"
+                                     onmouseout="this.style.background='';this.style.color='#9CA3AF'">
+                                    Customize
+                                </div>
+                                <div id="fs-lev-custom-row" style="display:none;padding:4px 8px 8px;">
+                                    <div style="display:flex;gap:4px;">
+                                        <input id="fs-lev-custom-val" type="number" min="1" max="100" placeholder="es. 12"
+                                            onkeydown="if(event.key==='Enter')confirmLevCustomize()"
+                                            style="flex:1;padding:4px 6px;font-size:12px;background:#0d1117;color:#E5E7EB;border:1px solid #374151;border-radius:4px;outline:none;">
+                                        <button onclick="confirmLevCustomize()"
+                                            style="padding:4px 10px;font-size:12px;font-weight:700;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;">OK</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Order type tabs (Bybit style) -->
+                <div style="display:flex;align-items:center;border-bottom:1px solid #2A2E39;padding-bottom:2px;gap:0;">
+                    <button id="fs-ot-limit" onclick="setOrderType('Limit')"
+                        style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#6B7280;white-space:nowrap;">Limit</button>
+                    <button id="fs-ot-market" onclick="setOrderType('Market')"
+                        style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#FF9C2E;white-space:nowrap;">Market</button>
+                    <div style="position:relative;" id="fs-cond-wrap" onmouseleave="closeCondTypeDD()">
+                        <div style="display:flex;align-items:center;">
+                            <button id="fs-ot-cond" onclick="setOrderType('Conditional')"
+                                style="padding:5px 2px 5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#6B7280;white-space:nowrap;">
+                                <span id="fs-ot-cond-label">Conditional</span>
+                            </button>
+                            <span id="fs-cond-dd-arrow" onmouseenter="openCondTypeDD()"
+                                style="padding:5px 8px 5px 2px;cursor:pointer;display:flex;align-items:center;color:#6B7280;transition:transform .2s;transform-origin:center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 1024 1024" style="display:block;transition:transform .2s;"><path fill="currentColor" d="m561.707 657.75 194.389-262.23a60.416 60.416 0 0 0-13.312-85.077 62.165 62.165 0 0 0-36.437-11.776H317.653c-34.048 0-61.653 27.264-61.653 60.885 0 12.928 4.181 25.515 11.904 35.968l194.347 262.23a62.123 62.123 0 0 0 99.498 0z"/></svg>
+                            </span>
+                        </div>
+                        <div id="fs-cond-type-dd" style="display:none;position:absolute;top:100%;left:0;background:#161A1E;border:1px solid #2A2E39;border-radius:6px;z-index:300;min-width:110px;box-shadow:0 4px 16px rgba(0,0,0,.8);">
+                            <div id="fs-ctdd-mkt" onclick="setCondTypeFromDD('Market')"
+                                style="padding:8px 14px;font-size:12px;color:#FF9C2E;cursor:pointer;font-weight:600;"
+                                onmouseover="this.style.background='#1E222D'" onmouseout="this.style.background=''">Market</div>
+                            <div id="fs-ctdd-lmt" onclick="setCondTypeFromDD('Limit')"
+                                style="padding:8px 14px;font-size:12px;color:#B2B5BE;cursor:pointer;"
+                                onmouseover="this.style.background='#1E222D'" onmouseout="this.style.background=''">Limit</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Limit price -->
+                <div id="fs-order-price-wrap" style="display:none;align-items:center;gap:4px;">
+                    <input id="fs-order-price" type="number" placeholder="Prezzo limit" step="any"
+                        oninput="_onPriceInput('limit',this.value)"
+                        style="flex:1;padding:6px 8px;font-size:12px;background:#1E222D;color:#E5E7EB;border:1px solid #374151;border-radius:4px;box-sizing:border-box;min-width:0;">
+                    <button id="fs-aim-price" class="fs-aim-btn" data-target="fs-order-price" onclick="startPricePick('fs-order-price')" title="Seleziona dal grafico"
+                        style="flex-shrink:0;background:none;border:none;cursor:pointer;padding:2px;opacity:0.6;transition:opacity .15s;color:#9CA3AF;" onmouseover="this.style.opacity=1" onmouseout="if(_pricePickTarget!=='fs-order-price')this.style.opacity=0.6">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+                    </button>
+                </div>
+                <!-- Conditional fields -->
+                <div id="fs-cond-fields" style="display:none;flex-direction:column;gap:6px;">
+                    <div style="display:flex;align-items:center;gap:4px;">
+                        <input id="fs-order-trigger" type="number" placeholder="Trigger Price" step="any"
+                            oninput="_onPriceInput('trigger',this.value)"
+                            style="flex:1;padding:6px 8px;font-size:12px;background:#1E222D;color:#E5E7EB;border:1px solid #f59e0b;border-radius:4px;box-sizing:border-box;min-width:0;">
+                        <button id="fs-aim-trigger" class="fs-aim-btn" data-target="fs-order-trigger" onclick="startPricePick('fs-order-trigger')" title="Seleziona dal grafico"
+                            style="flex-shrink:0;background:none;border:none;cursor:pointer;padding:2px;opacity:0.6;transition:opacity .15s;color:#9CA3AF;" onmouseover="this.style.opacity=1" onmouseout="if(_pricePickTarget!=='fs-order-trigger')this.style.opacity=0.6">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+                        </button>
+                    </div>
+                    <div id="fs-cond-price-wrap" style="display:none;align-items:center;gap:4px;">
+                        <input id="fs-cond-price" type="number" placeholder="Prezzo esecuzione" step="any"
+                            oninput="_onPriceInput('exec',this.value)"
+                            style="flex:1;padding:6px 8px;font-size:12px;background:#1E222D;color:#E5E7EB;border:1px solid #374151;border-radius:4px;box-sizing:border-box;min-width:0;">
+                        <button id="fs-aim-cond-price" class="fs-aim-btn" data-target="fs-cond-price" onclick="startPricePick('fs-cond-price')" title="Seleziona dal grafico"
+                            style="flex-shrink:0;background:none;border:none;cursor:pointer;padding:2px;opacity:0.6;transition:opacity .15s;color:#9CA3AF;" onmouseover="this.style.opacity=1" onmouseout="if(_pricePickTarget!=='fs-cond-price')this.style.opacity=0.6">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <!-- Size USDT -->
+                <div style="display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:12px;color:#6B7280;">Size (USDT)</span>
+                    <input id="fs-order-size" type="number" placeholder="0" min="1" step="1" value="0" oninput="updateQtyPreview()"
+                        style="width:100%;padding:6px 8px;font-size:12px;background:#1E222D;color:#E5E7EB;border:1px solid #374151;border-radius:4px;box-sizing:border-box;">
+                </div>
+                <!-- Qty preview -->
+                <span id="fs-qty-preview" style="font-size:12px;color:#9CA3AF;"></span>
+                <!-- SL / TP inputs -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                    <div style="display:flex;flex-direction:column;gap:3px;">
+                        <span style="font-size:12px;color:#ef4444;">Stop Loss</span>
+                        <input id="fs-sl-input" type="number" placeholder="Prezzo SL" step="any"
+                            oninput="_onSlTpInput('sl',this.value)"
+                            style="width:100%;padding:6px 8px;font-size:12px;background:#1E222D;color:#E5E7EB;border:1px solid #3d1e1e;border-radius:4px;box-sizing:border-box;">
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:3px;">
+                        <span style="font-size:12px;color:#10b981;">Take Profit</span>
+                        <input id="fs-tp-input" type="number" placeholder="Prezzo TP" step="any"
+                            oninput="_onSlTpInput('tp',this.value)"
+                            style="width:100%;padding:6px 8px;font-size:12px;background:#1E222D;color:#E5E7EB;border:1px solid #1e3d2a;border-radius:4px;box-sizing:border-box;">
+                    </div>
+                </div>
+                <!-- Long/Short -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+                    <button id="fs-btn-long" onclick="setFsSide('Buy')" style="padding:7px 0;font-size:12px;font-weight:700;background:#1E222D;color:#6B7280;border:1px solid #374151;border-radius:4px;cursor:pointer;">▲ LONG</button>
+                    <button id="fs-btn-short" onclick="setFsSide('Sell')" style="padding:7px 0;font-size:12px;font-weight:700;background:#1E222D;color:#6B7280;border:1px solid #374151;border-radius:4px;cursor:pointer;">▼ SHORT</button>
+                </div>
+                <!-- Order button -->
+                <button onclick="confirmFsOrder()" style="width:100%;padding:8px 0;font-size:12px;font-weight:700;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;">Ordine</button>
+                <div id="fs-trade-msg" style="display:none;font-size:12px;padding:2px 0;"></div>
+            </div>
+            <!-- Position section -->
+            <div id="fs-pos-row" style="display:none;flex-direction:column;gap:6px;padding:10px 12px;border-top:1px solid #2A2E39;">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <span id="fs-pos-badge" style="font-weight:700;font-size:12px;"></span>
+                    <span id="fs-pos-pnl" style="font-family:monospace;font-size:12px;"></span>
+                </div>
+                <span id="fs-pos-liq" style="color:#6B7280;font-size:11px;"></span>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+                    <button onclick="addFsSlLine()" style="padding:4px 0;font-size:11px;background:#2A2E39;color:#ef4444;border:1px solid #3d1e1e;border-radius:3px;cursor:pointer;">+ SL</button>
+                    <button onclick="addFsTpLine()" style="padding:4px 0;font-size:11px;background:#2A2E39;color:#10b981;border:1px solid #1e3d2a;border-radius:3px;cursor:pointer;">+ TP</button>
+                </div>
+                <button onclick="closeFsPosition()" style="width:100%;padding:6px 0;font-size:12px;background:#7f1d1d;color:#fca5a5;border:none;border-radius:4px;cursor:pointer;font-weight:600;">Chiudi Posizione</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -425,7 +579,7 @@ const TGSVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width
 let curTF    = 'D';
 let curPage  = 0;
 let curMode  = 'gainers';
-let viewMode = '9';      // '9' | '18'
+let curLayout = null;
 let allCoins = [];
 let favoriteSymbols = new Set();
 let slots    = [];       // always 18 slots
@@ -957,6 +1111,79 @@ function toggleFsOBLevels() {
     }
 }
 
+// ── layout definitions ────────────────────────────────────────────────────
+const LAYOUTS=[
+    {id:'1x1',cols:1,rows:1},{id:'2x1',cols:2,rows:1},{id:'1x2',cols:1,rows:2},
+    {id:'3x1',cols:3,rows:1},{id:'1x3',cols:1,rows:3},{id:'2x2',cols:2,rows:2},
+    {id:'4x1',cols:4,rows:1},{id:'3x2',cols:3,rows:2},{id:'2x3',cols:2,rows:3},
+    {id:'4x2',cols:4,rows:2},{id:'3x3',cols:3,rows:3},{id:'4x3',cols:4,rows:3},
+    {id:'5x3',cols:5,rows:3},{id:'6x3',cols:6,rows:3},
+];
+
+function makeLayoutIcon(cols,rows){
+    const W=18,H=14,gap=1,cw=(W-(cols-1)*gap)/cols,rh=(H-(rows-1)*gap)/rows;
+    let r='';
+    for(let row=0;row<rows;row++) for(let col=0;col<cols;col++){
+        const x=(col*(cw+gap)).toFixed(1),y=(row*(rh+gap)).toFixed(1);
+        r+='<rect x="'+x+'" y="'+y+'" width="'+cw.toFixed(1)+'" height="'+rh.toFixed(1)+'" rx="0.5" fill="currentColor"/>';
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'">'+r+'</svg>';
+}
+
+function updateLayoutBtn(){
+    if(!curLayout)return;
+    document.getElementById('layout-btn-icon').innerHTML=makeLayoutIcon(curLayout.cols,curLayout.rows);
+    document.getElementById('layout-btn-label').textContent=curLayout.cols*curLayout.rows;
+}
+
+function renderLayoutMenu(){
+    const menu=document.getElementById('layout-menu');
+    const groups={};
+    for(const l of LAYOUTS){const v=l.cols*l.rows;(groups[v]=groups[v]||[]).push(l);}
+    let html='<div style="padding:4px 12px 6px;font-size:11px;color:#6B7280;border-bottom:1px solid #1E2329;margin-bottom:2px;">Layout grafici</div>';
+    for(const cnt of Object.keys(groups).map(Number).sort((a,b)=>a-b)){
+        html+='<div style="display:flex;align-items:center;padding:3px 10px;gap:8px;">'
+            +'<span style="color:#4B5563;font-size:11px;min-width:20px;text-align:right;">'+cnt+'</span>'
+            +'<div style="display:flex;gap:3px;">';
+        for(const l of groups[cnt]){
+            const act=curLayout&&curLayout.id===l.id;
+            const bg=act?'#1e3a5f':'transparent',tc=act?'#60a5fa':'#9CA3AF',bc=act?'#3b82f6':'transparent';
+            html+='<button data-lid="'+l.id+'" data-bg="'+bg+'" data-tc="'+tc+'" '
+                +'style="padding:5px 6px;border-radius:4px;border:1px solid '+bc+';background:'+bg+';color:'+tc+';cursor:pointer;'
+                +'display:flex;align-items:center;justify-content:center;transition:all .12s;">'
+                +makeLayoutIcon(l.cols,l.rows)+'</button>';
+        }
+        html+='</div></div>';
+    }
+    menu.innerHTML=html;
+    menu.querySelectorAll('button[data-lid]').forEach(function(btn){
+        btn.addEventListener('click',function(){selectLayout(btn.dataset.lid);});
+        btn.addEventListener('mouseenter',function(){btn.style.background='#2A2E39';btn.style.color='#E5E7EB';});
+        btn.addEventListener('mouseleave',function(){btn.style.background=btn.dataset.bg;btn.style.color=btn.dataset.tc;});
+    });
+}
+
+function toggleLayoutMenu(e){
+    e.stopPropagation();
+    const menu=document.getElementById('layout-menu');
+    if(menu.style.display!=='none'){closeLayoutMenu();return;}
+    renderLayoutMenu();
+    const btn=document.getElementById('btn-view'),rect=btn.getBoundingClientRect();
+    menu.style.left=rect.left+'px';menu.style.top=(rect.bottom+4)+'px';
+    menu.style.display='block';
+    setTimeout(function(){document.addEventListener('click',closeLayoutMenu,{once:true});},0);
+}
+
+function closeLayoutMenu(){document.getElementById('layout-menu').style.display='none';}
+
+async function selectLayout(id){
+    closeLayoutMenu();
+    const layout=LAYOUTS.find(function(l){return l.id===id;});
+    if(!layout)return;
+    curLayout=layout;curPage=0;mobileChartIdx=0;
+    await loadPage();
+}
+
 // ── build grid (once — 18 slots) ──────────────────────────────────────────────
 const SLOTS_TOTAL = 18;
 function buildGrid() {
@@ -1175,50 +1402,36 @@ function _forceLandscapeResize() {
 
 // ── view layout ───────────────────────────────────────────────────────────────
 function applyView() {
-    const is18  = viewMode === '18';
-    const grid  = document.getElementById('grid');
+    if (!curLayout) curLayout=LAYOUTS.find(l=>l.id==='3x3')||LAYOUTS[0];
+    const {cols,rows}=curLayout, visible=cols*rows;
+    const grid=document.getElementById('grid');
 
     if (IS_MOBILE) {
-        const step = IS_LANDSCAPE_MOBILE ? 1 : 3;
-        grid.style.gridTemplateColumns = '1fr';
-        grid.style.gridTemplateRows    = IS_LANDSCAPE_MOBILE ? '1fr' : 'repeat(3, 1fr)';
-
+        const step=IS_LANDSCAPE_MOBILE?1:3;
+        grid.style.gridTemplateColumns='1fr';
+        grid.style.gridTemplateRows=IS_LANDSCAPE_MOBILE?'1fr':'repeat(3, 1fr)';
         if (IS_LANDSCAPE_MOBILE) {
-            // Inietta stylesheet dopo quelli esistenti: vince per ordine sorgente su qualsiasi !important
-            let _s = document.getElementById('__lm_grid');
-            if (!_s) { _s = document.createElement('style'); _s.id = '__lm_grid'; document.head.appendChild(_s); }
-            _s.textContent = '#grid{grid-template-rows:1fr!important;grid-template-columns:1fr!important}';
+            let _s=document.getElementById('__lm_grid');
+            if (!_s){_s=document.createElement('style');_s.id='__lm_grid';document.head.appendChild(_s);}
+            _s.textContent='#grid{grid-template-rows:1fr!important;grid-template-columns:1fr!important}';
         }
-
-        const visible = is18 ? 18 : 9;
-        slots.forEach((s, i) => {
-            const show = i >= mobileChartIdx && i < mobileChartIdx + step && i < visible;
-            s.cell.style.display = show ? 'flex' : 'none';
+        slots.forEach((s,i)=>{
+            s.cell.style.display=(i>=mobileChartIdx&&i<mobileChartIdx+step&&i<visible)?'flex':'none';
         });
-        document.getElementById('nav-prev').style.display = 'block';
-        document.getElementById('nav-next').style.display = 'block';
-        const total = allCoins.length;
-        const first = curPage * 9 + mobileChartIdx + 1;
-        const last  = Math.min(first + step - 1, total);
-        updateMobileNavIndicator(first, last, total);
-        if (IS_LANDSCAPE_MOBILE) {
-            _forceLandscapeResize();
-            setTimeout(_forceLandscapeResize, 600);  // fallback: Chrome mobile finisce layout in ritardo
-        }
+        document.getElementById('nav-prev').style.display='block';
+        document.getElementById('nav-next').style.display='block';
+        const total=allCoins.length,first=curPage*visible+mobileChartIdx+1;
+        updateMobileNavIndicator(first,Math.min(first+step-1,total),total);
+        if(IS_LANDSCAPE_MOBILE){_forceLandscapeResize();setTimeout(_forceLandscapeResize,600);}
         return;
     }
 
-    const cols = is18 ? 6 : 3;
-    grid.style.gridTemplateColumns = `repeat(${cols},1fr)`;
-    grid.style.gridTemplateRows    = 'repeat(3,1fr)';
-    const visible = is18 ? 18 : 9;
-    slots.forEach((s, i) => { s.cell.style.display = i < visible ? 'flex' : 'none'; });
-    const showArrows = !is18;
-    document.getElementById('nav-prev').style.display = showArrows ? 'block' : 'none';
-    document.getElementById('nav-next').style.display = showArrows ? 'block' : 'none';
-    document.getElementById('btn-view').textContent = is18 ? '⊟ 9' : '⊞ 18';
-    document.getElementById('btn-view').className   =
-        `px-3 py-1 rounded text-xs font-medium transition-colors ${is18 ? 'btn-view-active' : 'btn-view-idle'}`;
+    grid.style.gridTemplateColumns=`repeat(${cols},1fr)`;
+    grid.style.gridTemplateRows=`repeat(${rows},1fr)`;
+    slots.forEach((s,i)=>{s.cell.style.display=i<visible?'flex':'none';});
+    document.getElementById('nav-prev').style.display='block';
+    document.getElementById('nav-next').style.display='block';
+    updateLayoutBtn();
 }
 
 function updateMobileNavIndicator(from, to, total) {
@@ -1269,11 +1482,8 @@ async function loadPage() {
     closeWS();
     applyView();
 
-    const is18      = viewMode === '18';
-    const visible   = is18 ? 18 : 9;
-    const pageCoins = is18
-        ? allCoins.slice(curPage * 18, curPage * 18 + 18)
-        : allCoins.slice(curPage * 9, curPage * 9 + 9);
+    const visible=(curLayout?.cols??3)*(curLayout?.rows??3);
+    const pageCoins=allCoins.slice(curPage*visible,curPage*visible+visible);
 
     const isEmpty = (curMode === 'favorites' || curMode === 'ico') && allCoins.length === 0;
     if (isEmpty) {
@@ -1367,6 +1577,7 @@ async function loadSlotData(idx) {
         }
         const _n = getCandlesForTF(s.curTF);
         s.chart.timeScale().setVisibleLogicalRange({ from: klines.length - _n, to: klines.length + 3 });
+        s.chart.priceScale('right').applyOptions({ autoScale: true });
         s.lastPrice = klines[klines.length - 1].close;
         _livePrice[s.symbol] = s.lastPrice;
         if (s.dayHighLine)  { try { s.candleS.removePriceLine(s.dayHighLine);  } catch(e) {} }
@@ -1401,9 +1612,10 @@ function initFsChart() {
     for (const {p, color, width, style} of EMA_CFG)
         fsEmaS[p] = addSeries(fsChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5, lineStyle:style??0});
 
-    fsChart.timeScale().subscribeVisibleTimeRangeChange(() => {});
+    fsChart.timeScale().subscribeVisibleTimeRangeChange(() => { _updateAllLabels(); });
     fsChart.subscribeDblClick(() => { if (fsKlineCount) fsChart.timeScale().setVisibleLogicalRange({ from: fsKlineCount - getCandlesForTF(fsTF), to: fsKlineCount + 3 }); });
     fsChart.subscribeCrosshairMove(param => {
+        _updateAllLabels();
         const el = document.getElementById('fs-candle-pct');
         if (!el) return;
         if (param && param.seriesData) {
@@ -1425,6 +1637,7 @@ async function openFullscreen(idx) {
     const s = slots[idx];
     if (!s.coin) return;
     fsCoin = s.coin; fsTF = s.curTF;
+    _instInfo = null;
 
     document.getElementById('fs-overlay').style.display = 'flex';
     const pct = fsCoin.change_24h;
@@ -1465,6 +1678,12 @@ async function openFullscreen(idx) {
 function closeFullscreen() {
     if (fsRangeActive) toggleFsRange();
     document.getElementById('fs-overlay').style.display = 'none';
+    // trade cleanup
+    clearInterval(_tradePollT); _tradePollT = null;
+    document.getElementById('fs-trade-panel').style.display = 'none';
+    const _tb = document.getElementById('fs-trade-btn'); if (_tb) { _tb.style.background = '#2A2E39'; _tb.style.color = '#B2B5BE'; }
+    _removeSlTpLines(); _removeEntryLine(); _tradePos = null; _instInfo = null;
+    resetTradeSide();
     closeFsWS();
     clearInterval(fsObTimer); fsObTimer = null;
     fsObActive = false;
@@ -1531,6 +1750,7 @@ async function loadFsData() {
         const _fn = getCandlesForTF(fsTF);
         fsKlineCount = klines.length;
         fsChart.timeScale().setVisibleLogicalRange({ from: fsKlineCount - _fn, to: fsKlineCount + 3 });
+        fsChart.priceScale('right').applyOptions({ autoScale: true });
         if (fsDayHighLine)  { try { fsCandleS.removePriceLine(fsDayHighLine);  } catch(e) {} }
         if (fsDayLowLine)   { try { fsCandleS.removePriceLine(fsDayLowLine);   } catch(e) {} }
         if (fsPrevHighLine) { try { fsCandleS.removePriceLine(fsPrevHighLine); } catch(e) {} }
@@ -1658,46 +1878,36 @@ function setWSDot(state) {
 
 // ── navigation ─────────────────────────────────────────────────────────────────
 async function prevPage() {
-    if (IS_MOBILE && viewMode !== '18') { await mobilePrevChart(); return; }
-    if (curPage === 0 || viewMode === '18') return;
+    const vis=(curLayout?.cols??3)*(curLayout?.rows??3);
+    if (IS_MOBILE && vis<18) { await mobilePrevChart(); return; }
+    if (curPage===0) return;
     curPage--; await loadPage();
 }
 
 async function nextPage() {
-    if (IS_MOBILE && viewMode !== '18') { await mobileNextChart(); return; }
-    const perPage = viewMode === '18' ? 18 : 9;
-    const maxPage = Math.ceil(allCoins.length / perPage) - 1;
-    if (curPage >= maxPage) return;
+    const vis=(curLayout?.cols??3)*(curLayout?.rows??3);
+    if (IS_MOBILE && vis<18) { await mobileNextChart(); return; }
+    const maxPage=Math.ceil(allCoins.length/vis)-1;
+    if (curPage>=maxPage) return;
     curPage++; await loadPage();
 }
 
 async function mobileNextChart() {
-    const step = IS_LANDSCAPE_MOBILE ? 1 : 3;
-    const coinsOnPage = allCoins.slice(curPage * 9, curPage * 9 + 9).length;
-    if (mobileChartIdx + step < coinsOnPage) {
-        mobileChartIdx += step;
-        applyView();
-    } else {
-        const maxPage = Math.ceil(allCoins.length / 9) - 1;
-        if (curPage < maxPage) { curPage++; mobileChartIdx = 0; await loadPage(); }
-    }
+    const step=IS_LANDSCAPE_MOBILE?1:3;
+    const vis=(curLayout?.cols??3)*(curLayout?.rows??3);
+    const coinsOnPage=allCoins.slice(curPage*vis,curPage*vis+vis).length;
+    if (mobileChartIdx+step<coinsOnPage){mobileChartIdx+=step;applyView();}
+    else{const maxPage=Math.ceil(allCoins.length/vis)-1;if(curPage<maxPage){curPage++;mobileChartIdx=0;await loadPage();}}
 }
 
 async function mobilePrevChart() {
-    const step = IS_LANDSCAPE_MOBILE ? 1 : 3;
-    if (mobileChartIdx >= step) {
-        mobileChartIdx -= step;
-        applyView();
-    } else if (curPage > 0) {
-        curPage--; mobileChartIdx = IS_LANDSCAPE_MOBILE ? 8 : 6; await loadPage();
-    }
+    const step=IS_LANDSCAPE_MOBILE?1:3;
+    const vis=(curLayout?.cols??3)*(curLayout?.rows??3);
+    if(mobileChartIdx>=step){mobileChartIdx-=step;applyView();}
+    else if(curPage>0){curPage--;mobileChartIdx=IS_LANDSCAPE_MOBILE?vis-1:vis-3;await loadPage();}
 }
 
-async function toggleView() {
-    viewMode = viewMode === '9' ? '18' : '9';
-    curPage  = 0; mobileChartIdx = 0;
-    await loadPage();
-}
+
 
 async function switchTF(tf) {
     if (tf === curTF) return;
@@ -1735,6 +1945,12 @@ function renderTFBar() {
 function updateCountdown() {
     const el = document.getElementById('tf-countdown');
     if (el) el.textContent = fmtCountdown(getTFRemaining(curTF));
+    const fsEl = document.getElementById('fs-countdown');
+    if (fsEl && document.getElementById('fs-overlay').style.display !== 'none')
+        fsEl.textContent = fmtCountdown(getTFRemaining(fsTF));
+    const obEl = document.getElementById('ob-countdown');
+    if (obEl && document.getElementById('ob-modal').style.display !== 'none')
+        obEl.textContent = fmtCountdown(getTFRemaining(obTF));
 }
 
 function setStatus(msg) { document.getElementById('status').textContent = msg; }
@@ -1778,7 +1994,7 @@ async function fetchCoins() {
 
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape')      closeFullscreen();
+    if (e.key === 'Escape') { if (_pricePickTarget) { _endPricePick(); } else { closeFullscreen(); } }
     if (e.key === 'ArrowLeft')   prevPage();
     if (e.key === 'ArrowRight')  nextPage();
 });
@@ -1987,6 +2203,7 @@ async function loadOBData() {
         const _on = getCandlesForTF(obTF);
         obKlineCount = klines.length;
         obChart.timeScale().setVisibleLogicalRange({ from: obKlineCount - _on, to: obKlineCount + 3 });
+        obChart.priceScale('right').applyOptions({ autoScale: true });
         if (obDayHighLine)  { try { obCandleS.removePriceLine(obDayHighLine);  } catch(e) {} obDayHighLine  = null; }
         if (obDayLowLine)   { try { obCandleS.removePriceLine(obDayLowLine);   } catch(e) {} obDayLowLine   = null; }
         if (obPrevHighLine) { try { obCandleS.removePriceLine(obPrevHighLine); } catch(e) {} obPrevHighLine = null; }
@@ -2263,13 +2480,8 @@ function toggleFsRange() {
 let _btcWs = null;
 
 function _updateBTCTicker(price, pct24h) {
-    const priceEl  = document.getElementById('btc-price');
     const changeEl = document.getElementById('btc-change');
-    if (!priceEl || !changeEl || !price) return;
-    const p = price >= 10000
-        ? Math.round(price).toLocaleString('en-US')
-        : price >= 1 ? price.toFixed(2) : price.toFixed(4);
-    priceEl.textContent = '$' + p;
+    if (!changeEl) return;
     const pctVal = pct24h * 100;
     const pos = pctVal >= 0;
     changeEl.textContent = (pos ? '▲+' : '▼') + Math.abs(pctVal).toFixed(2) + '%';
@@ -2424,7 +2636,7 @@ function applyCfgToAllSlots() {
             if (s.emaSeries?.[p]) s.emaSeries[p].applyOptions({color, lineWidth: width, lineStyle: style ?? 0});
         }
     }
-    const visible = viewMode === '18' ? 18 : 9;
+    const visible=(curLayout?.cols??3)*(curLayout?.rows??3);
     for (let i = 0; i < visible; i++) {
         const s = slots[i];
         if (!s || !s.candleS || !s.symbol) continue;
@@ -2445,6 +2657,831 @@ function applyCfgToAllSlots() {
         if (s.obAskVal != null && lv.obAsk.vis?.chart !== false) s.obAskLine = s.candleS.createPriceLine({price:s.obAskVal, color:lv.obAsk.color, lineWidth:lv.obAsk.width, lineStyle:lv.obAsk.style, axisLabelVisible:true, title:''});
     }
 }
+
+// ── TRADING ───────────────────────────────────────────────────────────────────
+let _tradeEnabled = false, _tradePos = null, _tradeSide = null;
+let _tradeBalance = null, _instInfo = null, _tradePollT = null;
+let _fsOrderType = 'Market', _fsCondExec = 'Market';
+let _pricePickTarget = null;
+let _fsSlLine = null, _fsTpLine = null, _fsSlPrice = null, _fsTpPrice = null;
+let _fsSlLabel = null, _fsTpLabel = null;
+let _fsEntryLine = null, _fsEntryPrice = null, _fsEntryLabel = null;
+let _fsExecLine = null, _fsExecPrice = null;
+let _dragMode = null, _slTpTimer = null, _entryDragMM = null, _dragOverlay = null;
+
+(async function initTrading() {
+    try {
+        const d = await fetch('api/trade/config').then(r => r.json());
+        _tradeEnabled = d.enabled;
+        if (_tradeEnabled) document.getElementById('fs-trade-btn').style.display = 'inline-flex';
+    } catch(e) {}
+    initSlTpDrag();
+})();
+
+function toggleTradePanel() {
+    const p = document.getElementById('fs-trade-panel');
+    const open = p.style.display !== 'none';
+    p.style.display = open ? 'none' : 'flex';
+    p.style.flexDirection = 'column';
+    const btn = document.getElementById('fs-trade-btn');
+    if (btn) { btn.style.background = open ? '#2A2E39' : '#1e3a5f'; btn.style.color = open ? '#B2B5BE' : '#60a5fa'; }
+    if (!open) { loadTradeData(); _tradePollT = setInterval(loadTradeData, 5000); }
+    else { clearInterval(_tradePollT); _tradePollT = null; resetTradeSide(); }
+}
+
+async function loadTradeData() {
+    if (!fsCoin) return;
+    const [balR, posR, instR] = await Promise.all([
+        fetch('api/trade/balance').then(r => r.json()).catch(() => null),
+        fetch(`api/trade/position?symbol=${fsCoin.symbol}`).then(r => r.json()).catch(() => null),
+        _instInfo ? Promise.resolve(null) : fetch(`api/trade/instrument?symbol=${fsCoin.symbol}`).then(r => r.json()).catch(() => null),
+    ]);
+    if (balR && !balR.error) { _tradeBalance = balR; _renderBalance(); }
+    if (posR && !posR.error) { _tradePos = posR.position; _renderPosition(); }
+    if (instR && !instR.error) { _instInfo = instR; _buildLevOptions(_instInfo.maxLeverage); updateQtyPreview(); }
+}
+
+function _buildLevOptions(maxLev) {
+    const inp = document.getElementById('fs-order-lev');
+    const container = document.getElementById('fs-lev-options');
+    if (!inp || !container) return;
+    const STEPS = [1,2,3,5,7,10,15,20,25,50,75,100];
+    const maxFloor = Math.floor(maxLev);
+    const curVal = Math.min(parseInt(inp.value) || 10, maxFloor);
+    const filtered = STEPS.filter(v => v <= maxFloor);
+    if (!filtered.length || filtered[filtered.length-1] < maxFloor) filtered.push(maxFloor);
+    container.innerHTML = '';
+    filtered.forEach(v => {
+        const el = document.createElement('div');
+        el.className = 'lev-opt'; el.dataset.val = v;
+        el.textContent = v + 'x';
+        const sel = v === curVal;
+        el.style.cssText = `padding:7px 12px;font-size:12px;cursor:pointer;user-select:none;color:${sel?'#FF9C2E':'#B2B5BE'};background:${sel?'#2A2E39':''};font-weight:${sel?'700':'400'};`;
+        el.onmouseover = () => { if (v !== parseInt(document.getElementById('fs-order-lev').value)) el.style.background='#1E222D'; };
+        el.onmouseout  = () => { if (v !== parseInt(document.getElementById('fs-order-lev').value)) el.style.background=''; };
+        el.onclick = () => selectLev(v);
+        container.appendChild(el);
+    });
+    const ci = document.getElementById('fs-lev-custom-val');
+    if (ci) ci.max = maxFloor;
+    inp.value = curVal;
+    const lbl = document.getElementById('fs-lev-label');
+    if (lbl) lbl.textContent = curVal + 'x';
+}
+
+function toggleLevDropdown(e) {
+    if (e) e.stopPropagation();
+    const panel = document.getElementById('fs-lev-panel');
+    const arrow = document.getElementById('fs-lev-arrow');
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : 'block';
+    if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+    if (!isOpen) setTimeout(() => document.addEventListener('click', _closeLevOutside, {once:true}), 0);
+}
+
+function _closeLevOutside(e) {
+    const wrap = document.getElementById('fs-lev-wrap');
+    if (wrap && wrap.contains(e.target)) {
+        setTimeout(() => document.addEventListener('click', _closeLevOutside, {once:true}), 0);
+        return;
+    }
+    const panel = document.getElementById('fs-lev-panel');
+    const arrow = document.getElementById('fs-lev-arrow');
+    if (panel) panel.style.display = 'none';
+    if (arrow) arrow.style.transform = '';
+}
+
+function selectLev(val) {
+    const inp = document.getElementById('fs-order-lev');
+    if (inp) inp.value = val;
+    const lbl = document.getElementById('fs-lev-label');
+    if (lbl) lbl.textContent = val + 'x';
+    document.querySelectorAll('#fs-lev-options .lev-opt').forEach(el => {
+        const v = parseInt(el.dataset.val), sel = v === val;
+        el.style.background = sel ? '#2A2E39' : '';
+        el.style.color = sel ? '#FF9C2E' : '#B2B5BE';
+        el.style.fontWeight = sel ? '700' : '400';
+    });
+    const panel = document.getElementById('fs-lev-panel');
+    const arrow = document.getElementById('fs-lev-arrow');
+    if (panel) panel.style.display = 'none';
+    if (arrow) arrow.style.transform = '';
+    updateQtyPreview();
+}
+
+function toggleLevCustomize() {
+    const row = document.getElementById('fs-lev-custom-row');
+    if (!row) return;
+    const open = row.style.display !== 'none';
+    row.style.display = open ? 'none' : 'block';
+    if (!open) document.getElementById('fs-lev-custom-val')?.focus();
+}
+
+function confirmLevCustomize() {
+    const inp = document.getElementById('fs-lev-custom-val');
+    if (!inp) return;
+    const maxL = _instInfo ? Math.floor(_instInfo.maxLeverage) : 100;
+    const v = parseInt(inp.value);
+    if (!v || v < 1 || v > maxL) { inp.style.borderColor = '#ef4444'; return; }
+    inp.style.borderColor = '#374151'; inp.value = '';
+    document.getElementById('fs-lev-custom-row').style.display = 'none';
+    selectLev(v);
+}
+
+function _renderBalance() {
+    const el = document.getElementById('fs-trade-balance');
+    if (el && _tradeBalance) el.textContent = `Disp: $${_tradeBalance.available.toFixed(2)}`;
+}
+
+function _renderPosition() {
+    const row = document.getElementById('fs-pos-row');
+    if (!_tradePos) { if (row) row.style.display = 'none'; if (!_tradeSide) _removeSlTpLines(); return; }
+    if (row) row.style.display = 'flex';
+    const p = _tradePos, long = p.side === 'Buy';
+    const margin = p.entryPrice > 0 ? (p.size * p.entryPrice / p.leverage) : 0;
+    const pnlPct = margin > 0 ? (p.unrealizedPnl / margin * 100) : 0;
+    const badge = document.getElementById('fs-pos-badge');
+    if (badge) { badge.textContent = `${long ? '▲ LONG' : '▼ SHORT'} ${p.size} @ ${fmtPrice(p.entryPrice)} · ${p.leverage}x`; badge.style.color = long ? '#10b981' : '#ef4444'; }
+    const pnlEl = document.getElementById('fs-pos-pnl');
+    if (pnlEl) { pnlEl.textContent = `P&L: ${p.unrealizedPnl >= 0 ? '+' : ''}${p.unrealizedPnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`; pnlEl.style.color = p.unrealizedPnl >= 0 ? '#10b981' : '#ef4444'; }
+    const liqEl = document.getElementById('fs-pos-liq');
+    if (liqEl) liqEl.textContent = p.liqPrice ? `Liq: ${fmtPrice(p.liqPrice)}` : '';
+    if (!_tradeSide) { _fsSlPrice = p.stopLoss || null; _fsTpPrice = p.takeProfit || null; _drawSlTpLines(); }
+}
+
+function _calcLinePnl(price) {
+    if (!_fsEntryPrice || !price || !_tradeSide) return { pct: null, usdt: null };
+    const long = _tradeSide === 'Buy';
+    const diff = long ? (price - _fsEntryPrice) : (_fsEntryPrice - price);
+    const pct = diff / _fsEntryPrice * 100;
+    const size = parseFloat(document.getElementById('fs-order-size')?.value) || 0;
+    const lev  = parseFloat(document.getElementById('fs-order-lev')?.value)  || 1;
+    const usdt = size > 0 ? (size * lev * Math.abs(diff) / _fsEntryPrice) * (diff >= 0 ? 1 : -1) : null;
+    return { pct, usdt };
+}
+
+function _buildSlTpLabel(kind) {
+    const chartEl = document.getElementById('fs-chart-el');
+    if (!chartEl) return null;
+    const price = kind === 'tp' ? _fsTpPrice : _fsSlPrice;
+    if (price == null) return null;
+    const color = kind === 'tp' ? '#10b981' : '#ef4444';
+    const border = kind === 'tp' ? '#1e3d2a' : '#3d1e1e';
+    const { pct, usdt } = _calcLinePnl(price);
+    const pctStr  = pct  != null ? (pct  >= 0 ? '+' : '') + pct.toFixed(2)  + '%'    : (kind === 'tp' ? 'TP' : 'SL');
+    const usdtStr = usdt != null ? (usdt >= 0 ? '+' : '') + usdt.toFixed(2) + ' USDT' : '';
+    const sizeVal = document.getElementById('fs-order-size')?.value || '0';
+    const label = document.createElement('div');
+    label.id = `fs-${kind}-label`;
+    label.style.cssText = `position:absolute;right:58px;z-index:20;display:flex;align-items:stretch;border:1px solid ${border};border-radius:4px;overflow:hidden;font-size:11px;font-weight:600;pointer-events:all;white-space:nowrap;user-select:none;transform:translateY(-50%);box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:ns-resize;`;
+    label.innerHTML = `
+        <div id="fs-${kind}-size" onclick="_editSlTpSize(event,'${kind}')" title="Modifica size" style="padding:5px 8px;cursor:pointer;background:#1E222D;color:#E5E7EB;min-width:24px;text-align:center;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">${sizeVal}</div>
+        <div onmousedown="_startSlTpLabelDrag(event,'${kind}')" style="padding:5px 8px;background:#1E222D;color:${color};display:flex;gap:6px;align-items:center;cursor:ns-resize;border-left:1px solid #2A2E39;">
+            <span>${pctStr}</span>${usdtStr ? `<span style="font-size:10px;opacity:0.75;">${usdtStr}</span>` : ''}
+        </div>
+        <div onclick="_removeSlTpLine('${kind}')" title="Rimuovi" style="padding:5px 7px;color:#6B7280;cursor:pointer;border-left:1px solid #2A2E39;background:#1E222D;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">✕</div>
+    `;
+    chartEl.parentElement.appendChild(label);
+    return label;
+}
+
+function _updateSlTpLabelPos(kind) {
+    const label = kind === 'tp' ? _fsTpLabel : _fsSlLabel;
+    const price = kind === 'tp' ? _fsTpPrice   : _fsSlPrice;
+    if (!label || !fsCandleS || price == null) return;
+    const y = fsCandleS.priceToCoordinate(price);
+    if (y != null) label.style.top = y + 'px';
+}
+
+function _updateAllLabels() {
+    _updateEntryLabelPos();
+    _updateSlTpLabelPos('sl');
+    _updateSlTpLabelPos('tp');
+}
+
+function _removeSlTpLine(kind) {
+    if (kind === 'sl') {
+        if (_fsSlLine && fsCandleS) { try { fsCandleS.removePriceLine(_fsSlLine); } catch(e){} _fsSlLine = null; }
+        if (_fsSlLabel) { _fsSlLabel.remove(); _fsSlLabel = null; }
+        _fsSlPrice = null;
+        const el = document.getElementById('fs-el-sl');
+        if (el) { el.style.color = '#ef4444'; el.style.pointerEvents = 'auto'; el.textContent = '+SL'; }
+        const si = document.getElementById('fs-sl-input'); if (si) si.value = '';
+    } else {
+        if (_fsTpLine && fsCandleS) { try { fsCandleS.removePriceLine(_fsTpLine); } catch(e){} _fsTpLine = null; }
+        if (_fsTpLabel) { _fsTpLabel.remove(); _fsTpLabel = null; }
+        _fsTpPrice = null;
+        const el = document.getElementById('fs-el-tp');
+        if (el) { el.style.color = '#10b981'; el.style.pointerEvents = 'auto'; el.textContent = '+TP'; }
+        const ti = document.getElementById('fs-tp-input'); if (ti) ti.value = '';
+    }
+}
+
+function _startSlTpLabelDrag(e, kind) {
+    e.preventDefault(); e.stopPropagation();
+    _dragMode = kind;
+    if (_dragOverlay) { _dragOverlay.style.pointerEvents = 'all'; _dragOverlay.style.cursor = 'ns-resize'; }
+    _entryDragMM = function(ev) {
+        if (_dragMode !== kind) return;
+        const el = document.getElementById('fs-chart-el');
+        if (!el || !fsCandleS) return;
+        const rect = el.getBoundingClientRect();
+        const newP = fsCandleS.coordinateToPrice(ev.clientY - rect.top);
+        if (newP == null) return;
+        if (kind === 'sl') { _fsSlPrice = newP; const si = document.getElementById('fs-sl-input'); if (si) si.value = parseFloat(newP.toPrecision(8)); }
+        else               { _fsTpPrice = newP; const ti = document.getElementById('fs-tp-input'); if (ti) ti.value = parseFloat(newP.toPrecision(8)); }
+        _drawSlTpLines();
+    };
+    document.addEventListener('mousemove', _entryDragMM);
+}
+
+function _drawSlTpLines() {
+    if (!fsCandleS) return;
+    if (_fsSlLine) { try { fsCandleS.removePriceLine(_fsSlLine); } catch(e) {} _fsSlLine = null; }
+    if (_fsTpLine) { try { fsCandleS.removePriceLine(_fsTpLine); } catch(e) {} _fsTpLine = null; }
+    if (_fsSlLabel) { _fsSlLabel.remove(); _fsSlLabel = null; }
+    if (_fsTpLabel) { _fsTpLabel.remove(); _fsTpLabel = null; }
+    if (_fsSlPrice != null) {
+        _fsSlLine  = fsCandleS.createPriceLine({ price: _fsSlPrice, color: '#ef4444', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
+        _fsSlLabel = _buildSlTpLabel('sl');
+        _updateSlTpLabelPos('sl');
+    }
+    if (_fsTpPrice != null) {
+        _fsTpLine  = fsCandleS.createPriceLine({ price: _fsTpPrice, color: '#10b981', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
+        _fsTpLabel = _buildSlTpLabel('tp');
+        _updateSlTpLabelPos('tp');
+    }
+}
+
+function _removeSlTpLines() {
+    if (_fsSlLine) { try { fsCandleS.removePriceLine(_fsSlLine); } catch(e) {} _fsSlLine = null; }
+    if (_fsTpLine) { try { fsCandleS.removePriceLine(_fsTpLine); } catch(e) {} _fsTpLine = null; }
+    if (_fsSlLabel) { _fsSlLabel.remove(); _fsSlLabel = null; }
+    if (_fsTpLabel) { _fsTpLabel.remove(); _fsTpLabel = null; }
+    _fsSlPrice = null; _fsTpPrice = null;
+}
+
+function addFsSlLine() {
+    if (!fsCandleS || !_tradePos) return;
+    const price = _livePrice[fsCoin?.symbol] || _tradePos.entryPrice;
+    const long = _tradePos.side === 'Buy';
+    _fsSlPrice = long ? price * 0.98 : price * 1.02;
+    _drawSlTpLines();
+}
+
+function addFsTpLine() {
+    if (!fsCandleS || !_tradePos) return;
+    const price = _livePrice[fsCoin?.symbol] || _tradePos.entryPrice;
+    const long = _tradePos.side === 'Buy';
+    _fsTpPrice = long ? price * 1.04 : price * 0.96;
+    _drawSlTpLines();
+}
+
+function initSlTpDrag() {
+    const el = document.getElementById('fs-chart-el');
+    if (!el) return;
+    // Transparent overlay on top of chart — activated when mouse is near a price line.
+    // This blocks LightweightCharts (pointerdown/pan) without needing capture tricks.
+    const parent = el.parentElement;
+    _dragOverlay = document.createElement('div');
+    _dragOverlay.id = 'fs-drag-overlay';
+    _dragOverlay.style.cssText = 'position:absolute;inset:0;z-index:12;pointer-events:none;';
+    parent.appendChild(_dragOverlay);
+    _dragOverlay.addEventListener('mousemove', _onFsMM);
+    _dragOverlay.addEventListener('mousedown', _onFsMD);
+    el.addEventListener('mousemove', _onFsMM); // for cursor when overlay is transparent
+    document.addEventListener('mouseup', _onFsMU);
+}
+
+function _onFsMM(e) {
+    const el = document.getElementById('fs-chart-el');
+    if (!el || !fsCandleS) return;
+    const rect = el.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    if (_dragMode) {
+        const newP = fsCandleS.coordinateToPrice(y);
+        if (newP == null) return;
+        if (_dragMode === 'sl') { _fsSlPrice = newP; _drawSlTpLines(); const si = document.getElementById('fs-sl-input'); if (si) si.value = parseFloat(newP.toPrecision(8)); }
+        else if (_dragMode === 'tp') { _fsTpPrice = newP; _drawSlTpLines(); const ti = document.getElementById('fs-tp-input'); if (ti) ti.value = parseFloat(newP.toPrecision(8)); }
+        else if (_dragMode === 'exec') {
+            _fsExecPrice = newP;
+            if (_fsExecLine) { try { fsCandleS.removePriceLine(_fsExecLine); } catch(ex){} }
+            const long = _tradeSide === 'Buy';
+            _fsExecLine = fsCandleS.createPriceLine({ price: _fsExecPrice, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: long ? '▲ Exec' : '▼ Exec' });
+            const ci = document.getElementById('fs-cond-price'); if (ci) ci.value = parseFloat(_fsExecPrice.toPrecision(8));
+        }
+        else if (_dragMode === 'entry') {
+            _fsEntryPrice = newP;
+            if (_fsEntryLine) { try { fsCandleS.removePriceLine(_fsEntryLine); } catch(ex){} }
+            const long = _tradeSide === 'Buy';
+            _fsEntryLine = fsCandleS.createPriceLine({ price: _fsEntryPrice, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+            _updateEntryLabelPos();
+            _syncEntryPrice(_fsEntryPrice);
+        }
+        return;
+    }
+    _updateAllLabels();
+    const THR = 8;
+    let near = null;
+    if (_fsEntryPrice != null) { const ey = fsCandleS.priceToCoordinate(_fsEntryPrice); if (ey != null && Math.abs(y - ey) < THR) near = 'entry'; }
+    if (!near && _fsExecPrice != null) { const ep = fsCandleS.priceToCoordinate(_fsExecPrice); if (ep != null && Math.abs(y - ep) < THR) near = 'exec'; }
+    if (!near && _fsSlPrice != null) { const sy = fsCandleS.priceToCoordinate(_fsSlPrice); if (sy != null && Math.abs(y - sy) < THR) near = 'sl'; }
+    if (!near && _fsTpPrice != null) { const ty = fsCandleS.priceToCoordinate(_fsTpPrice); if (ty != null && Math.abs(y - ty) < THR) near = 'tp'; }
+    // Activate overlay to block chart panning when near a draggable line
+    if (_dragOverlay) { _dragOverlay.style.pointerEvents = near ? 'all' : 'none'; _dragOverlay.style.cursor = near ? 'ns-resize' : ''; }
+    el.style.cursor = near ? 'ns-resize' : '';
+}
+
+function _onFsMD(e) {
+    const el = document.getElementById('fs-chart-el');
+    if (!el || !fsCandleS) return;
+    e.preventDefault();
+    const rect = el.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const THR = 8;
+    if (_fsEntryPrice != null) { const ey = fsCandleS.priceToCoordinate(_fsEntryPrice); if (ey != null && Math.abs(y - ey) < THR) { _dragMode = 'entry'; return; } }
+    if (_fsExecPrice != null) { const ep = fsCandleS.priceToCoordinate(_fsExecPrice); if (ep != null && Math.abs(y - ep) < THR) { _dragMode = 'exec'; return; } }
+    if (_fsSlPrice != null) { const sy = fsCandleS.priceToCoordinate(_fsSlPrice); if (sy != null && Math.abs(y - sy) < THR) { _dragMode = 'sl'; return; } }
+    if (_fsTpPrice != null) { const ty = fsCandleS.priceToCoordinate(_fsTpPrice); if (ty != null && Math.abs(y - ty) < THR) { _dragMode = 'tp'; } }
+}
+
+async function _onFsMU() {
+    if (!_dragMode) return;
+    const mode = _dragMode; _dragMode = null;
+    if (_entryDragMM) { document.removeEventListener('mousemove', _entryDragMM); _entryDragMM = null; }
+    if (_dragOverlay) { _dragOverlay.style.pointerEvents = 'none'; _dragOverlay.style.cursor = ''; }
+    const el = document.getElementById('fs-chart-el'); if (el) el.style.cursor = '';
+    if (mode === 'entry' || mode === 'exec') return;
+    if (!fsCoin) return;
+    clearTimeout(_slTpTimer);
+    _slTpTimer = setTimeout(async () => {
+        try {
+            const body = { symbol: fsCoin.symbol };
+            if (mode === 'sl') body.stopLoss = parseFloat(_fsSlPrice.toFixed(8));
+            else body.takeProfit = parseFloat(_fsTpPrice.toFixed(8));
+            const d = await fetch('api/trade/set-sltp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+            if (!d.success) _showTradeMsg(d.error || 'Errore SL/TP', false);
+        } catch(e) { _showTradeMsg('Errore di rete', false); }
+    }, 400);
+}
+
+function _getEntryPrice() {
+    const liveP = _livePrice[fsCoin?.symbol] || 0;
+    if (_fsOrderType === 'Limit') {
+        const inp = document.getElementById('fs-order-price');
+        const v = parseFloat(inp?.value);
+        if (v > 0) return v;
+        // pre-fill input with live price so user can drag from there
+        if (inp && liveP) inp.value = parseFloat(liveP.toPrecision(8));
+    } else if (_fsOrderType === 'Conditional') {
+        const inp = document.getElementById('fs-order-trigger');
+        const v = parseFloat(inp?.value);
+        if (v > 0) return v;
+        if (inp && liveP) inp.value = parseFloat(liveP.toPrecision(8));
+    }
+    return liveP;
+}
+
+function _syncEntryPrice(price) {
+    const s = parseFloat(price.toPrecision(8));
+    if (_fsOrderType === 'Limit') {
+        const el = document.getElementById('fs-order-price'); if (el) el.value = s;
+    } else if (_fsOrderType === 'Conditional') {
+        const el = document.getElementById('fs-order-trigger'); if (el) el.value = s;
+    }
+}
+
+function _onSlTpInput(kind, val) {
+    if (!fsCandleS) return;
+    const p = parseFloat(val);
+    if (kind === 'sl') {
+        _fsSlPrice = (p > 0) ? p : null;
+        if (_fsSlPrice && _tradeSide) {
+            const el = document.getElementById('fs-el-sl');
+            if (el) { el.style.color = '#6B7280'; el.style.pointerEvents = 'none'; el.textContent = 'SL'; }
+        }
+        _drawSlTpLines();
+    } else {
+        _fsTpPrice = (p > 0) ? p : null;
+        if (_fsTpPrice && _tradeSide) {
+            const el = document.getElementById('fs-el-tp');
+            if (el) { el.style.color = '#6B7280'; el.style.pointerEvents = 'none'; el.textContent = 'TP'; }
+        }
+        _drawSlTpLines();
+    }
+}
+
+function _onPriceInput(kind, val) {
+    if (!_tradeSide || !fsCandleS) return;
+    const p = parseFloat(val);
+    if (!p || p <= 0) return;
+    const long = _tradeSide === 'Buy';
+    if ((kind === 'limit' && _fsOrderType === 'Limit') || (kind === 'trigger' && _fsOrderType === 'Conditional')) {
+        _fsEntryPrice = p;
+        if (_fsEntryLine) { try { fsCandleS.removePriceLine(_fsEntryLine); } catch(e){} }
+        _fsEntryLine = fsCandleS.createPriceLine({ price: p, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+        _updateEntryLabelPos();
+    } else if (kind === 'exec' && _fsOrderType === 'Conditional' && _fsCondExec === 'Limit') {
+        _fsExecPrice = p;
+        if (_fsExecLine) { try { fsCandleS.removePriceLine(_fsExecLine); } catch(e){} }
+        _fsExecLine = fsCandleS.createPriceLine({ price: p, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: long ? '▲ Exec' : '▼ Exec' });
+    }
+}
+
+function _createExecLine(long) {
+    if (_fsExecLine && fsCandleS) { try { fsCandleS.removePriceLine(_fsExecLine); } catch(e){} _fsExecLine = null; }
+    if (_fsOrderType !== 'Conditional' || _fsCondExec !== 'Limit') return;
+    const inp = document.getElementById('fs-cond-price');
+    const v = parseFloat(inp?.value);
+    const liveP = _livePrice[fsCoin?.symbol] || 0;
+    _fsExecPrice = v > 0 ? v : (long ? (liveP * 0.999) : (liveP * 1.001));
+    if (!v && inp) inp.value = parseFloat(_fsExecPrice.toPrecision(8));
+    _fsExecLine = fsCandleS.createPriceLine({ price: _fsExecPrice, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: long ? '▲ Exec' : '▼ Exec' });
+}
+
+function setFsSide(side) {
+    _tradeSide = side;
+    const l = document.getElementById('fs-btn-long'), s = document.getElementById('fs-btn-short');
+    if (l) { l.style.background = side === 'Buy' ? '#065f46' : '#1E222D'; l.style.color = side === 'Buy' ? '#10b981' : '#6B7280'; l.style.borderColor = side === 'Buy' ? '#10b981' : '#374151'; }
+    if (s) { s.style.background = side === 'Sell' ? '#7f1d1d' : '#1E222D'; s.style.color = side === 'Sell' ? '#ef4444' : '#6B7280'; s.style.borderColor = side === 'Sell' ? '#ef4444' : '#374151'; }
+    if (!fsCandleS) return;
+    const price = _getEntryPrice();
+    if (!price) return;
+    const long = side === 'Buy';
+    _removeEntryLine();
+    _fsEntryPrice = price;
+    _fsEntryLine = fsCandleS.createPriceLine({ price, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+    _createExecLine(long);
+    _createEntryLabel(long);
+    _updateEntryLabelPos();
+}
+
+function _removeEntryLine() {
+    if (_fsEntryLine && fsCandleS) { try { fsCandleS.removePriceLine(_fsEntryLine); } catch(e) {} }
+    _fsEntryLine = null; _fsEntryPrice = null;
+    if (_fsExecLine && fsCandleS) { try { fsCandleS.removePriceLine(_fsExecLine); } catch(e) {} }
+    _fsExecLine = null; _fsExecPrice = null;
+    if (_fsEntryLabel) { _fsEntryLabel.remove(); _fsEntryLabel = null; }
+    document.getElementById('fs-entry-label')?.remove();
+}
+
+function _entryLabelTypeText() {
+    if (_fsOrderType === 'Limit') return 'Limit';
+    if (_fsOrderType === 'Conditional') return _fsCondExec === 'Limit' ? 'Cond.Limit' : 'Cond.Market';
+    return 'Market';
+}
+
+function _createEntryLabel(long) {
+    if (_fsEntryLabel) { _fsEntryLabel.remove(); _fsEntryLabel = null; }
+    const chartEl = document.getElementById('fs-chart-el');
+    if (!chartEl) return;
+    const parent = chartEl.parentElement;
+    const sideColor = long ? '#10b981' : '#ef4444';
+    const sideBg    = long ? '#065f46' : '#7f1d1d';
+    const sideText  = long ? '▲ Long' : '▼ Short';
+    const sizeVal   = document.getElementById('fs-order-size')?.value || '0';
+    const typeText  = _entryLabelTypeText();
+    const sep = `border-left:1px solid #2A2E39;`;
+    const cell = `padding:5px 8px;cursor:pointer;background:#1E222D;`;
+    const label = document.createElement('div');
+    label.id = 'fs-entry-label';
+    label.style.cssText = `position:absolute;right:58px;z-index:20;display:flex;align-items:stretch;border:1px solid ${sideColor};border-radius:4px;overflow:hidden;font-size:11px;font-weight:600;pointer-events:all;white-space:nowrap;user-select:none;transform:translateY(-50%);box-shadow:0 2px 8px rgba(0,0,0,.5);`;
+    label.innerHTML = `
+        <div id="fs-el-side" onmousedown="_startEntryDrag(event)" style="padding:5px 9px;background:${sideBg};color:${sideColor};cursor:ns-resize;">${sideText}</div>
+        <div id="fs-el-size" onclick="_editEntrySize(event)" title="Modifica size" style="${cell}${sep}color:#E5E7EB;min-width:24px;text-align:center;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">${sizeVal}</div>
+        <div id="fs-el-type" onclick="_openEntryTypeMenu(event)" title="Cambia tipo ordine" style="${cell}${sep}color:#9CA3AF;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">${typeText}</div>
+        <div id="fs-el-tp" onclick="_addEntryTp()" title="+TP" style="${cell}${sep}color:#10b981;" onmouseenter="this.style.background='#1a3028'" onmouseleave="this.style.background='#1E222D'">+TP</div>
+        <div id="fs-el-sl" onclick="_addEntrySl()" title="+SL" style="${cell}${sep}color:#ef4444;" onmouseenter="this.style.background='#2d1717'" onmouseleave="this.style.background='#1E222D'">+SL</div>
+        <div onclick="resetTradeSide()" title="Rimuovi" style="${cell}${sep}color:#6B7280;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">✕</div>
+    `;
+    parent.appendChild(label);
+    _fsEntryLabel = label;
+}
+
+function _editEntrySize(e) {
+    e.stopPropagation();
+    const el = document.getElementById('fs-el-size');
+    if (!el || el.querySelector('input')) return;
+    const cur = document.getElementById('fs-order-size')?.value || '0';
+    el.onmouseenter = el.onmouseleave = null;
+    el.style.background = '#2A2E39';
+    el.innerHTML = `<input id="fs-el-size-inp" type="number" value="${cur}" min="1" step="1"
+        style="width:54px;background:transparent;border:none;outline:none;color:#E5E7EB;font-size:11px;font-weight:600;padding:0;"
+        onclick="event.stopPropagation()"
+        onkeydown="if(event.key==='Enter'||event.key==='Escape'){event.preventDefault();_confirmEntrySize();}">`;
+    const inp = el.querySelector('input');
+    if (inp) { inp.focus(); inp.select(); inp.addEventListener('blur', _confirmEntrySize); }
+}
+
+function _confirmEntrySize() {
+    const inp = document.getElementById('fs-el-size-inp');
+    const el  = document.getElementById('fs-el-size');
+    if (!el) return;
+    const val = parseFloat(inp?.value);
+    const sizeInp = document.getElementById('fs-order-size');
+    if (sizeInp && val > 0) { sizeInp.value = val; updateQtyPreview(); }
+    const show = (val > 0 ? val : sizeInp?.value) || '0';
+    el.innerHTML = show;
+    el.onmouseenter = function(){ this.style.background='#2A2E39'; };
+    el.onmouseleave = function(){ this.style.background='#1E222D'; };
+    el.style.background = '#1E222D';
+    _refreshAllSizeCells(show);
+}
+
+function _editSlTpSize(e, kind) {
+    e.stopPropagation();
+    const cellId = `fs-${kind}-size`;
+    const el = document.getElementById(cellId);
+    if (!el || el.querySelector('input')) return;
+    const cur = document.getElementById('fs-order-size')?.value || '0';
+    el.onmouseenter = el.onmouseleave = null;
+    el.style.background = '#2A2E39';
+    el.innerHTML = `<input id="${cellId}-inp" type="number" value="${cur}" min="1" step="1"
+        style="width:54px;background:transparent;border:none;outline:none;color:#E5E7EB;font-size:11px;font-weight:600;padding:0;"
+        onclick="event.stopPropagation()"
+        onkeydown="if(event.key==='Enter'||event.key==='Escape'){event.preventDefault();_confirmSlTpSize('${kind}');}">`;
+    const inp = el.querySelector('input');
+    if (inp) { inp.focus(); inp.select(); inp.addEventListener('blur', () => _confirmSlTpSize(kind)); }
+}
+
+function _confirmSlTpSize(kind) {
+    const cellId = `fs-${kind}-size`;
+    const inp = document.getElementById(cellId + '-inp');
+    const el  = document.getElementById(cellId);
+    if (!el) return;
+    const val = parseFloat(inp?.value);
+    const sizeInp = document.getElementById('fs-order-size');
+    if (sizeInp && val > 0) { sizeInp.value = val; updateQtyPreview(); }
+    const show = (val > 0 ? val : sizeInp?.value) || '0';
+    el.innerHTML = show;
+    el.onmouseenter = function(){ this.style.background='#2A2E39'; };
+    el.onmouseleave = function(){ this.style.background='#1E222D'; };
+    el.style.background = '#1E222D';
+    _refreshAllSizeCells(show);
+}
+
+function _refreshAllSizeCells(val) {
+    const show = String(val || '0');
+    ['fs-el-size', 'fs-tp-size', 'fs-sl-size'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.querySelector('input')) el.innerHTML = show;
+    });
+}
+
+function _openEntryTypeMenu(e) {
+    e.stopPropagation();
+    document.getElementById('fs-el-type-menu')?.remove();
+    if (!_fsEntryLabel) return;
+    const parent = document.getElementById('fs-chart-el')?.parentElement;
+    if (!parent) return;
+    const labelRect  = _fsEntryLabel.getBoundingClientRect();
+    const parentRect = parent.getBoundingClientRect();
+    const types = [
+        { val: 'Market', label: 'Market' },
+        { val: 'Limit',  label: 'Limit'  },
+        { val: 'Conditional', label: 'Conditional' },
+    ];
+    const menu = document.createElement('div');
+    menu.id = 'fs-el-type-menu';
+    menu.style.cssText = `position:absolute;right:58px;top:${labelRect.bottom - parentRect.top + 2}px;background:#1E222D;border:1px solid #374151;border-radius:4px;overflow:hidden;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,.6);pointer-events:all;`;
+    types.forEach(t => {
+        const item = document.createElement('div');
+        const active = _fsOrderType === t.val;
+        item.textContent = t.label;
+        item.style.cssText = `padding:7px 16px;font-size:11px;cursor:pointer;color:${active?'#FF9C2E':'#B2B5BE'};font-weight:${active?'700':'400'};`;
+        item.onmouseenter = () => item.style.background = '#2A2E39';
+        item.onmouseleave = () => item.style.background = '';
+        item.onclick = ev => {
+            ev.stopPropagation();
+            setOrderType(t.val);
+            const typeEl = document.getElementById('fs-el-type');
+            if (typeEl) typeEl.textContent = _entryLabelTypeText();
+            menu.remove();
+        };
+        menu.appendChild(item);
+    });
+    parent.appendChild(menu);
+    setTimeout(() => document.addEventListener('click', () => { menu.remove(); }, { once: true }), 0);
+}
+
+function _updateEntryLabelPos() {
+    if (!_fsEntryLabel || !fsCandleS || _fsEntryPrice == null) return;
+    const y = fsCandleS.priceToCoordinate(_fsEntryPrice);
+    if (y == null) return;
+    _fsEntryLabel.style.top = y + 'px';
+}
+
+function _addEntryTp() {
+    if (!_fsEntryPrice || !_tradeSide) return;
+    const long = _tradeSide === 'Buy';
+    if (_fsTpPrice == null) _fsTpPrice = _fsEntryPrice * (long ? 1.02 : 0.98);
+    _drawSlTpLines();
+    const el = document.getElementById('fs-el-tp');
+    if (el) { el.style.color = '#6B7280'; el.style.pointerEvents = 'none'; el.textContent = 'TP'; }
+    const ti = document.getElementById('fs-tp-input'); if (ti) ti.value = parseFloat(_fsTpPrice.toPrecision(8));
+}
+
+function _addEntrySl() {
+    if (!_fsEntryPrice || !_tradeSide) return;
+    const long = _tradeSide === 'Buy';
+    if (_fsSlPrice == null) _fsSlPrice = _fsEntryPrice * (long ? 0.99 : 1.01);
+    _drawSlTpLines();
+    const el = document.getElementById('fs-el-sl');
+    if (el) { el.style.color = '#6B7280'; el.style.pointerEvents = 'none'; el.textContent = 'SL'; }
+    const si = document.getElementById('fs-sl-input'); if (si) si.value = parseFloat(_fsSlPrice.toPrecision(8));
+}
+
+function _startEntryDrag(e) {
+    e.preventDefault(); e.stopPropagation();
+    _dragMode = 'entry';
+    if (_dragOverlay) { _dragOverlay.style.pointerEvents = 'all'; _dragOverlay.style.cursor = 'ns-resize'; }
+    _entryDragMM = function(ev) {
+        if (_dragMode !== 'entry') return;
+        const el = document.getElementById('fs-chart-el');
+        if (!el || !fsCandleS) return;
+        const rect = el.getBoundingClientRect();
+        const y = ev.clientY - rect.top;
+        const newP = fsCandleS.coordinateToPrice(y);
+        if (newP == null) return;
+        _fsEntryPrice = newP;
+        if (_fsEntryLine) { try { fsCandleS.removePriceLine(_fsEntryLine); } catch(ex){} }
+        const long = _tradeSide === 'Buy';
+        _fsEntryLine = fsCandleS.createPriceLine({ price: _fsEntryPrice, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+        _updateEntryLabelPos();
+        _syncEntryPrice(_fsEntryPrice);
+    };
+    document.addEventListener('mousemove', _entryDragMM);
+}
+
+function resetTradeSide() {
+    _tradeSide = null;
+    const l = document.getElementById('fs-btn-long'), s = document.getElementById('fs-btn-short');
+    if (l) { l.style.background = '#1E222D'; l.style.color = '#6B7280'; l.style.borderColor = '#374151'; }
+    if (s) { s.style.background = '#1E222D'; s.style.color = '#6B7280'; s.style.borderColor = '#374151'; }
+    _removeEntryLine();
+    _removeSlTpLines();
+    const si = document.getElementById('fs-sl-input'); if (si) si.value = '';
+    const ti = document.getElementById('fs-tp-input'); if (ti) ti.value = '';
+}
+
+function setOrderType(type) {
+    _fsOrderType = type;
+    const ids = { Limit: 'fs-ot-limit', Market: 'fs-ot-market', Conditional: 'fs-ot-cond' };
+    Object.entries(ids).forEach(([t, id]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.color = t === type ? '#FF9C2E' : '#6B7280';
+    });
+    document.getElementById('fs-order-price-wrap').style.display = type === 'Limit' ? 'flex' : 'none';
+    document.getElementById('fs-cond-fields').style.display      = type === 'Conditional' ? 'flex' : 'none';
+    if (type !== 'Conditional') document.getElementById('fs-cond-price-wrap').style.display = 'none';
+    closeCondTypeDD();
+    const typeEl = document.getElementById('fs-el-type');
+    if (typeEl) typeEl.textContent = _entryLabelTypeText();
+}
+
+function openCondTypeDD() {
+    document.getElementById('fs-cond-type-dd').style.display = 'block';
+    const svg = document.querySelector('#fs-cond-dd-arrow svg');
+    if (svg) svg.style.transform = 'rotate(180deg)';
+}
+
+function closeCondTypeDD() {
+    document.getElementById('fs-cond-type-dd').style.display = 'none';
+    const svg = document.querySelector('#fs-cond-dd-arrow svg');
+    if (svg) svg.style.transform = '';
+}
+
+function toggleCondTypeDD(e) {
+    if (e) e.stopPropagation();
+    const dd = document.getElementById('fs-cond-type-dd');
+    dd.style.display !== 'none' ? closeCondTypeDD() : openCondTypeDD();
+}
+
+function setCondTypeFromDD(execType) {
+    _fsCondExec = execType;
+    setOrderType('Conditional');
+    const mktEl = document.getElementById('fs-ctdd-mkt');
+    const lmtEl = document.getElementById('fs-ctdd-lmt');
+    if (mktEl) { mktEl.style.color = execType === 'Market' ? '#FF9C2E' : '#B2B5BE'; mktEl.style.fontWeight = execType === 'Market' ? '600' : '400'; }
+    if (lmtEl) { lmtEl.style.color = execType === 'Limit'  ? '#FF9C2E' : '#B2B5BE'; lmtEl.style.fontWeight = execType === 'Limit'  ? '600' : '400'; }
+    const lbl = document.getElementById('fs-ot-cond-label');
+    if (lbl) lbl.textContent = 'Cond. ' + execType;
+    document.getElementById('fs-cond-price-wrap').style.display = execType === 'Limit' ? 'flex' : 'none';
+    closeCondTypeDD();
+}
+
+function updateQtyPreview() {
+    const sEl = document.getElementById('fs-order-size'), lEl = document.getElementById('fs-order-lev'), qEl = document.getElementById('fs-qty-preview');
+    if (!sEl || !lEl || !qEl) return;
+    const size = parseFloat(sEl.value) || 0, lev = parseFloat(lEl.value) || 1;
+    const price = _livePrice[fsCoin?.symbol] || 0;
+    if (!price || !size) { qEl.textContent = ''; return; }
+    let qty = (size * lev) / price;
+    if (_instInfo) {
+        const step = parseFloat(_instInfo.qtyStep);
+        const dec = Math.max(0, -Math.floor(Math.log10(step)));
+        qty = parseFloat((Math.floor(qty / step) * step).toFixed(dec));
+        const min = parseFloat(_instInfo.minOrderQty);
+        if (qty < min) { qEl.textContent = `Min: ${_instInfo.minOrderQty}`; qEl.style.color = '#ef4444'; return; }
+    } else { qty = parseFloat(qty.toPrecision(4)); }
+    qEl.textContent = `≈ ${qty}`; qEl.style.color = '#9CA3AF';
+}
+
+async function confirmFsOrder() {
+    if (!fsCoin || !_tradeEnabled) return;
+    const size = parseFloat(document.getElementById('fs-order-size')?.value) || 0;
+    const lev = parseFloat(document.getElementById('fs-order-lev')?.value) || 10;
+    const otype = _fsOrderType;
+    const limitP = parseFloat(document.getElementById('fs-order-price')?.value) || 0;
+    const triggerP  = parseFloat(document.getElementById('fs-order-trigger')?.value) || 0;
+    const condExec  = _fsCondExec;
+    const condLimP  = parseFloat(document.getElementById('fs-cond-price')?.value) || 0;
+    if (!size) return _showTradeMsg('Inserisci size USDT', false);
+    if (otype === 'Conditional' && !triggerP) return _showTradeMsg('Inserisci prezzo trigger', false);
+    if (otype === 'Conditional' && condExec === 'Limit' && !condLimP) return _showTradeMsg('Inserisci prezzo esecuzione', false);
+    const entryP = otype === 'Limit' ? limitP
+                 : otype === 'Conditional' ? (condExec === 'Limit' ? condLimP : triggerP)
+                 : (_livePrice[fsCoin.symbol] || 0);
+    if (!entryP) return _showTradeMsg('Prezzo non disponibile', false);
+    let qty = (size * lev) / entryP;
+    if (_instInfo) {
+        const step = parseFloat(_instInfo.qtyStep);
+        const dec = Math.max(0, -Math.floor(Math.log10(step)));
+        qty = parseFloat((Math.floor(qty / step) * step).toFixed(dec));
+        if (qty < parseFloat(_instInfo.minOrderQty)) return _showTradeMsg(`Qty min: ${_instInfo.minOrderQty}`, false);
+    } else { qty = parseFloat(qty.toPrecision(4)); }
+    const label = _tradeSide === 'Buy' ? 'LONG' : 'SHORT';
+    const typeLabel = otype === 'Conditional'
+        ? `Conditional trigger@${triggerP} exec:${condExec}${condExec==='Limit'?' @'+condLimP:''}`
+        : `${otype}${otype==='Limit'?' @ '+limitP:''}`;
+    if (!confirm(`Confermi?\n${label} ${fsCoin.symbol}\nTipo: ${typeLabel}\nQty: ${qty}\nNotionale: $${(size*lev).toFixed(2)}\nLeva: ${lev}x`)) return;
+    try {
+        const body = { symbol: fsCoin.symbol, side: _tradeSide, orderType: otype === 'Conditional' ? condExec : otype, qty: String(qty), leverage: lev };
+        if (otype === 'Limit') body.price = String(limitP);
+        if (otype === 'Conditional') {
+            body.triggerPrice = String(triggerP);
+            body.orderFilter = 'StopOrder';
+            if (condExec === 'Limit') body.price = String(condLimP);
+        }
+        const d = await fetch('api/trade/order', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+        if (d.success) { _showTradeMsg(`Ordine OK (${d.orderId?.slice(0,8)}...)`, true); setTimeout(loadTradeData, 2000); }
+        else _showTradeMsg(d.error || 'Errore ordine', false);
+    } catch(e) { _showTradeMsg('Errore di rete', false); }
+}
+
+async function closeFsPosition() {
+    if (!_tradePos || !fsCoin) return;
+    const p = _tradePos;
+    if (!confirm(`Chiudi ${p.side === 'Buy' ? 'LONG' : 'SHORT'} ${p.size} ${fsCoin.symbol}?`)) return;
+    try {
+        const d = await fetch('api/trade/close', { method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ symbol: fsCoin.symbol, side: p.side === 'Buy' ? 'Sell' : 'Buy', qty: String(p.size) }) }).then(r => r.json());
+        if (d.success) { _showTradeMsg('Posizione chiusa', true); _tradePos = null; _renderPosition(); setTimeout(loadTradeData, 2000); }
+        else _showTradeMsg(d.error || 'Errore chiusura', false);
+    } catch(e) { _showTradeMsg('Errore di rete', false); }
+}
+
+let _pricePickHandler = null;
+
+function startPricePick(inputId) {
+    if (_pricePickTarget) _endPricePick();
+    if (!fsChart || !fsCandleS) return;
+    _pricePickTarget = inputId;
+    // hint
+    const chartWrap = document.getElementById('fs-chart-el')?.parentElement;
+    const hint = document.createElement('div');
+    hint.id = 'fs-pick-hint';
+    hint.textContent = 'Clicca sul grafico per selezionare il prezzo  •  ESC per annullare';
+    hint.style.cssText = 'position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(16,16,20,.95);color:#FF9C2E;font-size:11px;padding:5px 14px;border-radius:4px;z-index:20;pointer-events:none;white-space:nowrap;border:1px solid #f59e0b;';
+    if (chartWrap) chartWrap.appendChild(hint);
+    document.querySelectorAll('.fs-aim-btn').forEach(b => b.style.opacity = b.dataset.target === inputId ? '1' : '0.25');
+    _pricePickHandler = (param) => {
+        if (!param?.point) return;
+        const price = fsCandleS.coordinateToPrice(param.point.y);
+        if (price != null) {
+            const inp = document.getElementById(_pricePickTarget);
+            if (inp) inp.value = parseFloat(price.toPrecision(8));
+        }
+        _endPricePick();
+    };
+    fsChart.subscribeClick(_pricePickHandler);
+}
+
+function _endPricePick() {
+    if (fsChart && _pricePickHandler) { try { fsChart.unsubscribeClick(_pricePickHandler); } catch(e){} }
+    _pricePickHandler = null;
+    _pricePickTarget = null;
+    document.getElementById('fs-pick-hint')?.remove();
+    document.querySelectorAll('.fs-aim-btn').forEach(b => b.style.opacity = '0.6');
+}
+
+function _showTradeMsg(msg, ok) {
+    const el = document.getElementById('fs-trade-msg');
+    if (!el) return;
+    el.textContent = (ok ? '✓ ' : '⚠ ') + msg; el.style.color = ok ? '#10b981' : '#ef4444'; el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 4000);
+}
 </script>
 
 <!-- Order Book fullscreen modal -->
@@ -2455,6 +3492,7 @@ function applyCfgToAllSlots() {
         <div style="height:36px;flex-shrink:0;background:#161A1E;border-bottom:2px solid #2C2C2C;display:flex;align-items:center;padding:0 10px;gap:10px;">
             <span id="ob-chart-sym" style="font-size:13px;font-weight:700;color:#E5E7EB;min-width:60px;"></span>
             <div id="ob-tf-bar" style="display:flex;gap:4px;"></div>
+            <span id="ob-countdown" style="font-family:monospace;color:#9CA3AF;align-self:center;min-width:48px;"></span>
             <div style="flex:1;"></div>
             <button id="ob-book-btn" onclick="toggleOBBook()" style="background:#1d4ed8;color:#fff;border:1px solid #2563eb;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;">BOOK</button>
             <button onclick="closeOBModal()" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
