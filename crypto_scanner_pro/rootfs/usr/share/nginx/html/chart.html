@@ -3119,9 +3119,9 @@ function setFsSide(side) {
     const long = side === 'Buy';
     _removeEntryLine();
     if (_fsOrderType === 'Conditional') {
-        // Anchor label at live price; trigger line created explicitly via +TR
-        _fsEntryPrice = _livePrice[fsCoin?.symbol] || 0;
         _createExecLine(long);
+        // Anchor label at exec price (Cond.Limit) or live price (Cond.Market)
+        _fsEntryPrice = _fsExecPrice || _livePrice[fsCoin?.symbol] || 0;
     } else {
         const price = _getEntryPrice();
         if (!price) return;
@@ -3163,7 +3163,7 @@ function _createEntryLabel(long) {
     label.id = 'fs-entry-label';
     label.style.cssText = `position:absolute;right:58px;z-index:20;display:flex;align-items:stretch;border:1px solid ${sideColor};border-radius:4px;overflow:hidden;font-size:11px;font-weight:600;pointer-events:all;white-space:nowrap;user-select:none;transform:translateY(-50%);box-shadow:0 2px 8px rgba(0,0,0,.5);`;
     const trBtn = _fsOrderType === 'Conditional'
-        ? `<div id="fs-el-tr" onclick="_addEntryTr()" title="+TR" style="${cell}${sep}color:#FF9C2E;${_fsEntryLine ? 'display:none;' : ''}" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">+TR</div>`
+        ? `<div id="fs-el-tr" onclick="_addEntryTr()" title="+TR" style="${cell}${sep}color:#FF9C2E;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">+TR</div>`
         : '';
     label.innerHTML = `
         <div id="fs-el-side" onmousedown="_startEntryDrag(event)" style="padding:5px 9px;background:${sideBg};color:${sideColor};cursor:ns-resize;">${sideText}</div>
