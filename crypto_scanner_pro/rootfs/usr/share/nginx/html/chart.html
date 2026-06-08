@@ -2992,7 +2992,7 @@ function _onFsMM(e) {
     _updateAllLabels();
     const THR = 8;
     let near = null;
-    if (_fsEntryPrice != null) { const ey = fsCandleS.priceToCoordinate(_fsEntryPrice); if (ey != null && Math.abs(y - ey) < THR) near = 'entry'; }
+    if (_fsEntryLine && _fsEntryPrice != null) { const ey = fsCandleS.priceToCoordinate(_fsEntryPrice); if (ey != null && Math.abs(y - ey) < THR) near = 'entry'; }
     if (!near && _fsExecPrice != null) { const ep = fsCandleS.priceToCoordinate(_fsExecPrice); if (ep != null && Math.abs(y - ep) < THR) near = 'exec'; }
     if (!near && _fsSlPrice != null) { const sy = fsCandleS.priceToCoordinate(_fsSlPrice); if (sy != null && Math.abs(y - sy) < THR) near = 'sl'; }
     if (!near && _fsTpPrice != null) { const ty = fsCandleS.priceToCoordinate(_fsTpPrice); if (ty != null && Math.abs(y - ty) < THR) near = 'tp'; }
@@ -3008,7 +3008,7 @@ function _onFsMD(e) {
     const rect = el.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const THR = 8;
-    if (_fsEntryPrice != null) { const ey = fsCandleS.priceToCoordinate(_fsEntryPrice); if (ey != null && Math.abs(y - ey) < THR) { _dragMode = 'entry'; return; } }
+    if (_fsEntryLine && _fsEntryPrice != null) { const ey = fsCandleS.priceToCoordinate(_fsEntryPrice); if (ey != null && Math.abs(y - ey) < THR) { _dragMode = 'entry'; return; } }
     if (_fsExecPrice != null) { const ep = fsCandleS.priceToCoordinate(_fsExecPrice); if (ep != null && Math.abs(y - ep) < THR) { _dragMode = 'exec'; return; } }
     if (_fsSlPrice != null) { const sy = fsCandleS.priceToCoordinate(_fsSlPrice); if (sy != null && Math.abs(y - sy) < THR) { _dragMode = 'sl'; return; } }
     if (_fsTpPrice != null) { const ty = fsCandleS.priceToCoordinate(_fsTpPrice); if (ty != null && Math.abs(y - ty) < THR) { _dragMode = 'tp'; } }
@@ -3090,6 +3090,8 @@ function _onPriceInput(kind, val) {
         if (_fsEntryLine) { try { fsCandleS.removePriceLine(_fsEntryLine); } catch(e){} }
         _fsEntryLine = fsCandleS.createPriceLine({ price: p, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
         _updateEntryLabelPos();
+        const trEl = document.getElementById('fs-el-tr');
+        if (trEl) trEl.style.display = 'none';
     } else if (kind === 'exec' && _fsOrderType === 'Conditional' && _fsCondExec === 'Limit') {
         _fsExecPrice = p;
         if (_fsExecLine) { try { fsCandleS.removePriceLine(_fsExecLine); } catch(e){} }
@@ -3114,13 +3116,18 @@ function setFsSide(side) {
     if (l) { l.style.background = side === 'Buy' ? '#065f46' : '#1E222D'; l.style.color = side === 'Buy' ? '#10b981' : '#6B7280'; l.style.borderColor = side === 'Buy' ? '#10b981' : '#374151'; }
     if (s) { s.style.background = side === 'Sell' ? '#7f1d1d' : '#1E222D'; s.style.color = side === 'Sell' ? '#ef4444' : '#6B7280'; s.style.borderColor = side === 'Sell' ? '#ef4444' : '#374151'; }
     if (!fsCandleS) return;
-    const price = _getEntryPrice();
-    if (!price) return;
     const long = side === 'Buy';
     _removeEntryLine();
-    _fsEntryPrice = price;
-    _fsEntryLine = fsCandleS.createPriceLine({ price, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
-    _createExecLine(long);
+    if (_fsOrderType === 'Conditional') {
+        // Anchor label at live price; trigger line created explicitly via +TR
+        _fsEntryPrice = _livePrice[fsCoin?.symbol] || 0;
+        _createExecLine(long);
+    } else {
+        const price = _getEntryPrice();
+        if (!price) return;
+        _fsEntryPrice = price;
+        _fsEntryLine = fsCandleS.createPriceLine({ price, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+    }
     _createEntryLabel(long);
     _updateEntryLabelPos();
 }
@@ -3155,10 +3162,14 @@ function _createEntryLabel(long) {
     const label = document.createElement('div');
     label.id = 'fs-entry-label';
     label.style.cssText = `position:absolute;right:58px;z-index:20;display:flex;align-items:stretch;border:1px solid ${sideColor};border-radius:4px;overflow:hidden;font-size:11px;font-weight:600;pointer-events:all;white-space:nowrap;user-select:none;transform:translateY(-50%);box-shadow:0 2px 8px rgba(0,0,0,.5);`;
+    const trBtn = _fsOrderType === 'Conditional'
+        ? `<div id="fs-el-tr" onclick="_addEntryTr()" title="+TR" style="${cell}${sep}color:#FF9C2E;${_fsEntryLine ? 'display:none;' : ''}" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">+TR</div>`
+        : '';
     label.innerHTML = `
         <div id="fs-el-side" onmousedown="_startEntryDrag(event)" style="padding:5px 9px;background:${sideBg};color:${sideColor};cursor:ns-resize;">${sideText}</div>
         <div id="fs-el-size" onclick="_editEntrySize(event)" title="Modifica size" style="${cell}${sep}color:#E5E7EB;min-width:24px;text-align:center;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">${sizeVal}</div>
         <div id="fs-el-type" onclick="_openEntryTypeMenu(event)" title="Cambia tipo ordine" style="${cell}${sep}color:#9CA3AF;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">${typeText}</div>
+        ${trBtn}
         <div id="fs-el-tp" onclick="_addEntryTp()" title="+TP" style="${cell}${sep}color:#10b981;${_fsTpPrice != null ? 'display:none;' : ''}" onmouseenter="this.style.background='#1a3028'" onmouseleave="this.style.background='#1E222D'">+TP</div>
         <div id="fs-el-sl" onclick="_addEntrySl()" title="+SL" style="${cell}${sep}color:#ef4444;${_fsSlPrice != null ? 'display:none;' : ''}" onmouseenter="this.style.background='#2d1717'" onmouseleave="this.style.background='#1E222D'">+SL</div>
         <div onclick="resetTradeSide()" title="Rimuovi" style="${cell}${sep}color:#6B7280;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">✕</div>
@@ -3312,8 +3323,24 @@ function _addEntrySl() {
     const si = document.getElementById('fs-sl-input'); if (si) si.value = parseFloat(_fsSlPrice.toPrecision(8));
 }
 
+function _addEntryTr() {
+    if (!_tradeSide || !fsCandleS) return;
+    const long = _tradeSide === 'Buy';
+    const trigInp = document.getElementById('fs-order-trigger');
+    const liveP = _livePrice[fsCoin?.symbol] || 0;
+    const v = parseFloat(trigInp?.value);
+    _fsEntryPrice = v > 0 ? v : liveP;
+    if (!v && trigInp && liveP) trigInp.value = parseFloat(_fsEntryPrice.toPrecision(8));
+    if (_fsEntryLine) { try { fsCandleS.removePriceLine(_fsEntryLine); } catch(e){} }
+    _fsEntryLine = fsCandleS.createPriceLine({ price: _fsEntryPrice, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+    _updateEntryLabelPos();
+    const el = document.getElementById('fs-el-tr');
+    if (el) el.style.display = 'none';
+}
+
 function _startEntryDrag(e) {
     e.preventDefault(); e.stopPropagation();
+    if (!_fsEntryLine) return;
     _dragMode = 'entry';
     if (_dragOverlay) { _dragOverlay.style.pointerEvents = 'all'; _dragOverlay.style.cursor = 'ns-resize'; }
     _entryDragMM = function(ev) {
