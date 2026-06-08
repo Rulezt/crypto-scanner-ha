@@ -3356,7 +3356,9 @@ function resetTradeSide() {
 
 function setOrderType(type) {
     _fsOrderType = type;
-    if (type === 'Conditional') _fsCondExec = 'Limit';
+    const condLbl = document.getElementById('fs-ot-cond-label');
+    if (type === 'Conditional') { _fsCondExec = 'Limit'; if (condLbl) condLbl.textContent = 'Cond.Limit'; }
+    else { if (condLbl) condLbl.textContent = 'Conditional'; }
     const ids = { Limit: 'fs-ot-limit', Market: 'fs-ot-market', Conditional: 'fs-ot-cond' };
     Object.entries(ids).forEach(([t, id]) => {
         const el = document.getElementById(id);
