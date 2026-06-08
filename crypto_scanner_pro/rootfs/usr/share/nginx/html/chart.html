@@ -3257,10 +3257,8 @@ function _openEntryTypeMenu(e) {
     const labelRect  = _fsEntryLabel.getBoundingClientRect();
     const parentRect = parent.getBoundingClientRect();
     const types = [
-        { otype: 'Market',      cexec: null,     label: 'Market'      },
-        { otype: 'Limit',       cexec: null,     label: 'Limit'       },
-        { otype: 'Conditional', cexec: 'Market', label: 'Cond.Market' },
-        { otype: 'Conditional', cexec: 'Limit',  label: 'Cond.Limit'  },
+        { otype: 'Limit',       cexec: null,    label: 'Limit'      },
+        { otype: 'Conditional', cexec: 'Limit', label: 'Cond.Limit' },
     ];
     const menu = document.createElement('div');
     menu.id = 'fs-el-type-menu';
