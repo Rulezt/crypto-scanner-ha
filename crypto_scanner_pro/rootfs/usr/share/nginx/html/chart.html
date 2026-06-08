@@ -441,8 +441,8 @@
                 </div>
                 <span id="fs-pos-liq" style="color:#6B7280;font-size:11px;"></span>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
-                    <button onclick="addFsSlLine()" style="padding:4px 0;font-size:11px;background:#2A2E39;color:#ef4444;border:1px solid #3d1e1e;border-radius:3px;cursor:pointer;">+ SL</button>
-                    <button onclick="addFsTpLine()" style="padding:4px 0;font-size:11px;background:#2A2E39;color:#10b981;border:1px solid #1e3d2a;border-radius:3px;cursor:pointer;">+ TP</button>
+                    <button id="fs-pos-sl-btn" onclick="addFsSlLine()" style="padding:4px 0;font-size:11px;background:#2A2E39;color:#ef4444;border:1px solid #3d1e1e;border-radius:3px;cursor:pointer;">+ SL</button>
+                    <button id="fs-pos-tp-btn" onclick="addFsTpLine()" style="padding:4px 0;font-size:11px;background:#2A2E39;color:#10b981;border:1px solid #1e3d2a;border-radius:3px;cursor:pointer;">+ TP</button>
                 </div>
                 <button onclick="closeFsPosition()" style="width:100%;padding:6px 0;font-size:12px;background:#7f1d1d;color:#fca5a5;border:none;border-radius:4px;cursor:pointer;font-weight:600;">Chiudi Posizione</button>
             </div>
@@ -2875,6 +2875,7 @@ function _removeSlTpLine(kind) {
         if (el) { el.style.color = '#10b981'; el.style.pointerEvents = 'auto'; el.textContent = '+TP'; }
         const ti = document.getElementById('fs-tp-input'); if (ti) ti.value = '';
     }
+    _syncPosBtns();
 }
 
 function _startSlTpLabelDrag(e, kind) {
@@ -2895,6 +2896,13 @@ function _startSlTpLabelDrag(e, kind) {
     document.addEventListener('mousemove', _entryDragMM);
 }
 
+function _syncPosBtns() {
+    const slBtn = document.getElementById('fs-pos-sl-btn');
+    const tpBtn = document.getElementById('fs-pos-tp-btn');
+    if (slBtn) slBtn.style.display = _fsSlPrice != null ? 'none' : '';
+    if (tpBtn) tpBtn.style.display = _fsTpPrice != null ? 'none' : '';
+}
+
 function _drawSlTpLines() {
     if (!fsCandleS) return;
     if (_fsSlLine) { try { fsCandleS.removePriceLine(_fsSlLine); } catch(e) {} _fsSlLine = null; }
@@ -2911,6 +2919,7 @@ function _drawSlTpLines() {
         _fsTpLabel = _buildSlTpLabel('tp');
         _updateSlTpLabelPos('tp');
     }
+    _syncPosBtns();
 }
 
 function _removeSlTpLines() {
