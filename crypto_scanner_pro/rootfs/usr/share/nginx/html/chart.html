@@ -351,7 +351,7 @@
                         style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#FF9C2E;white-space:nowrap;">Market</button>
                     <button id="fs-ot-cond" onclick="setCondTypeFromDD('Limit')"
                         style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#6B7280;white-space:nowrap;">
-                        <span id="fs-ot-cond-label">Conditional</span>
+                        <span id="fs-ot-cond-label">Cond.Limit</span>
                     </button>
                 </div>
                 <!-- Limit price -->
@@ -3356,9 +3356,7 @@ function resetTradeSide() {
 
 function setOrderType(type) {
     _fsOrderType = type;
-    const condLbl = document.getElementById('fs-ot-cond-label');
-    if (type === 'Conditional') { _fsCondExec = 'Limit'; if (condLbl) condLbl.textContent = 'Cond.Limit'; }
-    else { if (condLbl) condLbl.textContent = 'Conditional'; }
+    if (type === 'Conditional') _fsCondExec = 'Limit';
     const ids = { Limit: 'fs-ot-limit', Market: 'fs-ot-market', Conditional: 'fs-ot-cond' };
     Object.entries(ids).forEach(([t, id]) => {
         const el = document.getElementById(id);
