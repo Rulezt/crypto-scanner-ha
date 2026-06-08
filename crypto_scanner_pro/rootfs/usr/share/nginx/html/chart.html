@@ -3237,25 +3237,37 @@ function _openEntryTypeMenu(e) {
     const labelRect  = _fsEntryLabel.getBoundingClientRect();
     const parentRect = parent.getBoundingClientRect();
     const types = [
-        { val: 'Market', label: 'Market' },
-        { val: 'Limit',  label: 'Limit'  },
-        { val: 'Conditional', label: 'Conditional' },
+        { otype: 'Market',      cexec: null,     label: 'Market'      },
+        { otype: 'Limit',       cexec: null,     label: 'Limit'       },
+        { otype: 'Conditional', cexec: 'Market', label: 'Cond.Market' },
+        { otype: 'Conditional', cexec: 'Limit',  label: 'Cond.Limit'  },
     ];
     const menu = document.createElement('div');
     menu.id = 'fs-el-type-menu';
     menu.style.cssText = `position:absolute;right:58px;top:${labelRect.bottom - parentRect.top + 2}px;background:#1E222D;border:1px solid #374151;border-radius:4px;overflow:hidden;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,.6);pointer-events:all;`;
     types.forEach(t => {
         const item = document.createElement('div');
-        const active = _fsOrderType === t.val;
+        const active = t.otype === _fsOrderType && (t.cexec === null || t.cexec === _fsCondExec);
         item.textContent = t.label;
         item.style.cssText = `padding:7px 16px;font-size:11px;cursor:pointer;color:${active?'#FF9C2E':'#B2B5BE'};font-weight:${active?'700':'400'};`;
         item.onmouseenter = () => item.style.background = '#2A2E39';
         item.onmouseleave = () => item.style.background = '';
         item.onclick = ev => {
             ev.stopPropagation();
-            setOrderType(t.val);
+            if (t.cexec !== null) {
+                _fsCondExec = t.cexec;
+                const mktEl = document.getElementById('fs-ctdd-mkt');
+                const lmtEl = document.getElementById('fs-ctdd-lmt');
+                if (mktEl) { mktEl.style.color = t.cexec === 'Market' ? '#FF9C2E' : '#B2B5BE'; mktEl.style.fontWeight = t.cexec === 'Market' ? '600' : '400'; }
+                if (lmtEl) { lmtEl.style.color = t.cexec === 'Limit'  ? '#FF9C2E' : '#B2B5BE'; lmtEl.style.fontWeight = t.cexec === 'Limit'  ? '600' : '400'; }
+                const lbl = document.getElementById('fs-ot-cond-label');
+                if (lbl) lbl.textContent = 'Cond. ' + t.cexec;
+                document.getElementById('fs-cond-price-wrap').style.display = t.cexec === 'Limit' ? 'flex' : 'none';
+            }
+            setOrderType(t.otype);
             const typeEl = document.getElementById('fs-el-type');
             if (typeEl) typeEl.textContent = _entryLabelTypeText();
+            if (_tradeSide) _createExecLine(_tradeSide === 'Buy');
             menu.remove();
         };
         menu.appendChild(item);
@@ -3369,6 +3381,7 @@ function setCondTypeFromDD(execType) {
     if (lbl) lbl.textContent = 'Cond. ' + execType;
     document.getElementById('fs-cond-price-wrap').style.display = execType === 'Limit' ? 'flex' : 'none';
     closeCondTypeDD();
+    if (_tradeSide) _createExecLine(_tradeSide === 'Buy');
 }
 
 function updateQtyPreview() {
