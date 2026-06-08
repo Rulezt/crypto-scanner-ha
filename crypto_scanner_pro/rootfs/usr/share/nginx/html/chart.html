@@ -426,8 +426,8 @@
                 </div>
                 <!-- Long/Short -->
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
-                    <button id="fs-btn-long" onclick="setFsSide('Buy')" style="padding:7px 0;font-size:12px;font-weight:700;background:#1E222D;color:#6B7280;border:1px solid #374151;border-radius:4px;cursor:pointer;">▲ LONG</button>
-                    <button id="fs-btn-short" onclick="setFsSide('Sell')" style="padding:7px 0;font-size:12px;font-weight:700;background:#1E222D;color:#6B7280;border:1px solid #374151;border-radius:4px;cursor:pointer;">▼ SHORT</button>
+                    <button id="fs-btn-long" onclick="setFsSide('Buy')" style="padding:7px 0;font-size:12px;font-weight:700;background:#1E222D;color:#6B7280;border:1px solid #374151;border-radius:4px;cursor:pointer;">LONG</button>
+                    <button id="fs-btn-short" onclick="setFsSide('Sell')" style="padding:7px 0;font-size:12px;font-weight:700;background:#1E222D;color:#6B7280;border:1px solid #374151;border-radius:4px;cursor:pointer;">SHORT</button>
                 </div>
                 <!-- Order button -->
                 <button onclick="confirmFsOrder()" style="width:100%;padding:8px 0;font-size:12px;font-weight:700;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;">Ordine</button>
@@ -2801,7 +2801,7 @@ function _renderPosition() {
     const margin = p.entryPrice > 0 ? (p.size * p.entryPrice / p.leverage) : 0;
     const pnlPct = margin > 0 ? (p.unrealizedPnl / margin * 100) : 0;
     const badge = document.getElementById('fs-pos-badge');
-    if (badge) { badge.textContent = `${long ? '▲ LONG' : '▼ SHORT'} ${p.size} @ ${fmtPrice(p.entryPrice)} · ${p.leverage}x`; badge.style.color = long ? '#10b981' : '#ef4444'; }
+    if (badge) { badge.textContent = `${long ? 'LONG' : 'SHORT'} ${p.size} @ ${fmtPrice(p.entryPrice)} · ${p.leverage}x`; badge.style.color = long ? '#10b981' : '#ef4444'; }
     const pnlEl = document.getElementById('fs-pos-pnl');
     if (pnlEl) { pnlEl.textContent = `P&L: ${p.unrealizedPnl >= 0 ? '+' : ''}${p.unrealizedPnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`; pnlEl.style.color = p.unrealizedPnl >= 0 ? '#10b981' : '#ef4444'; }
     const liqEl = document.getElementById('fs-pos-liq');
@@ -2833,7 +2833,7 @@ function _buildSlTpLabel(kind) {
     const sizeVal = document.getElementById('fs-order-size')?.value || '0';
     const label = document.createElement('div');
     label.id = `fs-${kind}-label`;
-    label.style.cssText = `position:absolute;right:58px;z-index:20;display:flex;align-items:stretch;border:1px solid ${border};border-radius:4px;overflow:hidden;font-size:11px;font-weight:600;pointer-events:all;white-space:nowrap;user-select:none;transform:translateY(-50%);box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:ns-resize;`;
+    label.style.cssText = `position:absolute;right:80px;z-index:20;display:flex;align-items:stretch;border:1px solid ${border};border-radius:4px;overflow:hidden;font-size:11px;font-weight:600;pointer-events:all;white-space:nowrap;user-select:none;transform:translateY(-50%);box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:ns-resize;`;
     label.innerHTML = `
         <div id="fs-${kind}-size" onclick="_editSlTpSize(event,'${kind}')" title="Modifica size" style="padding:5px 8px;cursor:pointer;background:#1E222D;color:#E5E7EB;min-width:24px;text-align:center;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">${sizeVal}</div>
         <div onmousedown="_startSlTpLabelDrag(event,'${kind}')" style="padding:5px 8px;background:#1E222D;color:${color};display:flex;gap:6px;align-items:center;cursor:ns-resize;border-left:1px solid #2A2E39;">
@@ -2976,7 +2976,7 @@ function _onFsMM(e) {
             _fsExecPrice = newP;
             if (_fsExecLine) { try { fsCandleS.removePriceLine(_fsExecLine); } catch(ex){} }
             const long = _tradeSide === 'Buy';
-            _fsExecLine = fsCandleS.createPriceLine({ price: _fsExecPrice, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: long ? '▲ Exec' : '▼ Exec' });
+            _fsExecLine = fsCandleS.createPriceLine({ price: _fsExecPrice, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Exec' });
             const ci = document.getElementById('fs-cond-price'); if (ci) ci.value = parseFloat(_fsExecPrice.toPrecision(8));
         }
         else if (_dragMode === 'entry') {
@@ -3095,7 +3095,7 @@ function _onPriceInput(kind, val) {
     } else if (kind === 'exec' && _fsOrderType === 'Conditional' && _fsCondExec === 'Limit') {
         _fsExecPrice = p;
         if (_fsExecLine) { try { fsCandleS.removePriceLine(_fsExecLine); } catch(e){} }
-        _fsExecLine = fsCandleS.createPriceLine({ price: p, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: long ? '▲ Exec' : '▼ Exec' });
+        _fsExecLine = fsCandleS.createPriceLine({ price: p, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Exec' });
     }
 }
 
@@ -3107,7 +3107,7 @@ function _createExecLine(long) {
     const liveP = _livePrice[fsCoin?.symbol] || 0;
     _fsExecPrice = v > 0 ? v : (long ? (liveP * 0.999) : (liveP * 1.001));
     if (!v && inp) inp.value = parseFloat(_fsExecPrice.toPrecision(8));
-    _fsExecLine = fsCandleS.createPriceLine({ price: _fsExecPrice, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: long ? '▲ Exec' : '▼ Exec' });
+    _fsExecLine = fsCandleS.createPriceLine({ price: _fsExecPrice, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Exec' });
 }
 
 function setFsSide(side) {
@@ -3154,14 +3154,14 @@ function _createEntryLabel(long) {
     const parent = chartEl.parentElement;
     const sideColor = long ? '#10b981' : '#ef4444';
     const sideBg    = long ? '#065f46' : '#7f1d1d';
-    const sideText  = long ? '▲ Long' : '▼ Short';
+    const sideText  = long ? 'Long' : 'Short';
     const sizeVal   = document.getElementById('fs-order-size')?.value || '0';
     const typeText  = _entryLabelTypeText();
     const sep = `border-left:1px solid #2A2E39;`;
     const cell = `padding:5px 8px;cursor:pointer;background:#1E222D;`;
     const label = document.createElement('div');
     label.id = 'fs-entry-label';
-    label.style.cssText = `position:absolute;right:58px;z-index:20;display:flex;align-items:stretch;border:1px solid ${sideColor};border-radius:4px;overflow:hidden;font-size:11px;font-weight:600;pointer-events:all;white-space:nowrap;user-select:none;transform:translateY(-50%);box-shadow:0 2px 8px rgba(0,0,0,.5);`;
+    label.style.cssText = `position:absolute;right:80px;z-index:20;display:flex;align-items:stretch;border:1px solid ${sideColor};border-radius:4px;overflow:hidden;font-size:11px;font-weight:600;pointer-events:all;white-space:nowrap;user-select:none;transform:translateY(-50%);box-shadow:0 2px 8px rgba(0,0,0,.5);`;
     const trBtn = _fsOrderType === 'Conditional'
         ? `<div id="fs-el-tr" onclick="_addEntryTr()" title="+TR" style="${cell}${sep}color:#FF9C2E;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">+TR</div>`
         : '';
@@ -3262,7 +3262,7 @@ function _openEntryTypeMenu(e) {
     ];
     const menu = document.createElement('div');
     menu.id = 'fs-el-type-menu';
-    menu.style.cssText = `position:absolute;right:58px;top:${labelRect.bottom - parentRect.top + 2}px;background:#1E222D;border:1px solid #374151;border-radius:4px;overflow:hidden;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,.6);pointer-events:all;`;
+    menu.style.cssText = `position:absolute;right:80px;top:${labelRect.bottom - parentRect.top + 2}px;background:#1E222D;border:1px solid #374151;border-radius:4px;overflow:hidden;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,.6);pointer-events:all;`;
     types.forEach(t => {
         const item = document.createElement('div');
         const active = t.otype === _fsOrderType && (t.cexec === null || t.cexec === _fsCondExec);
