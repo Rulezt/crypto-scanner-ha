@@ -2721,7 +2721,7 @@ let _fsSlLine = null, _fsTpLine = null, _fsSlPrice = null, _fsTpPrice = null;
 let _fsSlLabel = null, _fsTpLabel = null;
 let _fsEntryLine = null, _fsEntryPrice = null, _fsEntryLabel = null;
 let _fsExecLine = null, _fsExecPrice = null;
-let _dragMode = null, _slTpTimer = null, _entryDragMM = null, _dragOverlay = null;
+let _dragMode = null, _slTpTimer = null, _entryDragMM = null, _dragOverlay = null, _labelDragMM = null;
 
 (async function initTrading() {
     try {
@@ -2776,17 +2776,19 @@ function _renderOrders(orders) {
                 const long = cond.side === 'Buy';
                 _tradeSide = cond.side;
                 _fsOrderType = 'Conditional';
-                _fsEntryPrice = trigP;
-                _fsEntryLine = fsCandleS.createPriceLine({ price: trigP, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
-                // Populate input fields
+                const execP = parseFloat(cond.price) || 0;
                 const trigInp = document.getElementById('fs-order-trigger');
                 if (trigInp) trigInp.value = trigP;
-                const execP = parseFloat(cond.price) || 0;
+                _fsExecPrice = trigP;
+                _fsExecLine = fsCandleS.createPriceLine({ price: trigP, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Trig' });
                 if (execP > 0) {
                     const execInp = document.getElementById('fs-cond-price');
                     if (execInp) execInp.value = execP;
-                    _fsExecPrice = execP;
-                    _fsExecLine = fsCandleS.createPriceLine({ price: execP, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Exec' });
+                    _fsEntryPrice = execP;
+                    _fsEntryLine = fsCandleS.createPriceLine({ price: execP, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+                } else {
+                    _fsEntryPrice = trigP;
+                    _fsEntryLine = fsCandleS.createPriceLine({ price: trigP, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
                 }
                 // Set state before creating label so it shows correct values
                 _fsCondExec = execP > 0 ? 'Limit' : 'Market';
@@ -3119,8 +3121,8 @@ function _onFsMM(e) {
             _fsExecPrice = newP;
             if (_fsExecLine) { try { fsCandleS.removePriceLine(_fsExecLine); } catch(ex){} }
             const long = _tradeSide === 'Buy';
-            _fsExecLine = fsCandleS.createPriceLine({ price: _fsExecPrice, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Exec' });
-            const ci = document.getElementById('fs-cond-price'); if (ci) ci.value = parseFloat(_fsExecPrice.toPrecision(8));
+            _fsExecLine = fsCandleS.createPriceLine({ price: _fsExecPrice, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Trig' });
+            const ti = document.getElementById('fs-order-trigger'); if (ti) ti.value = parseFloat(_fsExecPrice.toPrecision(8));
         }
         else if (_dragMode === 'entry') {
             _fsEntryPrice = newP;
@@ -3161,6 +3163,7 @@ async function _onFsMU() {
     if (!_dragMode) return;
     const mode = _dragMode; _dragMode = null;
     if (_entryDragMM) { document.removeEventListener('mousemove', _entryDragMM); _entryDragMM = null; }
+    if (_labelDragMM) { document.removeEventListener('mousemove', _labelDragMM); _labelDragMM = null; }
     if (_dragOverlay) { _dragOverlay.style.pointerEvents = 'none'; _dragOverlay.style.cursor = ''; }
     const el = document.getElementById('fs-chart-el'); if (el) el.style.cursor = '';
     if (mode === 'exec') {
@@ -3168,7 +3171,7 @@ async function _onFsMU() {
             clearTimeout(_slTpTimer);
             _slTpTimer = setTimeout(async () => {
                 try {
-                    const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId, price: parseFloat(_fsExecPrice.toFixed(8)) };
+                    const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId, triggerPrice: parseFloat(_fsExecPrice.toFixed(8)) };
                     const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
                     if (!d.success) _showTradeMsg(d.error || 'Errore amend exec', false);
                 } catch(e) { _showTradeMsg('Errore di rete', false); }
@@ -3180,11 +3183,10 @@ async function _onFsMU() {
         clearTimeout(_slTpTimer);
         _slTpTimer = setTimeout(async () => {
             try {
-                const amendField = _fsOrderType === 'Limit' ? 'price' : 'triggerPrice';
+                const amendField = (_fsOrderType === 'Conditional' && _fsCondExec !== 'Limit') ? 'triggerPrice' : 'price';
                 const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId, [amendField]: parseFloat(_fsEntryPrice.toFixed(8)) };
                 const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
                 if (!d.success) _showTradeMsg(d.error || 'Errore amend', false);
-                else { const ti = document.getElementById('fs-order-trigger'); if (ti) ti.value = body.triggerPrice; }
             } catch(e) { _showTradeMsg('Errore di rete', false); }
         }, 400);
         return;
@@ -3235,17 +3237,30 @@ function _syncEntryPrice(price) {
     if (_fsOrderType === 'Limit') {
         const el = document.getElementById('fs-order-price'); if (el) el.value = s;
     } else if (_fsOrderType === 'Conditional') {
-        const el = document.getElementById('fs-order-trigger'); if (el) el.value = s;
-        // Amend pending conditional order with debounce
-        if (_fsPendingOrderId && fsCoin) {
-            clearTimeout(_slTpTimer);
-            _slTpTimer = setTimeout(async () => {
-                try {
-                    const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId, triggerPrice: s };
-                    const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
-                    if (!d.success) _showTradeMsg(d.error || 'Errore amend', false);
-                } catch(e) { _showTradeMsg('Errore di rete', false); }
-            }, 600);
+        if (_fsCondExec === 'Limit') {
+            const el = document.getElementById('fs-cond-price'); if (el) el.value = s;
+            if (_fsPendingOrderId && fsCoin) {
+                clearTimeout(_slTpTimer);
+                _slTpTimer = setTimeout(async () => {
+                    try {
+                        const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId, price: s };
+                        const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+                        if (!d.success) _showTradeMsg(d.error || 'Errore amend', false);
+                    } catch(e) { _showTradeMsg('Errore di rete', false); }
+                }, 600);
+            }
+        } else {
+            const el = document.getElementById('fs-order-trigger'); if (el) el.value = s;
+            if (_fsPendingOrderId && fsCoin) {
+                clearTimeout(_slTpTimer);
+                _slTpTimer = setTimeout(async () => {
+                    try {
+                        const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId, triggerPrice: s };
+                        const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+                        if (!d.success) _showTradeMsg(d.error || 'Errore amend', false);
+                    } catch(e) { _showTradeMsg('Errore di rete', false); }
+                }, 600);
+            }
         }
     }
     // Rebuild SL/TP labels to refresh % and USDT values
@@ -3277,7 +3292,7 @@ function _onPriceInput(kind, val) {
     const p = parseFloat(val);
     if (!p || p <= 0) return;
     const long = _tradeSide === 'Buy';
-    if ((kind === 'limit' && _fsOrderType === 'Limit') || (kind === 'trigger' && _fsOrderType === 'Conditional')) {
+    if (kind === 'limit' && _fsOrderType === 'Limit') {
         _fsEntryPrice = p;
         if (_fsEntryLine) { try { fsCandleS.removePriceLine(_fsEntryLine); } catch(e){} }
         _fsEntryLine = fsCandleS.createPriceLine({ price: p, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
@@ -3285,31 +3300,85 @@ function _onPriceInput(kind, val) {
         const trEl = document.getElementById('fs-el-tr');
         if (trEl) trEl.style.display = 'none';
     } else if (kind === 'exec' && _fsOrderType === 'Conditional' && _fsCondExec === 'Limit') {
-        _fsExecPrice = p;
-        if (_fsExecLine) { try { fsCandleS.removePriceLine(_fsExecLine); } catch(e){} }
-        _fsExecLine = fsCandleS.createPriceLine({ price: p, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Exec' });
+        _fsEntryPrice = p;
+        if (_fsEntryLine) { try { fsCandleS.removePriceLine(_fsEntryLine); } catch(e){} }
+        _fsEntryLine = fsCandleS.createPriceLine({ price: p, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+        _updateEntryLabelPos();
         if (_fsPendingOrderId && fsCoin) {
             clearTimeout(_slTpTimer);
             _slTpTimer = setTimeout(async () => {
                 try {
-                    const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId, price: parseFloat(_fsExecPrice.toFixed(8)) };
+                    const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId, price: parseFloat(_fsEntryPrice.toFixed(8)) };
                     const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
                     if (!d.success) _showTradeMsg(d.error || 'Errore amend exec', false);
                 } catch(e) { _showTradeMsg('Errore di rete', false); }
             }, 600);
         }
+    } else if (kind === 'trigger' && _fsOrderType === 'Conditional') {
+        if (_fsCondExec === 'Limit') {
+            _fsExecPrice = p;
+            if (_fsExecLine) { try { fsCandleS.removePriceLine(_fsExecLine); } catch(e){} }
+            _fsExecLine = fsCandleS.createPriceLine({ price: p, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Trig' });
+            if (_fsPendingOrderId && fsCoin) {
+                clearTimeout(_slTpTimer);
+                _slTpTimer = setTimeout(async () => {
+                    try {
+                        const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId, triggerPrice: parseFloat(_fsExecPrice.toFixed(8)) };
+                        const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+                        if (!d.success) _showTradeMsg(d.error || 'Errore amend trigger', false);
+                    } catch(e) { _showTradeMsg('Errore di rete', false); }
+                }, 600);
+            }
+        } else {
+            _fsEntryPrice = p;
+            if (_fsEntryLine) { try { fsCandleS.removePriceLine(_fsEntryLine); } catch(e){} }
+            _fsEntryLine = fsCandleS.createPriceLine({ price: p, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+            _updateEntryLabelPos();
+            const trEl = document.getElementById('fs-el-tr');
+            if (trEl) trEl.style.display = 'none';
+        }
     }
+}
+
+function _startLabelDrag(kind, e) {
+    e.preventDefault(); e.stopPropagation();
+    _dragMode = kind;
+    if (_dragOverlay) { _dragOverlay.style.pointerEvents = 'all'; _dragOverlay.style.cursor = 'ns-resize'; }
+    const chartEl = document.getElementById('fs-chart-el'); if (chartEl) chartEl.style.cursor = 'ns-resize';
+    _labelDragMM = (ev) => {
+        if (!fsCandleS) return;
+        const el = document.getElementById('fs-chart-el'); if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const y = ev.clientY - rect.top;
+        if (y < 0 || y > rect.height) return;
+        const newP = fsCandleS.coordinateToPrice(y);
+        if (!newP || newP <= 0) return;
+        if (kind === 'sl') { _fsSlPrice = newP; const si = document.getElementById('fs-sl-input'); if (si) si.value = parseFloat(newP.toPrecision(8)); _drawSlTpLines(); const slBtn = document.getElementById('fs-el-sl'); if (slBtn) slBtn.style.display = 'none'; }
+        else if (kind === 'tp') { _fsTpPrice = newP; const ti = document.getElementById('fs-tp-input'); if (ti) ti.value = parseFloat(newP.toPrecision(8)); _drawSlTpLines(); const tpBtn = document.getElementById('fs-el-tp'); if (tpBtn) tpBtn.style.display = 'none'; }
+        else if (kind === 'entry') {
+            _fsEntryPrice = newP;
+            if (_fsEntryLine) { try { fsCandleS.removePriceLine(_fsEntryLine); } catch(e){} }
+            const long = _tradeSide === 'Buy';
+            _fsEntryLine = fsCandleS.createPriceLine({ price: newP, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+            _updateEntryLabelPos();
+            const trEl = document.getElementById('fs-el-tr'); if (trEl) trEl.style.display = 'none';
+            _syncEntryPrice(newP);
+        }
+    };
+    document.addEventListener('mousemove', _labelDragMM);
 }
 
 function _createExecLine(long) {
     if (_fsExecLine && fsCandleS) { try { fsCandleS.removePriceLine(_fsExecLine); } catch(e){} _fsExecLine = null; }
-    if (_fsOrderType !== 'Conditional' || _fsCondExec !== 'Limit') return;
-    const inp = document.getElementById('fs-cond-price');
-    const v = parseFloat(inp?.value);
+    if (_fsOrderType !== 'Conditional') return;
+    const trigInp = document.getElementById('fs-order-trigger');
     const liveP = _livePrice[fsCoin?.symbol] || 0;
-    if (!v || v <= 0) return;
-    _fsExecPrice = v;
-    _fsExecLine = fsCandleS.createPriceLine({ price: _fsExecPrice, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Exec' });
+    const tv = parseFloat(trigInp?.value) || 0;
+    const trigP = tv > 0 ? tv : (liveP > 0 ? parseFloat((long ? liveP * 1.01 : liveP * 0.99).toPrecision(6)) : 0);
+    if (!trigP || trigP <= 0) return;
+    _fsExecPrice = trigP;
+    if (!tv && trigInp) trigInp.value = parseFloat(trigP.toPrecision(8));
+    _fsExecLine = fsCandleS.createPriceLine({ price: trigP, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Trig' });
 }
 
 function setFsSide(side) {
@@ -3322,17 +3391,26 @@ function setFsSide(side) {
     _removeEntryLine();
     if (_fsOrderType === 'Conditional') {
         _createExecLine(long);
-        // Draw trigger price line (draggable), default to +1%/-1% from live
-        const liveP = _livePrice[fsCoin?.symbol] || 0;
-        const trigInp = document.getElementById('fs-order-trigger');
-        const trigV = parseFloat(trigInp?.value);
-        const trigP = trigV > 0 ? trigV : (liveP > 0 ? parseFloat((long ? liveP * 1.01 : liveP * 0.99).toPrecision(6)) : 0);
-        if (trigP > 0) {
-            _fsEntryPrice = trigP;
-            _fsEntryLine = fsCandleS.createPriceLine({ price: trigP, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
-            if (!trigV && trigInp) trigInp.value = trigP;
+        if (_fsCondExec === 'Limit') {
+            const execInp = document.getElementById('fs-cond-price');
+            const execV = parseFloat(execInp?.value) || 0;
+            const refP = _fsExecPrice || 0;
+            const execP = execV > 0 ? execV : (refP > 0 ? parseFloat((long ? refP * 0.999 : refP * 1.001).toPrecision(6)) : 0);
+            if (execP > 0) {
+                _fsEntryPrice = execP;
+                _fsEntryLine = fsCandleS.createPriceLine({ price: execP, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+                if (!execV && execInp) execInp.value = parseFloat(execP.toPrecision(8));
+            } else {
+                _fsEntryPrice = refP || _livePrice[fsCoin?.symbol] || 0;
+            }
         } else {
-            _fsEntryPrice = _fsExecPrice || liveP;
+            const trigP = _fsExecPrice || 0;
+            if (trigP > 0) {
+                _fsEntryPrice = trigP;
+                _fsEntryLine = fsCandleS.createPriceLine({ price: trigP, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+            } else {
+                _fsEntryPrice = _livePrice[fsCoin?.symbol] || 0;
+            }
         }
     } else {
         const price = _getEntryPrice();
@@ -3378,15 +3456,15 @@ function _createEntryLabel(long) {
     label.id = 'fs-entry-label';
     label.style.cssText = `position:absolute;right:80px;z-index:20;display:flex;align-items:stretch;border:1px solid ${sideColor};border-radius:4px;overflow:hidden;font-size:11px;font-weight:600;pointer-events:all;white-space:nowrap;user-select:none;transform:translateY(-50%);box-shadow:0 2px 8px rgba(0,0,0,.5);`;
     const trBtn = _fsOrderType === 'Conditional'
-        ? `<div id="fs-el-tr" onclick="_addEntryTr()" title="+TR" style="${cell}${sep}color:#FF9C2E;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">+TR</div>`
+        ? `<div id="fs-el-tr" onmousedown="_startEntryDrag(event)" title="Trascina per impostare trigger" style="${cell}${sep}color:#FF9C2E;cursor:ns-resize;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">+TR</div>`
         : '';
     label.innerHTML = `
         <div id="fs-el-side" onmousedown="_startEntryDrag(event)" style="padding:5px 9px;background:${sideBg};color:${sideColor};cursor:ns-resize;">${sideText}</div>
         <div id="fs-el-size" onclick="_editEntrySize(event)" title="Modifica size" style="${cell}${sep}color:#E5E7EB;min-width:24px;text-align:center;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">${sizeVal}</div>
         <div id="fs-el-type" onclick="_openEntryTypeMenu(event)" title="Cambia tipo ordine" style="${cell}${sep}color:#9CA3AF;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">${typeText}</div>
         ${trBtn}
-        <div id="fs-el-tp" onclick="_addEntryTp()" title="+TP" style="${cell}${sep}color:#10b981;${_fsTpPrice != null ? 'display:none;' : ''}" onmouseenter="this.style.background='#1a3028'" onmouseleave="this.style.background='#1E222D'">+TP</div>
-        <div id="fs-el-sl" onclick="_addEntrySl()" title="+SL" style="${cell}${sep}color:#ef4444;${_fsSlPrice != null ? 'display:none;' : ''}" onmouseenter="this.style.background='#2d1717'" onmouseleave="this.style.background='#1E222D'">+SL</div>
+        <div id="fs-el-tp" onmousedown="_startLabelDrag('tp',event)" title="Trascina per impostare TP" style="${cell}${sep}color:#10b981;cursor:grab;${_fsTpPrice != null ? 'display:none;' : ''}" onmouseenter="this.style.background='#1a3028'" onmouseleave="this.style.background='#1E222D'">+TP</div>
+        <div id="fs-el-sl" onmousedown="_startLabelDrag('sl',event)" title="Trascina per impostare SL" style="${cell}${sep}color:#ef4444;cursor:grab;${_fsSlPrice != null ? 'display:none;' : ''}" onmouseenter="this.style.background='#2d1717'" onmouseleave="this.style.background='#1E222D'">+SL</div>
         <div onclick="_cancelOrReset()" title="Rimuovi/Cancella" style="${cell}${sep}color:#6B7280;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">✕</div>
     `;
     parent.appendChild(label);
@@ -3547,6 +3625,11 @@ function _addEntryTr() {
 
 function _startEntryDrag(e) {
     e.preventDefault(); e.stopPropagation();
+    if (!fsCandleS || !_tradeSide) return;
+    if (!_fsEntryLine && _fsEntryPrice) {
+        const long = _tradeSide === 'Buy';
+        _fsEntryLine = fsCandleS.createPriceLine({ price: _fsEntryPrice, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+    }
     if (!_fsEntryLine) return;
     _dragMode = 'entry';
     if (_dragOverlay) { _dragOverlay.style.pointerEvents = 'all'; _dragOverlay.style.cursor = 'ns-resize'; }
