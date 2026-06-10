@@ -1,9 +1,20 @@
 <!DOCTYPE html>
 <html lang="it" class="dark">
 <head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
     <meta charset="UTF-8">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PSD4H66Z89"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-PSD4H66Z89');
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Chart - Crypto Scanner Pro v4.6.84</title>
+    <title>Multi-Chart - Crypto Scanner Pro v4.7.0</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23F7931A'/%3E%3Cpath d='M67.8 44.3c.9-6.2-3.8-9.5-10.3-11.7l2.1-8.4-5.1-1.3-2 8.2c-1.4-.3-2.8-.6-4.2-1l2-8.2-5.1-1.3-2.1 8.4c-1.1-.3-2.2-.5-3.3-.8l-7-1.8-1.4 5.5s3.8.9 3.7.9c2.1.5 2.4 1.9 2.4 3l-2.4 9.7c.1 0 .3.1.5.2-.2 0-.3-.1-.5-.1l-3.4 13.6c-.3.7-.9 1.7-2.4 1.3.1.1-3.7-.9-3.7-.9l-2.5 5.9 6.6 1.6c1.2.3 2.4.6 3.6.9l-2.1 8.5 5.1 1.3 2.1-8.4c1.4.4 2.8.7 4.1 1l-2.1 8.4 5.1 1.3 2.1-8.5c8.7 1.6 15.2.9 18-6.9 2.2-6.3-.1-9.9-4.6-12.3 3.3-.8 5.8-3 6.4-7.5zm-11.5 16.1c-1.6 6.3-12.2 2.9-15.6 2l2.8-11.2c3.5.9 14.5 2.6 12.8 9.2zm1.6-16.2c-1.4 5.7-10.2 2.8-13.1 2.1l2.5-10.1c2.9.7 12.1 2 10.6 8z' fill='%23FFF'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
@@ -15,12 +26,15 @@
     </script>
     <style>
         /* Catena altezze: html → body → grid → cell → bodyEl → chartEl */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { height: 100%; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+        #grid > div { overflow: hidden !important; min-width: 0 !important; position: relative !important; clip-path: inset(0) !important; }
+        #grid > div > .slot-hdr { overflow: hidden !important; max-width: 100% !important; box-sizing: border-box !important; margin: -1px !important; }
         .btn-page-active  { background: #2563EB; color: #fff; }
         .btn-page-idle    { color: #6B7280; background: #1E222D; }
         .btn-page-idle:hover { color: #B2B5BE; background: #2A2E39; }
-        .btn-tf-active    { background: #4A4A4A; color: #fff; }
+        .btn-tf-active    { background: transparent; color: #FF9C2E; font-weight: 700; }
         .btn-tf-idle      { color: #6B7280; background: transparent; }
         .btn-tf-idle:hover { color: #B2B5BE; background: transparent; }
         .btn-gain-active  { background: #065f46; color: #34d399; }
@@ -29,6 +43,8 @@
         .btn-loss-active  { background: #7f1d1d; color: #f87171; }
         .btn-loss-idle    { color: #6B7280; background: #1E222D; }
         .btn-loss-idle:hover { color: #f87171; background: #450a0a; }
+        #btn-mode-loss img { filter: invert(46%) sepia(8%) saturate(472%) hue-rotate(182deg) brightness(96%) contrast(88%); transition: filter 0.2s; }
+        #btn-mode-loss.btn-loss-active img, #btn-mode-loss:hover img { filter: invert(57%) sepia(74%) saturate(533%) hue-rotate(312deg) brightness(107%) contrast(96%); }
         .btn-commodity-active { background: #292524; color: #d6b57a; }
         .btn-commodity-idle   { color: #6B7280; background: #1E222D; }
         .btn-commodity-idle:hover { color: #d6b57a; background: #1c1917; }
@@ -169,7 +185,7 @@
 <body class="bg-dark-bg text-gray-100" style="height:100vh;display:flex;flex-direction:column;overflow:hidden;">
 
 <!-- ===== MAIN HEADER ===== -->
-<header class="flex items-center gap-2 px-3 flex-shrink-0" style="height:48px;background:#161A1E;border-bottom:2px solid #2C2C2C;">
+<header class="flex items-center gap-2 px-3 flex-shrink-0" style="height:50px;background:#101014;border-bottom:4px solid #000000;">
 
     <a href="./" class="flex items-center text-gray-400 hover:text-gray-200 px-2 py-1 rounded hover:bg-dark-hover transition-colors" title="Dashboard">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" width="16" height="16"><path d="M16.612 2.214a1.01 1.01 0 0 0-1.242 0L1 13.419l1.243 1.572L4 13.621V26a2.004 2.004 0 0 0 2 2h20a2.004 2.004 0 0 0 2-2V13.63L29.757 15L31 13.428ZM18 26h-4v-8h4Zm2 0v-8a2.002 2.002 0 0 0-2-2h-4a2.002 2.002 0 0 0-2 2v8H6V12.062l10-7.79l10 7.8V26Z"/></svg>
@@ -189,8 +205,8 @@
     <div class="w-px h-5 bg-dark-border"></div>
 
     <div class="flex gap-1">
-        <button id="btn-mode-gain"  onclick="switchMode('gainers')"   class="px-3 py-1 rounded text-xs font-medium transition-colors btn-gain-active">▲<span class="btn-lbl"> Migliori</span></button>
-        <button id="btn-mode-loss"  onclick="switchMode('losers')"    class="px-3 py-1 rounded text-xs font-medium transition-colors btn-loss-idle">▼<span class="btn-lbl"> Peggiori</span></button>
+        <button id="btn-mode-gain"  onclick="switchMode('gainers')"   class="px-3 py-1 rounded text-xs font-medium transition-colors btn-gain-active" style="display:inline-flex;align-items:center;gap:4px;"><svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29.791 29.791" width="16" height="16" style="width:16px;height:16px;flex-shrink:0;"><g><g><path d="M23.456,9.531c0.722-1.352,2.168-5.081-1.539-8.386c2.429,5.516-3.716,7.132-3.716,7.132l5.35,5.906c0,0,4.848,0.334,6.24-2.341C28.913,11.104,26.094,10.229,23.456,9.531z"/><path d="M7.876,1.146c-3.707,3.305-2.261,7.032-1.54,8.386C3.696,10.229,0.878,11.104,0,11.844c1.394,2.675,6.24,2.341,6.24,2.341l5.35-5.906C11.59,8.277,5.447,6.662,7.876,1.146z"/><path d="M8.024,13.625c-1.783,3.379,2.885,7.521,3.569,8.247c0.685,0.727-2.279,1.086-2.26,2.479c0.012,0.836,0.616,1.684,1.931,2.234c-0.014-0.103-0.04-0.198-0.04-0.304c0-0.206,0.069-0.399,0.125-0.596c-0.294-0.195-0.477-0.458-0.43-0.726c0.075-0.426,0.683-0.676,1.352-0.556c0.672,0.117,1.157,0.56,1.081,0.985c-0.022,0.128-0.103,0.232-0.206,0.324c-0.029,0.082-0.08,0.164-0.08,0.246c0,0.66,0.84,1.22,1.832,1.22c0.992,0,1.833-0.56,1.833-1.22c0-0.082-0.051-0.166-0.08-0.248c-0.104-0.09-0.182-0.194-0.205-0.322c-0.075-0.426,0.41-0.868,1.076-0.985c0.674-0.12,1.281,0.13,1.356,0.556c0.047,0.268-0.138,0.529-0.433,0.728c0.057,0.194,0.125,0.39,0.125,0.594c0,0.109-0.025,0.216-0.043,0.321c1.322-0.539,1.93-1.382,1.93-2.253c0-1.448-3.033-1.699-2.253-2.479c0.78-0.779,5.346-4.865,3.563-8.246l-3.566-5.349h-6.61L8.024,13.625z M9.816,15.591c-0.474-0.33-0.482-1.46-0.482-1.46s0.679,0.083,1.271,0.52c0.594,0.435,0.802,1.604,0.978,2.179C11.104,16.044,10.29,15.921,9.816,15.591z M19.188,14.65c0.592-0.437,1.271-0.52,1.271-0.52s-0.009,1.13-0.481,1.46c-0.475,0.33-1.289,0.453-1.767,1.236C18.385,16.253,18.594,15.085,19.188,14.65z"/><path d="M16.957,25.263c0.137,0.214,0.219,0.449,0.219,0.701c0,0.92-1.019,1.664-2.277,1.664c-1.258,0-2.277-0.744-2.277-1.664c0-0.252,0.082-0.487,0.22-0.701c-0.233-0.104-0.42-0.225-0.56-0.355c-0.381,0.389-0.61,0.862-0.61,1.377c0,1.305,1.443,2.361,3.228,2.361c1.786,0,3.229-1.057,3.229-2.361c0-0.515-0.23-0.988-0.611-1.377C17.375,25.038,17.189,25.161,16.957,25.263z"/></g></g></svg><span class="btn-lbl">Bullish</span></button>
+        <button id="btn-mode-loss"  onclick="switchMode('losers')"    class="px-3 py-1 rounded text-xs font-medium transition-colors btn-loss-idle" style="display:inline-flex;align-items:center;gap:4px;"><img src="data:image/png;base64,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" alt="Bear" width="16" height="16" style="width:16px;height:16px;object-fit:contain;display:block;"><span class="btn-lbl">Bearish</span></button>
         <button id="btn-mode-commodity" onclick="switchMode('commodity')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-commodity-idle"><span style="display:inline-flex;align-items:center;gap:4px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="13" height="13" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path fill-rule="evenodd" clip-rule="evenodd" d="M22.2187 7.37842L33.8868 16.6216L36.1778 23.9998L25.2625 26.0852L12.5889 14.5312L15.281 9.00148L22.2187 7.37842Z"/><path d="M15.2808 9.00146L26.4862 18.6016"/><path d="M25.2625 26.0852L26.4864 18.1324L33.8867 16.6216"/><path d="M24.993 31.0228L27.2792 38.1032L15.601 40.3785L4 29.014L6.57052 22.6253L12.0285 21.3535"/><path d="M6.57056 22.625L17.284 32.7577"/><path d="M15.6011 39.8648L17.4865 32.1324L24.9908 31.0435"/><path fill-rule="evenodd" clip-rule="evenodd" d="M34.8868 29.6077L34 36.7999L43.236 34.9985L41.2813 28.1875L34.8868 29.6077Z"/></svg><span class="btn-lbl"> Commodity</span></span></button>
         <button id="btn-mode-stock"     onclick="switchMode('stock')"     class="px-3 py-1 rounded text-xs font-medium transition-colors btn-stock-idle"><span style="display:inline-flex;align-items:center;gap:4px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 386.651 386.651" width="13" height="13" fill="currentColor" style="flex-shrink:0"><path d="M342.367,135.781c-2.674-1.367-5.889-1.122-8.324,0.635l-138.556,99.968l-89.233-83.725c-3.032-2.844-7.736-2.892-10.826-0.112l-74.395,66.959c-1.685,1.518-2.648,3.679-2.648,5.946v91.451c0,4.418,3.582,8,8,8h312.339c4.418,0,8-3.582,8-8v-174C346.724,139.899,345.041,137.149,342.367,135.781zM53.507,308.903H34.385v-79.889l19.122-17.211V308.903zM88.045,308.903H69.507v-111.5l18.538-16.685V308.903zM122.582,308.903h-18.538V172.526l18.538,17.393V308.903zM157.12,308.903h-18.538V204.931l18.538,17.394V308.903zM192.015,308.903H173.12v-71.565l16.227,15.226c0.791,0.741,1.702,1.288,2.667,1.65V308.903zM226.91,308.903h-18.896v-61.828l18.896-13.634V308.903zM261.806,308.903H242.91v-87.006l18.895-13.633V308.903zM296.701,308.903h-18.896V196.72l18.896-13.634V308.903zM330.724,308.903h-18.022v-137.36l18.022-13.003V308.903z"/><path d="M385.375,65.087c-1.439-2.148-3.904-3.404-6.461-3.337l-50.696,1.368c-3.471,0.094-6.429,2.547-7.161,5.941c-0.732,3.395,0.95,6.85,4.074,8.366l11.846,5.75L196.96,183.012l-95.409-86.504c-4.738-4.296-11.955-4.322-16.723-0.062L4.173,168.491c-5.149,4.599-5.594,12.501-0.995,17.649c4.598,5.148,12.499,5.594,17.649,0.995l72.265-64.55l94.533,85.709c2.369,2.147,5.376,3.239,8.398,3.239c2.532,0,5.074-0.767,7.255-2.322L350.82,104.01l0.701,11.074c0.22,3.464,2.777,6.329,6.193,6.939c0.444,0.079,0.889,0.118,1.328,0.118c2.938,0,5.662-1.724,6.885-4.483l20.077-45.327C387.052,69.968,386.815,67.234,385.375,65.087z"/></svg><span class="btn-lbl"> Stock</span></span></button>
         <button id="btn-mode-ico"   onclick="switchMode('ico')"       class="px-3 py-1 rounded text-xs font-medium transition-colors btn-ico-idle"><span style="display:inline-flex;align-items:center;gap:4px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" style="flex-shrink:0"><path d="M30,52.16c.81-2.07,7.06-17,19.76-19.86a.09.09,0,0,0,0-.18c-2.14-.86-15.22-6.57-19.38-20.26a.09.09,0,0,0-.18,0c-.51,2.27-3.94,14.43-20,20a.1.1,0,0,0,0,.19c2.24.38,13.48,3.14,19.62,20.15A.1.1,0,0,0,30,52.16Z"/><path d="M48.79,25.08c.29-.74,2.52-6.07,7.06-7.09a0,0,0,0,0,0-.07c-.76-.3-5.43-2.34-6.92-7.23a0,0,0,0,0-.07,0c-.18.82-1.4,5.16-7.14,7.13a0,0,0,0,0,0,.07c.8.14,4.81,1.12,7,7.2A0,0,0,0,0,48.79,25.08Z"/></svg><span class="btn-lbl"> ICO</span></span></button>
@@ -227,6 +243,43 @@
         <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
         <span class="text-xs text-gray-500">WS</span>
     </div>
+    <div id="user-menu-wrap" style="position:relative;display:flex;align-items:center;margin-left:4px;">
+      <button onclick="toggleUserMenu(event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:32px;background:#1E222D;border:none;border-radius:6px;color:#9CA3AF;cursor:pointer;transition:background .15s,color .15s;font-family:inherit;" onmouseover="this.style.background='#2A2E39';this.style.color='#E5E7EB'" onmouseout="this.style.background='#1E222D';this.style.color='#9CA3AF'">
+        <svg viewBox="0 0 24 24" width="18" height="18" style="flex-shrink:0;"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"></path></svg>
+        <span id="user-label" style="font-size:12px;font-weight:500;">Guest</span>
+        <svg viewBox="0 0 24 24" width="14" height="14" style="flex-shrink:0;"><path fill="currentColor" d="M7,10L12,15L17,10H7Z"></path></svg>
+      </button>
+      <div id="user-dd" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:#1E222D;border:1px solid #374151;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:50;min-width:140px;padding:4px 0;">
+        <div id="dd-header" style="display:none;padding:9px 12px 7px;border-bottom:1px solid #2A2E39;margin-bottom:4px;">
+          <div id="dd-username" style="font-size:12px;font-weight:600;color:#E5E7EB;"></div>
+          <div id="dd-role" style="font-size:10px;color:#60a5fa;margin-top:2px;font-weight:500;"></div>
+        </div>
+        <a id="dd-login" href="#" onclick="openLoginModal();return false;" style="display:flex;align-items:center;gap:8px;padding:7px 12px;font-size:12px;color:#D1D5DB;text-decoration:none;" onmouseover="this.style.background='#2A2E39';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='#D1D5DB'">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M10,17V14H3V10H10V7L15,12L10,17M10,2H19A2,2 0 0,1 21,4V20A2,2 0 0,1 19,22H10A2,2 0 0,1 8,20V18H10V20H19V4H10V6H8V4A2,2 0 0,1 10,2Z"/></svg>
+          Login
+        </a>
+        <a id="dd-profile" href="/profile" style="display:none;align-items:center;gap:8px;padding:7px 12px;font-size:12px;color:#D1D5DB;text-decoration:none;" onmouseover="this.style.background='#2A2E39';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='#D1D5DB'">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"></path></svg>
+          Profilo
+        </a>
+        <a id="dd-apikey" href="#" onclick="openApiKeyModal();return false;" style="display:none;align-items:center;gap:8px;padding:7px 12px;font-size:12px;color:#D1D5DB;text-decoration:none;" onmouseover="this.style.background='#2A2E39';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='#D1D5DB'">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+          API Key
+        </a>
+        <a id="dd-telegram" href="#" onclick="openTelegramModal();return false;" style="display:none;align-items:center;gap:8px;padding:7px 12px;font-size:12px;color:#D1D5DB;text-decoration:none;" onmouseover="this.style.background='#2A2E39';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='#D1D5DB'">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L6.922 13.4l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.226.159z"/></svg>
+          Telegram
+        </a>
+        <a id="dd-users" href="#" onclick="openUsersModal();return false;" style="display:none;align-items:center;gap:8px;padding:7px 12px;font-size:12px;color:#D1D5DB;text-decoration:none;" onmouseover="this.style.background='#2A2E39';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='#D1D5DB'">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+          Utenti
+        </a>
+        <a id="dd-logout" href="/logout" style="display:none;align-items:center;gap:8px;padding:7px 12px;font-size:12px;color:#F87171;text-decoration:none;" onmouseover="this.style.background='#4b1a1a';this.style.color='#fca5a5'" onmouseout="this.style.background='transparent';this.style.color='#F87171'">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M17,17.25V14H10V10H17V6.75L22.25,12L17,17.25M13,2A2,2 0 0,1 15,4V8H13V4H4V20H13V16H15V20A2,2 0 0,1 13,22H4A2,2 0 0,1 2,20V4A2,2 0 0,1 4,2H13Z"/></svg>
+          Logout
+        </a>
+      </div>
+    </div>
 </header>
 
 <!-- Side navigation arrows (visible only in 9-view) -->
@@ -234,7 +287,7 @@
 <button id="nav-next" class="side-nav" onclick="nextPage()">&#8250;</button>
 
 <!-- ===== GRID ===== -->
-<div id="grid" style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);overflow:hidden;min-height:0;background:#2A2E39;"></div>
+<div id="grid" style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:2px;overflow:hidden;min-height:0;background:#000000;"></div>
 
 <!-- Empty state notice -->
 <div id="fav-empty" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;z-index:5;">
@@ -246,7 +299,7 @@
 <!-- ===== FULLSCREEN OVERLAY ===== -->
 <div id="fs-overlay" style="display:none;position:fixed;inset:0;z-index:100;background:#0F0F0F;flex-direction:column;">
 
-    <div style="height:48px;flex-shrink:0;background:#161A1E;border-bottom:2px solid #2C2C2C;display:flex;align-items:center;gap:8px;padding:0 14px;">
+    <div style="height:48px;flex-shrink:0;background:#101014;display:flex;align-items:center;gap:8px;padding:0 14px;">
         <span id="fs-title"  style="font-size:15px;font-weight:700;color:#E5E7EB;"></span>
         <span id="fs-change" style="font-size:12px;font-weight:500;"></span>
         <span style="color:#374151;font-size:11px;">|</span>
@@ -351,7 +404,7 @@
                         style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#FF9C2E;white-space:nowrap;">Market</button>
                     <button id="fs-ot-cond" onclick="setCondTypeFromDD('Limit')"
                         style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#6B7280;white-space:nowrap;">
-                        <span id="fs-ot-cond-label">Cond.Limit</span>
+                        <span id="fs-ot-cond-label">Conditional</span>
                     </button>
                 </div>
                 <!-- Limit price -->
@@ -385,6 +438,32 @@
                         </button>
                     </div>
                 </div>
+                <!-- SL input -->
+                <div style="display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:12px;color:#ef4444;">Stop Loss</span>
+                    <div style="display:flex;align-items:center;gap:4px;">
+                        <input id="fs-sl-input" type="number" placeholder="Prezzo SL" step="any"
+                            oninput="_onSlTpInput('sl',this.value)"
+                            style="flex:1;padding:6px 8px;font-size:12px;background:#1E222D;color:#E5E7EB;border:1px solid #3d1e1e;border-radius:4px;box-sizing:border-box;min-width:0;">
+                        <button id="fs-aim-sl" class="fs-aim-btn" data-target="fs-sl-input" onclick="startPricePick('fs-sl-input')" title="Seleziona dal grafico"
+                            style="flex-shrink:0;background:none;border:none;cursor:pointer;padding:2px;opacity:0.6;transition:opacity .15s;color:#9CA3AF;" onmouseover="this.style.opacity=1" onmouseout="if(_pricePickTarget!=='fs-sl-input')this.style.opacity=0.6">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <!-- TP input -->
+                <div style="display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:12px;color:#10b981;">Take Profit</span>
+                    <div style="display:flex;align-items:center;gap:4px;">
+                        <input id="fs-tp-input" type="number" placeholder="Prezzo TP" step="any"
+                            oninput="_onSlTpInput('tp',this.value)"
+                            style="flex:1;padding:6px 8px;font-size:12px;background:#1E222D;color:#E5E7EB;border:1px solid #1e3d2a;border-radius:4px;box-sizing:border-box;min-width:0;">
+                        <button id="fs-aim-tp" class="fs-aim-btn" data-target="fs-tp-input" onclick="startPricePick('fs-tp-input')" title="Seleziona dal grafico"
+                            style="flex-shrink:0;background:none;border:none;cursor:pointer;padding:2px;opacity:0.6;transition:opacity .15s;color:#9CA3AF;" onmouseover="this.style.opacity=1" onmouseout="if(_pricePickTarget!=='fs-tp-input')this.style.opacity=0.6">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+                        </button>
+                    </div>
+                </div>
                 <!-- Size USDT -->
                 <div style="display:flex;flex-direction:column;gap:3px;">
                     <span style="font-size:12px;color:#6B7280;">Size (USDT)</span>
@@ -393,21 +472,6 @@
                 </div>
                 <!-- Qty preview -->
                 <span id="fs-qty-preview" style="font-size:12px;color:#9CA3AF;"></span>
-                <!-- SL / TP inputs -->
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                    <div style="display:flex;flex-direction:column;gap:3px;">
-                        <span style="font-size:12px;color:#ef4444;">Stop Loss</span>
-                        <input id="fs-sl-input" type="number" placeholder="Prezzo SL" step="any"
-                            oninput="_onSlTpInput('sl',this.value)"
-                            style="width:100%;padding:6px 8px;font-size:12px;background:#1E222D;color:#E5E7EB;border:1px solid #3d1e1e;border-radius:4px;box-sizing:border-box;">
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:3px;">
-                        <span style="font-size:12px;color:#10b981;">Take Profit</span>
-                        <input id="fs-tp-input" type="number" placeholder="Prezzo TP" step="any"
-                            oninput="_onSlTpInput('tp',this.value)"
-                            style="width:100%;padding:6px 8px;font-size:12px;background:#1E222D;color:#E5E7EB;border:1px solid #1e3d2a;border-radius:4px;box-sizing:border-box;">
-                    </div>
-                </div>
                 <!-- Long/Short -->
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
                     <button id="fs-btn-long" onclick="setFsSide('Buy')" style="padding:7px 0;font-size:12px;font-weight:700;background:#1E222D;color:#6B7280;border:1px solid #374151;border-radius:4px;cursor:pointer;">LONG</button>
@@ -429,6 +493,11 @@
                     <button id="fs-pos-tp-btn" onclick="addFsTpLine()" style="padding:4px 0;font-size:11px;background:#2A2E39;color:#10b981;border:1px solid #1e3d2a;border-radius:3px;cursor:pointer;">+ TP</button>
                 </div>
                 <button onclick="closeFsPosition()" style="width:100%;padding:6px 0;font-size:12px;background:#7f1d1d;color:#fca5a5;border:none;border-radius:4px;cursor:pointer;font-weight:600;">Chiudi Posizione</button>
+            </div>
+            <!-- Open orders section -->
+            <div id="fs-orders-row" style="display:none;flex-direction:column;gap:4px;padding:8px 12px;border-top:1px solid #2A2E39;">
+              <div style="font-size:10px;color:#6B7280;font-weight:600;letter-spacing:.5px;margin-bottom:2px;">ORDINI ATTIVI</div>
+              <div id="fs-orders-list" style="display:flex;flex-direction:column;gap:3px;"></div>
             </div>
         </div>
     </div>
@@ -938,7 +1007,7 @@ function addSeries(chart, type, opts) {
 function makeChart(el, opts) {
     return LC.createChart(el, {
         autoSize: true,
-        layout: { background:{color:'#0B0E11'}, textColor:'#B2B5BE', fontSize: opts?.fontSize || 13 },
+        layout: { background:{color:'#101014'}, textColor:'#B2B5BE', fontSize: opts?.fontSize || 13 },
         grid:    { vertLines:{color:'#FFFFFF0F'}, horzLines:{color:'#FFFFFF0F'} },
         crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
         rightPriceScale: { borderVisible:false, scaleMargins:{top:0.05, bottom:0.05} },
@@ -1177,12 +1246,12 @@ function buildGrid() {
 
     for (let i = 0; i < SLOTS_TOTAL; i++) {
         const cell = document.createElement('div');
-        cell.style.cssText = 'display:flex;flex-direction:column;border:1px solid #2A2E39;overflow:hidden;border-radius:5px;';
+        cell.style.cssText = 'display:flex;flex-direction:column;border:1px solid #000000;overflow:hidden;min-width:0;min-height:0;position:relative;clip-path:inset(0);';
 
         // ── cell header ──────────────────────────────────────────────────────
         const hdr = document.createElement('div');
         hdr.className = 'slot-hdr';
-        hdr.style.cssText = 'height:24px;flex-shrink:0;display:flex;align-items:center;gap:4px;padding:0 5px;background:#0B0E11;';
+        hdr.style.cssText = 'height:24px;flex-shrink:0;display:flex;align-items:center;gap:4px;padding:0 5px;background:#101014;overflow:hidden;min-width:0;max-width:100%;width:100%;';
 
         const starEl = document.createElement('button');
         starEl.textContent = '☆';
@@ -1284,8 +1353,8 @@ const mtfEl = document.createElement('button');
 
         const chart = makeChart(chartEl);
         const candleS = addSeries(chart, 'CandlestickSeries', {
-            upColor:'#089981', downColor:'#F23645',
-            borderVisible:false, wickUpColor:'#089981', wickDownColor:'#F23645',
+            upColor:'#20B26C', downColor:'#EF454A',
+            borderVisible:false, wickUpColor:'#20B26C', wickDownColor:'#EF454A',
         });
         const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
         const emaSeries = {};
@@ -1436,7 +1505,7 @@ function renderSlotTF(idx) {
     s.tfEl.innerHTML = TIMEFRAMES.map(tf => {
         const active = tf === s.curTF;
         return `<button onclick="switchSlotTF(${idx},'${tf}')"
-            style="font-size:9px;padding:1px 4px;border-radius:2px;border:none;cursor:pointer;background:${active?'#4A4A4A':'transparent'};color:${active?'#fff':'#6B7280'};"
+            style="font-size:9px;padding:1px 4px;border-radius:2px;border:none;cursor:pointer;background:transparent;color:${active?'#FF9C2E':'#6B7280'};font-weight:${active?'700':'400'};"
             >${TF_LABEL[tf]}</button>`;
     }).join('');
 }
@@ -1589,8 +1658,8 @@ function initFsChart() {
     if (fsChart) return;
     fsChart   = makeChart(document.getElementById('fs-chart-el'), { fontSize:13, barSpacing:6, rightOffset:40 });
     fsCandleS = addSeries(fsChart, 'CandlestickSeries', {
-        upColor:'#089981', downColor:'#F23645',
-        borderVisible:false, wickUpColor:'#089981', wickDownColor:'#F23645',
+        upColor:'#20B26C', downColor:'#EF454A',
+        borderVisible:false, wickUpColor:'#20B26C', wickDownColor:'#EF454A',
     });
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
     for (const {p, color, width, style} of EMA_CFG)
@@ -1694,7 +1763,7 @@ function renderFsTFBar() {
     document.getElementById('fs-tf-bar').innerHTML = TIMEFRAMES.map(tf => {
         const active = tf === fsTF;
         return `<button onclick="switchFsTF('${tf}')"
-            style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:${active?'#4A4A4A':'transparent'};color:${active?'#fff':'#B2B5BE'};"
+            style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:transparent;color:${active?'#FF9C2E':'#B2B5BE'};font-weight:${active?'700':'400'};"
             >${TF_LABEL[tf]}</button>`;
     }).join('');
 }
@@ -2130,8 +2199,8 @@ function initOBChart() {
     if (obChart) return;
     obChart   = makeChart(document.getElementById('ob-chart-el'), { fontSize:13, barSpacing:6, rightOffset:40 });
     obCandleS = addSeries(obChart, 'CandlestickSeries', {
-        upColor:'#089981', downColor:'#F23645',
-        borderVisible:false, wickUpColor:'#089981', wickDownColor:'#F23645',
+        upColor:'#20B26C', downColor:'#EF454A',
+        borderVisible:false, wickUpColor:'#20B26C', wickDownColor:'#EF454A',
     });
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
     for (const {p, color, width, style} of EMA_CFG)
@@ -2143,7 +2212,7 @@ function initOBChart() {
 function renderOBTFBar() {
     document.getElementById('ob-tf-bar').innerHTML = TIMEFRAMES.map(tf => {
         const active = tf === obTF;
-        return `<button onclick="switchOBTF('${tf}')" style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:${active?'#2563EB':'#2A2E39'};color:${active?'#fff':'#B2B5BE'};">${TF_LABEL[tf]}</button>`;
+        return `<button onclick="switchOBTF('${tf}')" style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:transparent;color:${active?'#FF9C2E':'#B2B5BE'};font-weight:${active?'700':'400'};">${TF_LABEL[tf]}</button>`;
     }).join('');
 }
 
@@ -2367,7 +2436,7 @@ function _drawRangeCanvas(canvas, series, p1, p2) {
     const bottom = Math.max(y1, y2);
     const h      = Math.max(bottom - top, 1);
     const isUp   = p2 > p1;
-    const color  = isUp ? '#089981' : '#F23645';
+    const color  = isUp ? '#20B26C' : '#EF454A';
 
     ctx.fillStyle = isUp ? 'rgba(8,153,129,0.12)' : 'rgba(242,54,69,0.12)';
     ctx.fillRect(0, top, canvas.width, h);
@@ -2646,6 +2715,7 @@ function applyCfgToAllSlots() {
 let _tradeEnabled = false, _tradePos = null, _tradeSide = null;
 let _tradeBalance = null, _instInfo = null, _tradePollT = null;
 let _fsOrderType = 'Market', _fsCondExec = 'Market';
+let _fsPendingOrderId = null, _fsPendingOrderFilter = null;
 let _pricePickTarget = null;
 let _fsSlLine = null, _fsTpLine = null, _fsSlPrice = null, _fsTpPrice = null;
 let _fsSlLabel = null, _fsTpLabel = null;
@@ -2669,20 +2739,109 @@ function toggleTradePanel() {
     p.style.flexDirection = 'column';
     const btn = document.getElementById('fs-trade-btn');
     if (btn) { btn.style.background = open ? '#2A2E39' : '#1e3a5f'; btn.style.color = open ? '#B2B5BE' : '#60a5fa'; }
-    if (!open) { loadTradeData(); _tradePollT = setInterval(loadTradeData, 5000); }
+    if (!open) { loadTradeData(); _tradePollT = setInterval(loadTradeData, 3000); }
     else { clearInterval(_tradePollT); _tradePollT = null; resetTradeSide(); }
 }
 
 async function loadTradeData() {
     if (!fsCoin) return;
-    const [balR, posR, instR] = await Promise.all([
+    const [balR, posR, instR, ordR] = await Promise.all([
         fetch('api/trade/balance').then(r => r.json()).catch(() => null),
         fetch(`api/trade/position?symbol=${fsCoin.symbol}`).then(r => r.json()).catch(() => null),
         _instInfo ? Promise.resolve(null) : fetch(`api/trade/instrument?symbol=${fsCoin.symbol}`).then(r => r.json()).catch(() => null),
+        fetch(`api/trade/orders?symbol=${fsCoin.symbol}&_t=${Date.now()}`).then(r => r.json()).catch(() => null),
     ]);
     if (balR && !balR.error) { _tradeBalance = balR; _renderBalance(); }
     if (posR && !posR.error) { _tradePos = posR.position; _renderPosition(); }
     if (instR && !instR.error) { _instInfo = instR; _buildLevOptions(_instInfo.maxLeverage); updateQtyPreview(); }
+    _renderOrders((ordR && !ordR.error) ? (ordR.orders || []) : []);
+}
+
+function _renderOrders(orders) {
+    const row = document.getElementById('fs-orders-row');
+    const list = document.getElementById('fs-orders-list');
+    if (!row || !list) return;
+    if (!orders || !orders.length) { list.innerHTML = ''; row.style.display = 'none'; return; }
+    // Reattach pending conditional order after page reload
+    if (!_fsEntryLine) {
+        const cond = orders.find(o => o.orderFilter === 'StopOrder') || orders.find(o => o.orderFilter !== 'StopOrder' && o.status === 'New');
+        if (cond) {
+            _fsPendingOrderId = cond.orderId;
+            _fsPendingOrderFilter = cond.orderFilter === 'StopOrder' ? 'StopOrder' : 'Order';
+            // Draw line after delay to ensure fsCandleS is ready
+            setTimeout(() => {
+                if (_fsEntryLine || !fsCandleS) return;
+                const trigP = parseFloat(cond.triggerPrice) || parseFloat(cond.price) || 0;
+                if (trigP <= 0) return;
+                const long = cond.side === 'Buy';
+                _tradeSide = cond.side;
+                _fsOrderType = 'Conditional';
+                _fsEntryPrice = trigP;
+                _fsEntryLine = fsCandleS.createPriceLine({ price: trigP, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+                // Populate input fields
+                const trigInp = document.getElementById('fs-order-trigger');
+                if (trigInp) trigInp.value = trigP;
+                const execP = parseFloat(cond.price) || 0;
+                if (execP > 0) {
+                    const execInp = document.getElementById('fs-cond-price');
+                    if (execInp) execInp.value = execP;
+                    _fsExecPrice = execP;
+                    _fsExecLine = fsCandleS.createPriceLine({ price: execP, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Exec' });
+                }
+                // Set state before creating label so it shows correct values
+                _fsCondExec = execP > 0 ? 'Limit' : 'Market';
+                _fsOrderType = 'Conditional';
+                // Populate size from order qty
+                const sizeInp = document.getElementById('fs-order-size');
+                if (sizeInp && cond.qty) {
+                    const lev = parseFloat(document.getElementById('fs-order-lev')?.value) || 1;
+                    const notional = parseFloat(cond.qty) * trigP;
+                    sizeInp.value = parseFloat((notional / lev).toFixed(2));
+                    updateQtyPreview();
+                }
+                // Show conditional type fields
+                document.getElementById('fs-cond-fields').style.display = 'flex';
+                document.getElementById('fs-cond-price-wrap').style.display = execP > 0 ? 'flex' : 'none';
+                document.getElementById('fs-order-price-wrap').style.display = 'none';
+                // Draw SL/TP lines if present in order
+                const sl = parseFloat(cond.stopLoss); const tp = parseFloat(cond.takeProfit);
+                if (sl > 0) { _fsSlPrice = sl; const si = document.getElementById('fs-sl-input'); if (si) si.value = sl; }
+                if (tp > 0) { _fsTpPrice = tp; const ti = document.getElementById('fs-tp-input'); if (ti) ti.value = tp; }
+                if (sl > 0 || tp > 0) _drawSlTpLines();
+                _createEntryLabel(long);
+                _updateEntryLabelPos();
+            }, 800);
+        }
+    }
+    row.style.display = 'flex';
+    list.innerHTML = orders.map(o => {
+        const long = o.side === 'Buy';
+        const sideColor = long ? '#10b981' : '#ef4444';
+        const sideLabel = long ? 'LONG' : 'SHORT';
+        const isStop = o.orderFilter === 'StopOrder';
+        const typeLabel = isStop ? `Cond.${o.orderType}` : o.orderType;
+        const priceLabel = o.triggerPrice && o.triggerPrice !== '0' ? `trg ${o.triggerPrice}` : (o.price && o.price !== '0' ? `@ ${o.price}` : 'Market');
+        return `<div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:3px 0;border-bottom:1px solid #1E222D;">`
+            + `<span style="color:${sideColor};font-weight:700;min-width:36px;">${sideLabel}</span>`
+            + `<span style="color:#9CA3AF;flex:1;">${typeLabel} ${priceLabel}</span>`
+            + `<span style="color:#6B7280;min-width:30px;text-align:right;">${o.qty}</span>`
+            + `<button onclick="cancelFsOrder('${o.orderId}','${o.orderFilter}')" `
+            + `style="background:none;border:none;color:#6B7280;cursor:pointer;font-size:13px;padding:0 2px;line-height:1;" `
+            + `title="Cancella ordine" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#6B7280'">✕</button>`
+            + `</div>`;
+    }).join('');
+}
+
+async function cancelFsOrder(orderId, orderFilter) {
+    if (!fsCoin) return;
+    if (!confirm('Cancellare questo ordine?')) return;
+    try {
+        const d = await fetch('api/trade/cancel', { method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ symbol: fsCoin.symbol, orderId, orderFilter }) }).then(r => r.json());
+        if (d.success) { _showTradeMsg('Ordine cancellato', true); resetTradeSide(); setTimeout(loadTradeData, 1000); }
+        else if (d.error && d.error.toLowerCase().includes('not exists')) { _showTradeMsg('Ordine già eseguito/cancellato', true); resetTradeSide(); setTimeout(loadTradeData, 500); }
+        else _showTradeMsg(d.error || 'Errore cancellazione', false);
+    } catch(e) { _showTradeMsg('Errore di rete', false); }
 }
 
 function _buildLevOptions(maxLev) {
@@ -2779,7 +2938,7 @@ function _renderBalance() {
 
 function _renderPosition() {
     const row = document.getElementById('fs-pos-row');
-    if (!_tradePos) { if (row) row.style.display = 'none'; if (!_tradeSide) _removeSlTpLines(); return; }
+    if (!_tradePos) { if (row) row.style.display = 'none'; return; }
     if (row) row.style.display = 'flex';
     const p = _tradePos, long = p.side === 'Buy';
     const margin = p.entryPrice > 0 ? (p.size * p.entryPrice / p.leverage) : 0;
@@ -3004,16 +3163,53 @@ async function _onFsMU() {
     if (_entryDragMM) { document.removeEventListener('mousemove', _entryDragMM); _entryDragMM = null; }
     if (_dragOverlay) { _dragOverlay.style.pointerEvents = 'none'; _dragOverlay.style.cursor = ''; }
     const el = document.getElementById('fs-chart-el'); if (el) el.style.cursor = '';
-    if (mode === 'entry' || mode === 'exec') return;
+    if (mode === 'exec') {
+        if (_fsPendingOrderId && fsCoin && _fsExecPrice != null) {
+            clearTimeout(_slTpTimer);
+            _slTpTimer = setTimeout(async () => {
+                try {
+                    const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId, price: parseFloat(_fsExecPrice.toFixed(8)) };
+                    const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+                    if (!d.success) _showTradeMsg(d.error || 'Errore amend exec', false);
+                } catch(e) { _showTradeMsg('Errore di rete', false); }
+            }, 400);
+        }
+        return;
+    }
+    if (mode === 'entry' && _fsPendingOrderId && fsCoin) {
+        clearTimeout(_slTpTimer);
+        _slTpTimer = setTimeout(async () => {
+            try {
+                const amendField = _fsOrderType === 'Limit' ? 'price' : 'triggerPrice';
+                const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId, [amendField]: parseFloat(_fsEntryPrice.toFixed(8)) };
+                const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+                if (!d.success) _showTradeMsg(d.error || 'Errore amend', false);
+                else { const ti = document.getElementById('fs-order-trigger'); if (ti) ti.value = body.triggerPrice; }
+            } catch(e) { _showTradeMsg('Errore di rete', false); }
+        }, 400);
+        return;
+    }
+    if (mode === 'entry') return;
     if (!fsCoin) return;
     clearTimeout(_slTpTimer);
     _slTpTimer = setTimeout(async () => {
         try {
-            const body = { symbol: fsCoin.symbol };
-            if (mode === 'sl') body.stopLoss = parseFloat(_fsSlPrice.toFixed(8));
-            else body.takeProfit = parseFloat(_fsTpPrice.toFixed(8));
-            const d = await fetch('api/trade/set-sltp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
-            if (!d.success) _showTradeMsg(d.error || 'Errore SL/TP', false);
+            if (_fsPendingOrderId) {
+                // Pending conditional order: amend SL/TP
+                const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId };
+                if (mode === 'sl') body.stopLoss = parseFloat(_fsSlPrice.toFixed(8));
+                else body.takeProfit = parseFloat(_fsTpPrice.toFixed(8));
+                const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+                if (!d.success) _showTradeMsg(d.error || 'Errore amend SL/TP', false);
+            } else if (_tradePos) {
+                // Open position: use trading-stop
+                const body = { symbol: fsCoin.symbol };
+                if (mode === 'sl') body.stopLoss = parseFloat(_fsSlPrice.toFixed(8));
+                else body.takeProfit = parseFloat(_fsTpPrice.toFixed(8));
+                const d = await fetch('api/trade/set-sltp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+                if (!d.success) _showTradeMsg(d.error || 'Errore SL/TP', false);
+            }
+            // else: no position and no pending order — UI only
         } catch(e) { _showTradeMsg('Errore di rete', false); }
     }, 400);
 }
@@ -3024,8 +3220,7 @@ function _getEntryPrice() {
         const inp = document.getElementById('fs-order-price');
         const v = parseFloat(inp?.value);
         if (v > 0) return v;
-        // pre-fill input with live price so user can drag from there
-        if (inp && liveP) inp.value = parseFloat(liveP.toPrecision(8));
+        return 0;
     } else if (_fsOrderType === 'Conditional') {
         const inp = document.getElementById('fs-order-trigger');
         const v = parseFloat(inp?.value);
@@ -3041,7 +3236,20 @@ function _syncEntryPrice(price) {
         const el = document.getElementById('fs-order-price'); if (el) el.value = s;
     } else if (_fsOrderType === 'Conditional') {
         const el = document.getElementById('fs-order-trigger'); if (el) el.value = s;
+        // Amend pending conditional order with debounce
+        if (_fsPendingOrderId && fsCoin) {
+            clearTimeout(_slTpTimer);
+            _slTpTimer = setTimeout(async () => {
+                try {
+                    const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId, triggerPrice: s };
+                    const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+                    if (!d.success) _showTradeMsg(d.error || 'Errore amend', false);
+                } catch(e) { _showTradeMsg('Errore di rete', false); }
+            }, 600);
+        }
     }
+    // Rebuild SL/TP labels to refresh % and USDT values
+    if (_fsSlPrice != null || _fsTpPrice != null) _drawSlTpLines();
 }
 
 function _onSlTpInput(kind, val) {
@@ -3080,6 +3288,16 @@ function _onPriceInput(kind, val) {
         _fsExecPrice = p;
         if (_fsExecLine) { try { fsCandleS.removePriceLine(_fsExecLine); } catch(e){} }
         _fsExecLine = fsCandleS.createPriceLine({ price: p, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Exec' });
+        if (_fsPendingOrderId && fsCoin) {
+            clearTimeout(_slTpTimer);
+            _slTpTimer = setTimeout(async () => {
+                try {
+                    const body = { symbol: fsCoin.symbol, orderId: _fsPendingOrderId, price: parseFloat(_fsExecPrice.toFixed(8)) };
+                    const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+                    if (!d.success) _showTradeMsg(d.error || 'Errore amend exec', false);
+                } catch(e) { _showTradeMsg('Errore di rete', false); }
+            }, 600);
+        }
     }
 }
 
@@ -3089,8 +3307,8 @@ function _createExecLine(long) {
     const inp = document.getElementById('fs-cond-price');
     const v = parseFloat(inp?.value);
     const liveP = _livePrice[fsCoin?.symbol] || 0;
-    _fsExecPrice = v > 0 ? v : (long ? (liveP * 0.999) : (liveP * 1.001));
-    if (!v && inp) inp.value = parseFloat(_fsExecPrice.toPrecision(8));
+    if (!v || v <= 0) return;
+    _fsExecPrice = v;
     _fsExecLine = fsCandleS.createPriceLine({ price: _fsExecPrice, color: long ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Exec' });
 }
 
@@ -3104,13 +3322,26 @@ function setFsSide(side) {
     _removeEntryLine();
     if (_fsOrderType === 'Conditional') {
         _createExecLine(long);
-        // Anchor label at exec price (Cond.Limit) or live price (Cond.Market)
-        _fsEntryPrice = _fsExecPrice || _livePrice[fsCoin?.symbol] || 0;
+        // Draw trigger price line (draggable), default to +1%/-1% from live
+        const liveP = _livePrice[fsCoin?.symbol] || 0;
+        const trigInp = document.getElementById('fs-order-trigger');
+        const trigV = parseFloat(trigInp?.value);
+        const trigP = trigV > 0 ? trigV : (liveP > 0 ? parseFloat((long ? liveP * 1.01 : liveP * 0.99).toPrecision(6)) : 0);
+        if (trigP > 0) {
+            _fsEntryPrice = trigP;
+            _fsEntryLine = fsCandleS.createPriceLine({ price: trigP, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+            if (!trigV && trigInp) trigInp.value = trigP;
+        } else {
+            _fsEntryPrice = _fsExecPrice || liveP;
+        }
     } else {
         const price = _getEntryPrice();
-        if (!price) return;
-        _fsEntryPrice = price;
-        _fsEntryLine = fsCandleS.createPriceLine({ price, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+        const liveP = _livePrice[fsCoin?.symbol] || 0;
+        const drawP = price > 0 ? price : (_fsOrderType === 'Limit' && liveP > 0 ? parseFloat((long ? liveP * 0.995 : liveP * 1.005).toPrecision(6)) : liveP);
+        _fsEntryPrice = drawP;
+        if (drawP > 0) {
+            _fsEntryLine = fsCandleS.createPriceLine({ price: drawP, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+        }
     }
     _createEntryLabel(long);
     _updateEntryLabelPos();
@@ -3156,7 +3387,7 @@ function _createEntryLabel(long) {
         ${trBtn}
         <div id="fs-el-tp" onclick="_addEntryTp()" title="+TP" style="${cell}${sep}color:#10b981;${_fsTpPrice != null ? 'display:none;' : ''}" onmouseenter="this.style.background='#1a3028'" onmouseleave="this.style.background='#1E222D'">+TP</div>
         <div id="fs-el-sl" onclick="_addEntrySl()" title="+SL" style="${cell}${sep}color:#ef4444;${_fsSlPrice != null ? 'display:none;' : ''}" onmouseenter="this.style.background='#2d1717'" onmouseleave="this.style.background='#1E222D'">+SL</div>
-        <div onclick="resetTradeSide()" title="Rimuovi" style="${cell}${sep}color:#6B7280;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">✕</div>
+        <div onclick="_cancelOrReset()" title="Rimuovi/Cancella" style="${cell}${sep}color:#6B7280;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">✕</div>
     `;
     parent.appendChild(label);
     _fsEntryLabel = label;
@@ -3258,12 +3489,6 @@ function _openEntryTypeMenu(e) {
             ev.stopPropagation();
             if (t.cexec !== null) {
                 _fsCondExec = t.cexec;
-                const mktEl = document.getElementById('fs-ctdd-mkt');
-                const lmtEl = document.getElementById('fs-ctdd-lmt');
-                if (mktEl) { mktEl.style.color = t.cexec === 'Market' ? '#FF9C2E' : '#B2B5BE'; mktEl.style.fontWeight = t.cexec === 'Market' ? '600' : '400'; }
-                if (lmtEl) { lmtEl.style.color = t.cexec === 'Limit'  ? '#FF9C2E' : '#B2B5BE'; lmtEl.style.fontWeight = t.cexec === 'Limit'  ? '600' : '400'; }
-                const lbl = document.getElementById('fs-ot-cond-label');
-                if (lbl) lbl.textContent = 'Cond. ' + t.cexec;
                 document.getElementById('fs-cond-price-wrap').style.display = t.cexec === 'Limit' ? 'flex' : 'none';
             }
             setOrderType(t.otype);
@@ -3343,8 +3568,29 @@ function _startEntryDrag(e) {
     document.addEventListener('mousemove', _entryDragMM);
 }
 
+async function _cancelOrReset() {
+    if (_fsPendingOrderId && fsCoin) {
+        const typeLabel = _fsOrderType === 'Limit' ? 'limit' : 'conditional';
+        if (!confirm(`Cancellare l'ordine ${typeLabel} su Bybit?`)) return;
+        try {
+            const d = await fetch('api/trade/cancel', { method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ symbol: fsCoin.symbol, orderId: _fsPendingOrderId, orderFilter: _fsPendingOrderFilter || 'StopOrder' })
+            }).then(r => r.json());
+            if (d.success || (d.error && d.error.toLowerCase().includes('not exists'))) {
+                _showTradeMsg('Ordine cancellato', true);
+            } else {
+                _showTradeMsg(d.error || 'Errore cancellazione', false); return;
+            }
+        } catch(e) { _showTradeMsg('Errore di rete', false); return; }
+    }
+    _fsPendingOrderId = null; _fsPendingOrderFilter = null;
+    resetTradeSide();
+    setTimeout(loadTradeData, 800);
+}
+
 function resetTradeSide() {
     _tradeSide = null;
+    _fsPendingOrderId = null; _fsPendingOrderFilter = null;
     const l = document.getElementById('fs-btn-long'), s = document.getElementById('fs-btn-short');
     if (l) { l.style.background = '#1E222D'; l.style.color = '#6B7280'; l.style.borderColor = '#374151'; }
     if (s) { s.style.background = '#1E222D'; s.style.color = '#6B7280'; s.style.borderColor = '#374151'; }
@@ -3369,6 +3615,7 @@ function setOrderType(type) {
     else document.getElementById('fs-cond-price-wrap').style.display = 'none';
     const typeEl = document.getElementById('fs-el-type');
     if (typeEl) typeEl.textContent = _entryLabelTypeText();
+    if (_tradeSide) setFsSide(_tradeSide);
 }
 
 function openCondTypeDD() {
@@ -3378,7 +3625,8 @@ function openCondTypeDD() {
 }
 
 function closeCondTypeDD() {
-    document.getElementById('fs-cond-type-dd').style.display = 'none';
+    const dd = document.getElementById('fs-cond-type-dd');
+    if (dd) dd.style.display = 'none';
     const svg = document.querySelector('#fs-cond-dd-arrow svg');
     if (svg) svg.style.transform = '';
 }
@@ -3392,15 +3640,12 @@ function toggleCondTypeDD(e) {
 function setCondTypeFromDD(execType) {
     _fsCondExec = execType;
     setOrderType('Conditional');
-    const mktEl = document.getElementById('fs-ctdd-mkt');
-    const lmtEl = document.getElementById('fs-ctdd-lmt');
-    if (mktEl) { mktEl.style.color = execType === 'Market' ? '#FF9C2E' : '#B2B5BE'; mktEl.style.fontWeight = execType === 'Market' ? '600' : '400'; }
-    if (lmtEl) { lmtEl.style.color = execType === 'Limit'  ? '#FF9C2E' : '#B2B5BE'; lmtEl.style.fontWeight = execType === 'Limit'  ? '600' : '400'; }
-    const lbl = document.getElementById('fs-ot-cond-label');
-    if (lbl) lbl.textContent = 'Cond. ' + execType;
+    _fsCondExec = execType;
     document.getElementById('fs-cond-price-wrap').style.display = execType === 'Limit' ? 'flex' : 'none';
+    const typeEl = document.getElementById('fs-el-type');
+    if (typeEl) typeEl.textContent = _entryLabelTypeText();
     closeCondTypeDD();
-    if (_tradeSide) _createExecLine(_tradeSide === 'Buy');
+    if (_tradeSide) setFsSide(_tradeSide);
 }
 
 function updateQtyPreview() {
@@ -3430,6 +3675,11 @@ async function confirmFsOrder() {
     const condExec  = _fsCondExec;
     const condLimP  = parseFloat(document.getElementById('fs-cond-price')?.value) || 0;
     if (!size) return _showTradeMsg('Inserisci size USDT', false);
+    if (otype === 'Limit' && !limitP) return _showTradeMsg('Inserisci il prezzo limite prima di procedere', false);
+    if (otype === 'Limit' && _tradeSide === 'Buy' && limitP >= (_livePrice[fsCoin?.symbol] || 0))
+        return _showTradeMsg('Prezzo limite >= prezzo corrente: ordine eseguito subito. Abbassa il prezzo.', false);
+    if (otype === 'Limit' && _tradeSide === 'Sell' && limitP <= (_livePrice[fsCoin?.symbol] || 0))
+        return _showTradeMsg('Prezzo limite <= prezzo corrente: ordine eseguito subito. Alza il prezzo.', false);
     if (otype === 'Conditional' && !triggerP) return _showTradeMsg('Inserisci prezzo trigger', false);
     if (otype === 'Conditional' && condExec === 'Limit' && !condLimP) return _showTradeMsg('Inserisci prezzo esecuzione', false);
     const entryP = otype === 'Limit' ? limitP
@@ -3447,17 +3697,29 @@ async function confirmFsOrder() {
     const typeLabel = otype === 'Conditional'
         ? `Conditional trigger@${triggerP} exec:${condExec}${condExec==='Limit'?' @'+condLimP:''}`
         : `${otype}${otype==='Limit'?' @ '+limitP:''}`;
-    if (!confirm(`Confermi?\n${label} ${fsCoin.symbol}\nTipo: ${typeLabel}\nQty: ${qty}\nNotionale: $${(size*lev).toFixed(2)}\nLeva: ${lev}x`)) return;
+    const slLine = _fsSlPrice != null ? `\nSL: ${parseFloat(_fsSlPrice.toFixed(8))}` : '';
+    const tpLine = _fsTpPrice != null ? `\nTP: ${parseFloat(_fsTpPrice.toFixed(8))}` : '';
+    const limitNote = '';
+    if (!confirm(`Confermi?\n${label} ${fsCoin.symbol}\nTipo: ${typeLabel}\nQty: ${qty}\nNotionale: $${(size*lev).toFixed(2)}\nLeva: ${lev}x${slLine}${tpLine}${limitNote}`)) return;
     try {
         const body = { symbol: fsCoin.symbol, side: _tradeSide, orderType: otype === 'Conditional' ? condExec : otype, qty: String(qty), leverage: lev };
         if (otype === 'Limit') body.price = String(limitP);
         if (otype === 'Conditional') {
             body.triggerPrice = String(triggerP);
+            body.triggerDirection = triggerP > (_livePrice[fsCoin?.symbol] || 0) ? 1 : 2;
             body.orderFilter = 'StopOrder';
             if (condExec === 'Limit') body.price = String(condLimP);
         }
+        if (_fsSlPrice != null) body.stopLoss = parseFloat(_fsSlPrice.toFixed(8));
+        if (_fsTpPrice != null) body.takeProfit = parseFloat(_fsTpPrice.toFixed(8));
         const d = await fetch('api/trade/order', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
-        if (d.success) { _showTradeMsg(`Ordine OK (${d.orderId?.slice(0,8)}...)`, true); setTimeout(loadTradeData, 2000); }
+        if (d.success) {
+            _showTradeMsg(`Ordine OK (${d.orderId?.slice(0,8)}...)`, true);
+            if (otype === 'Market') { resetTradeSide(); }
+            else if (otype === 'Limit') { _fsPendingOrderId = d.orderId; _fsPendingOrderFilter = 'Order'; }
+            else { _fsPendingOrderId = d.orderId; _fsPendingOrderFilter = 'StopOrder'; }
+            setTimeout(loadTradeData, 2000);
+        }
         else _showTradeMsg(d.error || 'Errore ordine', false);
     } catch(e) { _showTradeMsg('Errore di rete', false); }
 }
@@ -3493,7 +3755,10 @@ function startPricePick(inputId) {
         const price = fsCandleS.coordinateToPrice(param.point.y);
         if (price != null) {
             const inp = document.getElementById(_pricePickTarget);
-            if (inp) inp.value = parseFloat(price.toPrecision(8));
+            if (inp) {
+                inp.value = parseFloat(price.toPrecision(8));
+                inp.dispatchEvent(new Event('input'));
+            }
         }
         _endPricePick();
     };
@@ -3562,5 +3827,124 @@ function _showTradeMsg(msg, ok) {
     </div>
 </div>
 
+<!-- Login Modal -->
+<div id="login-modal" onclick="if(event.target===this)closeLoginModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#161A1E;border:1px solid #2A2E39;border-radius:12px;padding:32px 28px;width:320px;max-width:90vw;position:relative;">
+    <button onclick="closeLoginModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#6B7280;cursor:pointer;font-size:22px;line-height:1;padding:0;">×</button>
+    <div style="text-align:center;margin-bottom:22px;">
+      <svg viewBox="0 0 24 24" width="36" height="36" style="color:#F7931A;display:inline-block;margin-bottom:8px;"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"></path></svg>
+      <div style="font-size:15px;font-weight:700;color:#E5E7EB;">Crypto Scanner Pro</div>
+    </div>
+    <div id="lm-msg" style="display:none;border-radius:6px;padding:8px 12px;font-size:12px;margin-bottom:12px;"></div>
+    <form id="login-modal-form" method="POST" action="/login">
+      <div style="margin-bottom:12px;">
+        <div style="font-size:12px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">USERNAME</div>
+        <input id="lm-username" type="text" name="username" autocomplete="username" placeholder="username" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:9px 12px;font-size:13px;color:#E5E7EB;outline:none;box-sizing:border-box;">
+      </div>
+      <div id="lm-email-wrap" style="display:none;margin-bottom:12px;">
+        <div style="font-size:12px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">EMAIL</div>
+        <input id="lm-email" type="email" autocomplete="email" placeholder="you@example.com" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:9px 12px;font-size:13px;color:#E5E7EB;outline:none;box-sizing:border-box;">
+      </div>
+      <div id="lm-pw-div" style="margin-bottom:18px;">
+        <div style="font-size:12px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">PASSWORD</div>
+        <input id="lm-password" type="password" name="password" autocomplete="current-password" placeholder="••••••••" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:9px 12px;font-size:13px;color:#E5E7EB;outline:none;box-sizing:border-box;">
+      </div>
+      <div id="lm-confirm-wrap" style="display:none;margin-bottom:18px;">
+        <div style="font-size:12px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">CONFERMA PASSWORD</div>
+        <input id="lm-confirm" type="password" autocomplete="new-password" placeholder="••••••••" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:9px 12px;font-size:13px;color:#E5E7EB;outline:none;box-sizing:border-box;">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button type="button" id="lm-btn-login" onclick="lmLogin()" style="flex:1;background:#2563eb;color:#fff;border:none;border-radius:6px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">Accedi</button>
+        <button type="button" id="lm-btn-reg" onclick="lmRegister()" style="flex:1;background:transparent;color:#9CA3AF;border:1px solid #374151;border-radius:6px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">Iscriviti</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+function toggleUserMenu(e){e&&e.stopPropagation();var d=document.getElementById('user-dd');d.style.display=d.style.display==='block'?'none':'block';}
+document.addEventListener('click',function(){var d=document.getElementById('user-dd');if(d)d.style.display='none';});
+var _lmMode='login';
+function openLoginModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';document.getElementById('login-modal-form').action='/login?next='+encodeURIComponent(window.location.pathname);_lmSetMode('login');document.getElementById('login-modal').style.display='flex';}
+function closeLoginModal(){document.getElementById('login-modal').style.display='none';}
+function _lmSetMode(m){_lmMode=m;var r=m==='register';document.getElementById('lm-email-wrap').style.display=r?'block':'none';document.getElementById('lm-confirm-wrap').style.display=r?'block':'none';document.getElementById('lm-pw-div').style.marginBottom=r?'12px':'18px';var bl=document.getElementById('lm-btn-login'),br=document.getElementById('lm-btn-reg');bl.style.background=r?'transparent':'#2563eb';bl.style.color=r?'#9CA3AF':'#fff';bl.style.border=r?'1px solid #374151':'none';br.style.background=r?'#2563eb':'transparent';br.style.color=r?'#fff':'#9CA3AF';br.style.border=r?'none':'1px solid #374151';document.getElementById('lm-msg').style.display='none';}
+function _lmMsg(t,ok){var el=document.getElementById('lm-msg');el.textContent=t;el.style.display='block';el.style.background=ok?'rgba(16,185,129,.1)':'rgba(239,68,68,.1)';el.style.border='1px solid '+(ok?'rgba(16,185,129,.3)':'rgba(239,68,68,.3)');el.style.color=ok?'#34d399':'#f87171';}
+function lmLogin(){if(_lmMode==='register'){_lmSetMode('login');return;}document.getElementById('login-modal-form').submit();}
+async function lmRegister(){if(_lmMode==='login'){_lmSetMode('register');return;}var u=document.getElementById('lm-username').value.trim(),e=document.getElementById('lm-email').value.trim(),p=document.getElementById('lm-password').value,c=document.getElementById('lm-confirm').value,btn=document.getElementById('lm-btn-reg');btn.disabled=true;btn.textContent='...';try{var res=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,email:e,password:p,confirm:c})});var d=await res.json();if(d.success){_lmMsg('Registrazione completata! Accedi ora.',true);_lmSetMode('login');document.getElementById('lm-username').value=u;document.getElementById('lm-password').value='';}else{_lmMsg(d.error||'Errore',false);}}catch(ex){_lmMsg('Errore di rete',false);}finally{btn.disabled=false;btn.textContent='Iscriviti';}}
+async function openApiKeyModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';try{var s=await fetch('/api/settings').then(r=>r.json());var key=s.bybit_api_key||'';document.getElementById('ak-key').textContent=key?(key.length<=8?'●'.repeat(key.length):key.slice(0,4)+'●●●●●●●●'+key.slice(-4)):'Non configurata';document.getElementById('ak-secret').textContent=s.bybit_secret_set?'●●●●●●●●●●●●':'Non configurato';var badge=document.getElementById('ak-trade-badge');if(s.trading_enabled&&s.bybit_secret_set&&key){badge.textContent='Attivo';badge.style.background='#064e3b';badge.style.color='#34d399';}else{badge.textContent='Disabilitato';badge.style.background='#1f2937';badge.style.color='#6B7280';}}catch(e){document.getElementById('ak-key').textContent='Errore caricamento';}document.getElementById('apikey-modal').style.display='flex';}
+function closeApiKeyModal(){document.getElementById('apikey-modal').style.display='none';}
+async function openTelegramModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';try{var s=await fetch('/api/settings').then(r=>r.json());document.getElementById('tg-tok-m').value=s.telegram_token||'';document.getElementById('tg-chat-m').value=s.telegram_chat_id||'';}catch(e){}document.getElementById('telegram-modal').style.display='flex';}
+function closeTelegramModal(){document.getElementById('telegram-modal').style.display='none';}
+async function saveTelegramModal(){var msg=document.getElementById('tg-modal-msg');try{var d=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegram_token:document.getElementById('tg-tok-m').value,telegram_chat_id:document.getElementById('tg-chat-m').value})}).then(r=>r.json());if(d.success){msg.textContent='✓ Salvato';msg.style.color='#10b981';}else{msg.textContent='⚠ Errore';msg.style.color='#ef4444';}}catch(e){msg.textContent='⚠ Errore';msg.style.color='#ef4444';}setTimeout(()=>msg.textContent='',3000);}
+async function openUsersModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';document.getElementById('users-modal').style.display='flex';var tb=document.getElementById('users-tbody');tb.innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:#6B7280;">Caricamento...</td></tr>';try{var r=await fetch('/api/admin/users');var data=await r.json();if(!data.users||data.users.length===0){tb.innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:#6B7280;">Nessun utente registrato</td></tr>';return;}tb.innerHTML=data.users.map(function(u){var dt=u.created_at?u.created_at.split('T')[0]:'-';var role=u.role||'—';var roleColor=u.role==='admin'?'#60a5fa':'#9CA3AF';return '<tr style="border-bottom:1px solid #1E222D;" onmouseover="this.style.background=\'#1E222D\'" onmouseout="this.style.background=\'transparent\'"><td style="padding:8px 10px;color:#E5E7EB;font-weight:500;">'+u.username+'</td><td style="padding:8px 10px;color:#D1D5DB;">'+u.email+'</td><td style="padding:8px 10px;color:#9CA3AF;">'+dt+'</td><td style="padding:8px 10px;color:'+roleColor+';font-weight:500;">'+role+'</td></tr>';}).join('');}catch(e){tb.innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:#f87171;">Errore caricamento</td></tr>';}}
+function closeUsersModal(){document.getElementById('users-modal').style.display='none';}
+(async function(){try{var r=await fetch('/api/auth/status');var d=await r.json();var lbl=document.getElementById('user-label');var li=document.getElementById('dd-login');var lo=document.getElementById('dd-logout');var hdr=document.getElementById('dd-header');var uname=document.getElementById('dd-username');var drole=document.getElementById('dd-role');var prof=document.getElementById('dd-profile');var apik=document.getElementById('dd-apikey');var tg=document.getElementById('dd-telegram');var usrs=document.getElementById('dd-users');if(d.logged_in){if(lbl)lbl.textContent=d.username||'Admin';if(li)li.style.display='none';if(lo)lo.style.display='flex';if(prof)prof.style.display='flex';if(apik)apik.style.display=(d.role==='admin'?'flex':'none');if(tg)tg.style.display=(d.role==='admin'?'flex':'none');if(usrs)usrs.style.display=(d.role==='admin'?'flex':'none');if(hdr)hdr.style.display='block';if(uname)uname.textContent=d.username||'admin';if(drole)drole.textContent=d.role==='admin'?'Amministratore':d.role||'';}else{if(lbl)lbl.textContent='Guest';if(li)li.style.display='flex';if(lo)lo.style.display='none';if(prof)prof.style.display='none';if(apik)apik.style.display='none';if(tg)tg.style.display='none';if(usrs)usrs.style.display='none';if(hdr)hdr.style.display='none';}}catch(e){}})();
+</script>
+<!-- API Key Modal -->
+<div id="apikey-modal" onclick="if(event.target===this)closeApiKeyModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#161A1E;border:1px solid #2A2E39;border-radius:12px;padding:28px 24px;width:340px;max-width:90vw;position:relative;">
+    <button onclick="closeApiKeyModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#6B7280;cursor:pointer;font-size:22px;line-height:1;padding:0;">×</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <svg viewBox="0 0 24 24" width="20" height="20" style="color:#F7931A;flex-shrink:0;"><path fill="currentColor" d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+      <span style="font-size:15px;font-weight:700;color:#E5E7EB;">Bybit API Key</span>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">API KEY</div>
+      <div id="ak-key" style="font-family:monospace;font-size:12px;color:#E5E7EB;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 12px;word-break:break-all;min-height:34px;">—</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">API SECRET</div>
+      <div id="ak-secret" style="font-family:monospace;font-size:12px;color:#6B7280;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 12px;">—</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="font-size:11px;color:#9CA3AF;font-weight:500;">Trading:</div>
+      <span id="ak-trade-badge" style="font-size:10px;font-weight:600;padding:2px 10px;border-radius:12px;background:#1f2937;color:#6B7280;">—</span>
+    </div>
+  </div>
+</div>
+<!-- Telegram Modal -->
+<div id="telegram-modal" onclick="if(event.target===this)closeTelegramModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#161A1E;border:1px solid #2A2E39;border-radius:12px;padding:28px 24px;width:340px;max-width:90vw;position:relative;">
+    <button onclick="closeTelegramModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#6B7280;cursor:pointer;font-size:22px;line-height:1;padding:0;">×</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <svg viewBox="0 0 24 24" width="20" height="20" style="color:#2CA5E0;flex-shrink:0;"><path fill="currentColor" d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L6.922 13.4l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.226.159z"/></svg>
+      <span style="font-size:15px;font-weight:700;color:#E5E7EB;">Telegram Bot</span>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">BOT TOKEN</div>
+      <input id="tg-tok-m" type="text" autocomplete="off" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 12px;font-size:12px;color:#E5E7EB;outline:none;box-sizing:border-box;" placeholder="123456789:AAH...">
+    </div>
+    <div style="margin-bottom:20px;">
+      <div style="font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">CHAT ID</div>
+      <input id="tg-chat-m" type="text" autocomplete="off" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 12px;font-size:12px;color:#E5E7EB;outline:none;box-sizing:border-box;" placeholder="175622450">
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button onclick="saveTelegramModal()" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;">Salva</button>
+      <span id="tg-modal-msg" style="font-size:12px;min-height:18px;"></span>
+    </div>
+  </div>
+</div>
+<!-- Users Modal -->
+<div id="users-modal" onclick="if(event.target===this)closeUsersModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#161A1E;border:1px solid #2A2E39;border-radius:12px;padding:28px 24px;width:620px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;position:relative;">
+    <button onclick="closeUsersModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#6B7280;cursor:pointer;font-size:22px;line-height:1;padding:0;">×</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <svg viewBox="0 0 24 24" width="20" height="20" style="color:#F7931A;flex-shrink:0;"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+      <span style="font-size:15px;font-weight:700;color:#E5E7EB;">Utenti Registrati</span>
+    </div>
+    <div style="overflow-y:auto;flex:1;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="border-bottom:1px solid #2A2E39;">
+            <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">USERNAME</th>
+            <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">EMAIL</th>
+            <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">ISCRIZIONE</th>
+            <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">RUOLO</th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 </body>
 </html>

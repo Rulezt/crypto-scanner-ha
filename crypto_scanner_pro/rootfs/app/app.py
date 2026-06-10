@@ -2,15 +2,20 @@
 Crypto Scanner Professional - All-in-One
 Flask API + Scanners integrati + Dashboard
 """
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, session, redirect, url_for, Response
 from flask_cors import CORS
 from datetime import datetime, timedelta
+from functools import wraps
+import hashlib
+import secrets
 import os
 import json
 import threading
 import time
 import logging
 import uuid
+import sqlite3
+import re
 from scanners.ema_proximity import EMAProximityScanner
 from scanners.ath_atl_scanner import ATHATLScanner
 from scanners.ico_levels_scanner import ICOLevelsScanner
@@ -23,6 +28,145 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
+
+# Secret key per sessioni
+_sk_file = '/data/.secret_key'
+if os.path.exists(_sk_file):
+    with open(_sk_file) as f:
+        app.secret_key = f.read().strip()
+else:
+    app.secret_key = secrets.token_hex(32)
+    with open(_sk_file, 'w') as f:
+        f.write(app.secret_key)
+
+# Auth config
+AUTH_FILE = '/data/auth.json'
+
+def _get_auth():
+    if os.path.exists(AUTH_FILE):
+        with open(AUTH_FILE) as f:
+            auth = json.load(f)
+        dirty = False
+        if 'email' not in auth:
+            auth['email'] = ''; dirty = True
+        if 'role' not in auth:
+            auth['role'] = 'admin'; dirty = True
+        if dirty:
+            with open(AUTH_FILE, 'w') as f: json.dump(auth, f)
+        return auth
+    default = {'username': 'admin', 'password_hash': _hash_pw('admin'), 'email': '', 'role': 'admin'}
+    with open(AUTH_FILE, 'w') as f:
+        json.dump(default, f)
+    return default
+
+def _hash_pw(pw):
+    return hashlib.sha256(pw.encode()).hexdigest()
+
+# ── USERS DB ───────────────────────────────────────────────────────────────────
+USERS_DB = '/data/users.db'
+
+def _init_users_db():
+    with sqlite3.connect(USERS_DB) as conn:
+        conn.execute('''CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT '',
+            verified INTEGER NOT NULL DEFAULT 0,
+            verify_token TEXT,
+            created_at TEXT NOT NULL
+        )''')
+        try:
+            conn.execute('ALTER TABLE users ADD COLUMN verified INTEGER NOT NULL DEFAULT 0')
+        except Exception:
+            pass
+        try:
+            conn.execute('ALTER TABLE users ADD COLUMN verify_token TEXT')
+        except Exception:
+            pass
+        conn.commit()
+
+def _db_get_user(username):
+    try:
+        with sqlite3.connect(USERS_DB) as conn:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute('SELECT * FROM users WHERE lower(username)=lower(?)', (username,)).fetchone()
+            return dict(row) if row else None
+    except Exception:
+        return None
+
+def _db_create_user(username, email, password_hash):
+    import secrets
+    token = secrets.token_urlsafe(32)
+    try:
+        with sqlite3.connect(USERS_DB) as conn:
+            conn.execute(
+                'INSERT INTO users (username, email, password_hash, role, created_at, verified, verify_token) VALUES (?,?,?,?,?,?,?)',
+                (username, email.lower(), password_hash, '', datetime.utcnow().isoformat(), 0, token))
+            conn.commit()
+        return token
+    except sqlite3.IntegrityError:
+        return None
+
+
+
+def _send_verification_email(to_email, username, token):
+    import smtplib
+    from email.mime.text import MIMEText
+    link = 'https://cryptoscannerpro.com/verify/' + token
+    body = (
+        'Ciao ' + username + ',\n\n'
+        'Grazie per esserti iscritto a Crypto Scanner Pro.\n'
+        'Clicca il link qui sotto per attivare il tuo account:\n\n'
+        + link + '\n\n'
+        'Crypto Scanner Pro'
+    )
+    msg = MIMEText(body, 'plain', 'utf-8')
+    msg['Subject'] = 'Attiva il tuo account - Crypto Scanner Pro'
+    msg['From'] = 'Crypto Scanner Pro <info@cryptoscannerpro.com>'
+    msg['To'] = to_email
+    try:
+        with smtplib.SMTP('172.17.0.1', 25, timeout=10) as s:
+            s.sendmail('info@cryptoscannerpro.com', [to_email], msg.as_string())
+        return True
+    except Exception as e:
+        logger.error('Email send error: ' + str(e))
+        return False
+
+
+def _send_recovery_email(to_email, username, new_pw):
+    import smtplib
+    from email.mime.text import MIMEText
+    body = (
+        'Ciao ' + username + ',\n\n'
+        'Hai richiesto il recupero delle credenziali di accesso a Crypto Scanner Pro.\n\n'
+        'Username: ' + username + '\n'
+        'Password temporanea: ' + new_pw + '\n\n'
+        'Accedi con queste credenziali e cambia la password appena possibile '
+        'dalla sezione impostazioni del tuo profilo.\n\n'
+        'Crypto Scanner Pro'
+    )
+    msg = MIMEText(body, 'plain', 'utf-8')
+    msg['Subject'] = 'Recupero accesso - Crypto Scanner Pro'
+    msg['From'] = 'Crypto Scanner Pro <info@cryptoscannerpro.com>'
+    msg['To'] = to_email
+    try:
+        with smtplib.SMTP('172.17.0.1', 25, timeout=10) as s:
+            s.sendmail('info@cryptoscannerpro.com', [to_email], msg.as_string())
+        return True
+    except Exception as e:
+        logger.error('Recovery email error: ' + str(e))
+        return False
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('logged_in'):
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'unauthorized'}), 401
+            return redirect(url_for('login_page', next=request.url))
+        return f(*args, **kwargs)
+    return decorated
 
 # Config storage file
 CONFIG_FILE = '/data/scanner_config.json'
@@ -111,10 +255,10 @@ def _compute_ema_series(prices, period):
     return series
 
 def _count_ema_touches_daily(klines_30m, period=60, threshold=2.0):
-    """Count closed 30m candles since midnight UTC where close >= EMA and dist < threshold%.
-    Uses the same criterion as the EMA scanner (v4.6.74 fix)."""
+    """Count 30m candles since midnight UTC where wick crosses EMA (low<=EMA<=high).
+    Each candle counts as 1 touch. Resets at midnight UTC."""
     import calendar, datetime
-    past = klines_30m[:-1]  # exclude live candle
+    past = klines_30m
     if len(past) < period:
         return None
     now = datetime.datetime.utcnow()
@@ -125,10 +269,10 @@ def _count_ema_touches_daily(klines_30m, period=60, threshold=2.0):
     for i, k in enumerate(past):
         if k['time'] < midnight_ts:
             continue
-        ema_val = ema_series[i]
-        if ema_val is None:
+        ev = ema_series[i]
+        if ev is None:
             continue
-        if k['close'] >= ema_val and abs((k['close'] - ema_val) / ema_val * 100) < threshold:
+        if k['low'] <= ev <= k['high']:
             count += 1
     return count
 
@@ -570,6 +714,21 @@ def get_high_volume():
         ath_scanner = scanners.get('ath_atl')
         for coin in coins:
             klines_30m = ws_manager.get_klines(coin['symbol'], '30')
+            if len(klines_30m) < 60:
+                try:
+                    import requests as _req
+                    r = _req.get('https://api.bybit.com/v5/market/kline',
+                        params={'category':'linear','symbol':coin['symbol'],'interval':'30','limit':200},
+                        timeout=5)
+                    d = r.json()
+                    if d.get('retCode') == 0:
+                        klines_30m = [{'time':int(k[0])//1000,'open':float(k[1]),'high':float(k[2]),
+                            'low':float(k[3]),'close':float(k[4]),'volume':float(k[5])}
+                            for k in reversed(d['result']['list'])]
+                        with ws_manager._lock:
+                            ws_manager._klines[(coin['symbol'],'30')] = klines_30m
+                except Exception as _fe:
+                    logger.error(f'kline fallback {coin["symbol"]}: {_fe}')
             closes = [k['close'] for k in klines_30m]
             ema = _compute_ema(closes, 60)
             coin['ema60_30m'] = ema
@@ -1035,46 +1194,550 @@ def get_ticker():
         return jsonify({'error': str(e)}), 500
 
 
+# ── SETTINGS ──────────────────────────────────────────────────────────────────
+OPTIONS_FILE = '/data/options.json'
+
+def _read_opts():
+    try:
+        with open(OPTIONS_FILE) as f:
+            opts = json.load(f)
+        opts['bybit_api_key']    = _dec(opts.get('bybit_api_key', ''))
+        opts['bybit_api_secret'] = _dec(opts.get('bybit_api_secret', ''))
+        return opts
+    except:
+        return {}
+
+def _write_opts(opts):
+    to_save = dict(opts)
+    to_save['bybit_api_key']    = _enc(to_save.get('bybit_api_key', ''))
+    to_save['bybit_api_secret'] = _enc(to_save.get('bybit_api_secret', ''))
+    with open(OPTIONS_FILE, 'w') as f:
+        json.dump(to_save, f, indent=2)
+
+@app.route('/settings')
+def settings_page():
+    return send_file('/usr/share/nginx/html/settings.html')
+
+@app.route('/profile')
+@login_required
+def profile_page():
+    return send_file('/usr/share/nginx/html/profile.html')
+
+@app.route('/api/settings', methods=['GET'])
+@login_required
+def get_settings():
+    opts = _read_opts()
+    key = opts.get('bybit_api_key', '')
+    sec = opts.get('bybit_api_secret', '')
+    return jsonify({
+        'telegram_token':   opts.get('telegram_token', ''),
+        'telegram_chat_id': opts.get('telegram_chat_id', ''),
+        'bybit_api_key':    key,
+        'bybit_api_secret': ('●' * 8) if sec else '',
+        'bybit_secret_set': bool(sec),
+        'trading_enabled':  opts.get('trading_enabled', False),
+    })
+
+@app.route('/api/settings', methods=['POST'])
+@login_required
+def save_settings():
+    data = request.get_json() or {}
+    opts = _read_opts()
+    if 'telegram_token'   in data: opts['telegram_token']   = data['telegram_token'].strip()
+    if 'telegram_chat_id' in data: opts['telegram_chat_id'] = data['telegram_chat_id'].strip()
+    if 'bybit_api_key'    in data: opts['bybit_api_key']    = data['bybit_api_key'].strip()
+    if 'bybit_api_secret' in data and data['bybit_api_secret'] and '●' not in data['bybit_api_secret']:
+        opts['bybit_api_secret'] = data['bybit_api_secret'].strip()
+    if 'trading_enabled'  in data: opts['trading_enabled']  = bool(data['trading_enabled'])
+    _write_opts(opts)
+    return jsonify({'success': True})
+
+# ── TRADING ───────────────────────────────────────────────────────────────────
+import hmac as _hmac, hashlib as _hashlib
+from cryptography.fernet import Fernet
+_BYB = 'https://api.bybit.com'
+
+# ── FERNET ENCRYPTION ─────────────────────────────────────────────────────────
+_fernet_key_file = '/data/.fernet_key'
+
+def _get_fernet():
+    if os.path.exists(_fernet_key_file):
+        with open(_fernet_key_file, 'rb') as f:
+            key = f.read().strip()
+    else:
+        key = Fernet.generate_key()
+        with open(_fernet_key_file, 'wb') as f:
+            f.write(key)
+        try:
+            os.chmod(_fernet_key_file, 0o600)
+        except Exception:
+            pass
+        logger.info('✅ Fernet key generated')
+    return Fernet(key)
+
+def _enc(value):
+    if not value:
+        return value
+    return 'enc:' + _get_fernet().encrypt(value.encode()).decode()
+
+def _dec(value):
+    if not value or not str(value).startswith('enc:'):
+        return value  # plain text legacy — will be encrypted on next save
+    try:
+        return _get_fernet().decrypt(value[4:].encode()).decode()
+    except Exception:
+        logger.warning('⚠️ Failed to decrypt field — key mismatch?')
+        return ''
+
+def _tcfg():
+    try:
+        opts = _read_opts()
+        k = opts.get('bybit_api_key', '').strip()
+        s = opts.get('bybit_api_secret', '').strip()
+        return k, s, bool(opts.get('trading_enabled')) and bool(k) and bool(s)
+    except: return '', '', False
+
+def _bsign(key, secret, payload):
+    ts = str(int(time.time() * 1000))
+    sig = _hmac.new(secret.encode(), (ts + key + '5000' + payload).encode(), _hashlib.sha256).hexdigest()
+    return {'X-BAPI-API-KEY': key, 'X-BAPI-TIMESTAMP': ts, 'X-BAPI-SIGN': sig,
+            'X-BAPI-RECV-WINDOW': '5000', 'Content-Type': 'application/json'}
+
+@app.route('/api/trade/config')
+@login_required
+def trade_config():
+    _, _, en = _tcfg()
+    return jsonify({'enabled': en})
+
+@app.route('/api/trade/balance')
+@login_required
+def trade_balance():
+    import requests as rq
+    k, s, en = _tcfg()
+    if not en: return jsonify({'error': 'not configured'}), 403
+    qs = 'accountType=UNIFIED'
+    d = rq.get(f'{_BYB}/v5/account/wallet-balance?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg')}), 400
+    for acc in d['result']['list']:
+        for c in acc.get('coin', []):
+            if c['coin'] == 'USDT':
+                def _f(v): return float(v) if v not in ('', None) else 0.0
+                avail = _f(c.get('availableToWithdraw')) or _f(c.get('walletBalance', 0))
+                return jsonify({'available': avail, 'equity': _f(c.get('equity', 0))})
+    return jsonify({'available': 0, 'equity': 0})
+
+@app.route('/api/trade/position')
+@login_required
+def trade_position():
+    import requests as rq
+    k, s, en = _tcfg()
+    if not en: return jsonify({'error': 'not configured'}), 403
+    sym = request.args.get('symbol', '').upper()
+    qs = f'category=linear&symbol={sym}'
+    d = rq.get(f'{_BYB}/v5/position/list?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg')}), 400
+    lst = d['result']['list']
+    if not lst or float(lst[0].get('size', 0)) == 0: return jsonify({'position': None})
+    p = lst[0]
+    def _fv(v): return float(v) if v and v != '0' else None
+    return jsonify({'position': {
+        'side': p['side'], 'size': float(p['size']), 'entryPrice': float(p['avgPrice']),
+        'leverage': float(p['leverage']), 'unrealizedPnl': float(p.get('unrealisedPnl', 0)),
+        'stopLoss': _fv(p.get('stopLoss')), 'takeProfit': _fv(p.get('takeProfit')),
+        'markPrice': float(p.get('markPrice', 0)), 'liqPrice': _fv(p.get('liqPrice')),
+    }})
+
+@app.route('/api/trade/instrument')
+@login_required
+def trade_instrument():
+    import requests as rq
+    sym = request.args.get('symbol', '').upper()
+    d = rq.get(f'{_BYB}/v5/market/instruments-info',
+               params={'category': 'linear', 'symbol': sym}, timeout=6).json()
+    if d.get('retCode') != 0 or not d['result']['list']: return jsonify({'error': 'not found'}), 404
+    info = d['result']['list'][0]
+    lot = info.get('lotSizeFilter', {}); lev = info.get('leverageFilter', {})
+    return jsonify({'qtyStep': lot.get('qtyStep', '0.001'),
+                    'minOrderQty': lot.get('minOrderQty', '0.001'),
+                    'maxLeverage': float(lev.get('maxLeverage', 100))})
+
+@app.route('/api/trade/orders')
+@login_required
+def trade_orders():
+    import requests as rq
+    k, s, en = _tcfg()
+    if not en: return jsonify({'error': 'not configured'}), 403
+    sym = request.args.get('symbol', '').upper()
+    orders = []
+    for flt in ['Order', 'StopOrder']:
+        open_only = '1' if flt == 'Order' else '0'
+        qs = f'category=linear&symbol={sym}&openOnly={open_only}&orderFilter={flt}&limit=20'
+        d = rq.get(f'{_BYB}/v5/order/realtime?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+        if d.get('retCode') != 0: continue
+        for o in d['result']['list']:
+            if o.get('orderStatus') not in ('New', 'PartiallyFilled', 'Untriggered'):
+                continue
+            orders.append({
+                'orderId':      o['orderId'],
+                'side':         o['side'],
+                'orderType':    o['orderType'],
+                'qty':          o['qty'],
+                'price':        o.get('price', ''),
+                'triggerPrice': o.get('triggerPrice', ''),
+                'stopLoss':     o.get('stopLoss', ''),
+                'takeProfit':   o.get('takeProfit', ''),
+                'orderFilter':  flt,
+                'status':       o['orderStatus'],
+            })
+    resp = jsonify({'orders': orders})
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
+@app.route('/api/trade/cancel', methods=['POST'])
+@login_required
+def trade_cancel():
+    import requests as rq
+    k, s, en = _tcfg()
+    if not en: return jsonify({'error': 'not configured'}), 403
+    data = request.get_json() or {}
+    sym = data.get('symbol', '').upper()
+    order_id = data.get('orderId', '')
+    order_filter = data.get('orderFilter', 'Order')
+    if not sym or not order_id: return jsonify({'error': 'missing params'}), 400
+    body = json.dumps({'category': 'linear', 'symbol': sym, 'orderId': order_id, 'orderFilter': order_filter})
+    d = rq.post(f'{_BYB}/v5/order/cancel', headers=_bsign(k, s, body), data=body, timeout=10).json()
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg')}), 400
+    return jsonify({'success': True})
+
+@app.route('/api/trade/amend', methods=['POST'])
+@login_required
+def trade_amend():
+    import requests as rq
+    k, s, en = _tcfg()
+    if not en: return jsonify({'error': 'not configured'}), 403
+    data = request.get_json() or {}
+    sym = data.get('symbol', '').upper()
+    order_id = data.get('orderId', '')
+    if not sym or not order_id: return jsonify({'error': 'missing params'}), 400
+    body = {'category': 'linear', 'symbol': sym, 'orderId': order_id}
+    if data.get('triggerPrice'): body['triggerPrice'] = str(data['triggerPrice'])
+    if data.get('price'): body['price'] = str(data['price'])
+    if data.get('qty'): body['qty'] = str(data['qty'])
+    if data.get('stopLoss') not in (None, '', 0): body['stopLoss'] = str(data['stopLoss'])
+    if data.get('takeProfit') not in (None, '', 0): body['takeProfit'] = str(data['takeProfit'])
+    b = json.dumps(body)
+    d = rq.post(f'{_BYB}/v5/order/amend', headers=_bsign(k, s, b), data=b, timeout=10).json()
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg')}), 400
+    return jsonify({'success': True})
+
+@app.route('/api/trade/order', methods=['POST'])
+@login_required
+def trade_order():
+    import requests as rq
+    k, s, en = _tcfg()
+    if not en: return jsonify({'error': 'not configured'}), 403
+    data = request.get_json() or {}
+    sym = data.get('symbol', '').upper(); side = data.get('side')
+    otype = data.get('orderType', 'Market'); qty = str(data.get('qty', ''))
+    lev = str(int(data.get('leverage', 10)))
+    order_filter = data.get('orderFilter', 'Order')
+    trigger_price = data.get('triggerPrice')
+    if not all([sym, side, qty]): return jsonify({'error': 'missing params'}), 400
+    lb = json.dumps({'category': 'linear', 'symbol': sym, 'buyLeverage': lev, 'sellLeverage': lev})
+    rq.post(f'{_BYB}/v5/position/set-leverage', headers=_bsign(k, s, lb), data=lb, timeout=6)
+    order = {'category': 'linear', 'symbol': sym, 'side': side, 'orderType': otype, 'qty': qty,
+             'timeInForce': 'GTC' if otype == 'Limit' else 'IOC'}
+    if order_filter == 'StopOrder':
+        order['orderFilter'] = 'StopOrder'
+        order['timeInForce'] = 'GTC'
+        order['triggerBy'] = 'LastPrice'
+        if trigger_price: order['triggerPrice'] = str(trigger_price)
+        if data.get('triggerDirection'): order['triggerDirection'] = int(data['triggerDirection'])
+    if otype == 'Limit' and data.get('price'): order['price'] = str(data['price'])
+    if data.get('stopLoss'): order['stopLoss'] = str(data['stopLoss'])
+    if data.get('takeProfit'): order['takeProfit'] = str(data['takeProfit'])
+    body = json.dumps(order)
+    d = rq.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg', 'Order failed')}), 400
+    return jsonify({'success': True, 'orderId': d['result'].get('orderId')})
+
+@app.route('/api/trade/close', methods=['POST'])
+@login_required
+def trade_close_pos():
+    import requests as rq
+    k, s, en = _tcfg()
+    if not en: return jsonify({'error': 'not configured'}), 403
+    data = request.get_json() or {}
+    body = json.dumps({'category': 'linear', 'symbol': data.get('symbol', '').upper(),
+                       'side': data.get('side'), 'orderType': 'Market',
+                       'qty': str(data.get('qty', '')), 'reduceOnly': True, 'timeInForce': 'IOC'})
+    d = rq.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg')}), 400
+    return jsonify({'success': True})
+
+@app.route('/api/trade/set-sltp', methods=['POST'])
+@login_required
+def trade_set_sltp():
+    import requests as rq
+    k, s, en = _tcfg()
+    if not en: return jsonify({'error': 'not configured'}), 403
+    data = request.get_json() or {}
+    body = {'category': 'linear', 'symbol': data.get('symbol', '').upper(), 'positionIdx': 0}
+    if data.get('stopLoss') is not None: body['stopLoss'] = str(data['stopLoss'])
+    if data.get('takeProfit') is not None: body['takeProfit'] = str(data['takeProfit'])
+    b = json.dumps(body)
+    d = rq.post(f'{_BYB}/v5/position/trading-stop', headers=_bsign(k, s, b), data=b, timeout=6).json()
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg')}), 400
+    return jsonify({'success': True})
+
+# ── END TRADING ────────────────────────────────────────────────────────────────
+
+# ── AUTH ───────────────────────────────────────────────────────────────────────
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+    next_url = data.get('next', '').strip() or '/'
+    if not next_url.startswith('/'):
+        next_url = '/'
+    auth = _get_auth()
+    if username == auth['username'] and _hash_pw(password) == auth['password_hash']:
+        session['logged_in'] = True
+        session['username'] = auth['username']
+        session['role'] = auth.get('role', 'admin')
+        session.permanent = True
+        return jsonify({'success': True, 'redirect': next_url})
+    user = _db_get_user(username)
+    if user and _hash_pw(password) == user['password_hash']:
+        if not user.get('verified', 0):
+            return jsonify({'success': False, 'error': 'Account non verificato. Controlla la tua email.'})
+        session['logged_in'] = True
+        session['username'] = user['username']
+        session['role'] = user.get('role', '')
+        session.permanent = True
+        return jsonify({'success': True, 'redirect': next_url})
+    return jsonify({'success': False, 'error': 'Credenziali non valide'})
+
+@app.route('/login', methods=['GET', 'POST'])
+def login_page():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        auth = _get_auth()
+        if username == auth['username'] and _hash_pw(password) == auth['password_hash']:
+            session['logged_in'] = True
+            session['username'] = auth['username']
+            session['role'] = auth.get('role', 'admin')
+            session.permanent = True
+            return redirect(request.args.get('next') or url_for('index'))
+        user = _db_get_user(username)
+        if user and _hash_pw(password) == user['password_hash']:
+            if not user.get('verified', 0):
+                return redirect(url_for('login_page', error='Account+non+verificato.+Controlla+la+tua+email'))
+            session['logged_in'] = True
+            session['username'] = user['username']
+            session['role'] = user.get('role', '')
+            session.permanent = True
+            return redirect(request.args.get('next') or url_for('index'))
+        return redirect(url_for('login_page', error='Credenziali+non+valide'))
+    if session.get('logged_in'):
+        return redirect(url_for('index'))
+    return send_file('/usr/share/nginx/html/login.html')
+
+
+@app.route('/verify/<token>')
+def verify_email(token):
+    try:
+        with sqlite3.connect(USERS_DB) as conn:
+            row = conn.execute('SELECT username FROM users WHERE verify_token=?', (token,)).fetchone()
+            if not row:
+                return '<h2 style=font-family:sans-serif;color:#f87171;text-align:center;margin-top:100px>Link non valido o gia usato.</h2>', 400
+            conn.execute('UPDATE users SET verified=1, verify_token=NULL WHERE verify_token=?', (token,))
+        username = row[0]
+        user = _db_get_user(username)
+        session['logged_in'] = True
+        session['username'] = username
+        session['role'] = user.get('role', '') if user else ''
+        session.permanent = True
+        return redirect(url_for('index'))
+    except Exception as e:
+        return 'Errore: ' + str(e), 500
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
+
+@app.route('/api/recover-password', methods=['POST'])
+def recover_password():
+    import secrets as _secrets, string, random
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+    if not email:
+        return jsonify({'success': False, 'error': 'Email mancante'}), 400
+    username = None
+    new_pw = None
+    try:
+        with sqlite3.connect(USERS_DB) as conn:
+            row = conn.execute('SELECT username FROM users WHERE email=?', (email,)).fetchone()
+            if row:
+                username = row[0]
+                chars = string.ascii_lowercase
+                pw_list = [_secrets.choice(chars) for _ in range(3)] + [_secrets.choice(string.digits) for _ in range(3)]
+                random.shuffle(pw_list)
+                new_pw = ''.join(pw_list)
+                conn.execute('UPDATE users SET password_hash=? WHERE email=?', (_hash_pw(new_pw), email))
+    except Exception as e:
+        logger.error('recover_password db error: ' + str(e))
+    if username and new_pw:
+        _send_recovery_email(email, username, new_pw)
+    return jsonify({'success': True})
+
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+    email = data.get('email', '').strip()
+    password = data.get('password', '')
+    confirm = data.get('confirm', '')
+    if not username or len(username) < 3:
+        return jsonify({'success': False, 'error': 'Username troppo corto (min 3 caratteri)'}), 400
+    if not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
+        return jsonify({'success': False, 'error': 'Username non valido (solo lettere, numeri, _, -, .)'}), 400
+    if not email or '@' not in email or '.' not in email.split('@')[-1]:
+        return jsonify({'success': False, 'error': 'Email non valida'}), 400
+    if len(password) < 6:
+        return jsonify({'success': False, 'error': 'Password min 6 caratteri'}), 400
+    if password != confirm:
+        return jsonify({'success': False, 'error': 'Le password non coincidono'}), 400
+    auth = _get_auth()
+    if username.lower() == auth['username'].lower():
+        return jsonify({'success': False, 'error': 'Username già in uso'}), 400
+    token = _db_create_user(username, email, _hash_pw(password))
+    if not token:
+        return jsonify({'success': False, 'error': 'Username o email già registrati'}), 400
+    _send_verification_email(email, username, token)
+    return jsonify({'success': True, 'message': 'Controlla la tua email per attivare il tuo account'})
+
+@app.route('/api/auth/status')
+def auth_status():
+    logged_in = bool(session.get('logged_in'))
+    if logged_in:
+        username = session.get('username')
+        role = session.get('role')
+        if username is None:
+            auth = _get_auth()
+            username = auth.get('username', 'admin')
+            role = auth.get('role', 'admin')
+    else:
+        username = None; role = None
+    return jsonify({'logged_in': logged_in, 'username': username, 'role': role})
+
+@app.route('/api/auth/profile', methods=['GET'])
+@login_required
+def get_profile():
+    if session.get('role') == 'admin':
+        auth = _get_auth()
+        return jsonify({'username': auth.get('username', 'admin'), 'email': auth.get('email', ''), 'role': 'admin'})
+    user = _db_get_user(session.get('username', ''))
+    if not user:
+        return jsonify({'error': 'Utente non trovato'}), 404
+    return jsonify({'username': user['username'], 'email': user['email'], 'role': user['role'] or ''})
+
+@app.route('/api/auth/profile', methods=['POST'])
+@login_required
+def save_profile():
+    data = request.get_json() or {}
+    if session.get('role') == 'admin':
+        auth = _get_auth()
+        if 'email' in data: auth['email'] = data['email'].strip()
+        with open(AUTH_FILE, 'w') as f: json.dump(auth, f)
+    else:
+        username = session.get('username', '')
+        if 'email' in data:
+            try:
+                with sqlite3.connect(USERS_DB) as conn:
+                    conn.execute('UPDATE users SET email=? WHERE lower(username)=lower(?)',
+                                 (data['email'].strip().lower(), username))
+                    conn.commit()
+            except Exception:
+                return jsonify({'success': False, 'error': 'Errore aggiornamento email'}), 500
+    return jsonify({'success': True})
+
+@app.route('/api/auth/change-password', methods=['POST'])
+@login_required
+def change_password():
+    data = request.get_json() or {}
+    if session.get('role') == 'admin':
+        auth = _get_auth()
+        if _hash_pw(data.get('current', '')) != auth['password_hash']:
+            return jsonify({'success': False, 'error': 'Password attuale errata'}), 400
+        new_pw = data.get('new', '').strip()
+        if len(new_pw) < 6:
+            return jsonify({'success': False, 'error': 'Password troppo corta (min 6 caratteri)'}), 400
+        auth['password_hash'] = _hash_pw(new_pw)
+        if data.get('username'):
+            auth['username'] = data['username'].strip()
+        with open(AUTH_FILE, 'w') as f:
+            json.dump(auth, f)
+    else:
+        username = session.get('username', '')
+        user = _db_get_user(username)
+        if not user:
+            return jsonify({'success': False, 'error': 'Utente non trovato'}), 404
+        if _hash_pw(data.get('current', '')) != user['password_hash']:
+            return jsonify({'success': False, 'error': 'Password attuale errata'}), 400
+        new_pw = data.get('new', '').strip()
+        if len(new_pw) < 6:
+            return jsonify({'success': False, 'error': 'Password troppo corta (min 6 caratteri)'}), 400
+        try:
+            with sqlite3.connect(USERS_DB) as conn:
+                conn.execute('UPDATE users SET password_hash=? WHERE lower(username)=lower(?)',
+                             (_hash_pw(new_pw), username))
+                conn.commit()
+        except Exception:
+            return jsonify({'success': False, 'error': 'Errore aggiornamento password'}), 500
+    return jsonify({'success': True})
+
+# ── PAGES ──────────────────────────────────────────────────────────────────────
+
 @app.route('/chart', methods=['GET'])
 def chart_page():
-    """Serve realtime chart page"""
     return send_file('/usr/share/nginx/html/chart.html')
 
 
 @app.route('/mtf', methods=['GET'])
 def mtf_page():
-    """Serve multi-timeframe chart page."""
     return send_file('/usr/share/nginx/html/mtf.html')
 
 
 @app.route('/screener', methods=['GET'])
+@login_required
 def screener_page():
     return send_file('/usr/share/nginx/html/screener.html')
 
 
 @app.route('/screenshot', methods=['GET'])
 def screenshot_page():
-    """Serve single-chart screenshot page (used by Selenium for alert images)."""
     return send_file('/usr/share/nginx/html/screenshot.html')
 
 
 @app.route('/dt_chart', methods=['GET'])
 def dt_chart_page():
-    """Serve Terzo Tocco alert screenshot page (mirrors popup chart)."""
     return send_file('/usr/share/nginx/html/dt_chart.html')
 
 
 @app.route('/double-touch', methods=['GET'])
 @app.route('/double-touch.html', methods=['GET'])
 def double_touch_page():
-    """Serve Terzo Tocco scanner page."""
     return send_file('/usr/share/nginx/html/double_touch.html')
 
 
 @app.route('/orderbook', methods=['GET'])
 @app.route('/orderbook.html', methods=['GET'])
 def orderbook_page():
-    """Serve order book page."""
     return send_file('/usr/share/nginx/html/orderbook.html')
 
 
@@ -1095,11 +1758,111 @@ def favicon():
 
 @app.route('/', methods=['GET'])
 def index():
-    """Serve dashboard"""
     return send_file('/usr/share/nginx/html/index.html')
 
+
+def _prefetch_klines_30m():
+    """Pre-fetch 30m klines for top 200 coins at startup, 5 at a time."""
+    import requests as _req, time as _time
+    try:
+        r = _req.get('https://api.bybit.com/v5/market/tickers',
+                     params={'category': 'linear'}, timeout=10)
+        symbols = [item['symbol'] for item in r.json().get('result', {}).get('list', [])
+                   if item.get('symbol', '').endswith('USDT')][:200]
+    except Exception as e:
+        logger.error(f'prefetch: failed to get symbols: {e}')
+        return
+    logger.info(f'Prefetching 30m klines for {len(symbols)} symbols...')
+    def fetch_one(sym):
+        try:
+            r = _req.get('https://api.bybit.com/v5/market/kline',
+                params={'category':'linear','symbol':sym,'interval':'30','limit':300},
+                timeout=8)
+            d = r.json()
+            if d.get('retCode') == 0:
+                candles = [{'time':int(k[0])//1000,'open':float(k[1]),'high':float(k[2]),
+                    'low':float(k[3]),'close':float(k[4]),'volume':float(k[5])}
+                    for k in reversed(d['result']['list'])]
+                with ws_manager._lock:
+                    ws_manager._klines[(sym,'30')] = candles
+        except Exception as e:
+            logger.warning(f'prefetch kline {sym}: {e}')
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        list(pool.map(fetch_one, symbols))
+    logger.info('Prefetch 30m klines complete.')
+
+
+@app.route('/api/debug-klines')
+def debug_klines():
+    syms = ['TONUSDT','BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT']
+    result = {}
+    for s in syms:
+        klines = ws_manager.get_klines(s, '30')
+        result[s] = len(klines)
+    result['tickers_count'] = len(ws_manager.get_all_tickers())
+    return jsonify(result)
+
+
+@app.route('/api/admin/unread-mail', methods=['GET'])
+@login_required
+def admin_unread_mail():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Accesso negato'}), 403
+    import imaplib
+    try:
+        m = imaplib.IMAP4("172.17.0.1", 143)
+        m.login("info", "CryptoScanner2026!")
+        m.select("INBOX", readonly=True)
+        _, msgs = m.search(None, "UNSEEN")
+        count = len(msgs[0].split()) if msgs[0] else 0
+        m.logout()
+    except Exception:
+        count = 0
+        count = 0
+    return jsonify({'unread': count})
+
+
+@app.route('/api/admin/users/<username>', methods=['DELETE'])
+@login_required
+def admin_delete_user(username):
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Accesso negato'}), 403
+    if username == session.get('username'):
+        return jsonify({'error': 'Non puoi eliminare il tuo account'}), 400
+    try:
+        with sqlite3.connect(USERS_DB) as conn:
+            row = conn.execute('SELECT role FROM users WHERE username=?', (username,)).fetchone()
+            if not row:
+                return jsonify({'error': 'Utente non trovato'}), 404
+            if row[0] == 'admin':
+                return jsonify({'error': 'Non puoi eliminare un admin'}), 400
+            conn.execute('DELETE FROM users WHERE username=?', (username,))
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/users', methods=['GET'])
+@login_required
+def admin_get_users():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Accesso negato'}), 403
+    try:
+        with sqlite3.connect(USERS_DB) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                'SELECT username, email, role, created_at FROM users ORDER BY created_at DESC'
+            ).fetchall()
+            return jsonify({'users': [dict(r) for r in rows]})
+    except Exception:
+        return jsonify({'users': []})
+
 if __name__ == '__main__':
+    threading.Thread(target=_prefetch_klines_30m, daemon=True).start()
     logger.info("🚀 Crypto Scanner Professional Starting...")
+
+    # Init users database
+    _init_users_db()
 
     # Load config
     load_config()
