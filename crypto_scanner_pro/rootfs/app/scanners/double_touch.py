@@ -285,14 +285,12 @@ class DoubleTouchScanner:
             sym      = p['symbol']
             tf       = p.get('tf', self.scan_tfs[0])
             tf_label = TF_LABEL.get(tf, tf)
-            segnale  = f'3tplus' if p['type'] == 'resistance' else f'3tminus'
+            segnale  = 'Short' if p['type'] == 'resistance' else 'Long'
             change   = p.get('change_pct', 0.0)
             lines    = [
-                '🔔 Terzo Tocco', '',
+                f'🔔 Terzo Tocco {tf_label} — {segnale}', '',
                 f'Coin: {sym}',
-                f'Segnale: {segnale}',
                 f'Vol: {change:+.2f}%',
-                f'Timeframe: {tf_label}',
                 '',
             ]
             base = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
@@ -310,7 +308,7 @@ class DoubleTouchScanner:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
-            segnale_label = '3tplus' if p['type'] == 'resistance' else '3tminus'
+            segnale_label = 'Short' if p['type'] == 'resistance' else 'Long'
             log_alert(sym, 'Terzo Tocco', emoji='🔁', note=segnale_label, tf=tf_label)
             print(f'Terzo Tocco alert: {sym} ({p["type"]})')
 

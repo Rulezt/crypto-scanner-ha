@@ -1841,10 +1841,15 @@ def dt_chart_page():
     return send_file('/usr/share/nginx/html/dt_chart.html')
 
 
+@app.route('/third-touch', methods=['GET'])
+@app.route('/third-touch.html', methods=['GET'])
+def double_touch_page():
+    return send_file('/usr/share/nginx/html/third_touch.html')
+
 @app.route('/double-touch', methods=['GET'])
 @app.route('/double-touch.html', methods=['GET'])
-def double_touch_page():
-    return send_file('/usr/share/nginx/html/double_touch.html')
+def double_touch_redirect():
+    return redirect('/third-touch', code=301)
 
 
 @app.route('/orderbook', methods=['GET'])

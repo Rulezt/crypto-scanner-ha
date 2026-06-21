@@ -461,8 +461,8 @@
       /* mtf */
       mtf_bb:           'BB',
       /* double touch scanner */
-      dt_title:         'Double Touch Scanner',
-      dt_description:   'Identifies double touches on High or Low with breakout expected on the third touch. Analyzes all timeframes in parallel across all Bybit coins.',
+      dt_title:         'Third Touch Scanner',
+      dt_description:   'Identifies two touches on High or Low with breakout expected on the third touch. Analyzes all timeframes in parallel across all Bybit coins.',
       dt_tolerance:     'Tolerance %',
       dt_tolerance_lbl: 'Tolerance',
       dt_proximity:     'Proximity %',
@@ -494,9 +494,9 @@
       dt_last:          'Last',
       dt_days_ago:      ' ago',
       dt_on:            'on',
-      dt_legend_long:   'Long (double touch resistance)',
-      dt_legend_short:  'Short (double touch support)',
-      dt_legend_line:   'Double touch level',
+      dt_legend_long:   'Long (third touch resistance)',
+      dt_legend_short:  'Short (third touch support)',
+      dt_legend_line:   'Third touch level',
       dt_ready:         'Ready',
       dt_fetching:      '🔄 Fetching Bybit tickers…',
       dt_scan_progress: 'Analyzing',
@@ -538,6 +538,11 @@
       var k = el.getAttribute('data-i18n-html');
       if (cur[k] !== undefined) el.innerHTML = cur[k];
     });
+    var titleEl = document.querySelector('title[data-i18n-doctitle]');
+    if (titleEl) {
+      var tk = titleEl.getAttribute('data-i18n-doctitle');
+      if (cur[tk] !== undefined) document.title = cur[tk] + ' - Crypto Scanner Pro';
+    }
     document.documentElement.lang = window._cspLang;
     /* highlight active lang button */
     document.querySelectorAll('[data-lang-btn]').forEach(function (btn) {
