@@ -23,7 +23,7 @@ class DoubleTouchScanner:
 
         self.telegram_token   = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
-        self.ha_url           = telegram_config.get('ha_url', '')
+        self.base_url           = telegram_config.get('base_url', '')
         self.enabled          = enabled
         self.tolerance        = float(tolerance)
         self.proximity        = float(proximity)
@@ -288,17 +288,17 @@ class DoubleTouchScanner:
             segnale  = f'3tplus' if p['type'] == 'resistance' else f'3tminus'
             change   = p.get('change_pct', 0.0)
             lines    = [
-                '🔔 Alert', '',
+                '🔔 Terzo Tocco', '',
                 f'Coin: {sym}',
                 f'Segnale: {segnale}',
                 f'Vol: {change:+.2f}%',
                 f'Timeframe: {tf_label}',
                 '',
             ]
-            base = self.ha_url.rstrip('/') if self.ha_url else ''
-            lines.append(f'<a href="https://www.bybit.com/trade/usdt/{sym}">View Bybit</a>')
-            if base:
-                lines.append(f'<a href="{base}/mtf?symbol={sym}">View MultiTimeframe</a>')
+            base = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
+            lines.append(f'<a href="https://www.bybit.com/trade/usdt/{sym}">- View Bybit</a>')
+            lines.append(f'<a href="{base}/mtf?symbol={sym}">- View Desktop</a>')
+            lines.append(f'<a href="{base}/chart?symbol={sym}&layout=1x1">- View Mobile</a>')
             caption = '\n'.join(lines)
             img = get_chart(sym, interval=tf, signal={
                 'type': 'price',

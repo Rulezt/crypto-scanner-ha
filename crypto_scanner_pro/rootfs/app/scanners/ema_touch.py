@@ -26,7 +26,7 @@ class EMAScanner:
 
         self.telegram_token   = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
-        self.ha_url           = telegram_config.get('ha_url', '')
+        self.base_url           = telegram_config.get('base_url', '')
         self.enabled          = enabled
         self.ema_touch_threshold = ema_touch_threshold
         self.min_volume_24h   = min_volume_24h
@@ -398,7 +398,7 @@ class EMAScanner:
                 f'Distanza: {dist:.2f}%',
                 '',
             ]
-            base = self.ha_url.rstrip('/') if self.ha_url else ''
+            base = self.base_url.rstrip('/') if self.base_url else ''
             lines.append(f'<a href="https://www.bybit.com/trade/usdt/{sym}">View Bybit</a>')
             if base:
                 lines.append(f'<a href="{base}/mtf?symbol={sym}">View MultiTimeframe</a>')

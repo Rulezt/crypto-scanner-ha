@@ -77,14 +77,16 @@ def _init_users_db():
             verify_token TEXT,
             created_at TEXT NOT NULL
         )''')
-        try:
-            conn.execute('ALTER TABLE users ADD COLUMN verified INTEGER NOT NULL DEFAULT 0')
-        except Exception:
-            pass
-        try:
-            conn.execute('ALTER TABLE users ADD COLUMN verify_token TEXT')
-        except Exception:
-            pass
+        for _col, _ddl in [
+            ('verified',          'INTEGER NOT NULL DEFAULT 0'),
+            ('verify_token',      'TEXT'),
+            ('bybit_api_key',     'TEXT NOT NULL DEFAULT ""'),
+            ('bybit_api_secret',  'TEXT NOT NULL DEFAULT ""'),
+        ]:
+            try:
+                conn.execute(f'ALTER TABLE users ADD COLUMN {_col} {_ddl}')
+            except Exception:
+                pass
         conn.commit()
 
 def _db_get_user(username):
@@ -177,7 +179,7 @@ DEFAULT_CONFIG = {
         'token': os.getenv('TELEGRAM_TOKEN', ''),
         'chat_id': os.getenv('TELEGRAM_CHAT_ID', ''),
         'enabled': True,
-        'ha_url': '',
+        'base_url': '',
     },
     'ath_atl': {
         'enabled': True,
@@ -289,32 +291,18 @@ def load_config():
         else:
             save_config()
         
-        # Override Telegram config from add-on options (if set)
-        addon_options_file = '/data/options.json'
-        if os.path.exists(addon_options_file):
-            try:
-                with open(addon_options_file, 'r') as f:
-                    addon_options = json.load(f)
-                    
-                    # Get Telegram config from add-on
-                    telegram_token = os.getenv('TELEGRAM_TOKEN') or addon_options.get('telegram_token', '')
-                    telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID') or addon_options.get('telegram_chat_id', '')
-                    
-                    if telegram_token:
-                        config['telegram']['token'] = telegram_token
-                        logger.info("✅ Telegram token loaded from add-on config")
+        # Override Telegram config from environment variables (if set)
+        telegram_token = os.getenv('TELEGRAM_TOKEN', '')
+        telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID', '')
 
-                    if telegram_chat_id:
-                        config['telegram']['chat_id'] = telegram_chat_id
-                        logger.info("✅ Telegram chat_id loaded from add-on config")
+        if telegram_token:
+            config['telegram']['token'] = telegram_token
+            logger.info("✅ Telegram token loaded from environment")
 
-                    ha_url = addon_options.get('ha_url', '')
-                    if ha_url:
-                        config['telegram']['ha_url'] = ha_url
+        if telegram_chat_id:
+            config['telegram']['chat_id'] = telegram_chat_id
+            logger.info("✅ Telegram chat_id loaded from environment")
 
-            except Exception as e:
-                logger.warning(f"⚠️ Could not load add-on options: {e}")
-                
     except Exception as e:
         logger.error(f"❌ Error loading config: {e}")
 
@@ -342,15 +330,13 @@ def init_scanners():
     telegram_config = {
         'token': config['telegram']['token'],
         'chat_id': config['telegram']['chat_id'],
-        'ha_url': config['telegram'].get('ha_url', ''),
+        'base_url': config['telegram'].get('base_url', ''),
     }
     
     # Check if Telegram is configured
     if not telegram_config['token'] or not telegram_config['chat_id']:
         logger.warning("⚠️ Telegram NOT configured!")
-        logger.warning("Configure in:")
-        logger.warning("  1. Add-on Configuration tab (telegram_token, telegram_chat_id)")
-        logger.warning("  2. OR Dashboard → Telegram tab → Save")
+        logger.warning("Configure via: Dashboard → Telegram tab → Save, or env vars TELEGRAM_TOKEN / TELEGRAM_CHAT_ID")
     else:
         logger.info(f"✅ Telegram configured: {telegram_config['chat_id'][:8]}...")
     
@@ -584,17 +570,17 @@ def ema_proximity_status():
 def ath_atl_alerts():
     scanner = scanners.get('ath_atl')
     if not scanner:
-        return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
+        return jsonify({'count': 0, 'alerts': [], 'monitored': 0, 'nearby_symbols': []})
     alerts = scanner.get_today_alerts()
-    return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count()})
+    return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count(), 'nearby_symbols': scanner.get_nearby_symbols()})
 
 @app.route('/scanner-api/ico-levels/status', methods=['GET'])
 def ico_levels_status():
     scanner = scanners.get('ico_levels')
     if not scanner:
-        return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
+        return jsonify({'count': 0, 'alerts': [], 'monitored': 0, 'monitored_symbols': []})
     alerts = scanner.get_today_alerts()
-    return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count()})
+    return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count(), 'monitored_symbols': scanner.get_monitored_symbols()})
 
 @app.route('/scanner-api/double-touch/status', methods=['GET'])
 def double_touch_status():
@@ -613,6 +599,48 @@ def get_recent_alerts():
         return jsonify({'success': True, 'alerts': alerts, 'count': len(alerts)})
     except Exception as e:
         logger.error(f"❌ Error getting recent alerts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+_news_cache = {'data': None, 'ts': 0}
+_news_lock = threading.Lock()
+
+@app.route('/api/news', methods=['GET'])
+def get_bybit_news():
+    import requests as req
+    CATEGORIES = [
+        ('new_crypto',          'Listing'),
+        ('delistings',          'Delisting'),
+        ('latest_bybit_news',   'News'),
+    ]
+    global _news_cache
+    with _news_lock:
+        if _news_cache['data'] and time.time() - _news_cache['ts'] < 300:
+            return jsonify(_news_cache['data'])
+    try:
+        result = {}
+        for key, label in CATEGORIES:
+            resp = req.get(
+                'https://api.bybit.com/v5/announcements/index',
+                params={'locale': 'en-US', 'type': key, 'limit': 50},
+                timeout=8
+            )
+            data = resp.json()
+            items = []
+            if data.get('retCode') == 0:
+                for item in data['result']['list']:
+                    items.append({
+                        'title': item['title'],
+                        'desc': item.get('description', ''),
+                        'url': item['url'],
+                        'ts': item['dateTimestamp'],
+                    })
+            result[key] = {'label': label, 'items': items}
+        payload = {'success': True, 'categories': result, 'fetched_at': int(time.time() * 1000)}
+        with _news_lock:
+            _news_cache = {'data': payload, 'ts': time.time()}
+        return jsonify(payload)
+    except Exception as e:
+        logger.error(f"❌ News API error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/top-coins', methods=['GET'])
@@ -665,7 +693,9 @@ def get_high_volume():
     import requests as req
     try:
         min_vol = float(request.args.get('min_volume', config['general'].get('min_volume_24h', 10_000_000)))
+        extra_symbols = set(s.strip() for s in request.args.get('extra_symbols', '').split(',') if s.strip())
         coins = []
+        seen = set()
 
         if ws_manager.ready.is_set():
             tickers = ws_manager.get_all_tickers()
@@ -674,7 +704,7 @@ def get_high_volume():
                     continue
                 price   = t.get('price', 0)
                 vol_24h = t.get('volume_24h', 0)
-                if not price or vol_24h < min_vol:
+                if not price or (vol_24h < min_vol and symbol not in extra_symbols):
                     continue
                 coins.append({
                     'symbol':     symbol,
@@ -682,6 +712,7 @@ def get_high_volume():
                     'change_24h': round(t.get('change_24h', 0), 2),
                     'volume_24h': vol_24h,
                 })
+                seen.add(symbol)
         else:
             response = req.get('https://api.bybit.com/v5/market/tickers',
                                params={'category': 'linear'}, timeout=10)
@@ -693,7 +724,7 @@ def get_high_volume():
                     continue
                 last_price = float(item['lastPrice'])
                 vol_24h    = float(item.get('volume24h', 0)) * last_price
-                if vol_24h < min_vol:
+                if vol_24h < min_vol and item['symbol'] not in extra_symbols:
                     continue
                 coins.append({
                     'symbol':     item['symbol'],
@@ -701,6 +732,28 @@ def get_high_volume():
                     'change_24h': round(float(item.get('price24hPcnt', 0)) * 100, 2),
                     'volume_24h': vol_24h,
                 })
+                seen.add(item['symbol'])
+
+        # Extra symbols not found in ws_manager: fetch via REST
+        missing = extra_symbols - seen
+        if missing:
+            try:
+                r = req.get('https://api.bybit.com/v5/market/tickers',
+                            params={'category': 'linear'}, timeout=8)
+                d = r.json()
+                if d.get('retCode') == 0:
+                    for item in d['result']['list']:
+                        if item['symbol'] not in missing:
+                            continue
+                        lp = float(item['lastPrice'])
+                        coins.append({
+                            'symbol':     item['symbol'],
+                            'price':      lp,
+                            'change_24h': round(float(item.get('price24hPcnt', 0)) * 100, 2),
+                            'volume_24h': float(item.get('volume24h', 0)) * lp,
+                        })
+            except Exception:
+                pass
 
         coins.sort(key=lambda x: x['volume_24h'], reverse=True)
 
@@ -987,8 +1040,8 @@ def check_price_alerts():
 
                     coin      = sym.replace('USDT', '')
                     dir_word  = 'Sopra' if alert['condition'] == 'above' else 'Sotto'
-                    ha_url    = config['telegram'].get('ha_url', '').rstrip('/')
-                    link      = f'<a href="{ha_url}/mtf?symbol={sym}">{coin}</a>' if ha_url else coin
+                    base_url    = config['telegram'].get('base_url', '').rstrip('/')
+                    link      = f'<a href="{base_url}/mtf?symbol={sym}">{coin}</a>' if base_url else coin
                     caption   = f"{dir_word} {_fmt_price(alert['price'])}  {link}"
 
                     if alert.get('notify', 'both') != 'browser':
@@ -1226,6 +1279,18 @@ def profile_page():
 @app.route('/api/settings', methods=['GET'])
 @login_required
 def get_settings():
+    role = session.get('role', '')
+    username = session.get('username', '')
+    if role != 'admin':
+        user = _db_get_user(username)
+        k = _dec(user.get('bybit_api_key', '') or '') if user else ''
+        s = _dec(user.get('bybit_api_secret', '') or '') if user else ''
+        return jsonify({
+            'bybit_api_key':    k,
+            'bybit_api_secret': ('●' * 8) if s else '',
+            'bybit_secret_set': bool(s),
+            'trading_enabled':  True,
+        })
     opts = _read_opts()
     key = opts.get('bybit_api_key', '')
     sec = opts.get('bybit_api_secret', '')
@@ -1242,6 +1307,18 @@ def get_settings():
 @login_required
 def save_settings():
     data = request.get_json() or {}
+    role = session.get('role', '')
+    username = session.get('username', '')
+    if role != 'admin':
+        bk = data.get('bybit_api_key', '').strip()
+        bs = data.get('bybit_api_secret', '').strip()
+        with sqlite3.connect(USERS_DB) as conn:
+            if bk:
+                conn.execute('UPDATE users SET bybit_api_key=? WHERE lower(username)=lower(?)', (_enc(bk), username))
+            if bs and '●' not in bs:
+                conn.execute('UPDATE users SET bybit_api_secret=? WHERE lower(username)=lower(?)', (_enc(bs), username))
+            conn.commit()
+        return jsonify({'success': True})
     opts = _read_opts()
     if 'telegram_token'   in data: opts['telegram_token']   = data['telegram_token'].strip()
     if 'telegram_chat_id' in data: opts['telegram_chat_id'] = data['telegram_chat_id'].strip()
@@ -1297,6 +1374,19 @@ def _tcfg():
         return k, s, bool(opts.get('trading_enabled')) and bool(k) and bool(s)
     except: return '', '', False
 
+def _tcfg_user(username):
+    try:
+        user = _db_get_user(username)
+        if user:
+            k = _dec(user.get('bybit_api_key', '') or '')
+            s = _dec(user.get('bybit_api_secret', '') or '')
+            if k and s:
+                opts = _read_opts()
+                return k, s, bool(opts.get('trading_enabled', True))
+    except Exception:
+        pass
+    return _tcfg()
+
 def _bsign(key, secret, payload):
     ts = str(int(time.time() * 1000))
     sig = _hmac.new(secret.encode(), (ts + key + '5000' + payload).encode(), _hashlib.sha256).hexdigest()
@@ -1306,18 +1396,18 @@ def _bsign(key, secret, payload):
 @app.route('/api/trade/config')
 @login_required
 def trade_config():
-    _, _, en = _tcfg()
+    _k, _s, en = _tcfg_user(session.get("username", ""))
     return jsonify({'enabled': en})
 
 @app.route('/api/trade/balance')
 @login_required
 def trade_balance():
     import requests as rq
-    k, s, en = _tcfg()
+    k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     qs = 'accountType=UNIFIED'
     d = rq.get(f'{_BYB}/v5/account/wallet-balance?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
-    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg')}), 400
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     for acc in d['result']['list']:
         for c in acc.get('coin', []):
             if c['coin'] == 'USDT':
@@ -1330,12 +1420,12 @@ def trade_balance():
 @login_required
 def trade_position():
     import requests as rq
-    k, s, en = _tcfg()
+    k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     sym = request.args.get('symbol', '').upper()
     qs = f'category=linear&symbol={sym}'
     d = rq.get(f'{_BYB}/v5/position/list?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
-    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg')}), 400
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     lst = d['result']['list']
     if not lst or float(lst[0].get('size', 0)) == 0: return jsonify({'position': None})
     p = lst[0]
@@ -1344,6 +1434,7 @@ def trade_position():
         'side': p['side'], 'size': float(p['size']), 'entryPrice': float(p['avgPrice']),
         'leverage': float(p['leverage']), 'unrealizedPnl': float(p.get('unrealisedPnl', 0)),
         'stopLoss': _fv(p.get('stopLoss')), 'takeProfit': _fv(p.get('takeProfit')),
+        'positionIdx': int(p.get('positionIdx', 0)),
         'markPrice': float(p.get('markPrice', 0)), 'liqPrice': _fv(p.get('liqPrice')),
     }})
 
@@ -1365,17 +1456,20 @@ def trade_instrument():
 @login_required
 def trade_orders():
     import requests as rq
-    k, s, en = _tcfg()
+    k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     sym = request.args.get('symbol', '').upper()
     orders = []
     for flt in ['Order', 'StopOrder']:
-        open_only = '1' if flt == 'Order' else '0'
-        qs = f'category=linear&symbol={sym}&openOnly={open_only}&orderFilter={flt}&limit=20'
-        d = rq.get(f'{_BYB}/v5/order/realtime?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
-        if d.get('retCode') != 0: continue
+        qs = f'category=linear&symbol={sym}&openOnly=0&orderFilter={flt}&limit=50'
+        try:
+            d = rq.get(f'{_BYB}/v5/order/realtime?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+        except Exception:
+            continue
+        if d.get('retCode') != 0:
+            continue
         for o in d['result']['list']:
-            if o.get('orderStatus') not in ('New', 'PartiallyFilled', 'Untriggered'):
+            if o.get('orderStatus') in ('Filled', 'Cancelled', 'Rejected', 'Deactivated'):
                 continue
             orders.append({
                 'orderId':      o['orderId'],
@@ -1397,7 +1491,7 @@ def trade_orders():
 @login_required
 def trade_cancel():
     import requests as rq
-    k, s, en = _tcfg()
+    k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     data = request.get_json() or {}
     sym = data.get('symbol', '').upper()
@@ -1406,35 +1500,43 @@ def trade_cancel():
     if not sym or not order_id: return jsonify({'error': 'missing params'}), 400
     body = json.dumps({'category': 'linear', 'symbol': sym, 'orderId': order_id, 'orderFilter': order_filter})
     d = rq.post(f'{_BYB}/v5/order/cancel', headers=_bsign(k, s, body), data=body, timeout=10).json()
-    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg')}), 400
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     return jsonify({'success': True})
 
 @app.route('/api/trade/amend', methods=['POST'])
 @login_required
 def trade_amend():
     import requests as rq
-    k, s, en = _tcfg()
+    k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     data = request.get_json() or {}
     sym = data.get('symbol', '').upper()
     order_id = data.get('orderId', '')
     if not sym or not order_id: return jsonify({'error': 'missing params'}), 400
+    order_filter = data.get('orderFilter', 'Order')
     body = {'category': 'linear', 'symbol': sym, 'orderId': order_id}
+    if order_filter == 'StopOrder': body['orderFilter'] = 'StopOrder'
     if data.get('triggerPrice'): body['triggerPrice'] = str(data['triggerPrice'])
     if data.get('price'): body['price'] = str(data['price'])
     if data.get('qty'): body['qty'] = str(data['qty'])
-    if data.get('stopLoss') not in (None, '', 0): body['stopLoss'] = str(data['stopLoss'])
-    if data.get('takeProfit') not in (None, '', 0): body['takeProfit'] = str(data['takeProfit'])
+    if data.get('stopLoss') is not None and data.get('stopLoss') not in ('', None):
+        sl = data['stopLoss']
+        body['stopLoss'] = str(sl)
+        if float(sl) != 0: body['slTriggerBy'] = 'MarkPrice'
+    if data.get('takeProfit') is not None and data.get('takeProfit') not in ('', None):
+        tp = data['takeProfit']
+        body['takeProfit'] = str(tp)
+        if float(tp) != 0: body['tpTriggerBy'] = 'MarkPrice'
     b = json.dumps(body)
     d = rq.post(f'{_BYB}/v5/order/amend', headers=_bsign(k, s, b), data=b, timeout=10).json()
-    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg')}), 400
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     return jsonify({'success': True})
 
 @app.route('/api/trade/order', methods=['POST'])
 @login_required
 def trade_order():
     import requests as rq
-    k, s, en = _tcfg()
+    k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     data = request.get_json() or {}
     sym = data.get('symbol', '').upper(); side = data.get('side')
@@ -1465,29 +1567,34 @@ def trade_order():
 @login_required
 def trade_close_pos():
     import requests as rq
-    k, s, en = _tcfg()
+    k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     data = request.get_json() or {}
     body = json.dumps({'category': 'linear', 'symbol': data.get('symbol', '').upper(),
                        'side': data.get('side'), 'orderType': 'Market',
                        'qty': str(data.get('qty', '')), 'reduceOnly': True, 'timeInForce': 'IOC'})
     d = rq.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
-    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg')}), 400
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     return jsonify({'success': True})
 
 @app.route('/api/trade/set-sltp', methods=['POST'])
 @login_required
 def trade_set_sltp():
     import requests as rq
-    k, s, en = _tcfg()
+    k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     data = request.get_json() or {}
-    body = {'category': 'linear', 'symbol': data.get('symbol', '').upper(), 'positionIdx': 0}
-    if data.get('stopLoss') is not None: body['stopLoss'] = str(data['stopLoss'])
-    if data.get('takeProfit') is not None: body['takeProfit'] = str(data['takeProfit'])
+    pos_idx = int(data.get('positionIdx', 0))
+    body = {'category': 'linear', 'symbol': data.get('symbol', '').upper(), 'positionIdx': pos_idx}
+    if data.get('stopLoss') is not None:
+        body['stopLoss'] = str(data['stopLoss'])
+        if float(data['stopLoss']) != 0: body['slTriggerBy'] = 'MarkPrice'
+    if data.get('takeProfit') is not None:
+        body['takeProfit'] = str(data['takeProfit'])
+        if float(data['takeProfit']) != 0: body['tpTriggerBy'] = 'MarkPrice'
     b = json.dumps(body)
     d = rq.post(f'{_BYB}/v5/position/trading-stop', headers=_bsign(k, s, b), data=b, timeout=6).json()
-    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg')}), 400
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     return jsonify({'success': True})
 
 # ── END TRADING ────────────────────────────────────────────────────────────────
@@ -1717,6 +1824,11 @@ def mtf_page():
 @login_required
 def screener_page():
     return send_file('/usr/share/nginx/html/screener.html')
+
+
+@app.route('/i18n.js')
+def serve_i18n():
+    return send_file('/usr/share/nginx/html/i18n.js', mimetype='application/javascript')
 
 
 @app.route('/screenshot', methods=['GET'])

@@ -1,30 +1,8 @@
 name: "Crypto Scanner Pro"
-version: "4.6.91"
+version: "4.7.0"
 slug: "crypto_scanner_pro"
 description: "Scanner crypto avanzato con EMA touch, volume, daily flip e ATH/ATL via Telegram"
-url: "https://github.com/Rulezt/crypto-scanner-ha"
-arch:
-  - aarch64
-  - amd64
-  - armhf
-  - armv7
-startup: application
-boot: auto
-init: false
-options:
-  telegram_token: ""
-  telegram_chat_id: ""
-  ha_url: ""
-schema:
-  telegram_token: str
-  telegram_chat_id: str
-  ha_url: str
-ingress: true
-ingress_port: 8080
-ingress_entry: /
 ports:
   8080/tcp: 8080
 ports_description:
   8080/tcp: "Web Dashboard"
-panel_icon: mdi:currency-btc
-panel_title: "Crypto Scanner"

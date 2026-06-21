@@ -1,0 +1,15 @@
+FROM python:3.11-slim-bookworm
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends     chromium     chromium-driver     xvfb     dbus     fonts-freefont-ttf     fonts-noto     jq     curl     bash     && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir     flask==3.0.3     flask-cors==4.0.0     pyyaml     requests     selenium==4.18.1     schedule==1.2.1     matplotlib==3.8.4     pandas==2.2.1     numpy==1.26.4     websocket-client==1.7.0     cryptography
+
+COPY rootfs /
+
+RUN ln -s /usr/bin/chromium /usr/bin/chromium-browser && chmod +x /run.sh
+
+EXPOSE 8080
+
+CMD ["/run.sh"]

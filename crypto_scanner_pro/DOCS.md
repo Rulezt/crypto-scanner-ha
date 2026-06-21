@@ -1,134 +1,88 @@
-# Crypto Scanner Professional - Documentation
+# Crypto Scanner Pro - Documentation
 
 ## Installation
 
-### Method 1: Add Repository to Home Assistant
+### Docker Compose (Recommended)
 
-1. Go to **Settings** → **Add-ons** → **Add-on Store**
-2. Click the **3 dots menu** (top right) → **Repositories**
-3. Add this repository URL:
-   ```
-   https://github.com/Rulezt/crypto-scanner-ha
-   ```
-4. Click **Add** and close the dialog
-5. Refresh the page
-6. Find **Crypto Scanner Professional** in the list of available add-ons
-7. Click on it and press **Install**
-
-### Method 2: Manual Installation via SSH
-
-1. Connect to your Home Assistant via SSH
-2. Run this command:
+1. Clone or copy the project to your server
+2. Copy the example env file and edit your credentials:
    ```bash
-   cd /addons/local
-   wget https://github.com/Rulezt/crypto-scanner-ha/releases/latest/download/crypto_scanner_professional.tar.gz
-   tar -xzf crypto_scanner_professional.tar.gz
-   rm crypto_scanner_professional.tar.gz
+   cp .env.example .env
+   nano .env
    ```
-3. Go to **Settings** → **Add-ons**
-4. Refresh the page
-5. Find **Crypto Scanner Professional** under **Local add-ons**
-6. Click **Install**
-
-### Method 3: Using the Update Script
-
-1. Download the update script:
+3. Start the app:
    ```bash
-   wget https://raw.githubusercontent.com/Rulezt/crypto-scanner-ha/main/update_scanner.sh
-   chmod +x update_scanner.sh
+   docker compose up -d
    ```
-2. Run the script:
-   ```bash
-   ./update_scanner.sh
-   ```
-3. Follow the on-screen instructions
+4. Access the dashboard at `http://<your-server-ip>:8080`
 
 ## Configuration
 
-After installation, configure the add-on:
+### Environment Variables
 
-1. Go to **Configuration** tab
-2. Set the following options:
+Set these in your `.env` file or `docker-compose.yml`:
 
-### Required Settings
+| Variable | Description |
+|---|---|
+| `TELEGRAM_TOKEN` | Your Telegram Bot Token (from [@BotFather](https://t.me/botfather)) |
+| `TELEGRAM_CHAT_ID` | Your Telegram Chat ID (from [@userinfobot](https://t.me/userinfobot)) |
 
-- **telegram_token**: Your Telegram Bot Token (get it from [@BotFather](https://t.me/botfather))
-- **telegram_chat_id**: Your Telegram Chat ID (get it from [@userinfobot](https://t.me/userinfobot))
+### Dashboard Settings
 
-### Example Configuration
-
-```yaml
-telegram_token: "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
-telegram_chat_id: "123456789"
-```
+All scanner parameters can be configured from the Dashboard → Settings tab without restarting the app.
 
 ## Usage
 
-1. After configuring, click **Start** to run the add-on
-2. Access the dashboard by clicking **Open Web UI**
-3. The scanner will automatically:
-   - Monitor cryptocurrency pairs on Binance
-   - Detect EMA touches, daily flips, and volume spikes
-   - Send Telegram notifications with TradingView charts
-   - Apply cooldown to avoid spam
+1. Open the dashboard at `http://<your-server-ip>:8080`
+2. Go to **Telegram** tab to enter your bot credentials
+3. Configure each scanner from the **Settings** tab
+4. Scanners start automatically on launch
 
 ## Features
 
-### 📊 4 EMA Analysis
-- Monitors 4 EMAs: 5, 10, 60, 223
-- Calculates distances and percentages
-- Visualizes on charts
+### EMA Touch Scanner
+- Detects when price touches key EMAs (5, 10, 60, 223)
+- Configurable touch threshold
+- Persistent cooldown to avoid spam
 
-### 🎯 EMA Touch Scanner
-- Detects when price touches key EMAs
-- Configurable touch threshold (default: 0.2%)
-- Persistent cooldown system (24h default)
-
-### 🔄 Daily Flip Scanner
-- Monitors EMA crossovers
-- Detects bullish/bearish flips
+### Daily Flip Scanner
+- Monitors EMA crossovers (bullish/bearish flips)
 - Filters by volume and significance
 
-### 📈 Volume Scanner
-- Tracks unusual volume spikes
-- Compares against 24h average
-- Customizable threshold
+### ATH/ATL Scanner
+- Alerts when price approaches All-Time High or All-Time Low
+- Configurable proximity threshold
 
-### 📱 Telegram Notifications
-- Beautiful formatted messages
-- TradingView chart images
-- Direct links to charts
-- Real-time alerts
+### ICO Levels Scanner
+- Tracks historical ICO price levels
+- Configurable threshold
 
-### ⏳ Persistent Cooldown System
-- Prevents notification spam
-- Survives restarts
-- Per-pair cooldown tracking
-- Configurable duration
+### Double Touch Scanner
+- Detects double touch patterns on key levels
+- Multi-timeframe support
+
+### Orderbook
+- Real-time orderbook visualization
+- WebSocket-based live updates
+
+### Telegram Notifications
+- Formatted messages with chart images
+- Direct links to the dashboard
 
 ## Troubleshooting
 
-### Add-on won't start
-- Check logs: **Log** tab
-- Verify Telegram credentials
-- Ensure Home Assistant has internet access
+### App won't start
+- Check logs: `docker compose logs -f`
+- Verify Telegram credentials in the Dashboard
 
 ### No notifications
-- Verify bot token is correct
-- Check chat ID is correct
-- Start a conversation with your bot first
-- Check Telegram bot permissions
+- Verify bot token and chat ID are correct
+- Start a conversation with your bot first on Telegram
 
 ### Charts not showing
-- Requires internet connection
-- Chart generation may take a few seconds
-- Check logs for errors
-
-## Support
-
-- **Issues**: https://github.com/Rulezt/crypto-scanner-ha/issues
-- **Repository**: https://github.com/Rulezt/crypto-scanner-ha
+- Requires internet connection for market data
+- Check logs for errors: `docker compose logs -f`
 
 ## Version
 
-Current version: **2.1.6**
+Current version: **4.7.0**

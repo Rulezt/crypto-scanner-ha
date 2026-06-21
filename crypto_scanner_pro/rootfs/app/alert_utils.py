@@ -31,22 +31,22 @@ def fmt_price(p):
     return f'{p:.7f}'
 
 
-def mtf_link(symbol, ha_url=''):
-    """Return HTML link to MTF page if ha_url is set, else plain name."""
+def mtf_link(symbol, base_url=''):
+    """Return HTML link to MTF page if base_url is set, else plain name."""
     name = symbol.replace('USDT', '')
-    if ha_url:
-        url = ha_url.rstrip('/') + f'/mtf?symbol={symbol}'
+    if base_url:
+        url = base_url.rstrip('/') + f'/mtf?symbol={symbol}'
         return f'<a href="{url}">{name}</a>'
     return name
 
 
-def build_caption(symbol, change_pct, note, ha_url=''):
-    """Standard 🔔 Alert caption format used by all scanners."""
-    lines = ['🔔 Alert', '', f'Coin: {symbol}', f'Vol 24h: {change_pct:+.2f}%', f'Segnale: {note}', '']
-    lines.append(f'<a href="https://www.bybit.com/trade/usdt/{symbol}">View Bybit</a>')
-    if ha_url:
-        base = ha_url.rstrip('/')
-        lines.append(f'<a href="{base}/mtf?symbol={symbol}">View MultiTimeframe</a>')
+def build_caption(symbol, change_pct, note, base_url='', title='🔔 Alert'):
+    """Standard caption format used by all scanners."""
+    lines = [title, '', f'Coin: {symbol}', f'Vol 24h: {change_pct:+.2f}%', f'Segnale: {note}', '']
+    base = (base_url or 'https://cryptoscannerpro.com').rstrip('/')
+    lines.append(f'<a href="https://www.bybit.com/trade/usdt/{symbol}">- View Bybit</a>')
+    lines.append(f'<a href="{base}/mtf?symbol={symbol}">- View Desktop</a>')
+    lines.append(f'<a href="{base}/chart?symbol={symbol}&layout=1x1">- View Mobile</a>')
     return '\n'.join(lines)
 
 

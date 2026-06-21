@@ -28,7 +28,7 @@ class ICOLevelsScanner:
                  schedule_start='', schedule_end='', utc_offset=2, **kwargs):
         self.telegram_token   = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
-        self.ha_url           = telegram_config.get('ha_url', '')
+        self.base_url           = telegram_config.get('base_url', '')
         self.enabled          = enabled
         self.threshold        = ico_levels_threshold
         self.tf               = ico_levels_tf
@@ -294,7 +294,7 @@ class ICOLevelsScanner:
         side_str = 'massimo' if side == 'high' else 'minimo'
         sig_type = 'ath' if side == 'high' else 'atl'
         note     = f"ICO {side_str} {dist:.2f}%"
-        caption  = build_caption(sym, change_pct, note, self.ha_url)
+        caption  = build_caption(sym, change_pct, note, self.base_url, title='🔔 ICO')
         img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
@@ -320,3 +320,7 @@ class ICOLevelsScanner:
     def get_monitored_count(self):
         with self._levels_lock:
             return len(self._levels)
+
+    def get_monitored_symbols(self):
+        with self._levels_lock:
+            return list(self._levels.keys())

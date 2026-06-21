@@ -20,7 +20,7 @@ class DailyFlipScanner:
 
         self.telegram_token   = telegram_config['token']
         self.telegram_chat_id = telegram_config['chat_id']
-        self.ha_url           = telegram_config.get('ha_url', '')
+        self.base_url           = telegram_config.get('base_url', '')
         self.enabled          = enabled
         self.flip_threshold   = flip_threshold / 100  # store as fraction
         self.flip_type        = flip_type
@@ -104,7 +104,7 @@ class DailyFlipScanner:
             return
         sym     = coin['symbol']
         sign    = '+' if coin['change_pct'] >= 0 else ''
-        caption = (f"{mtf_link(sym, self.ha_url)}  Daily Flip\n"
+        caption = (f"{mtf_link(sym, self.base_url)}  Daily Flip\n"
                    f"var 24h: {sign}{coin['change_pct']:.2f}%")
         img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'flip'})
         if img:
@@ -189,7 +189,7 @@ class DailyFlipScanner:
         for coin in coins[:2]:
             sym     = coin['symbol']
             sign    = '+' if coin['change_pct'] >= 0 else ''
-            caption = (f"Daily Flip  {mtf_link(sym, self.ha_url)}\n"
+            caption = (f"Daily Flip  {mtf_link(sym, self.base_url)}\n"
                        f"var 24h: {sign}{coin['change_pct']:.2f}%")
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'flip'})
             if img:

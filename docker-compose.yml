@@ -1,0 +1,20 @@
+services:
+  crypto-scanner:
+    build:
+      context: ./crypto_scanner_pro
+      dockerfile: Dockerfile.standalone
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+      - ./crypto_scanner_pro/rootfs/app:/app
+      - ./crypto_scanner_pro/rootfs/usr/share/nginx/html:/usr/share/nginx/html
+    restart: unless-stopped
+
+  snappymail:
+    image: djmaze/snappymail:latest
+    ports:
+      - 8888:8888
+    volumes:
+      - ./snappymail-data:/var/lib/snappymail
+    restart: unless-stopped

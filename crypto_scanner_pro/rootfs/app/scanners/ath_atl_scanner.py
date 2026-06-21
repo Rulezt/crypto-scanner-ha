@@ -27,7 +27,7 @@ class ATHATLScanner:
 
         self.telegram_token     = telegram_config['token']
         self.telegram_chat_id   = telegram_config['chat_id']
-        self.ha_url             = telegram_config.get('ha_url', '')
+        self.base_url             = telegram_config.get('base_url', '')
         self.enabled            = enabled
         self.ath_enabled        = ath_enabled
         self.atl_enabled        = atl_enabled
@@ -80,7 +80,8 @@ class ATHATLScanner:
         d = self.last_ath_alerts if alert_type == 'ath' else self.last_atl_alerts
         if symbol not in d:
             return False
-        return (datetime.now() - d[symbol]) < timedelta(hours=self.cooldown_hours)
+        from datetime import timezone
+        return d[symbol].date() == datetime.now(timezone.utc).date()
 
     def mark_alerted(self, symbol, alert_type='ath'):
         if alert_type == 'ath':
@@ -200,7 +201,7 @@ class ATHATLScanner:
             note     = 'Nuovo ATL' if coin['is_new_atl'] else f"Vicino ATL {coin['distance_pct']:.2f}%"
             sig_type = 'atl'
             emoji, label = '⬇️', 'ATL'
-        caption = build_caption(sym, coin.get('change_pct', 0.0), note, self.ha_url)
+        caption = build_caption(sym, coin.get('change_pct', 0.0), note, self.base_url, title=f'🔔 {label}')
         img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
@@ -385,7 +386,7 @@ class ATHATLScanner:
         for coin in result.get('ath', [])[:3]:
             sym     = coin['symbol']
             note    = 'Nuovo ATH' if coin['is_new_ath'] else f"Vicino ATH {coin['distance_pct']:.2f}%"
-            caption = build_caption(sym, coin['price'], note, self.ha_url)
+            caption = build_caption(sym, coin['price'], note, self.base_url)
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ath'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
@@ -396,7 +397,7 @@ class ATHATLScanner:
         for coin in result.get('atl', [])[:3]:
             sym     = coin['symbol']
             note    = 'Nuovo ATL' if coin['is_new_atl'] else f"Vicino ATL {coin['distance_pct']:.2f}%"
-            caption = build_caption(sym, coin['price'], note, self.ha_url)
+            caption = build_caption(sym, coin['price'], note, self.base_url)
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'atl'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
@@ -415,3 +416,23 @@ class ATHATLScanner:
     def get_monitored_count(self):
         with self._ath_cache_lock:
             return len(self._ath_cache)
+
+    def get_nearby_symbols(self, ath_pct=5.0, atl_pct=20.0):
+        """Return symbols currently within ath_pct% of ATH or atl_pct% of ATL."""
+        result = []
+        with self._ath_cache_lock:
+            cache_copy = dict(self._ath_cache)
+        prices = {}
+        if self._ws_manager and self._ws_manager.ready.is_set():
+            tickers = self._ws_manager.get_all_tickers()
+            prices = {s: d['price'] for s, d in tickers.items() if d.get('price', 0) > 0}
+        for symbol, data in cache_copy.items():
+            price = prices.get(symbol, 0)
+            if not price:
+                continue
+            ath_dist = (data['ath'] - price) / data['ath'] * 100 if data.get('ath') else None
+            atl_dist = (price - data['atl']) / data['atl'] * 100 if data.get('atl') else None
+            if (ath_dist is not None and ath_dist <= ath_pct) or \
+               (atl_dist is not None and 0 <= atl_dist <= atl_pct):
+                result.append(symbol)
+        return result

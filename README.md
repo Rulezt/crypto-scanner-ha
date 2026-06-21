@@ -1,15 +1,23 @@
-# 🚀 Crypto Scanner Professional
+# Crypto Scanner Pro
 
-Advanced cryptocurrency scanner for Home Assistant with Telegram notifications and TradingView charts.
+Advanced cryptocurrency scanner with Telegram notifications and TradingView charts.
 
 ## Features
-- 📊 4 EMA Analysis (5, 10, 60, 223)
-- 🎯 EMA Touch Scanner
-- 🔄 Daily Flip Scanner
-- 📈 Volume Scanner
-- 📱 Telegram Notifications with Charts
-- 🔗 TradingView Integration
-- ⏳ Persistent Cooldown System
+- EMA Touch Scanner (5, 10, 60, 223)
+- Daily Flip Scanner
+- ATH/ATL Scanner
+- ICO Levels Scanner
+- Double Touch Scanner
+- Orderbook real-time
+- Telegram notifications with chart images
+
+## Quick Start
+
+```bash
+docker compose up -d
+```
+
+Dashboard: `http://<server-ip>:8080`
 
 ## Version
-Current: v2.1.5
+Current: v4.7.0

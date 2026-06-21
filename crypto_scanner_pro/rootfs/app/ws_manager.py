@@ -19,6 +19,8 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+_seed_semaphore = __import__("threading").Semaphore(5)
+
 BYBIT_WS_URL = 'wss://stream.bybit.com/v5/public/linear'
 TOP_N_TICKERS = 200
 
@@ -143,6 +145,7 @@ class BybitWSManager:
 
     def _seed_klines(self, symbol, interval, limit=300):
         """Pre-fill kline cache from REST so EMA can be computed immediately."""
+        _seed_semaphore.acquire()
         try:
             r = requests.get(
                 'https://api.bybit.com/v5/market/kline',
@@ -167,6 +170,8 @@ class BybitWSManager:
             logger.debug(f'WS: seeded {len(candles)} klines {symbol}/{interval}')
         except Exception as e:
             logger.warning(f'WS: seed_klines {symbol}/{interval}: {e}')
+        finally:
+            _seed_semaphore.release()
 
     def _send_sub(self, topics):
         if not self._ws or not self._running:

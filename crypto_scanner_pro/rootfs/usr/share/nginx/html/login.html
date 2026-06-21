@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+<meta charset="UTF-8">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-PSD4H66Z89"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-PSD4H66Z89');
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Crypto Scanner Pro</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: #0B0E11;
+    color: #E5E7EB;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  .card {
+    background: #161A1E;
+    border: 1px solid #2A2E39;
+    border-radius: 12px;
+    padding: 36px 32px;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.6);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+    justify-content: center;
+  }
+  .logo svg { flex-shrink: 0; }
+  .logo-text { font-size: 17px; font-weight: 700; color: #E5E7EB; }
+  .logo-sub { font-size: 11px; color: #6B7280; font-weight: 400; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; color: #9CA3AF; margin-bottom: 6px; font-weight: 500; letter-spacing: .3px; }
+  .field input {
+    width: 100%;
+    background: #1E222D;
+    border: 1px solid #374151;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #E5E7EB;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .field input:focus { border-color: #3b82f6; }
+  .field input::placeholder { color: #4B5563; }
+  .btn-row { display: flex; gap: 8px; margin-top: 4px; }
+  .btn {
+    flex: 1;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 11px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .btn:hover { background: #1d4ed8; }
+  .btn:active { background: #1e40af; }
+  .btn-secondary {
+    background: transparent;
+    color: #9CA3AF;
+    border: 1px solid #374151;
+  }
+  .btn-secondary:hover { background: #1E222D; color: #E5E7EB; border-color: #4B5563; }
+  .btn-secondary:active { background: #2A2E39; }
+  .msg-box {
+    border-radius: 6px;
+    padding: 9px 12px;
+    font-size: 12px;
+    margin-bottom: 16px;
+    display: none;
+    align-items: center;
+    gap: 6px;
+  }
+  .msg-error {
+    background: rgba(239,68,68,.1);
+    border: 1px solid rgba(239,68,68,.3);
+    color: #f87171;
+  }
+  .msg-success {
+    background: rgba(16,185,129,.1);
+    border: 1px solid rgba(16,185,129,.3);
+    color: #34d399;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="36" height="36">
+      <circle cx="50" cy="50" r="50" fill="#F7931A"/>
+      <path d="M67.8 44.3c.9-6.2-3.8-9.5-10.3-11.7l2.1-8.4-5.1-1.3-2 8.2c-1.4-.3-2.8-.6-4.2-1l2-8.2-5.1-1.3-2.1 8.4c-1.1-.3-2.2-.5-3.3-.8l-7-1.8-1.4 5.5s3.8.9 3.7.9c2.1.5 2.4 1.9 2.4 3l-2.4 9.7c.1 0 .3.1.5.2-.2 0-.3-.1-.5-.1l-3.4 13.6c-.3.7-.9 1.7-2.4 1.3.1.1-3.7-.9-3.7-.9l-2.5 5.9 6.6 1.6c1.2.3 2.4.6 3.6.9l-2.1 8.5 5.1 1.3 2.1-8.4c1.4.4 2.8.7 4.1 1l-2.1 8.4 5.1 1.3 2.1-8.5c8.7 1.6 15.2.9 18-6.9 2.2-6.3-.1-9.9-4.6-12.3 3.3-.8 5.8-3 6.4-7.5zm-11.5 16.1c-1.6 6.3-12.2 2.9-15.6 2l2.8-11.2c3.5.9 14.5 2.6 12.8 9.2zm1.6-16.2c-1.4 5.7-10.2 2.8-13.1 2.1l2.5-10.1c2.9.7 12.1 2 10.6 8z" fill="#FFF"/>
+    </svg>
+    <div>
+      <div class="logo-text">Crypto Scanner Pro</div>
+      <div class="logo-sub" id="mode-subtitle">Accesso riservato</div>
+    </div>
+  </div>
+
+  <div id="msg-box" class="msg-box msg-error">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span id="msg-text"></span>
+  </div>
+
+  <form id="auth-form" method="POST" action="/login">
+    <div class="field">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" placeholder="username" autocomplete="username" autofocus required>
+    </div>
+    <div class="field" id="email-field" style="display:none;">
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required>
+    </div>
+    <div class="field" id="confirm-field" style="display:none;">
+      <label for="confirm">Conferma Password</label>
+      <input id="confirm" type="password" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="btn-row">
+      <button type="button" id="btn-login" class="btn" onclick="handleLogin()">Accedi</button>
+      <button type="button" id="btn-register" class="btn btn-secondary" onclick="handleRegister()">Iscriviti</button>
+    </div>
+  </form>
+</div>
+
+<script>
+let mode = 'login';
+
+function setMode(m) {
+  mode = m;
+  const isReg = m === 'register';
+  document.getElementById('email-field').style.display   = isReg ? 'block' : 'none';
+  document.getElementById('confirm-field').style.display = isReg ? 'block' : 'none';
+  document.getElementById('btn-login').className    = isReg ? 'btn btn-secondary' : 'btn';
+  document.getElementById('btn-register').className = isReg ? 'btn' : 'btn btn-secondary';
+  document.getElementById('mode-subtitle').textContent = isReg ? 'Crea un account' : 'Accesso riservato';
+  document.getElementById('password').autocomplete = isReg ? 'new-password' : 'current-password';
+  hideMsg();
+}
+
+function showMsg(text, type) {
+  const box = document.getElementById('msg-box');
+  box.className = 'msg-box ' + (type === 'success' ? 'msg-success' : 'msg-error');
+  document.getElementById('msg-text').textContent = text;
+  box.style.display = 'flex';
+}
+
+function hideMsg() {
+  document.getElementById('msg-box').style.display = 'none';
+}
+
+function handleLogin() {
+  if (mode === 'register') { setMode('login'); return; }
+  document.getElementById('auth-form').submit();
+}
+
+async function handleRegister() {
+  if (mode === 'login') { setMode('register'); return; }
+  const username = document.getElementById('username').value.trim();
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const confirm  = document.getElementById('confirm').value;
+  const btn = document.getElementById('btn-register');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const r = await fetch('/api/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, email, password, confirm})
+    });
+    const d = await r.json();
+    if (d.success) {
+      showMsg('Registrazione completata! Accedi ora.', 'success');
+      setMode('login');
+      document.getElementById('username').value = username;
+      document.getElementById('password').value = '';
+    } else {
+      showMsg(d.error || 'Errore durante la registrazione', 'error');
+    }
+  } catch(e) {
+    showMsg('Errore di rete', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Iscriviti';
+  }
+}
+
+const params = new URLSearchParams(location.search);
+if (params.get('error')) {
+  showMsg(decodeURIComponent(params.get('error')), 'error');
+}
+</script>
+</body>
+</html>
