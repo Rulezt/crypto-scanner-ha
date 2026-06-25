@@ -94,7 +94,8 @@
             .modal-scanner-inner { width: calc(100% - 24px) !important; margin: 48px auto !important; }
         }
     </style>
-<style>@keyframes mail-pulse{0%,100%{box-shadow:0 0 0 0 rgba(96,165,250,0.7)}50%{box-shadow:0 0 0 6px rgba(96,165,250,0)}}#user-btn-alert{animation:mail-pulse 1.2s ease-in-out infinite!important;border:1px solid #3b82f6!important;color:#60a5fa!important;}</style></head>
+<style>@keyframes mail-pulse{0%,100%{box-shadow:0 0 0 0 rgba(96,165,250,0.7)}50%{box-shadow:0 0 0 6px rgba(96,165,250,0)}}#user-btn-alert{animation:mail-pulse 1.2s ease-in-out infinite!important;border:1px solid #3b82f6!important;color:#60a5fa!important;}</style><style>#tv-attr-logo{display:none!important}</style>
+</head>
 <body class="bg-dark-bg text-gray-100">
     <!-- Header -->
     <header class="bg-dark-card border-b border-dark-border sticky top-0 z-50">
@@ -154,7 +155,7 @@
                     <div id="user-menu-wrap" style="position:relative;display:flex;align-items:center;margin-left:4px;">
                       <button id="user-btn" onclick="toggleUserMenu(event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:32px;background:#1E222D;border:none;border-radius:6px;color:#9CA3AF;cursor:pointer;transition:background .15s,color .15s;font-family:inherit;" onmouseover="this.style.background='#2A2E39';this.style.color='#E5E7EB'" onmouseout="this.style.background='#1E222D';this.style.color='#9CA3AF'">
                         <svg viewBox="0 0 24 24" width="18" height="18" style="flex-shrink:0;"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"></path></svg>
-                        <span id="user-label" style="font-size:12px;font-weight:500;">Guest</span>
+                        <span id="user-label" style="font-size:12px;font-weight:500;" data-i18n="guest_label">Ospite</span>
                         <svg viewBox="0 0 24 24" width="14" height="14" style="flex-shrink:0;"><path fill="currentColor" d="M7,10L12,15L17,10H7Z"></path></svg>
                       </button>
                       <div id="user-dd" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:#1E222D;border:1px solid #374151;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:50;min-width:140px;padding:4px 0;">
@@ -203,20 +204,6 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <!-- Main Content -->
         <div class="space-y-6">
-            <!-- Alert Recenti (collapsible) -->
-            <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
-                <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between cursor-pointer select-none" onclick="toggleAlerts()">
-                    <h3 class="text-sm font-medium flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none" style="flex-shrink:0"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5m-2.031 1.324.002-.003v-.008z"/></svg><span id="alerts-count" class="hidden text-xs bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full font-medium">0</span> <span data-i18n="alerts_recent">Alert Recenti</span></h3>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-500" data-i18n="live">Live</span>
-                        <svg id="alerts-chevron" class="w-4 h-4 text-gray-400 transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                    </div>
-                </div>
-                <div id="alerts-container" class="p-4 space-y-3 max-h-96 overflow-y-auto hidden">
-                    <div class="text-center py-8 text-gray-500 text-sm" data-i18n="alerts_waiting">In attesa di alert...</div>
-                </div>
-            </div>
-
             <!-- News Detail Modal -->
             <div id="news-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4" onclick="if(event.target===this)closeNewsModal()">
                 <div class="absolute inset-0 bg-black/60"></div>
@@ -239,6 +226,21 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                         </a>
                     </div>
+                </div>
+            </div>
+
+            <!-- Heatmap -->
+            <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
+                <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between cursor-pointer select-none" onclick="toggleHeatmap()">
+                    <h3 class="text-sm font-medium flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                        <span data-i18n="heatmap_title">Heatmap</span>
+                        <span id="hm-count" class="hidden text-xs bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full font-medium">0</span>
+                    </h3>
+                    <svg id="hm-chevron" class="w-4 h-4 text-gray-400 transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+                <div id="hm-container" class="p-3 hidden">
+                    <div id="hm-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:3px;"></div>
                 </div>
             </div>
 
@@ -480,7 +482,7 @@
                 <kbd class="text-xs text-gray-600 bg-dark-hover px-1.5 py-0.5 rounded border border-dark-border cursor-pointer select-none" onclick="closeSearch()">ESC</kbd>
             </div>
             <div id="search-results" class="max-h-80 overflow-y-auto">
-                <div class="py-8 text-center text-xs text-gray-600">Digita per cercare tra le crypto su Bybit</div>
+                <div class="py-8 text-center text-xs text-gray-600" data-i18n="csearch_init">Digita per cercare tra le crypto su Bybit</div>
             </div>
         </div>
     </div>
@@ -539,15 +541,75 @@
             _tipTimer = setTimeout(() => { const t = document.getElementById('screenshot-tip'); if (t) t.style.display = 'none'; }, 150);
         }
 
+        // ── Heatmap ───────────────────────────────────────────────────────────
+        function _hmColor(pct) {
+            if (pct >=  5) return { bg:'#06b48a', tx:'#fff' };
+            if (pct >=  3) return { bg:'#089981', tx:'#fff' };
+            if (pct >=  1) return { bg:'#0a5c51', tx:'#d0f0ea' };
+            if (pct >   0) return { bg:'#0d3d32', tx:'#8ccec5' };
+            if (pct === 0) return { bg:'#2A2E39', tx:'#6B7280' };
+            if (pct >  -1) return { bg:'#3d1a1a', tx:'#fca5a5' };
+            if (pct >  -3) return { bg:'#7a2020', tx:'#fecaca' };
+            if (pct >  -5) return { bg:'#b91c1c', tx:'#fff' };
+            return              { bg:'#F23645', tx:'#fff' };
+        }
+
+        function renderHeatmap(coins) {
+            const grid    = document.getElementById('hm-grid');
+            const countEl = document.getElementById('hm-count');
+            if (!grid) return;
+            grid.innerHTML = coins.map(c => {
+                const pct  = c.change_24h || 0;
+                const clr  = _hmColor(pct);
+                const sign = pct >= 0 ? '+' : '';
+                const name = c.symbol.replace('USDT','');
+                return `<a href="${chartUrl(c.symbol)}"
+                    style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                           height:52px;border-radius:4px;text-decoration:none;cursor:pointer;
+                           background:${clr.bg};color:${clr.tx};transition:filter .15s;"
+                    onmouseover="this.style.filter='brightness(1.2)'"
+                    onmouseout="this.style.filter=''">
+                    <span style="font-size:10px;font-weight:700;line-height:1.2;">${name}</span>
+                    <span style="font-size:10px;line-height:1.2;">${sign}${pct.toFixed(2)}%</span>
+                </a>`;
+            }).join('');
+            if (countEl) {
+                countEl.textContent = coins.length;
+                coins.length > 0 ? countEl.classList.remove('hidden') : countEl.classList.add('hidden');
+            }
+        }
+
+        function toggleHeatmap() {
+            const c = document.getElementById('hm-container');
+            const v = document.getElementById('hm-chevron');
+            const hidden = c.classList.toggle('hidden');
+            v.style.transform = hidden ? '' : 'rotate(90deg)';
+        }
+
+        async function loadHeatmap() {
+            try {
+                const res  = await fetch(`${API_URL}/api/high-volume`);
+                const data = await res.json();
+                if (data && data.data) {
+                    const sorted = [...data.data].sort((a,b) => (b.volume_24h||0) - (a.volume_24h||0)).slice(0,120);
+                    renderHeatmap(sorted);
+                }
+            } catch(e) {
+                console.error('Heatmap load error:', e);
+            }
+        }
+
         async function init() {
             await loadConfig();
             await loadMarketData();
             await loadAlerts();
+            loadHeatmap();
             loadStockCommodityData();
             checkHealth();
             setInterval(loadMarketData, 30000);
             setInterval(loadStockCommodityData, 60000);
             setInterval(loadAlerts, 60000);
+            setInterval(loadHeatmap, 30000);
         }
 
         function updateBotStatus() {
@@ -563,38 +625,103 @@
                 : `<div class="w-2 h-2 bg-gray-500 rounded-full"></div><span class="text-sm text-gray-500 hidden sm:inline">Offline</span>`;
         }
 
-        async function loadAlerts() {
-            try {
-                const res = await fetch(`${API_URL}/scanner-api/alerts/recent`);
-                const data = await res.json();
-                const container = document.getElementById('alerts-container');
-                const countEl = document.getElementById('alerts-count');
-                if (!data.success || !data.alerts || data.alerts.length === 0) {
-                    container.innerHTML = '<div class="text-center py-8 text-gray-500 text-sm">'+window.t('alerts_waiting')+'</div>';
-                    if (countEl) { countEl.textContent = '0'; countEl.classList.add('hidden'); }
-                    return;
-                }
-                const now = Date.now();
-                container.innerHTML = data.alerts.map(a => {
+        let _alertsData = [];
+        let _alertFilter = null;
+
+        // Normalise legacy type names and translate for display
+        const _ALERT_TYPE_NORM = { 'EMA Proximity': 'EMA60' };
+        const _ALERT_TYPE_LABEL = {
+            'EMA60':       { it: 'EMA60',       en: 'EMA60'       },
+            'EMA Touch':   { it: 'EMA Touch',   en: 'EMA Touch'   },
+            'Terzo Tocco': { it: 'Terzo Tocco', en: 'Third Touch' },
+            'ATH':         { it: 'ATH',          en: 'ATH'         },
+            'ATL':         { it: 'ATL',          en: 'ATL'         },
+            'Daily Flip':  { it: 'Daily Flip',   en: 'Daily Flip'  },
+        };
+        function alertTypeLabel(raw) {
+            const norm = _ALERT_TYPE_NORM[raw] || raw;
+            const lang = window._cspLang || 'en';
+            return (_ALERT_TYPE_LABEL[norm] || {})[lang] || norm;
+        }
+
+        function renderAlerts() {
+            const container = document.getElementById('alerts-container');
+            const countEl = document.getElementById('alerts-count');
+            const filtered = _alertFilter ? _alertsData.filter(a => a.type === _alertFilter) : _alertsData;
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-gray-500 text-sm">'+window.t('alerts_waiting')+'</div>';
+            } else {
+                container.innerHTML = filtered.map(a => {
                     const _d = new Date(a.time);
                     const timeStr = String(_d.getHours()).padStart(2,'0') + ':' + String(_d.getMinutes()).padStart(2,'0');
                     const coin = a.symbol.replace('USDT', '');
                     const tf   = a.tf ? a.tf.replace('m','').replace('h','60').replace('D','D') : '30';
+                    const typeLabel = alertTypeLabel(a.type);
+                    const tfSuffix  = a.type === 'EMA60' && a.tf ? ' ('+a.tf+')' : '';
                     return `<div class="flex items-center justify-between py-2 px-3 bg-dark-hover rounded-lg">
                         <div class="flex items-center gap-2">
                             ${getCategoryIcon(a.symbol)}
                             <div>
                                 <span class="text-sm font-medium text-gray-200 cursor-default" data-symbol="${a.symbol}" data-tf="${tf}" onmouseenter="showScreenshotTip(this)" onmouseleave="hideScreenshotTip()">${coin}</span>
-                                <span class="text-xs text-gray-500 ml-1">${a.type}</span>
+                                <span class="text-xs text-gray-500 ml-1">${typeLabel}${tfSuffix}</span>
                             </div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
-                            <a href="${chartUrl(a.symbol)}" class="text-xs text-blue-400 hover:text-blue-300">Chart</a>
+                            <a href="${chartUrl(a.symbol)}" class="text-xs text-blue-400 hover:text-blue-300">${window.t('col_chart')}</a>
                             <span class="text-xs text-gray-500">${timeStr}</span>
                         </div>
                     </div>`;
                 }).join('');
-                if (countEl) { countEl.textContent = data.alerts.length; countEl.classList.remove('hidden'); }
+            }
+            if (countEl) {
+                const n = _alertsData.length;
+                countEl.textContent = n;
+                n > 0 ? countEl.classList.remove('hidden') : countEl.classList.add('hidden');
+            }
+        }
+
+        function renderAlertFilterBar() {
+            const bar = document.getElementById('alerts-filter-bar');
+            const container = document.getElementById('alerts-container');
+            if (!bar) return;
+            if (!container || container.classList.contains('hidden')) { bar.classList.add('hidden'); return; }
+            const types = [...new Set(_alertsData.map(a => a.type))];
+            if (types.length <= 1) { bar.innerHTML = ''; bar.classList.add('hidden'); return; }
+            bar.classList.remove('hidden');
+            bar.innerHTML = [null, ...types].map(t => {
+                const active = _alertFilter === t;
+                const label = t === null ? window.t('scr_all') : alertTypeLabel(t);
+                const arg = t === null ? 'null' : `'${t.replace(/'/g, "\\'")}'`;
+                return `<button onclick="setAlertFilter(${arg})"
+                    style="font-size:12px;padding:2px 10px;border-radius:999px;border:1px solid ${active?'#FF9C2E':'#374151'};background:${active?'rgba(255,156,46,0.15)':'transparent'};color:${active?'#FF9C2E':'#9CA3AF'};cursor:pointer;white-space:nowrap;">${label}</button>`;
+            }).join('');
+        }
+
+        function setAlertFilter(type) {
+            _alertFilter = type;
+            renderAlertFilterBar();
+            renderAlerts();
+        }
+
+        window.renderAlerts = renderAlerts;
+        window.renderAlertFilterBar = renderAlertFilterBar;
+
+        async function loadAlerts() {
+            try {
+                const res = await fetch(`${API_URL}/scanner-api/alerts/recent`);
+                const data = await res.json();
+                if (!data.success || !data.alerts || data.alerts.length === 0) {
+                    _alertsData = [];
+                } else {
+                    // Normalise legacy type names so filters work consistently
+                    _alertsData = data.alerts.map(a => ({
+                        ...a,
+                        type: _ALERT_TYPE_NORM[a.type] || a.type
+                    }));
+                }
+                if (_alertFilter && !_alertsData.some(a => a.type === _alertFilter)) _alertFilter = null;
+                renderAlertFilterBar();
+                renderAlerts();
             } catch (e) {
                 console.error('Error loading alerts:', e);
             }
@@ -721,7 +848,7 @@
                 }
             } catch (e) {
                 statusEl.className = 'p-3 rounded text-sm bg-red-500/20 text-red-300';
-                statusEl.textContent = '❌ Errore: ' + e.message;
+                statusEl.textContent = '❌ ' + window.t('err_unknown') + ': ' + e.message;
             }
         }
 
@@ -788,7 +915,7 @@
                 let listataDays = '';
                 if (launchMs > 0) {
                     const diffDays = Math.floor((now - launchMs) / 86400000);
-                    listataDays = diffDays === 0 ? 'oggi' : diffDays === 1 ? '1 giorno fa' : `${diffDays} gg fa`;
+                    listataDays = diffDays === 0 ? window.t('ico_today') : diffDays === 1 ? window.t('ico_day_ago') : `${diffDays} ${window.t('ico_days_ago')}`;
                 }
                 return `
                     <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
@@ -923,7 +1050,7 @@
             const inp = document.getElementById('search-input');
             inp.value = '';
             document.getElementById('search-results').innerHTML =
-                '<div class="py-8 text-center text-xs text-gray-600">Digita per cercare tra le crypto su Bybit</div>';
+                `<div class="py-8 text-center text-xs text-gray-600">${window.t('csearch_init')}</div>`;
             requestAnimationFrame(() => inp.focus());
         }
 
@@ -1019,9 +1146,17 @@
 
         function toggleAlerts() {
             const container = document.getElementById('alerts-container');
+            const filterBar = document.getElementById('alerts-filter-bar');
             const chevron = document.getElementById('alerts-chevron');
             const isHidden = container.classList.toggle('hidden');
             chevron.style.transform = isHidden ? '' : 'rotate(90deg)';
+            if (filterBar) {
+                if (isHidden) {
+                    filterBar.classList.add('hidden');
+                } else {
+                    renderAlertFilterBar();
+                }
+            }
         }
 
         // ── News Bybit ────────────────────────────────────────────────────────
@@ -1150,7 +1285,7 @@
           const el = document.getElementById('chart-tt-el');
           _ttChart = LC.createChart(el, {
             autoSize:false, width:300, height:170,
-            layout:{ background:{color:'#0B0E11'}, textColor:'#B2B5BE', fontSize:10 },
+            layout:{background:{color:'#0B0E11'}, textColor:'#B2B5BE', fontSize:10 },
             grid:{ vertLines:{color:'#FFFFFF08'}, horzLines:{color:'#FFFFFF08'} },
             crosshair:{ mode:0 },
             rightPriceScale:{ borderVisible:false, scaleMargins:{top:0.05,bottom:0.04} },
@@ -1262,7 +1397,7 @@
         <input id="lm-password" type="password" name="password" autocomplete="current-password" placeholder="••••••••" onkeydown="if(event.key==='Enter'&&_lmMode==='login')lmLogin();" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:9px 12px;font-size:13px;color:#E5E7EB;outline:none;box-sizing:border-box;">
       </div>
       <div id="lm-confirm-wrap" style="display:none;margin-bottom:18px;">
-        <div style="font-size:12px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">CONFERMA PASSWORD</div>
+        <div style="font-size:12px;color:#9CA3AF;margin-bottom:5px;font-weight:500;" data-i18n="lm_confirm_pw">CONFERMA PASSWORD</div>
         <input id="lm-confirm" type="password" autocomplete="new-password" placeholder="••••••••" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:9px 12px;font-size:13px;color:#E5E7EB;outline:none;box-sizing:border-box;">
       </div>
       <div style="display:flex;gap:8px;">
@@ -1285,8 +1420,8 @@ function _lmSetMode(m){document.getElementById('login-modal-form').style.display
 function _lmMsg(t,ok){var el=document.getElementById('lm-msg');el.textContent=t;el.style.display='block';el.style.background=ok?'rgba(16,185,129,.1)':'rgba(239,68,68,.1)';el.style.border='1px solid '+(ok?'rgba(16,185,129,.3)':'rgba(239,68,68,.3)');el.style.color=ok?'#34d399':'#f87171';}
 async function lmLogin(){if(_lmMode==='register'){_lmSetMode('login');return;}var u=document.getElementById('lm-username').value.trim();var p=document.getElementById('lm-password').value;var btn=document.getElementById('lm-btn-login');btn.disabled=true;btn.textContent='...';try{var next=new URLSearchParams(window.location.search).get('next')||window.location.pathname||'/';var res=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p,next:next})});var d=await res.json();if(d.success){window.location.href=d.redirect||'/';}else{_lmMsg(d.error||window.t('cred_invalid'),false);}}catch(ex){_lmMsg(window.t('net_error'),false);}finally{btn.disabled=false;btn.textContent=window.t('login_submit');}}
 function lmRecovery(){document.getElementById('login-modal-form').style.display='none';var rl=document.getElementById('lm-recover-link');if(rl)rl.style.display='none';document.getElementById('lm-recovery').style.display='block';document.getElementById('lm-msg').style.display='none';document.getElementById('lm-rec-email').value='';}
-async function lmDoRecovery(){var e=document.getElementById('lm-rec-email').value.trim();var btn=document.getElementById('lm-rec-btn');if(!e){_lmMsg(window.t('email_required'),false);return;}btn.disabled=true;btn.textContent='...';try{var res=await fetch('/api/recover-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e})});var d=await res.json();if(d.success){btn.style.display='none';_lmMsg(window.t('recovery_sent'),true);}else{_lmMsg(d.error||'Errore',false);}}catch(ex){_lmMsg(window.t('net_error'),false);}finally{btn.disabled=false;btn.textContent=window.t('recover_submit');}}
-async function lmRegister(){if(_lmMode==='login'){_lmSetMode('register');return;}var u=document.getElementById('lm-username').value.trim(),e=document.getElementById('lm-email').value.trim(),p=document.getElementById('lm-password').value,c=document.getElementById('lm-confirm').value,btn=document.getElementById('lm-btn-reg');btn.disabled=true;btn.textContent='...';try{var res=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,email:e,password:p,confirm:c})});var d=await res.json();if(d.success){['lm-email-wrap','lm-confirm-wrap','lm-pw-div'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});var uw=document.getElementById('lm-username');if(uw&&uw.parentNode)uw.parentNode.style.display='none';document.getElementById('lm-btn-login').style.display='none';document.getElementById('lm-btn-reg').style.display='none';var m=document.getElementById('lm-msg');m.style.fontSize='13px';m.style.padding='14px';m.style.lineHeight='1.5';_lmMsg(window.t('reg_done'),true);}else{_lmMsg(d.error||'Errore',false);}}catch(ex){_lmMsg(window.t('net_error'),false);}finally{btn.disabled=false;btn.textContent=window.t('register_submit');}}
+async function lmDoRecovery(){var e=document.getElementById('lm-rec-email').value.trim();var btn=document.getElementById('lm-rec-btn');if(!e){_lmMsg(window.t('email_required'),false);return;}btn.disabled=true;btn.textContent='...';try{var res=await fetch('/api/recover-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e})});var d=await res.json();if(d.success){btn.style.display='none';_lmMsg(window.t('recovery_sent'),true);}else{_lmMsg(d.error||window.t('prof_error'),false);}}catch(ex){_lmMsg(window.t('net_error'),false);}finally{btn.disabled=false;btn.textContent=window.t('recover_submit');}}
+async function lmRegister(){if(_lmMode==='login'){_lmSetMode('register');return;}var u=document.getElementById('lm-username').value.trim(),e=document.getElementById('lm-email').value.trim(),p=document.getElementById('lm-password').value,c=document.getElementById('lm-confirm').value,btn=document.getElementById('lm-btn-reg');btn.disabled=true;btn.textContent='...';try{var res=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,email:e,password:p,confirm:c})});var d=await res.json();if(d.success){['lm-email-wrap','lm-confirm-wrap','lm-pw-div'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});var uw=document.getElementById('lm-username');if(uw&&uw.parentNode)uw.parentNode.style.display='none';document.getElementById('lm-btn-login').style.display='none';document.getElementById('lm-btn-reg').style.display='none';var m=document.getElementById('lm-msg');m.style.fontSize='13px';m.style.padding='14px';m.style.lineHeight='1.5';_lmMsg(window.t('reg_done'),true);}else{_lmMsg(d.error||window.t('prof_error'),false);}}catch(ex){_lmMsg(window.t('net_error'),false);}finally{btn.disabled=false;btn.textContent=window.t('register_submit');}}
 async function openApiKeyModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';try{var s=await fetch('/api/settings').then(r=>r.json());var key=s.bybit_api_key||'';document.getElementById('ak-key').textContent=key?(key.length<=8?'●'.repeat(key.length):key.slice(0,4)+'●●●●●●●●'+key.slice(-4)):window.t('not_configured');document.getElementById('ak-secret').textContent=s.bybit_secret_set?'●●●●●●●●●●●●':window.t('not_configured2');var badge=document.getElementById('ak-trade-badge');if(s.trading_enabled&&s.bybit_secret_set&&key){badge.textContent=window.t('trade_active');badge.style.background='#064e3b';badge.style.color='#34d399';}else{badge.textContent=window.t('trade_disabled');badge.style.background='#1f2937';badge.style.color='#6B7280';}}catch(e){document.getElementById('ak-key').textContent=window.t('load_err');}document.getElementById('apikey-modal').style.display='flex';}
 function closeApiKeyModal(){document.getElementById('apikey-modal').style.display='none';}
 async function openTelegramModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';try{var s=await fetch('/api/settings').then(r=>r.json());document.getElementById('tg-tok-m').value=s.telegram_token||'';document.getElementById('tg-chat-m').value=s.telegram_chat_id||'';}catch(e){}document.getElementById('telegram-modal').style.display='flex';}
@@ -1294,7 +1429,7 @@ function closeTelegramModal(){document.getElementById('telegram-modal').style.di
 async function saveTelegramModal(){var msg=document.getElementById('tg-modal-msg');try{var d=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegram_token:document.getElementById('tg-tok-m').value,telegram_chat_id:document.getElementById('tg-chat-m').value})}).then(r=>r.json());if(d.success){msg.textContent=window.t('saved');msg.style.color='#10b981';}else{msg.textContent=window.t('save_err');msg.style.color='#ef4444';}}catch(e){msg.textContent=window.t('save_err');msg.style.color='#ef4444';}setTimeout(()=>msg.textContent='',3000);}
 async function openUsersModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';document.getElementById('users-modal').style.display='flex';var tb=document.getElementById('users-tbody');tb.innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:#6B7280;">'+window.t('loading')+'</td></tr>';try{var r=await fetch('/api/admin/users');var data=await r.json();if(!data.users||data.users.length===0){tb.innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:#6B7280;">'+window.t('no_users')+'</td></tr>';return;}tb.innerHTML=data.users.map(function(u){var dt=u.created_at?u.created_at.split('T')[0]:'-';var role=u.role||'—';var roleColor=u.role==='admin'?'#60a5fa':'#9CA3AF';return '<tr style="border-bottom:1px solid #1E222D;" onmouseover="this.style.background=\'#1E222D\'" onmouseout="this.style.background=\'transparent\'"><td style="padding:8px 10px;color:#E5E7EB;font-weight:500;">'+u.username+'</td><td style="padding:8px 10px;color:#D1D5DB;">'+u.email+'</td><td style="padding:8px 10px;color:#9CA3AF;">'+dt+'</td><td style="padding:8px 10px;color:'+roleColor+';font-weight:500;">'+role+'</td></tr>';}).join('');addDeleteBtns(data.users);}catch(e){tb.innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:#f87171;">'+window.t('load_err')+'</td></tr>';}}
 function closeUsersModal(){document.getElementById('users-modal').style.display='none';}
-(async function(){try{var r=await fetch('/api/auth/status');var d=await r.json();var lbl=document.getElementById('user-label');var li=document.getElementById('dd-login');var lo=document.getElementById('dd-logout');var hdr=document.getElementById('dd-header');var uname=document.getElementById('dd-username');var drole=document.getElementById('dd-role');var prof=document.getElementById('dd-profile');var apik=document.getElementById('dd-apikey');var tg=document.getElementById('dd-telegram');var cfg=document.getElementById('config-btn');var usrs=document.getElementById('dd-users');var wm=document.getElementById('dd-webmail');if(d.logged_in){_isLoggedIn=true;if(lbl)lbl.textContent=d.username||'Admin';if(li)li.style.display='none';if(lo)lo.style.display='flex';if(prof)prof.style.display='flex';if(apik)apik.style.display=(d.role==='admin'?'flex':'none');if(tg)tg.style.display=(d.role==='admin'?'flex':'none');if(cfg)cfg.style.display=(d.role==='admin'?'flex':'none');if(usrs)usrs.style.display=(d.role==='admin'?'flex':'none');if(wm)wm.style.display=(d.role==='admin'?'flex':'none');if(d.role==='admin'){pollUnreadMail();setInterval(pollUnreadMail,60000);}if(hdr)hdr.style.display='block';if(uname)uname.textContent=d.username||'admin';if(drole)drole.textContent=d.role==='admin'?window.t('role_admin'):d.role||'';}else{if(lbl)lbl.textContent='Guest';if(li)li.style.display='flex';if(lo)lo.style.display='none';if(prof)prof.style.display='none';if(apik)apik.style.display='none';if(tg)tg.style.display='none';if(cfg)cfg.style.display='none';if(usrs)usrs.style.display='none';if(hdr)hdr.style.display='none';}}catch(e){}})();
+(async function(){try{var r=await fetch('/api/auth/status');var d=await r.json();var lbl=document.getElementById('user-label');var li=document.getElementById('dd-login');var lo=document.getElementById('dd-logout');var hdr=document.getElementById('dd-header');var uname=document.getElementById('dd-username');var drole=document.getElementById('dd-role');var prof=document.getElementById('dd-profile');var apik=document.getElementById('dd-apikey');var tg=document.getElementById('dd-telegram');var cfg=document.getElementById('config-btn');var usrs=document.getElementById('dd-users');var wm=document.getElementById('dd-webmail');if(d.logged_in){_isLoggedIn=true;if(lbl)lbl.textContent=d.username||'Admin';if(li)li.style.display='none';if(lo)lo.style.display='flex';if(prof)prof.style.display='flex';if(apik)apik.style.display=(d.role==='admin'?'flex':'none');if(tg)tg.style.display=(d.role==='admin'?'flex':'none');if(cfg)cfg.style.display=(d.role==='admin'?'flex':'none');if(usrs)usrs.style.display=(d.role==='admin'?'flex':'none');if(wm)wm.style.display=(d.role==='admin'?'flex':'none');if(d.role==='admin'){pollUnreadMail();setInterval(pollUnreadMail,60000);}if(hdr)hdr.style.display='block';if(uname)uname.textContent=d.username||'admin';if(drole)drole.textContent=d.role==='admin'?window.t('role_admin'):d.role||'';}else{if(lbl)lbl.textContent=window.t('guest_label');if(li)li.style.display='flex';if(lo)lo.style.display='none';if(prof)prof.style.display='none';if(apik)apik.style.display='none';if(tg)tg.style.display='none';if(cfg)cfg.style.display='none';if(usrs)usrs.style.display='none';if(hdr)hdr.style.display='none';}}catch(e){}})();
 async function pollUnreadMail(){
   try{
     var r=await fetch('api/admin/unread-mail');
@@ -1334,7 +1469,7 @@ async function pollUnreadMail(){
       <div id="ak-secret" style="font-family:monospace;font-size:12px;color:#6B7280;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 12px;">—</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
-      <div style="font-size:11px;color:#9CA3AF;font-weight:500;">Trading:</div>
+      <div style="font-size:11px;color:#9CA3AF;font-weight:500;" data-i18n="ak_trading">Trading:</div>
       <span id="ak-trade-badge" style="font-size:10px;font-weight:600;padding:2px 10px;border-radius:12px;background:#1f2937;color:#6B7280;">—</span>
     </div>
   </div>

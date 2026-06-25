@@ -187,27 +187,49 @@ class ATHATLScanner:
                 threading.Thread(target=self._send_single_alert,
                                  args=(coin, 'atl'), daemon=True).start()
 
+    def _build_caption(self, sym, label, dist_pct, change_pct):
+        base   = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
+        lines  = [
+            f'🔔 {label} {dist_pct:.2f}%',
+            '',
+            '------------------------------------------------',
+            f'- Coin: {sym}',
+            f'- Vol: {change_pct:+.2f}%',
+            '------------------------------------------------',
+            '',
+            f'<a href="https://www.bybit.com/trade/usdt/{sym}">- View Bybit</a>',
+            f'<a href="{base}/mtf?symbol={sym}">- View Desktop</a>',
+            f'<a href="{base}/chart?symbol={sym}&layout=1x1">- View Mobile</a>',
+        ]
+        return '\n'.join(lines)
+
     def _send_single_alert(self, coin, alert_type):
         try:
-            from alert_utils import send_photo, send_text, get_chart, build_caption, log_alert
+            from alert_utils import send_photo, send_text, get_chart, log_alert
         except ImportError:
             return
         sym = coin['symbol']
         if alert_type == 'ath':
-            note     = 'Nuovo ATH' if coin['is_new_ath'] else f"Vicino ATH {coin['distance_pct']:.2f}%"
-            sig_type = 'ath'
+            sig_type     = 'ath'
             emoji, label = '🏆', 'ATH'
         else:
-            note     = 'Nuovo ATL' if coin['is_new_atl'] else f"Vicino ATL {coin['distance_pct']:.2f}%"
-            sig_type = 'atl'
+            sig_type     = 'atl'
             emoji, label = '⬇️', 'ATL'
-        caption = build_caption(sym, coin.get('change_pct', 0.0), note, self.base_url, title=f'🔔 {label}')
-        img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
+        dist   = coin.get('distance_pct', 0.0)
+        change = coin.get('change_pct', 0.0)
+        caption = self._build_caption(sym, label, dist, change)
+        with self._ath_cache_lock:
+            aa = self._ath_cache.get(sym, {})
+        img = get_chart(sym, interval=self.screenshot_tf, signal={
+            'type': sig_type,
+            'ath': aa.get('ath', 0),
+            'atl': aa.get('atl', 0),
+        })
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
         else:
             send_text(self.telegram_token, self.telegram_chat_id, caption)
-        log_alert(sym, label, emoji=emoji, note=note)
+        log_alert(sym, label, emoji=emoji, note=f'{dist:.2f}%')
         print(f'ATH/ATL alert: {sym} ({alert_type})')
 
     # ── public cache accessor ─────────────────────────────────────────────────
@@ -374,36 +396,41 @@ class ATHATLScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, build_caption
+            from alert_utils import send_photo, send_text, get_chart, log_alert
         except ImportError:
             return
 
-        try:
-            from alert_utils import log_alert as _log
-        except ImportError:
-            _log = None
-
         for coin in result.get('ath', [])[:3]:
             sym     = coin['symbol']
-            note    = 'Nuovo ATH' if coin['is_new_ath'] else f"Vicino ATH {coin['distance_pct']:.2f}%"
-            caption = build_caption(sym, coin['price'], note, self.base_url)
-            img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ath'})
+            dist    = coin.get('distance_pct', 0.0)
+            change  = coin.get('change_pct', 0.0)
+            caption = self._build_caption(sym, 'ATH', dist, change)
+            with self._ath_cache_lock:
+                aa = self._ath_cache.get(sym, {})
+            img = get_chart(sym, interval=self.screenshot_tf, signal={
+                'type': 'ath', 'ath': aa.get('ath', 0), 'atl': aa.get('atl', 0),
+            })
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
-            if _log: _log(sym, 'ATH', emoji='🏆', note=note)
+            log_alert(sym, 'ATH', emoji='🏆', note=f'{dist:.2f}%')
 
         for coin in result.get('atl', [])[:3]:
             sym     = coin['symbol']
-            note    = 'Nuovo ATL' if coin['is_new_atl'] else f"Vicino ATL {coin['distance_pct']:.2f}%"
-            caption = build_caption(sym, coin['price'], note, self.base_url)
-            img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'atl'})
+            dist    = coin.get('distance_pct', 0.0)
+            change  = coin.get('change_pct', 0.0)
+            caption = self._build_caption(sym, 'ATL', dist, change)
+            with self._ath_cache_lock:
+                aa = self._ath_cache.get(sym, {})
+            img = get_chart(sym, interval=self.screenshot_tf, signal={
+                'type': 'atl', 'ath': aa.get('ath', 0), 'atl': aa.get('atl', 0),
+            })
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
-            if _log: _log(sym, 'ATL', emoji='⬇️', note=note)
+            log_alert(sym, 'ATL', emoji='⬇️', note=f'{dist:.2f}%')
 
     # ── status ────────────────────────────────────────────────────────────────
 
@@ -416,6 +443,36 @@ class ATHATLScanner:
     def get_monitored_count(self):
         with self._ath_cache_lock:
             return len(self._ath_cache)
+
+    def get_visual_data(self):
+        with self._ath_cache_lock:
+            cache = dict(self._ath_cache)
+        tickers = {}
+        if self._ws_manager and self._ws_manager.ready.is_set():
+            tickers = self._ws_manager.get_all_tickers()
+        result = []
+        for sym, data in cache.items():
+            td    = tickers.get(sym, {})
+            price = td.get('price', 0)
+            if price <= 0:
+                continue
+            ath = data.get('ath', 0)
+            atl = data.get('atl', 0)
+            if not ath or not atl:
+                continue
+            dist_ath = round((ath - price) / ath * 100, 2)
+            dist_atl = round((price - atl) / atl * 100, 2)
+            result.append({
+                'symbol':   sym,
+                'price':    price,
+                'ath':      ath,
+                'atl':      atl,
+                'dist_ath': dist_ath,
+                'dist_atl': dist_atl,
+                'change':   round(td.get('change_24h', 0), 2),
+                'volume':   td.get('volume_24h', 0),
+            })
+        return result
 
     def get_nearby_symbols(self, ath_pct=5.0, atl_pct=20.0):
         """Return symbols currently within ath_pct% of ATH or atl_pct% of ATL."""

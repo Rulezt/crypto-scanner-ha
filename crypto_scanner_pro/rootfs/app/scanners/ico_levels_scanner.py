@@ -286,15 +286,27 @@ class ICOLevelsScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, build_caption, log_alert
+            from alert_utils import send_photo, send_text, get_chart, log_alert
         except ImportError as e:
             logger.error(f'Cannot import alert_utils: {e}')
             return
 
         side_str = 'massimo' if side == 'high' else 'minimo'
         sig_type = 'ath' if side == 'high' else 'atl'
-        note     = f"ICO {side_str} {dist:.2f}%"
-        caption  = build_caption(sym, change_pct, note, self.base_url, title='🔔 ICO')
+        base = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
+        lines = [
+            f'🔔 ICO {side_str} {dist:.2f}%',
+            '',
+            '------------------------------------------------',
+            f'- Coin: {sym}',
+            f'- Vol: {change_pct:+.2f}%',
+            '------------------------------------------------',
+            '',
+            f'<a href="https://www.bybit.com/trade/usdt/{sym}">- View Bybit</a>',
+            f'<a href="{base}/mtf?symbol={sym}">- View Desktop</a>',
+            f'<a href="{base}/chart?symbol={sym}&layout=1x1">- View Mobile</a>',
+        ]
+        caption = '\n'.join(lines)
         img = get_chart(sym, interval=self.screenshot_tf, signal={'type': sig_type})
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
@@ -324,3 +336,31 @@ class ICOLevelsScanner:
     def get_monitored_symbols(self):
         with self._levels_lock:
             return list(self._levels.keys())
+
+    def get_visual_data(self):
+        with self._levels_lock:
+            levels = dict(self._levels)
+        tickers = self._ws_manager.get_all_tickers() if self._ws_manager else {}
+        result = []
+        for sym, lvl in levels.items():
+            td = tickers.get(sym, {})
+            price = td.get('price', 0)
+            if price <= 0:
+                continue
+            fh = lvl['first_high']
+            fl = lvl['first_low']
+            dh = round((fh - price) / fh * 100, 2)
+            dl = round((price - fl) / fl * 100, 2)
+            result.append({
+                'symbol':     sym,
+                'price':      price,
+                'first_high': fh,
+                'first_low':  fl,
+                'dist_high':  dh,
+                'dist_low':   dl,
+                'dist':       round(min(abs(dh), abs(dl)), 2),
+                'side':       'high' if abs(dh) <= abs(dl) else 'low',
+                'change':     round(td.get('change_24h', 0), 2),
+                'volume':     td.get('volume_24h', 0),
+            })
+        return result

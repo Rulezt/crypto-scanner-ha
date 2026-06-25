@@ -185,6 +185,7 @@
         .fs-sdot.on { border-color:#FF9C2E; }
         #fs-slider-thumb { position:absolute; top:50%; width:14px; height:14px; background:#FF9C2E; border-radius:50%; transform:translate(-50%,-50%); z-index:3; box-shadow:0 0 0 3px rgba(255,156,46,0.25); cursor:grab; }
     </style>
+<style>#tv-attr-logo{display:none!important}</style>
 </head>
 <body class="bg-dark-bg text-gray-100" style="height:100vh;display:flex;flex-direction:column;overflow:hidden;">
 
@@ -243,7 +244,7 @@
     <div id="user-menu-wrap" style="position:relative;display:flex;align-items:center;margin-left:4px;">
       <button onclick="toggleUserMenu(event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:32px;background:#1E222D;border:none;border-radius:6px;color:#9CA3AF;cursor:pointer;transition:background .15s,color .15s;font-family:inherit;" onmouseover="this.style.background='#2A2E39';this.style.color='#E5E7EB'" onmouseout="this.style.background='#1E222D';this.style.color='#9CA3AF'">
         <svg viewBox="0 0 24 24" width="18" height="18" style="flex-shrink:0;"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"></path></svg>
-        <span id="user-label" style="font-size:12px;font-weight:500;">Guest</span>
+        <span id="user-label" style="font-size:12px;font-weight:500;" data-i18n="guest_label">Ospite</span>
         <svg viewBox="0 0 24 24" width="14" height="14" style="flex-shrink:0;"><path fill="currentColor" d="M7,10L12,15L17,10H7Z"></path></svg>
       </button>
       <div id="user-dd" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:#1E222D;border:1px solid #374151;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:50;min-width:140px;padding:4px 0;">
@@ -303,14 +304,14 @@
 <div id="fs-overlay" style="display:none;position:fixed;inset:0;z-index:100;background:#0F0F0F;flex-direction:column;">
 
     <div style="height:48px;flex-shrink:0;background:#101014;display:flex;align-items:center;gap:8px;padding:0 14px;">
-        <span id="fs-title"  style="font-size:15px;font-weight:700;color:#E5E7EB;"></span>
+        <span id="fs-title"  style="font-weight:700;color:#E5E7EB;"></span>
         <div id="fs-ws-dot" style="width:6px;height:6px;border-radius:50%;background:#6B7280;flex-shrink:0;"></div>
-        <span id="fs-change" style="font-size:12px;font-weight:500;"></span>
-        <span style="color:#374151;font-size:11px;">|</span>
-        <span id="fs-vol"    style="font-size:11px;color:#60a5fa;"></span>
-        <span style="color:#374151;font-size:11px;">|</span>
+        <span id="fs-change" style="font-weight:500;"></span>
+        <span style="color:#374151;">|</span>
+        <span id="fs-vol"    style="color:#60a5fa;"></span>
+        <span style="color:#374151;">|</span>
         <div  id="fs-tf-bar" style="display:flex;gap:3px;align-items:center;"></div>
-        <span style="color:#374151;font-size:11px;">|</span>
+        <span style="color:#374151;">|</span>
         <a id="fs-bybit-link" href="#" target="_blank" rel="noopener noreferrer"
            style="font-size:10px;color:#f7a600;text-decoration:none;padding:2px 7px;border-radius:3px;background:#1E222D;white-space:nowrap;">Bybit ↗</a>
 
@@ -400,13 +401,13 @@
                 <!-- Order type tabs (Bybit style) -->
                 <div style="display:flex;align-items:center;border-bottom:1px solid #2A2E39;padding-bottom:2px;gap:0;">
                     <button id="fs-ot-limit" onclick="setOrderType('Limit')"
-                        style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#6B7280;white-space:nowrap;">Limit</button>
+                        style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#6B7280;white-space:nowrap;" data-i18n="ot_limit">Limit</button>
                     <button id="fs-ot-market" onclick="setOrderType('Market')"
-                        style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#FF9C2E;white-space:nowrap;">Market</button>
+                        style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#FF9C2E;white-space:nowrap;" data-i18n="ot_market">Market</button>
                     <button id="fs-ot-cond-mkt" onclick="setCondTypeFromDD('Market')"
-                        style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#6B7280;white-space:nowrap;">Cond.Mkt</button>
+                        style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#6B7280;white-space:nowrap;" data-i18n="ot_cond_mkt">Cond.Mkt</button>
                     <button id="fs-ot-cond-lim" onclick="setCondTypeFromDD('Limit')"
-                        style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#6B7280;white-space:nowrap;">Cond.Lim</button>
+                        style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#6B7280;white-space:nowrap;" data-i18n="ot_cond_lim">Cond.Lim</button>
                 </div>
                 <!-- Limit price -->
                 <div id="fs-order-price-wrap" style="display:none;align-items:center;gap:4px;">
@@ -441,7 +442,7 @@
                 </div>
                 <!-- SL input -->
                 <div style="display:flex;flex-direction:column;gap:3px;">
-                    <span style="font-size:12px;color:#ef4444;">Stop Loss</span>
+                    <span style="font-size:12px;color:#ef4444;" data-i18n="lbl_stop_loss">Stop Loss</span>
                     <div style="display:flex;align-items:center;gap:4px;">
                         <input id="fs-sl-input" type="number" data-i18n-placeholder="price_sl_ph" placeholder="SL price" step="any"
                             oninput="_onSlTpInput('sl',this.value)"
@@ -454,7 +455,7 @@
                 </div>
                 <!-- TP input -->
                 <div style="display:flex;flex-direction:column;gap:3px;">
-                    <span style="font-size:12px;color:#10b981;">Take Profit</span>
+                    <span style="font-size:12px;color:#10b981;" data-i18n="lbl_take_profit">Take Profit</span>
                     <div style="display:flex;align-items:center;gap:4px;">
                         <input id="fs-tp-input" type="number" data-i18n-placeholder="price_tp_ph" placeholder="TP price" step="any"
                             oninput="_onSlTpInput('tp',this.value)"
@@ -502,8 +503,8 @@
                 <span id="fs-qty-preview" style="font-size:12px;color:#ADB1B8;"></span>
                 <!-- Long/Short -->
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
-                    <button id="fs-btn-long" onclick="setFsSide('Buy')" style="padding:7px 0;font-size:12px;font-weight:700;background:#0d1a14;color:#10b981;border:1px solid #1e3d2a;border-radius:4px;cursor:pointer;">LONG</button>
-                    <button id="fs-btn-short" onclick="setFsSide('Sell')" style="padding:7px 0;font-size:12px;font-weight:700;background:#1a0d0d;color:#ef4444;border:1px solid #3d1e1e;border-radius:4px;cursor:pointer;">SHORT</button>
+                    <button id="fs-btn-long" onclick="setFsSide('Buy')" style="padding:7px 0;font-size:12px;font-weight:700;background:#0d1a14;color:#10b981;border:1px solid #1e3d2a;border-radius:4px;cursor:pointer;" data-i18n="btn_long">LONG</button>
+                    <button id="fs-btn-short" onclick="setFsSide('Sell')" style="padding:7px 0;font-size:12px;font-weight:700;background:#1a0d0d;color:#ef4444;border:1px solid #3d1e1e;border-radius:4px;cursor:pointer;" data-i18n="btn_short">SHORT</button>
                 </div>
                 <!-- Order button -->
                 <button id="fs-order-btn" onclick="confirmFsOrder()" disabled style="width:100%;padding:8px 0;font-size:12px;font-weight:700;background:#1a2a4a;color:#4B5563;border:none;border-radius:4px;cursor:not-allowed;opacity:0.5;" data-i18n="order_btn">Ordine</button>
@@ -573,19 +574,19 @@
                 <thead>
                     <tr style="border-bottom:1px solid #2A2E39;">
                         <th style="text-align:left;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_level">Livello</th>
-                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">Colore</th>
+                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_color">Colore</th>
                         <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_thickness">Spessore</th>
                         <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_style">Stile</th>
-                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">Chart</th>
-                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">MTF</th>
-                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;">OB</th>
+                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_chart">Chart</th>
+                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_mtf">MTF</th>
+                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_ob">OB</th>
                     </tr>
                 </thead>
                 <tbody id="cfg-rows"></tbody>
             </table>
         </div>
         <div style="padding:10px 14px;border-top:1px solid #2A2E39;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
-            <button onclick="resetCfg()" style="padding:5px 12px;border-radius:5px;border:1px solid #2A2E39;background:#1E222D;color:#9CA3AF;font-size:12px;cursor:pointer;">Reset</button>
+            <button onclick="resetCfg()" style="padding:5px 12px;border-radius:5px;border:1px solid #2A2E39;background:#1E222D;color:#9CA3AF;font-size:12px;cursor:pointer;" data-i18n="btn_reset">Reset</button>
             <button onclick="saveCfgPanel()" style="padding:5px 12px;border-radius:5px;border:none;background:#2563EB;color:#fff;font-size:12px;cursor:pointer;font-weight:600;" data-i18n="cfg_save">Salva</button>
         </div>
     </div>
@@ -668,7 +669,7 @@ let ws = null, wsTimer = null;
 
 // fullscreen
 let fsChart = null, fsCandleS = null, fsEmaS = {}, fsLastEMA = {}, fsKlineCount = 0;
-let fsRangeActive = false, fsRangeP1 = null, fsRangeP2 = null, _fsRangeSub = null, _fsRangeCsSub = null;
+let fsRangeActive = false, fsRangeP1 = null, _fsRangeMD = null, _fsRangeMM = null, _fsRangeMU = null, _fsRangeCM = null;
 let fsTF = '30', fsCoin = null;
 let _fsLastPrice = null, _fsLastOpen = null;
 let fsWs = null, fsWsTimer = null;
@@ -722,11 +723,17 @@ function getTFRemaining(tf) {
     return 0;
 }
 
-function fmtCountdown(s) {
+function fmtCountdown(s, noSec) {
     if (s <= 0) return '00:00';
     const p = n => String(n).padStart(2, '0');
     const dd = Math.floor(s / 86400), hh = Math.floor((s % 86400) / 3600);
     const mm = Math.floor((s % 3600) / 60), ss = s % 60;
+    if (noSec === 'days') return `${dd}d`;
+    if (noSec === 'dayshours') return `${dd}d ${p(hh)}:${p(mm)}`;
+    if (noSec) {
+        if (dd > 0) return `${dd}d ${p(hh)}:${p(mm)}`;
+        return `${p(hh)}:${p(mm)}`;
+    }
     if (dd > 0) return `${dd}d ${p(hh)}:${p(mm)}:${p(ss)}`;
     if (hh > 0) return `${p(hh)}:${p(mm)}:${p(ss)}`;
     return `${p(mm)}:${p(ss)}`;
@@ -927,7 +934,7 @@ function renderAlertsList() {
                 ${distStr ? `<span style="font-size:10px;font-family:monospace;color:${distColor};">${distStr}</span>` : ''}
             </div>
             <span style="font-size:12px;" title="${a.notify === 'browser' ? window.t('notify_pc_only') : 'Telegram + PC'}">${notifyIcon}</span>
-            <a href="mtf?symbol=${a.symbol}" target="_blank" style="font-size:11px;color:#60a5fa;text-decoration:none;flex-shrink:0;" onmouseenter="this.style.color='#93c5fd'" onmouseleave="this.style.color='#60a5fa'">Chart</a>
+            <a href="mtf?symbol=${a.symbol}" target="_blank" style="font-size:11px;color:#60a5fa;text-decoration:none;flex-shrink:0;" onmouseenter="this.style.color='#93c5fd'" onmouseleave="this.style.color='#60a5fa'">${window.t('col_chart')}</a>
             <button onclick="deleteAlert('${a.id}')" style="background:#3f1515;color:#f87171;border:1px solid #7f1d1d;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;flex-shrink:0;" onmouseenter="this.style.background='#7f1d1d'" onmouseleave="this.style.background='#3f1515'">✕</button>
         </div>`;
     }).join('');
@@ -1074,7 +1081,7 @@ function addSeries(chart, type, opts) {
 function makeChart(el, opts) {
     return LC.createChart(el, {
         autoSize: true,
-        layout: { background:{color:'#101014'}, textColor:'#B2B5BE', fontSize: opts?.fontSize || 13 },
+        layout: {background:{color:'#101014'}, textColor:'#B2B5BE', fontSize: opts?.fontSize || 13 },
         grid:    { vertLines:{color:'#FFFFFF0F'}, horzLines:{color:'#FFFFFF0F'} },
         crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
         rightPriceScale: { borderVisible:false, scaleMargins:{top:0.05, bottom:0.05} },
@@ -1095,8 +1102,11 @@ function _cdRemain(tf) {
 }
 function _cdFmt(s) {
     if (s <= 0) return '0:00';
-    if (s >= 3600) { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60; return `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; }
-    return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+    const p = n => String(n).padStart(2,'0');
+    const dd = Math.floor(s/86400), hh = Math.floor((s%86400)/3600), mm = Math.floor((s%3600)/60), ss = s%60;
+    if (dd > 0) return `${dd}d ${p(hh)}:${p(mm)}`;
+    if (s >= 3600) return `${hh}:${p(mm)}:${p(ss)}`;
+    return `${mm}:${p(ss)}`;
 }
 class _CountdownPrimitive {
     constructor(slot) { this._slot = slot; this._series = null; }
@@ -1354,16 +1364,16 @@ function buildGrid() {
         // ── cell header ──────────────────────────────────────────────────────
         const hdr = document.createElement('div');
         hdr.className = 'slot-hdr';
-        hdr.style.cssText = 'height:24px;flex-shrink:0;display:flex;align-items:center;gap:4px;padding:0 5px;background:#101014;overflow:hidden;min-width:0;max-width:100%;width:100%;';
+        hdr.style.cssText = 'height:30px;flex-shrink:0;display:flex;align-items:center;gap:4px;padding:0 5px;background:#101014;overflow:hidden;min-width:0;max-width:100%;width:100%;';
 
         const starEl = document.createElement('button');
         starEl.textContent = '☆';
         starEl.title = window.t('fav_title'); starEl.dataset.i18nTitle = 'fav_title';
-        starEl.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;';
+        starEl.style.cssText = 'font-size:18px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;flex-shrink:0;';
         starEl.onclick = () => toggleFavorite(i);
 
         const titleEl  = document.createElement('span');
-        titleEl.style.cssText = 'font-size:13px;font-weight:700;color:#E5E7EB;white-space:nowrap;';
+        titleEl.style.cssText = 'font-weight:700;color:#E5E7EB;white-space:nowrap;';
 
         const wsDotEl = document.createElement('div');
         wsDotEl.className = 'slot-ws-dot';
@@ -1393,7 +1403,7 @@ function buildGrid() {
         const bybitEl = document.createElement('a');
         bybitEl.textContent = 'Bybit ↗';
         bybitEl.target = '_blank'; bybitEl.rel = 'noopener noreferrer'; bybitEl.href = '#';
-        bybitEl.style.cssText = 'font-size:10px;color:#f7a600;text-decoration:none;padding:1px 5px;border-radius:2px;background:#1E222D;white-space:nowrap;';
+        bybitEl.style.cssText = 'font-size:12px;color:#f7a600;text-decoration:none;padding:1px 5px;border-radius:2px;background:#1E222D;white-space:nowrap;';
         bybitEl.onmouseenter = () => bybitEl.style.background = '#2A2E39';
         bybitEl.onmouseleave = () => bybitEl.style.background = '#1E222D';
 
@@ -1402,11 +1412,11 @@ function buildGrid() {
         rightGroup.style.cssText = 'margin-left:auto;display:flex;align-items:center;gap:4px;';
 
         const candlePctEl = document.createElement('span');
-        candlePctEl.style.cssText = 'font-size:13px;font-family:monospace;min-width:48px;text-align:right;white-space:nowrap;';
+        candlePctEl.style.cssText = 'font-size:16px;font-family:monospace;min-width:48px;text-align:right;white-space:nowrap;';
 
 const mtfEl = document.createElement('button');
         mtfEl.textContent = '⊞'; mtfEl.title = window.t('mtf_title'); mtfEl.dataset.i18nTitle = 'mtf_title';
-        mtfEl.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;' + (IS_MOBILE ? 'display:none;' : '');
+        mtfEl.style.cssText = 'font-size:16px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;' + (IS_MOBILE ? 'display:none;' : '');
         mtfEl.onmouseenter = () => mtfEl.style.color = '#B2B5BE';
         mtfEl.onmouseleave = () => mtfEl.style.color = '#4B5563';
         mtfEl.onclick = () => { const s = slots[i]; if (s && s.symbol) window.open(`mtf?symbol=${s.symbol}`, '_blank'); };
@@ -1416,22 +1426,22 @@ const mtfEl = document.createElement('button');
 
         const tradeEl = document.createElement('button');
         tradeEl.textContent = 'Trade';
-        tradeEl.style.cssText = 'font-size:10px;font-weight:600;color:#60a5fa;background:#1e3a5f;border:none;border-radius:3px;padding:1px 6px;cursor:pointer;flex-shrink:0;transition:background .15s;';
+        tradeEl.style.cssText = 'font-size:12px;font-weight:600;color:#60a5fa;background:#1e3a5f;border:none;border-radius:3px;padding:1px 6px;cursor:pointer;flex-shrink:0;transition:background .15s;';
         tradeEl.onmouseenter = () => tradeEl.style.background = '#1e4a7a';
         tradeEl.onmouseleave = () => tradeEl.style.background = '#1e3a5f';
         tradeEl.onclick = e => { e.stopPropagation(); const _s = slots[i]; if (!_s?.coin) return; if (curLayout?.id === '1x1') { openTradePanelInline(i); return; } window.open(`chart?symbol=${_s.coin.symbol}&tf=${_s.curTF}&layout=1x1&trade=1&noheader=1`, '_blank'); };
 
         const expandEl = document.createElement('button');
         expandEl.textContent = '⤢'; expandEl.title = window.t('new_page'); expandEl.dataset.i18nTitle = 'new_page';
-        expandEl.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+        expandEl.style.cssText = 'font-size:16px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
         expandEl.onmouseenter = () => expandEl.style.color = '#B2B5BE';
         expandEl.onmouseleave = () => expandEl.style.color = '#4B5563';
         expandEl.onclick = () => { const _s = slots[i]; if (!_s?.coin) return; window.open(`chart?symbol=${_s.coin.symbol}&tf=${_s.curTF}&layout=1x1&noheader=1`, '_blank'); };
 
-        const sep = () => { const s = document.createElement('span'); s.textContent='|'; s.style.cssText='font-size:13px;color:#374151;'; return s; };
+        const sep = () => { const s = document.createElement('span'); s.textContent='|'; s.style.cssText='font-size:16px;color:#374151;'; return s; };
         const rangeBtn = document.createElement('button');
         rangeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="13" height="13" style="vertical-align:middle"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg>'; rangeBtn.title = window.t('price_range'); rangeBtn.dataset.i18nTitle = 'price_range';
-        rangeBtn.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+        rangeBtn.style.cssText = 'font-size:16px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
         rangeBtn.onmouseenter = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#B2B5BE'; };
         rangeBtn.onmouseleave = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#4B5563'; };
         rangeBtn.onclick = () => toggleSlotRange(i);
@@ -1521,7 +1531,7 @@ const mtfEl = document.createElement('button');
             dayHighLine: null, dayLowLine: null,
             prevHighLine: null, prevLowLine: null,
             obActive: false, obBidLine: null, obAskLine: null, obTimer: null,
-            rangeActive: false, rangeP1: null, rangeP2: null, _rangeSub: null, _rangeCsSub: null,
+            rangeActive: false, rangeP1: null, _rangeMD: null, _rangeMM: null, _rangeMU: null, _rangeCM: null,
             dayPrimitive: null,
             bbSeries: { upper: null, mid: null, lower: null }, klines: [],
         });
@@ -1628,12 +1638,12 @@ function renderSlotTF(idx) {
     // Render full TF buttons to probe overflow
     s.tfBtnsEl.innerHTML = TIMEFRAMES.map(tf => {
         const active = tf === s.curTF;
-        return `<button onclick="switchSlotTF(${idx},'${tf}')" style="font-size:9px;padding:1px 4px;border-radius:2px;border:none;cursor:pointer;background:transparent;color:${active?'#FF9C2E':'#6B7280'};font-weight:${active?'700':'400'};">${TF_LABEL[tf]}</button>`;
+        return `<button onclick="switchSlotTF(${idx},'${tf}')" style="font-size:12px;padding:1px 4px;border-radius:2px;border:none;cursor:pointer;background:transparent;color:${active?'#FF9C2E':'#6B7280'};font-weight:${active?'700':'400'};">${TF_LABEL[tf]}</button>`;
     }).join('');
     // If header content overflows, collapse TF bar to a dropdown trigger
     if (s.hdr && s.hdr.scrollWidth > s.hdr.clientWidth + 1) {
         const lbl = TF_LABEL[s.curTF] || s.curTF;
-        s.tfBtnsEl.innerHTML = `<button id="tf-dd-${idx}" onclick="toggleSlotTFDropdown(event,${idx})" style="font-size:9px;padding:1px 5px;border-radius:2px;border:none;cursor:pointer;background:#1E222D;color:#FF9C2E;font-weight:700;white-space:nowrap;">${lbl} &#9660;</button>`;
+        s.tfBtnsEl.innerHTML = `<button id="tf-dd-${idx}" onclick="toggleSlotTFDropdown(event,${idx})" style="font-size:12px;padding:1px 5px;border-radius:2px;border:none;cursor:pointer;background:#1E222D;color:#FF9C2E;font-weight:700;white-space:nowrap;">${lbl} &#9660;</button>`;
     }
 }
 
@@ -1718,8 +1728,8 @@ async function loadPage() {
         if (s.prevHighLine) { try { s.candleS.removePriceLine(s.prevHighLine); } catch(e) {} s.prevHighLine = null; }
         if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
         clearInterval(s.obTimer); s.obTimer = null; _clearSlotOBLines(s); _clearSlotATHLines(s); s.athVal = null; s.atlVal = null;
-        if (s.rangeActive) { s.rangeActive = false; s.rangeBtn.style.color = '#4B5563'; if (s._rangeSub) { try { s.chart.unsubscribeClick(s._rangeSub); } catch(e){} s._rangeSub = null; } if (s._rangeCsSub) { try { s.chart.unsubscribeCrosshairMove(s._rangeCsSub); } catch(e){} s._rangeCsSub = null; } }
-        s.rangeP1 = null; s.rangeP2 = null; try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
+        if (s.rangeActive) { s.rangeActive = false; s.rangeBtn.style.color = '#4B5563'; if (s._rangeMD) { s.rangeCanvas.removeEventListener('mousedown', s._rangeMD); s._rangeMD = null; } if (s._rangeMM) { document.removeEventListener('mousemove', s._rangeMM); s._rangeMM = null; } if (s._rangeMU) { document.removeEventListener('mouseup', s._rangeMU); s._rangeMU = null; } if (s._rangeCM) { s.rangeCanvas.removeEventListener('contextmenu', s._rangeCM); s._rangeCM = null; } s.rangeCanvas.style.pointerEvents = 'none'; s.rangeCanvas.style.cursor = ''; }
+        s.rangeP1 = null; try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
         if (s.dayPrimitive) { try { s.candleS.detachPrimitive(s.dayPrimitive); } catch(e) {} s.dayPrimitive = null; }
         for (const k of ['upper','mid','lower']) { if (s.bbSeries[k]) { try { s.chart.removeSeries(s.bbSeries[k]); } catch(e) {} s.bbSeries[k]=null; } }
         s.klines = [];
@@ -1929,11 +1939,15 @@ function closeFullscreen() {
 }
 
 function renderFsTFBar() {
+    const _CD_TFS = {'1':1,'5':1,'30':1,'60':1,'240':1,'D':1,'W':1,'M':1};
     document.getElementById('fs-tf-bar').innerHTML = TIMEFRAMES.map(tf => {
         const active = tf === fsTF;
+        const cdTxt = _CD_TFS[tf] ? fmtCountdown(getTFRemaining(tf), tf==='M'||tf==='W'?'days':tf==='D'||tf==='240') : '';
         return `<button onclick="switchFsTF('${tf}')"
-            style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:transparent;color:${active?'#FF9C2E':'#B2B5BE'};font-weight:${active?'700':'400'};"
-            >${TF_LABEL[tf]}</button>`;
+            style="padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:transparent;color:${active?'#FF9C2E':'#B2B5BE'};font-weight:${active?'700':'400'};display:flex;flex-direction:column;align-items:center;gap:1px;font-size:13px;">
+            <span style="line-height:1.3;">${TF_LABEL[tf]}</span>
+            <span id="fs-tf-cd-${tf}" style="font-family:monospace;color:#F3F4F6;line-height:1;min-width:28px;text-align:center;">${cdTxt}</span>
+            </button>`;
     }).join('');
 }
 
@@ -2164,27 +2178,33 @@ function renderModeButtons() {
 }
 
 function renderTFBar() {
-    const _CD_TFS = {'1':1,'5':1,'30':1,'60':1,'240':1};
+    const _CD_TFS = {'1':1,'5':1,'30':1,'60':1,'240':1,'D':1,'W':1,'M':1};
     document.getElementById('tf-bar').innerHTML =
         TIMEFRAMES.map(tf => {
             const cls = tf === curTF ? 'btn-tf-active' : 'btn-tf-idle';
-            const cdTxt = _CD_TFS[tf] ? fmtCountdown(getTFRemaining(tf)) : '';
+            const cdTxt = _CD_TFS[tf] ? fmtCountdown(getTFRemaining(tf), tf==='M'||tf==='W'?'days':tf==='D'||tf==='240') : '';
             return `<button onclick="switchTF('${tf}')" class="px-2 rounded text-xs font-medium transition-colors ${cls}" style="display:flex;flex-direction:column;align-items:center;padding:2px 8px;gap:1px;">
                 <span style="line-height:1.3;">${TF_LABEL[tf]}</span>
-                <span id="tf-cd-${tf}" style="font-size:10px;font-family:monospace;color:#F3F4F6;line-height:1;min-width:28px;text-align:center;">${cdTxt}</span>
+                <span id="tf-cd-${tf}" style="font-size:11px;font-family:monospace;color:#F3F4F6;line-height:1;min-width:28px;text-align:center;">${cdTxt}</span>
             </button>`;
         }).join('');
     updateCountdown();
 }
 
 function updateCountdown() {
-    const _CD_TFS = {'1':1,'5':1,'30':1,'60':1,'240':1};
+    const _CD_TFS = {'1':1,'5':1,'30':1,'60':1,'240':1,'D':1,'W':1,'M':1};
     Object.keys(_CD_TFS).forEach(tf => {
-        const el = document.getElementById('tf-cd-' + tf);
-        if (!el) return;
         const rem = getTFRemaining(tf);
-        el.textContent = fmtCountdown(rem);
-        el.style.color = (tf === '30' || tf === '60' || tf === '240') && rem <= 300 ? '#FF9C2E' : '#F3F4F6';
+        const txt = fmtCountdown(rem, tf==='M'||tf==='W'?'days':tf==='D'||tf==='240');
+        const warn = (tf === '1' || tf === '5') && rem <= 60
+            || (tf === '30' || tf === '60' || tf === '240') && rem <= 300
+            || tf === 'D' && rem <= 3600
+            || (tf === 'W' || tf === 'M') && rem <= 86400;
+        const col = warn ? '#FF9C2E' : '#F3F4F6';
+        const el = document.getElementById('tf-cd-' + tf);
+        if (el) { el.textContent = txt; el.style.color = col; }
+        const fsEl = document.getElementById('fs-tf-cd-' + tf);
+        if (fsEl) { fsEl.textContent = txt; fsEl.style.color = col; }
     });
 }
 
@@ -2767,27 +2787,40 @@ function toggleSlotRange(idx) {
     const s = slots[idx];
     s.rangeActive = !s.rangeActive;
     s.rangeBtn.style.color = s.rangeActive ? '#f59e0b' : '#4B5563';
-    if (!s.rangeActive) {
-        s.rangeP1 = null; s.rangeP2 = null;
-        try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
-        if (s._rangeSub)   { try { s.chart.unsubscribeClick(s._rangeSub); }          catch(e){} s._rangeSub   = null; }
-        if (s._rangeCsSub) { try { s.chart.unsubscribeCrosshairMove(s._rangeCsSub); } catch(e){} s._rangeCsSub = null; }
-    } else {
-        s.rangeP1 = null; s.rangeP2 = null;
-        s._rangeSub = param => {
-            if (!param.point) return;
-            const price = s.candleS.coordinateToPrice(param.point.y);
+    if (s._rangeMD) { s.rangeCanvas.removeEventListener('mousedown', s._rangeMD); s._rangeMD = null; }
+    if (s._rangeMM) { document.removeEventListener('mousemove', s._rangeMM); s._rangeMM = null; }
+    if (s._rangeMU) { document.removeEventListener('mouseup', s._rangeMU); s._rangeMU = null; }
+    if (s._rangeCM) { s.rangeCanvas.removeEventListener('contextmenu', s._rangeCM); s._rangeCM = null; }
+    s.rangeP1 = null;
+    try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
+    s.rangeCanvas.style.pointerEvents = s.rangeActive ? 'auto' : 'none';
+    s.rangeCanvas.style.cursor = s.rangeActive ? 'crosshair' : '';
+    if (s.rangeActive) {
+        s._rangeMD = e => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            const rect = s.rangeCanvas.getBoundingClientRect();
+            const price = s.candleS.coordinateToPrice(e.clientY - rect.top);
             if (price == null) return;
-            if (s.rangeP1 === null || s.rangeP2 !== null) { s.rangeP1 = price; s.rangeP2 = null; }
-            else { s.rangeP2 = price; _drawRangeCanvas(s.rangeCanvas, s.candleS, s.rangeP1, s.rangeP2); }
+            s.rangeP1 = price;
         };
-        s._rangeCsSub = param => {
-            if (s.rangeP2 !== null) return;
-            const p2 = param.point ? s.candleS.coordinateToPrice(param.point.y) : null;
+        s._rangeMM = e => {
+            if (s.rangeP1 === null || !(e.buttons & 1)) return;
+            const rect = s.rangeCanvas.getBoundingClientRect();
+            const p2 = s.candleS.coordinateToPrice(e.clientY - rect.top);
+            if (p2 == null) return;
             _drawRangeCanvas(s.rangeCanvas, s.candleS, s.rangeP1, p2);
         };
-        s.chart.subscribeClick(s._rangeSub);
-        s.chart.subscribeCrosshairMove(s._rangeCsSub);
+        s._rangeMU = e => {
+            if (e.button !== 0) return;
+            s.rangeP1 = null;
+            try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
+        };
+        s._rangeCM = e => { e.preventDefault(); toggleSlotRange(idx); };
+        s.rangeCanvas.addEventListener('mousedown', s._rangeMD);
+        document.addEventListener('mousemove', s._rangeMM);
+        document.addEventListener('mouseup', s._rangeMU);
+        s.rangeCanvas.addEventListener('contextmenu', s._rangeCM);
     }
 }
 
@@ -2797,27 +2830,40 @@ function toggleFsRange() {
     const canvas = document.getElementById('fs-range-canvas');
     btn.style.color      = fsRangeActive ? '#f59e0b' : '#B2B5BE';
     canvas.style.display = fsRangeActive ? 'block' : 'none';
-    if (!fsRangeActive) {
-        fsRangeP1 = null; fsRangeP2 = null;
-        try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
-        if (_fsRangeSub)   { try { fsChart.unsubscribeClick(_fsRangeSub); }          catch(e){} _fsRangeSub   = null; }
-        if (_fsRangeCsSub) { try { fsChart.unsubscribeCrosshairMove(_fsRangeCsSub); } catch(e){} _fsRangeCsSub = null; }
-    } else {
-        fsRangeP1 = null; fsRangeP2 = null;
-        _fsRangeSub = param => {
-            if (!param.point) return;
-            const price = fsCandleS.coordinateToPrice(param.point.y);
+    if (_fsRangeMD) { canvas.removeEventListener('mousedown', _fsRangeMD); _fsRangeMD = null; }
+    if (_fsRangeMM) { document.removeEventListener('mousemove', _fsRangeMM); _fsRangeMM = null; }
+    if (_fsRangeMU) { document.removeEventListener('mouseup', _fsRangeMU); _fsRangeMU = null; }
+    if (_fsRangeCM) { canvas.removeEventListener('contextmenu', _fsRangeCM); _fsRangeCM = null; }
+    fsRangeP1 = null;
+    try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
+    canvas.style.pointerEvents = fsRangeActive ? 'auto' : 'none';
+    canvas.style.cursor = fsRangeActive ? 'crosshair' : '';
+    if (fsRangeActive) {
+        _fsRangeMD = e => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const price = fsCandleS.coordinateToPrice(e.clientY - rect.top);
             if (price == null) return;
-            if (fsRangeP1 === null || fsRangeP2 !== null) { fsRangeP1 = price; fsRangeP2 = null; }
-            else { fsRangeP2 = price; _drawRangeCanvas(canvas, fsCandleS, fsRangeP1, fsRangeP2); }
+            fsRangeP1 = price;
         };
-        _fsRangeCsSub = param => {
-            if (fsRangeP2 !== null) return;
-            const p2 = param.point ? fsCandleS.coordinateToPrice(param.point.y) : null;
+        _fsRangeMM = e => {
+            if (fsRangeP1 === null || !(e.buttons & 1)) return;
+            const rect = canvas.getBoundingClientRect();
+            const p2 = fsCandleS.coordinateToPrice(e.clientY - rect.top);
+            if (p2 == null) return;
             _drawRangeCanvas(canvas, fsCandleS, fsRangeP1, p2);
         };
-        fsChart.subscribeClick(_fsRangeSub);
-        fsChart.subscribeCrosshairMove(_fsRangeCsSub);
+        _fsRangeMU = e => {
+            if (e.button !== 0) return;
+            fsRangeP1 = null;
+            try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
+        };
+        _fsRangeCM = e => { e.preventDefault(); toggleFsRange(); };
+        canvas.addEventListener('mousedown', _fsRangeMD);
+        document.addEventListener('mousemove', _fsRangeMM);
+        document.addEventListener('mouseup', _fsRangeMU);
+        canvas.addEventListener('contextmenu', _fsRangeCM);
     }
 }
 
@@ -3111,7 +3157,7 @@ function toggleTradePanel() {
 
 async function loadTradeData() {
     if (!fsCoin) return;
-    if (!_isAdmin) {
+    if (!_isLoggedIn) {
         if (!_tradeBalance) { _tradeBalance = { available: 1000 }; }
         if (!_instInfo) { _instInfo = { maxLeverage: 100 }; _buildLevOptions(100); updateQtyPreview(); }
         return;
@@ -3340,7 +3386,7 @@ function confirmLevCustomize() {
 }
 
 function _renderBalance() {
-    if (!_isAdmin) return;
+    if (!_isLoggedIn) return;
     const el = document.getElementById('fs-trade-balance');
     if (el && _tradeBalance) el.textContent = `$${_tradeBalance.available.toFixed(2)}`;
 }
@@ -4643,7 +4689,7 @@ function _showAgreementError(symbol) {
                  style="font-size:10px;color:#6B7280;background:#1E222D;padding:2px 6px;border-radius:4px;border:1px solid #2A2E39;cursor:pointer;font-family:inherit;">ESC</kbd>
         </div>
         <div id="csearch-results" style="max-height:320px;overflow-y:auto;">
-            <div style="padding:32px 0;text-align:center;font-size:11px;color:#4B5563;">Digita per cercare tra le crypto su Bybit</div>
+            <div style="padding:32px 0;text-align:center;font-size:11px;color:#4B5563;" data-i18n="csearch_init">Digita per cercare tra le crypto su Bybit</div>
         </div>
     </div>
 </div>
@@ -4671,7 +4717,7 @@ function _showAgreementError(symbol) {
         <input id="lm-password" type="password" name="password" autocomplete="current-password" placeholder="••••••••" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:9px 12px;font-size:13px;color:#E5E7EB;outline:none;box-sizing:border-box;">
       </div>
       <div id="lm-confirm-wrap" style="display:none;margin-bottom:18px;">
-        <div style="font-size:12px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">CONFERMA PASSWORD</div>
+        <div style="font-size:12px;color:#9CA3AF;margin-bottom:5px;font-weight:500;" data-i18n="lm_confirm_pw">CONFERMA PASSWORD</div>
         <input id="lm-confirm" type="password" autocomplete="new-password" placeholder="••••••••" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:9px 12px;font-size:13px;color:#E5E7EB;outline:none;box-sizing:border-box;">
       </div>
       <div style="display:flex;gap:8px;">
@@ -4691,15 +4737,16 @@ function closeLoginModal(){document.getElementById('login-modal').style.display=
 function _lmSetMode(m){_lmMode=m;var r=m==='register';document.getElementById('lm-email-wrap').style.display=r?'block':'none';document.getElementById('lm-confirm-wrap').style.display=r?'block':'none';document.getElementById('lm-pw-div').style.marginBottom=r?'12px':'18px';var bl=document.getElementById('lm-btn-login'),br=document.getElementById('lm-btn-reg');bl.style.background=r?'transparent':'#2563eb';bl.style.color=r?'#9CA3AF':'#fff';bl.style.border=r?'1px solid #374151':'none';br.style.background=r?'#2563eb':'transparent';br.style.color=r?'#fff':'#9CA3AF';br.style.border=r?'none':'1px solid #374151';document.getElementById('lm-msg').style.display='none';}
 function _lmMsg(t,ok){var el=document.getElementById('lm-msg');el.textContent=t;el.style.display='block';el.style.background=ok?'rgba(16,185,129,.1)':'rgba(239,68,68,.1)';el.style.border='1px solid '+(ok?'rgba(16,185,129,.3)':'rgba(239,68,68,.3)');el.style.color=ok?'#34d399':'#f87171';}
 function lmLogin(){if(_lmMode==='register'){_lmSetMode('login');return;}document.getElementById('login-modal-form').submit();}
-async function lmRegister(){if(_lmMode==='login'){_lmSetMode('register');return;}var u=document.getElementById('lm-username').value.trim(),e=document.getElementById('lm-email').value.trim(),p=document.getElementById('lm-password').value,c=document.getElementById('lm-confirm').value,btn=document.getElementById('lm-btn-reg');btn.disabled=true;btn.textContent='...';try{var res=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,email:e,password:p,confirm:c})});var d=await res.json();if(d.success){_lmMsg(window.t('reg_done_simple'),true);_lmSetMode('login');document.getElementById('lm-username').value=u;document.getElementById('lm-password').value='';}else{_lmMsg(d.error||'Errore',false);}}catch(ex){_lmMsg(window.t('net_error'),false);}finally{btn.disabled=false;btn.textContent=window.t('register_submit');}}
-async function openApiKeyModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';try{var s=await fetch('/api/settings').then(r=>r.json());var key=s.bybit_api_key||'';document.getElementById('ak-key').textContent=key?(key.length<=8?'●'.repeat(key.length):key.slice(0,4)+'●●●●●●●●'+key.slice(-4)):window.t('not_configured');document.getElementById('ak-secret').textContent=s.bybit_secret_set?'●●●●●●●●●●●●':window.t('not_configured2');var badge=document.getElementById('ak-trade-badge');if(s.trading_enabled&&s.bybit_secret_set&&key){badge.textContent=window.t('trade_active');badge.style.background='#064e3b';badge.style.color='#34d399';}else{badge.textContent=window.t('trade_disabled');badge.style.background='#1f2937';badge.style.color='#6B7280';}}catch(e){document.getElementById('ak-key').textContent=window.t('load_err');}document.getElementById('apikey-modal').style.display='flex';}
+async function lmRegister(){if(_lmMode==='login'){_lmSetMode('register');return;}var u=document.getElementById('lm-username').value.trim(),e=document.getElementById('lm-email').value.trim(),p=document.getElementById('lm-password').value,c=document.getElementById('lm-confirm').value,btn=document.getElementById('lm-btn-reg');btn.disabled=true;btn.textContent='...';try{var res=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,email:e,password:p,confirm:c})});var d=await res.json();if(d.success){_lmMsg(window.t('reg_done_simple'),true);_lmSetMode('login');document.getElementById('lm-username').value=u;document.getElementById('lm-password').value='';}else{_lmMsg(d.error||window.t('prof_error'),false);}}catch(ex){_lmMsg(window.t('net_error'),false);}finally{btn.disabled=false;btn.textContent=window.t('register_submit');}}
+async function openApiKeyModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';try{var s=await fetch('/api/settings').then(r=>r.json());var key=s.bybit_api_key||'';document.getElementById('ak-key').value=key;document.getElementById('ak-secret').value='';document.getElementById('ak-secret').placeholder=s.bybit_secret_set?'●●●●●●●●●●●● (lascia vuoto per non modificare)':'Inserisci API Secret';var badge=document.getElementById('ak-trade-badge');if(s.trading_enabled&&s.bybit_secret_set&&key){badge.textContent=window.t('trade_active');badge.style.background='#064e3b';badge.style.color='#34d399';}else{badge.textContent=window.t('trade_disabled');badge.style.background='#1f2937';badge.style.color='#6B7280';}}catch(e){document.getElementById('ak-key').value='';}document.getElementById('ak-modal-msg').textContent='';document.getElementById('apikey-modal').style.display='flex';}
 function closeApiKeyModal(){document.getElementById('apikey-modal').style.display='none';}
+async function saveApiKeyModal(){var key=document.getElementById('ak-key').value.trim();var sec=document.getElementById('ak-secret').value.trim();var msg=document.getElementById('ak-modal-msg');msg.textContent='...';msg.style.color='#9CA3AF';try{var body={bybit_api_key:key,trading_enabled:true};if(sec)body.bybit_api_secret=sec;var r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});var d=await r.json();if(d.success){msg.textContent='Salvato';msg.style.color='#34d399';document.getElementById('ak-secret').value='';var s=await fetch('/api/settings').then(r=>r.json());var badge=document.getElementById('ak-trade-badge');if(s.trading_enabled&&s.bybit_secret_set&&key){badge.textContent=window.t('trade_active');badge.style.background='#064e3b';badge.style.color='#34d399';}else{badge.textContent=window.t('trade_disabled');badge.style.background='#1f2937';badge.style.color='#6B7280';}document.getElementById('ak-secret').placeholder=s.bybit_secret_set?'●●●●●●●●●●●● (lascia vuoto per non modificare)':'Inserisci API Secret';}else{msg.textContent='Errore';msg.style.color='#ef4444';}}catch(e){msg.textContent='Errore';msg.style.color='#ef4444';}}
 async function openTelegramModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';try{var s=await fetch('/api/settings').then(r=>r.json());document.getElementById('tg-tok-m').value=s.telegram_token||'';document.getElementById('tg-chat-m').value=s.telegram_chat_id||'';}catch(e){}document.getElementById('telegram-modal').style.display='flex';}
 function closeTelegramModal(){document.getElementById('telegram-modal').style.display='none';}
 async function saveTelegramModal(){var msg=document.getElementById('tg-modal-msg');try{var d=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegram_token:document.getElementById('tg-tok-m').value,telegram_chat_id:document.getElementById('tg-chat-m').value})}).then(r=>r.json());if(d.success){msg.textContent=window.t('saved');msg.style.color='#10b981';}else{msg.textContent=window.t('save_err');msg.style.color='#ef4444';}}catch(e){msg.textContent=window.t('save_err');msg.style.color='#ef4444';}setTimeout(()=>msg.textContent='',3000);}
 async function openUsersModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';document.getElementById('users-modal').style.display='flex';var tb=document.getElementById('users-tbody');tb.innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:#6B7280;">'+window.t('loading')+'</td></tr>';try{var r=await fetch('/api/admin/users');var data=await r.json();if(!data.users||data.users.length===0){tb.innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:#6B7280;">'+window.t('no_users')+'</td></tr>';return;}tb.innerHTML=data.users.map(function(u){var dt=u.created_at?u.created_at.split('T')[0]:'-';var role=u.role||'—';var roleColor=u.role==='admin'?'#60a5fa':'#9CA3AF';return '<tr style="border-bottom:1px solid #1E222D;" onmouseover="this.style.background=\'#1E222D\'" onmouseout="this.style.background=\'transparent\'"><td style="padding:8px 10px;color:#E5E7EB;font-weight:500;">'+u.username+'</td><td style="padding:8px 10px;color:#D1D5DB;">'+u.email+'</td><td style="padding:8px 10px;color:#9CA3AF;">'+dt+'</td><td style="padding:8px 10px;color:'+roleColor+';font-weight:500;">'+role+'</td></tr>';}).join('');}catch(e){tb.innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:#f87171;">'+window.t('load_err')+'</td></tr>';}}
 function closeUsersModal(){document.getElementById('users-modal').style.display='none';}
-(async function(){try{var r=await fetch('/api/auth/status');var d=await r.json();var lbl=document.getElementById('user-label');var li=document.getElementById('dd-login');var lo=document.getElementById('dd-logout');var hdr=document.getElementById('dd-header');var uname=document.getElementById('dd-username');var drole=document.getElementById('dd-role');var prof=document.getElementById('dd-profile');var apik=document.getElementById('dd-apikey');var tg=document.getElementById('dd-telegram');var usrs=document.getElementById('dd-users');if(d.logged_in){_isLoggedIn=true;_isAdmin=(d.role==='admin');var balRow=document.getElementById('fs-trade-balance-row');var ordBtn=document.getElementById('fs-order-btn');if(balRow)balRow.style.display='block';if(ordBtn&&_isAdmin){ordBtn.disabled=false;ordBtn.style.cssText='width:100%;padding:8px 0;font-size:12px;font-weight:700;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;opacity:1;';}if(lbl)lbl.textContent=d.username||'Admin';if(li)li.style.display='none';if(lo)lo.style.display='flex';if(prof)prof.style.display='flex';if(apik)apik.style.display='flex';if(tg)tg.style.display=(d.role==='admin'?'flex':'none');if(usrs)usrs.style.display=(d.role==='admin'?'flex':'none');if(hdr)hdr.style.display='block';if(uname)uname.textContent=d.username||'admin';if(drole)drole.textContent=d.role==='admin'?window.t('role_admin'):d.role||'';}else{if(lbl)lbl.textContent='Guest';if(li)li.style.display='flex';if(lo)lo.style.display='none';if(prof)prof.style.display='none';if(apik)apik.style.display='none';if(tg)tg.style.display='none';if(usrs)usrs.style.display='none';if(hdr)hdr.style.display='none';}}catch(e){}})();
+(async function(){try{var r=await fetch('/api/auth/status');var d=await r.json();var lbl=document.getElementById('user-label');var li=document.getElementById('dd-login');var lo=document.getElementById('dd-logout');var hdr=document.getElementById('dd-header');var uname=document.getElementById('dd-username');var drole=document.getElementById('dd-role');var prof=document.getElementById('dd-profile');var apik=document.getElementById('dd-apikey');var tg=document.getElementById('dd-telegram');var usrs=document.getElementById('dd-users');if(d.logged_in){_isLoggedIn=true;_isAdmin=(d.role==='admin');var balRow=document.getElementById('fs-trade-balance-row');var ordBtn=document.getElementById('fs-order-btn');if(balRow)balRow.style.display='block';if(ordBtn){ordBtn.disabled=false;ordBtn.style.cssText='width:100%;padding:8px 0;font-size:12px;font-weight:700;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;opacity:1;';}if(lbl)lbl.textContent=d.username||'Admin';if(li)li.style.display='none';if(lo)lo.style.display='flex';if(prof)prof.style.display='flex';if(apik)apik.style.display='flex';if(tg)tg.style.display=(d.role==='admin'?'flex':'none');if(usrs)usrs.style.display=(d.role==='admin'?'flex':'none');if(hdr)hdr.style.display='block';if(uname)uname.textContent=d.username||'admin';if(drole)drole.textContent=d.role==='admin'?window.t('role_admin'):d.role||'';}else{if(lbl)lbl.textContent=window.t('guest_label');if(li)li.style.display='flex';if(lo)lo.style.display='none';if(prof)prof.style.display='none';if(apik)apik.style.display='none';if(tg)tg.style.display='none';if(usrs)usrs.style.display='none';if(hdr)hdr.style.display='none';}}catch(e){}})();
 </script>
 <!-- API Key Modal -->
 <div id="apikey-modal" onclick="if(event.target===this)closeApiKeyModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;">
@@ -4711,15 +4758,19 @@ function closeUsersModal(){document.getElementById('users-modal').style.display=
     </div>
     <div style="margin-bottom:14px;">
       <div style="font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">API KEY</div>
-      <div id="ak-key" style="font-family:monospace;font-size:12px;color:#E5E7EB;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 12px;word-break:break-all;min-height:34px;">—</div>
+      <input id="ak-key" type="text" autocomplete="off" style="width:100%;font-family:monospace;font-size:12px;color:#E5E7EB;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 12px;box-sizing:border-box;outline:none;" placeholder="Inserisci API Key">
     </div>
     <div style="margin-bottom:16px;">
       <div style="font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">API SECRET</div>
-      <div id="ak-secret" style="font-family:monospace;font-size:12px;color:#6B7280;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 12px;">—</div>
+      <input id="ak-secret" type="password" autocomplete="off" style="width:100%;font-family:monospace;font-size:12px;color:#E5E7EB;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 12px;box-sizing:border-box;outline:none;" placeholder="Inserisci API Secret">
     </div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <div style="font-size:11px;color:#9CA3AF;font-weight:500;">Trading:</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <div style="font-size:11px;color:#9CA3AF;font-weight:500;" data-i18n="ak_trading">Trading:</div>
       <span id="ak-trade-badge" style="font-size:10px;font-weight:600;padding:2px 10px;border-radius:12px;background:#1f2937;color:#6B7280;">—</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button onclick="saveApiKeyModal()" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;" data-i18n="cfg_save">Salva</button>
+      <span id="ak-modal-msg" style="font-size:12px;min-height:18px;"></span>
     </div>
   </div>
 </div>
@@ -4751,7 +4802,7 @@ function closeUsersModal(){document.getElementById('users-modal').style.display=
     <button onclick="closeUsersModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#6B7280;cursor:pointer;font-size:22px;line-height:1;padding:0;">×</button>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
       <svg viewBox="0 0 24 24" width="20" height="20" style="color:#F7931A;flex-shrink:0;"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-      <span style="font-size:15px;font-weight:700;color:#E5E7EB;">Utenti Registrati</span>
+      <span style="font-size:15px;font-weight:700;color:#E5E7EB;" data-i18n="users_title">Utenti Registrati</span>
     </div>
     <div style="overflow-y:auto;flex:1;">
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
@@ -4759,8 +4810,8 @@ function closeUsersModal(){document.getElementById('users-modal').style.display=
           <tr style="border-bottom:1px solid #2A2E39;">
             <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">USERNAME</th>
             <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">EMAIL</th>
-            <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">ISCRIZIONE</th>
-            <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">RUOLO</th>
+            <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;" data-i18n="col_joined">ISCRIZIONE</th>
+            <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;" data-i18n="col_role">RUOLO</th>
           </tr>
         </thead>
         <tbody id="users-tbody"></tbody>

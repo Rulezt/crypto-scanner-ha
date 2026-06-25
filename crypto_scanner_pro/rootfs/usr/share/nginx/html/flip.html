@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PSD4H66Z89"></script>
+    <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-PSD4H66Z89');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Flip Scanner - Crypto Scanner Pro</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxsaW5lIHgxPSIxIiB5MT0iOSIgeDI9IjMxIiB5Mj0iOSIgc3Ryb2tlPSIjMWEzYTRhIiBzdHJva2Utd2lkdGg9IjAuNCIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMTciIHgyPSIzMSIgeTI9IjE3IiBzdHJva2U9IiMxYTNhNGEiIHN0cm9rZS13aWR0aD0iMC40Ii8+CiAgPGxpbmUgeDE9IjEiIHkxPSIyNSIgeDI9IjMxIiB5Mj0iMjUiIHN0cm9rZT0iIzFhM2E0YSIgc3Ryb2tlLXdpZHRoPSIwLjQiLz4KICA8bGluZSB4MT0iNCIgeTE9IjciIHgyPSI0IiB5Mj0iMjkiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyLjUiIHk9IjE0IiB3aWR0aD0iMyIgaGVpZ2h0PSI5IiBmaWxsPSIjMDBDOEZGIi8+CiAgPGxpbmUgeDE9IjEyIiB5MT0iMyIgeDI9IjEyIiB5Mj0iMjYiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIxMC41IiB5PSI3IiB3aWR0aD0iMyIgaGVpZ2h0PSIxMyIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIyMCIgeTE9IjYiIHgyPSIyMCIgeTI9IjI4IiBzdHJva2U9IiMwMEM4RkYiIHN0cm9rZS13aWR0aD0iMC44Ii8+CiAgPHJlY3QgeD0iMTguNSIgeT0iMTMiIHdpZHRoPSIzIiBoZWlnaHQ9IjkiIGZpbGw9IiMwMEM4RkYiLz4KICA8bGluZSB4MT0iMjgiIHkxPSIxMCIgeDI9IjI4IiB5Mj0iMzAiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyNi41IiB5PSIxNiIgd2lkdGg9IjMiIGhlaWdodD0iOCIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMzAiIHgyPSIzMCIgeTI9IjIiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIxLjIiLz4KICA8cG9seWdvbiBwb2ludHM9IjMwLDIgMjQsNS41IDI2LjUsOC41IiBmaWxsPSIjMDBDOEZGIi8+Cjwvc3ZnPgo=">
+    <script src="/i18n.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0B0E11; color: #f0f0f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+        .sticky-top { position: sticky; top: 0; z-index: 100; }
+        .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 16px; background: #161A1E; border-bottom: 1px solid #2a2a2a; }
+        .header-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .header h1 { font-size: 1rem; color: #f9fafb; white-space: nowrap; }
+        .status { color: #6b7280; font-size: 0.75rem; }
+        .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        select, input[type="number"] { background: #1f2937; color: #f9fafb; border: 1px solid #374151; border-radius: 4px; padding: 5px 8px; font-size: 0.8rem; cursor: pointer; }
+        input[type="number"] { width: 65px; }
+        label { font-size: 0.75rem; color: #9ca3af; white-space: nowrap; }
+        .btn { background: #374151; color: #f9fafb; border: 1px solid #4b5563; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; white-space: nowrap; transition: background 0.15s; text-decoration: none; }
+        .btn:hover { background: #4b5563; }
+        .btn.primary { background: #7c3aed; border-color: #7c3aed; }
+        .btn.primary:hover { background: #6d28d9; }
+        .progress-wrap { height: 3px; background: #1E222D; }
+        .progress-fill { height: 100%; background: #7c3aed; transition: width 0.4s; }
+        .filter-bar { display: flex; gap: 8px; padding: 7px 16px; background: #1E2329; border-bottom: 1px solid #1E222D; flex-wrap: wrap; align-items: center; position: sticky; top: var(--sticky-top, 60px); z-index: 90; }
+        .filter-label { font-size: 0.7rem; color: #6b7280; }
+        .filt-btn { font-size: 0.7rem; padding: 2px 10px; border-radius: 10px; cursor: pointer; border: 1px solid #374151; background: transparent; color: #9ca3af; transition: all 0.15s; }
+        .filt-btn:hover { background: #1f2937; }
+        .filt-btn.active { background: #374151; color: #f9fafb; border-color: #4b5563; }
+        .filt-btn.r2g.active { background: rgba(16,185,129,0.2); border-color: #10b981; color: #34d399; }
+        .filt-btn.g2r.active { background: rgba(239,68,68,0.2); border-color: #ef4444; color: #f87171; }
+        .divider { width: 1px; height: 18px; background: #2a2a2a; }
+        .table-wrap { padding-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .draggable-th { cursor: grab; user-select: none; }
+        .draggable-th:active { cursor: grabbing; }
+        .draggable-th.drag-over { background: rgba(124,58,237,0.15) !important; border-left: 2px solid #7c3aed; }
+        thead th { position: sticky; top: var(--thead-top, 92px); z-index: 50; background: #161A1E; color: #6b7280; font-weight: 600; font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 10px 16px; border-bottom: 1px solid #2A2E39; white-space: nowrap; cursor: pointer; user-select: none; }
+        thead th:hover { color: #B2B5BE; }
+        .sa { margin-left: 3px; color: #4b5563; }
+        thead th.sorted .sa { color: #7c3aed; }
+        tbody tr { border-bottom: 1px solid rgba(42,46,57,0.4); transition: background 0.1s; }
+        tbody tr:hover { background: rgba(30,34,45,0.6); }
+        td { padding: 10px 16px; white-space: nowrap; }
+        .td-sym { font-weight: 700; }
+        .td-sym a { color: #e5e7eb; text-decoration: none; }
+        .td-sym a:hover { color: #6ee7b7; }
+        .td-num { text-align: right; font-family: 'Monaco','Consolas',monospace; font-size: 0.78rem; color: #D1D5DB; }
+        .td-center { text-align: center; }
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .muted { color: #6b7280; }
+        .side-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.63rem; font-weight: 700; letter-spacing: 0.04em; }
+        .side-above { background: rgba(16,185,129,0.18); color: #34d399; }
+        .side-below { background: rgba(239,68,68,0.18); color: #f87171; }
+        .dist-bar-wrap { display: inline-block; width: 50px; height: 5px; background: #1f2937; border-radius: 3px; overflow: hidden; vertical-align: middle; margin-left: 6px; }
+        .dist-bar-fill { height: 100%; border-radius: 3px; }
+        .loading-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; gap: 14px; color: #6b7280; }
+        .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.08); border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .lwc-popup { position: fixed; z-index: 9999; background: #0F0F0F; border: 1px solid #2a2a2a; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.85); overflow: hidden; pointer-events: none; opacity: 0; transform: scale(0.97); transition: opacity 0.13s ease, transform 0.13s ease; width: 600px; height: 340px; }
+        .lwc-popup.visible { opacity: 1; transform: scale(1); pointer-events: auto; }
+        .lwc-popup-header { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; background: #111; border-bottom: 1px solid #1e1e1e; }
+        .lwc-popup-title { font-size: 0.72rem; font-weight: 700; color: #f9fafb; }
+        .lwc-popup-tf { display: flex; gap: 3px; }
+        .lwc-popup-tf button { background: transparent; border: 1px solid #374151; color: #9ca3af; padding: 1px 6px; border-radius: 3px; font-size: 0.62rem; cursor: pointer; pointer-events: auto; transition: all 0.1s; }
+        .lwc-popup-tf button.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+        .lwc-popup-chart { width: 100%; height: calc(100% - 30px); }
+        .legend { display: flex; gap: 14px; padding: 6px 16px; background: #0F0F0F; border-top: 1px solid #1E222D; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: #6b7280; }
+        .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .legend-line { width: 18px; height: 3px; border-radius: 2px; }
+    </style>
+<style>#tv-attr-logo{display:none!important}</style>
+</head>
+<body>
+<div id="app">
+
+    <!-- HEADER + PROGRESS (sticky insieme) -->
+    <div class="sticky-top">
+    <div class="header">
+        <div class="header-left">
+            <a href="./" title="Dashboard" style="display:inline-flex;align-items:center;justify-content:center;color:#6b7280;flex-shrink:0;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" width="16" height="16"><path d="M16.612 2.214a1.01 1.01 0 0 0-1.242 0L1 13.419l1.243 1.572L4 13.621V26a2.004 2.004 0 0 0 2 2h20a2.004 2.004 0 0 0 2-2V13.63L29.757 15L31 13.428ZM18 26h-4v-8h4Zm2 0v-8a2.002 2.002 0 0 0-2-2h-4a2.002 2.002 0 0 0-2 2v8H6V12.062l10-7.79l10 7.8V26Z"/></svg></a>
+            <h1>{{ t('flip_title') }}</h1>
+            <span class="status" v-html="displayMsg"></span>
+        </div>
+        <div class="controls">
+            <div style="display:inline-flex;align-items:center;gap:4px;padding-right:10px;">
+                <button data-lang-btn="it" onclick="switchLang('it')" style="font-size:11px;background:none;border:none;cursor:pointer;padding:0;color:#9CA3AF;font-family:inherit;">IT</button>
+                <span style="color:#374151;font-size:10px;">|</span>
+                <button data-lang-btn="en" onclick="switchLang('en')" style="font-size:11px;background:none;border:none;cursor:pointer;padding:0;color:#9CA3AF;font-family:inherit;">EN</button>
+            </div>
+            <button @click="startScan" :disabled="scanning" class="btn primary" style="display:inline-flex;align-items:center;gap:6px">
+                <span v-if="scanning">{{ t('flip_scanning') }}</span>
+                <span v-else style="display:inline-flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> {{ t('flip_scan') }}</span>
+            </button>
+            <button @click="cfgOpen=true" class="btn" style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;" :title="t('flip_cfg_title')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+        </div>
+    </div>
+    <div class="progress-wrap">
+        <div class="progress-fill" :style="{ width: progressPct + '%' }"></div>
+    </div>
+    </div><!-- /sticky-top -->
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar" v-if="initialDone || scanning">
+        <template v-if="results.length > 0">
+            <span class="filter-label">{{ t('flip_dir_lbl') }}</span>
+            <button @click="dirFilter='all'" :class="['filt-btn', dirFilter==='all' ? 'active':'']">{{ t('flip_all') }} ({{ results.length }})</button>
+            <button @click="dirFilter='r2g'" :class="['filt-btn r2g', dirFilter==='r2g' ? 'active':'']">🔴→🟢 ({{ countR2G }})</button>
+            <button @click="dirFilter='g2r'" :class="['filt-btn g2r', dirFilter==='g2r' ? 'active':'']">🟢→🔴 ({{ countG2R }})</button>
+            <div class="divider"></div>
+            <span class="filter-label">{{ t('flip_sort') }}</span>
+            <button @click="setSortBy('dist')"   :class="['filt-btn', sortBy==='dist'   ? 'active':'']">{{ t('flip_sort_dist') }} <span class="sa">{{ sa('dist') }}</span></button>
+            <button @click="setSortBy('volume')" :class="['filt-btn', sortBy==='volume' ? 'active':'']">{{ t('flip_col_vol') }} <span class="sa">{{ sa('volume') }}</span></button>
+            <button @click="setSortBy('change')" :class="['filt-btn', sortBy==='change' ? 'active':'']">{{ t('flip_col_change') }} <span class="sa">{{ sa('change') }}</span></button>
+        </template>
+    </div>
+
+    <!-- INITIAL STATE -->
+    <div v-if="!scanning && !initialDone" class="loading-overlay">
+        <p style="font-weight:600;color:#e5e7eb;">{{ t('flip_title') }}</p>
+        <p style="font-size:0.78rem;color:#4b5563;max-width:420px;text-align:center;line-height:1.6">{{ t('flip_desc') }}</p>
+        <button @click="startScan" class="btn primary" style="margin-top:8px;display:inline-flex;align-items:center;gap:6px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            {{ t('flip_scan') }}
+        </button>
+    </div>
+
+    <!-- LOADING -->
+    <div v-if="scanning && results.length === 0" class="loading-overlay">
+        <div class="spinner"></div>
+        <span style="font-size:0.8rem;" v-html="statusMsg"></span>
+    </div>
+
+    <!-- EMPTY AFTER SCAN -->
+    <div v-if="!scanning && initialDone && filteredResults.length === 0" class="loading-overlay">
+        <span style="font-size:2rem;">🔍</span>
+        <span style="font-size:0.85rem;color:#6b7280;">{{ t('flip_no_results') }}</span>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap" v-if="filteredResults.length > 0">
+        <table>
+            <thead>
+                <tr>
+                    <th style="text-align:left">#</th>
+                    <th v-for="col in columns" :key="col.key"
+                        :class="['draggable-th', dragOver===col.key?'drag-over':'', sortBy===col.key?'sorted':'']"
+                        :style="`text-align:${col.align}`"
+                        draggable="true"
+                        @dragstart="onDragStart(col.key)"
+                        @dragover.prevent="onDragOver(col.key)"
+                        @drop="onDrop(col.key)"
+                        @dragend="onDragEnd"
+                        @click="col.sortKey ? setSortBy(col.sortKey) : null">
+                        {{ t(col.labelKey) || col.labelKey }}<span v-if="col.sortKey" class="sa">{{ sa(col.sortKey) }}</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="(row, idx) in filteredResults" :key="row.symbol"
+                    @mouseenter="showPopup($event, row)"
+                    @mouseleave="hidePopup"
+                    style="cursor:pointer">
+                    <td class="td-num muted" style="text-align:center;font-size:0.7rem;">{{ idx+1 }}</td>
+                    <td v-for="col in columns" :key="col.key" :class="col.tdClass(row)">
+                        <template v-if="col.key==='symbol'">
+                            <a :href="'chart?symbol='+row.symbol+'&tf=30'" target="_blank">{{ row.symbol.replace('USDT','') }}</a>
+                        </template>
+                        <template v-else-if="col.key==='dist'">
+                            <span :class="row.change>=0?'positive':'negative'">{{ row.change>=0?'+':'' }}{{ row.change.toFixed(2) }}%</span>
+                            <span class="dist-bar-wrap"><span class="dist-bar-fill" :style="{width:Math.max(0,(1-row.dist/threshold)*100)+'%',background:row.dir==='r2g'?'#10b981':'#ef4444'}"></span></span>
+                        </template>
+                        <template v-else-if="col.key==='price'">{{ formatPrice(row.price) }}</template>
+                        <template v-else-if="col.key==='volume'">{{ formatVolume(row.volume) }}</template>
+                        <template v-else-if="col.key==='dir'">
+                            <span class="side-badge" :class="row.dir==='r2g'?'side-above':'side-below'">
+                                {{ row.dir==='r2g' ? '🔴→🟢' : '🟢→🔴' }}
+                            </span>
+                        </template>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- LWC POPUP -->
+    <div id="lwc-popup" class="lwc-popup">
+        <div class="lwc-popup-header">
+            <span class="lwc-popup-title" id="lwc-popup-title">—</span>
+            <div class="lwc-popup-tf" id="lwc-popup-tf">
+                <button data-tf="1"  >1m</button>
+                <button data-tf="5"  >5m</button>
+                <button data-tf="30" class="active">30m</button>
+                <button data-tf="60" >1h</button>
+                <button data-tf="240">4h</button>
+                <button data-tf="D"  >D</button>
+            </div>
+        </div>
+        <div class="lwc-popup-chart" id="lwc-popup-chart"></div>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="legend" v-if="filteredResults.length > 0">
+        <div class="legend-item"><span class="legend-dot" style="background:#10b981"></span> {{ t('flip_leg_r2g') }}</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> {{ t('flip_leg_g2r') }}</div>
+        <div class="legend-item"><span class="legend-line" style="background:#3b82f6"></span> EMA60</div>
+        <div class="legend-item" style="margin-left:auto;color:#374151">{{ filteredResults.length }} {{ t('dt_coin') }} · ≤ {{ threshold }}%</div>
+    </div>
+
+    <!-- CONFIG MODAL -->
+    <div v-if="cfgOpen" @click.self="cfgOpen=false" style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:flex;align-items:center;justify-content:center;">
+        <div style="background:#161A1E;border:1px solid #2A2E39;border-radius:10px;padding:24px 22px;width:300px;position:relative;">
+            <button @click="cfgOpen=false" style="position:absolute;top:10px;right:14px;background:none;border:none;color:#6B7280;cursor:pointer;font-size:20px;line-height:1;">×</button>
+            <div style="font-size:0.85rem;font-weight:700;color:#E5E7EB;margin-bottom:18px;">⚙ {{ t('flip_cfg_title') }}</div>
+            <div style="display:flex;flex-direction:column;gap:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <label style="font-size:0.78rem;color:#9CA3AF;">{{ t('flip_thr') }}</label>
+                    <input type="number" v-model.number="threshold" min="0.1" max="10" step="0.1" style="width:80px;background:#1f2937;color:#f9fafb;border:1px solid #374151;border-radius:4px;padding:5px 8px;font-size:0.82rem;">
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <label style="font-size:0.78rem;color:#9CA3AF;">{{ t('flip_vol') }}</label>
+                    <input type="number" v-model.number="minVolM" min="0" max="1000" step="1" style="width:80px;background:#1f2937;color:#f9fafb;border:1px solid #374151;border-radius:4px;padding:5px 8px;font-size:0.82rem;">
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <label style="font-size:0.78rem;color:#9CA3AF;">{{ t('flip_screenshot_tf') }}</label>
+                    <select v-model="screenshotTf" style="width:80px;background:#1f2937;color:#f9fafb;border:1px solid #374151;border-radius:4px;padding:5px 8px;font-size:0.82rem;">
+                        <option value="1">1m</option>
+                        <option value="5">5m</option>
+                        <option value="15">15m</option>
+                        <option value="30">30m</option>
+                        <option value="60">1h</option>
+                        <option value="240">4h</option>
+                        <option value="D">D</option>
+                    </select>
+                </div>
+            </div>
+            <button @click="cfgOpen=false" class="btn primary" style="width:100%;margin-top:20px;justify-content:center;">OK</button>
+        </div>
+    </div>
+
+</div>
+<script>
+const { createApp, ref, computed, onMounted } = Vue;
+
+const _appLang = ref(window._cspLang || 'en');
+const _origSwitch = window.switchLang;
+window.switchLang = function(l) { _origSwitch(l); _appLang.value = l; };
+
+createApp({
+    setup() {
+        const TF_LABEL = { '1':'1m','5':'5m','15':'15m','30':'30m','60':'1h','240':'4h','D':'D' };
+
+        const t = (key) => { _appLang.value; return window.T[key] || key; };
+
+        const cfgOpen       = ref(false);
+        const threshold     = ref(2.0);
+        const minVolM       = ref(10);
+        const screenshotTf  = ref('240');
+        const scanning   = ref(false);
+        const results    = ref([]);
+        const initialDone = ref(false);
+        const _scanResult = ref(null);
+        const progressPct = ref(0);
+
+        const SVG_CHECK  = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:middle;margin-right:3px"><path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>';
+        const SVG_SEARCH = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>';
+
+        const statusMsg = ref('');
+        const displayMsg = computed(() => {
+            _appLang.value;
+            if (_scanResult.value && !scanning.value) {
+                const { count, time } = _scanResult.value;
+                return `${SVG_CHECK}${count} ${t('flip_found')} · ${time}`;
+            }
+            return statusMsg.value || t('flip_ready');
+        });
+
+        // ── COLUMNS (drag & drop) ─────────────────────────────────────────────
+        const STORAGE_KEY_FLIP = 'flip_columns_order';
+        let _colKey_flip = STORAGE_KEY_FLIP;
+        const columnsDef = [
+            { key:'symbol', labelKey:'flip_col_symbol', sortKey:null,     align:'left',   tdClass:()=>'td-sym' },
+            { key:'dist',   labelKey:'flip_col_dist',   sortKey:'dist',   align:'right',  tdClass:()=>'td-num' },
+            { key:'price',  labelKey:'flip_col_price',  sortKey:null,     align:'right',  tdClass:()=>'td-num muted' },
+            { key:'volume', labelKey:'flip_col_vol',    sortKey:'volume', align:'right',  tdClass:()=>'td-num muted' },
+            { key:'dir',    labelKey:'flip_col_dir',    sortKey:null,     align:'center', tdClass:()=>'td-center' },
+        ];
+        const columns = ref([...columnsDef]);
+        let dragKey = null;
+        const dragOver = ref(null);
+        const onDragStart = (key) => { dragKey = key; };
+        const onDragOver  = (key) => { dragOver.value = key; };
+        const onDragEnd   = ()    => { dragKey = null; dragOver.value = null; };
+        const onDrop      = (targetKey) => {
+            if (!dragKey || dragKey === targetKey) { onDragEnd(); return; }
+            const cols = columns.value;
+            const fromIdx = cols.findIndex(c => c.key === dragKey);
+            const toIdx   = cols.findIndex(c => c.key === targetKey);
+            if (fromIdx === -1 || toIdx === -1) { onDragEnd(); return; }
+            cols.splice(toIdx, 0, cols.splice(fromIdx, 1)[0]);
+            try { localStorage.setItem(_colKey_flip, JSON.stringify(cols.map(c => c.key))); } catch {}
+            onDragEnd();
+        };
+
+        // ── FILTER & SORT ──────────────────────────────────────────────────────
+        const dirFilter = ref('all');
+        const sortBy    = ref('dist');
+        const sortDir   = ref(1);
+
+        const setSortBy = (key) => {
+            if (sortBy.value === key) sortDir.value *= -1;
+            else { sortBy.value = key; sortDir.value = key === 'dist' ? 1 : -1; }
+        };
+        const sa = (key) => {
+            if (sortBy.value !== key) return '↕';
+            return sortDir.value === 1 ? '↑' : '↓';
+        };
+
+        const countG2R = computed(() => results.value.filter(r => r.dir === 'g2r').length);
+        const countR2G = computed(() => results.value.filter(r => r.dir === 'r2g').length);
+
+        const filteredResults = computed(() => {
+            let list = [...results.value];
+            if (dirFilter.value !== 'all') list = list.filter(r => r.dir === dirFilter.value);
+            list.sort((a, b) => {
+                let va, vb;
+                switch(sortBy.value) {
+                    case 'dist':   va = a.dist;   vb = b.dist;   break;
+                    case 'volume': va = a.volume; vb = b.volume; break;
+                    case 'change': va = Math.abs(a.change); vb = Math.abs(b.change); break;
+                    default:       va = a.dist;   vb = b.dist;
+                }
+                return sortDir.value * (va < vb ? -1 : va > vb ? 1 : 0);
+            });
+            return list;
+        });
+
+        // ── SCAN ───────────────────────────────────────────────────────────────
+        const startScan = async () => {
+            if (scanning.value) return;
+            scanning.value    = true;
+            initialDone.value = false;
+            _scanResult.value = null;
+            results.value     = [];
+            progressPct.value = 0;
+            statusMsg.value   = `${SVG_SEARCH}${t('flip_fetching')}`;
+
+            try {
+                progressPct.value = 30;
+                const resp = await fetch('https://api.bybit.com/v5/market/tickers?category=linear');
+                const data = await resp.json();
+                if (data.retCode !== 0) throw new Error(data.retMsg);
+
+                progressPct.value = 70;
+
+                const minVol = minVolM.value * 1e6;
+                const thr    = threshold.value;
+
+                const coins = data.result.list
+                    .filter(tk => tk.symbol.endsWith('USDT') && !tk.symbol.includes('-'))
+                    .map(tk => ({
+                        symbol: tk.symbol,
+                        price:  parseFloat(tk.lastPrice)    || 0,
+                        volume: parseFloat(tk.turnover24h)  || 0,
+                        change: parseFloat(tk.price24hPcnt || 0) * 100,
+                    }))
+                    .filter(tk => tk.price > 0 && (minVol === 0 || tk.volume >= minVol))
+                    .filter(tk => tk.change !== 0 && Math.abs(tk.change) <= thr)
+                    .map(tk => ({
+                        ...tk,
+                        dist:       Math.abs(tk.change),
+                        dir:        tk.change > 0 ? 'g2r' : 'r2g',
+                        flipPrice:  tk.price / (1 + tk.change / 100),
+                    }));
+
+                results.value     = coins;
+                progressPct.value = 100;
+                _scanResult.value = { count: coins.length, time: new Date().toLocaleTimeString(_appLang.value === 'it' ? 'it-IT' : 'en-GB') };
+                statusMsg.value   = '';
+            } catch(err) {
+                statusMsg.value = '❌ ' + err.message;
+                console.error(err);
+            } finally {
+                scanning.value    = false;
+                initialDone.value = true;
+            }
+        };
+
+        // ── POPUP CHART ────────────────────────────────────────────────────────
+        const EMA_CONFIG = [
+            { period: 5,   color: '#ef4444', width: 1.5 },
+            { period: 10,  color: '#fbbf24', width: 1.5 },
+            { period: 60,  color: '#3b82f6', width: 3   },
+            { period: 223, color: '#a855f7', width: 1.5 },
+        ];
+
+        let popupRow     = null;
+        let popupTf      = screenshotTf.value;
+        let hideTimer    = null;
+        let popupLocked  = false;
+        let buildSession = 0;
+        let popupChart   = null;
+
+        const LC = LightweightCharts;
+        const addS = (chart, type, opts) => {
+            if (typeof chart.addSeries === 'function' && LC[type]) return chart.addSeries(LC[type], opts);
+            const m = { CandlestickSeries: 'addCandlestickSeries', LineSeries: 'addLineSeries' };
+            return chart[m[type]](opts);
+        };
+
+        const destroyPopupChart = () => {
+            if (popupChart) { try { popupChart.remove(); } catch(e) {} popupChart = null; }
+            const el = document.getElementById('lwc-popup-chart');
+            if (el) el.innerHTML = '';
+        };
+
+        const calcEMASeries = (klines, period) => {
+            const closes = klines.map(c => c.close);
+            if (closes.length < period) return [];
+            const k = 2 / (period + 1);
+            let ema = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
+            const out = [{ time: klines[period - 1].time, value: ema }];
+            for (let i = period; i < closes.length; i++) {
+                ema = closes[i] * k + ema * (1 - k);
+                out.push({ time: klines[i].time, value: ema });
+            }
+            return out;
+        };
+
+        const buildPopupChart = async (row, tf) => {
+            const session = ++buildSession;
+            destroyPopupChart();
+            const container = document.getElementById('lwc-popup-chart');
+            if (!container) return;
+            try {
+                const res  = await fetch(`api/klines?symbol=${row.symbol}&interval=${tf}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!data.success || !data.data?.length || session !== buildSession) return;
+
+                const seen = new Set();
+                const klines = data.data.filter(c => {
+                    if (seen.has(c.time)) return false;
+                    seen.add(c.time);
+                    return isFinite(c.open) && isFinite(c.close) && c.high >= c.low;
+                });
+                if (!klines.length || session !== buildSession) return;
+
+                const chart = LC.createChart(container, {
+                    width: 600, height: 310,
+    layout: {background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
+                    grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
+                    crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
+                    handleScroll: true, handleScale: true,
+                    rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },
+                    timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 10 },
+                });
+                if (session !== buildSession) { try { chart.remove(); } catch(e) {} return; }
+                popupChart = chart;
+
+                const candleSeries = addS(chart, 'CandlestickSeries', {
+                    upColor: '#089981', downColor: '#F23645',
+                    borderVisible: false, wickUpColor: '#089981', wickDownColor: '#F23645',
+                });
+                candleSeries.setData(klines);
+                if (row.flipPrice) {
+                    const lineStyle = LC.LineStyle ? LC.LineStyle.Dashed : 2;
+                    candleSeries.createPriceLine({
+                        price:            row.flipPrice,
+                        color:            row.dir === 'g2r' ? '#ef4444' : '#10b981',
+                        lineWidth:        1,
+                        lineStyle:        lineStyle,
+                        axisLabelVisible: true,
+                        title:            '',
+                    });
+                }
+
+                for (const cfg of EMA_CONFIG) {
+                    const line = calcEMASeries(klines, cfg.period);
+                    if (!line.length) continue;
+                    addS(chart, 'LineSeries', {
+                        color: cfg.color, lineWidth: cfg.width,
+                        priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+                    }).setData(line);
+                }
+
+                const visibleBars = tf === 'D' ? 40 : tf === '240' ? 50 : 80;
+                chart.timeScale().setVisibleLogicalRange({ from: klines.length - visibleBars, to: klines.length + 10 });
+            } catch(e) { console.error('popup chart error:', e); }
+        };
+
+        const positionPopup = (event) => {
+            const popup = document.getElementById('lwc-popup');
+            if (!popup) return;
+            const M=14, PW=600, PH=340;
+            let x = event.clientX + M, y = event.clientY + M;
+            if (x + PW > window.innerWidth  - M) x = event.clientX - PW - M;
+            if (y + PH > window.innerHeight - M) y = event.clientY - PH - M;
+            popup.style.left = Math.max(M, x) + 'px';
+            popup.style.top  = Math.max(M, y) + 'px';
+        };
+
+        const showPopup = async (event, row) => {
+            clearTimeout(hideTimer);
+            const popup = document.getElementById('lwc-popup');
+            if (!popup) return;
+            document.getElementById('lwc-popup-tf')?.querySelectorAll('button').forEach(b => {
+                b.classList.toggle('active', b.dataset.tf === popupTf);
+            });
+            const sign = row.change >= 0 ? '+' : '';
+            document.getElementById('lwc-popup-title').textContent =
+                row.symbol.replace('USDT','') + ' · ' + (TF_LABEL[popupTf]||popupTf) +
+                ' · ' + sign + row.change.toFixed(2) + '%' +
+                ' · ' + (row.dir === 'r2g' ? '🔴→🟢' : '🟢→🔴');
+            positionPopup(event);
+            popup.classList.add('visible');
+            if (!popupRow || popupRow.symbol !== row.symbol) {
+                popupRow = row;
+                popupTf  = screenshotTf.value;
+                document.getElementById('lwc-popup-tf')?.querySelectorAll('button').forEach(b => {
+                    b.classList.toggle('active', b.dataset.tf === popupTf);
+                });
+                await buildPopupChart(row, popupTf);
+            }
+        };
+
+        const hidePopup = () => {
+            hideTimer = setTimeout(() => {
+                if (popupLocked) return;
+                document.getElementById('lwc-popup')?.classList.remove('visible');
+            }, 150);
+        };
+
+        const initPopup = () => {
+            const popup = document.getElementById('lwc-popup');
+            if (!popup) { setTimeout(initPopup, 100); return; }
+            popup.addEventListener('mouseenter', () => { popupLocked = true; clearTimeout(hideTimer); });
+            popup.addEventListener('mouseleave', () => { popupLocked = false; hidePopup(); });
+            document.getElementById('lwc-popup-tf')?.addEventListener('click', async (e) => {
+                const btn = e.target.closest('button');
+                if (!btn) return;
+                popupTf = btn.dataset.tf;
+                e.currentTarget.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (popupRow) {
+                    const sign = popupRow.change >= 0 ? '+' : '';
+                    document.getElementById('lwc-popup-title').textContent =
+                        popupRow.symbol.replace('USDT','') + ' · ' + (TF_LABEL[popupTf]||popupTf) +
+                        ' · ' + sign + popupRow.change.toFixed(2) + '%' +
+                        ' · ' + (popupRow.dir === 'r2g' ? '🔴→🟢' : '🟢→🔴');
+                    await buildPopupChart(popupRow, popupTf);
+                }
+            });
+        };
+        initPopup();
+
+        // ── STICKY OFFSETS ────────────────────────────────────────────────────
+        const updateStickyOffsets = () => {
+            const wrap = document.querySelector('.sticky-top');
+            if (!wrap) return;
+            const wh = wrap.offsetHeight;
+            const fb = document.querySelector('.filter-bar');
+            const fh = fb ? fb.offsetHeight : 0;
+            document.documentElement.style.setProperty('--sticky-top', wh + 'px');
+            document.documentElement.style.setProperty('--thead-top', (wh + fh) + 'px');
+        };
+        const { watch, nextTick } = Vue;
+        watch(filteredResults, () => nextTick(updateStickyOffsets));
+        onMounted(() => { updateStickyOffsets(); window.addEventListener('resize', updateStickyOffsets); });
+        onMounted(async () => {
+            try {
+                const d = await fetch('/api/auth/status').then(r => r.json());
+                const prefix = d.logged_in ? (d.username || 'guest') : 'guest';
+                _colKey_flip = prefix + '_' + STORAGE_KEY_FLIP;
+                const saved = JSON.parse(localStorage.getItem(_colKey_flip) || 'null');
+                if (saved) columns.value = saved.map(k => columnsDef.find(c => c.key === k)).filter(Boolean);
+            } catch {}
+        });
+
+        // ── HELPERS ────────────────────────────────────────────────────────────
+        const formatPrice = (p) => {
+            if (!p) return '—';
+            if (p >= 1000) return p.toFixed(2);
+            if (p >= 1)    return p.toFixed(4);
+            if (p >= 0.01) return p.toFixed(6);
+            return p.toFixed(8);
+        };
+        const formatVolume = (v) => {
+            if (!v) return '—';
+            if (v >= 1e9) return (v/1e9).toFixed(2)+'B';
+            if (v >= 1e6) return (v/1e6).toFixed(2)+'M';
+            if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+            return v.toFixed(0);
+        };
+
+        return {
+            TF_LABEL, threshold, minVolM, screenshotTf, t,
+            columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
+            scanning, statusMsg, displayMsg, initialDone,
+            results, filteredResults, progressPct,
+            dirFilter, sortBy, sortDir, countG2R, countR2G,
+            cfgOpen, setSortBy, sa,
+            startScan, showPopup, hidePopup,
+            formatPrice, formatVolume,
+        };
+    }
+}).mount('#app');
+</script>
+
+<!-- Login Modal -->
+<div id="login-modal" onclick="if(event.target===this)closeLoginModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#161A1E;border:1px solid #2A2E39;border-radius:12px;padding:32px 28px;width:320px;max-width:90vw;position:relative;">
+    <button onclick="closeLoginModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#6B7280;cursor:pointer;font-size:22px;line-height:1;padding:0;">×</button>
+    <div style="text-align:center;margin-bottom:22px;"><svg viewBox="0 0 24 24" width="36" height="36" style="color:#F7931A;display:inline-block;margin-bottom:8px;"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"></path></svg><div style="font-size:15px;font-weight:700;color:#E5E7EB;">Crypto Scanner Pro</div></div>
+    <div id="lm-msg" style="display:none;border-radius:6px;padding:8px 12px;font-size:12px;margin-bottom:12px;"></div>
+    <form id="login-modal-form" method="POST" action="/login">
+      <div style="margin-bottom:12px;"><div style="font-size:12px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">USERNAME</div><input id="lm-username" type="text" name="username" autocomplete="username" placeholder="username" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:9px 12px;font-size:13px;color:#E5E7EB;outline:none;box-sizing:border-box;"></div>
+      <div id="lm-pw-div" style="margin-bottom:18px;"><div style="font-size:12px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">PASSWORD</div><input id="lm-password" type="password" name="password" autocomplete="current-password" placeholder="••••••••" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:9px 12px;font-size:13px;color:#E5E7EB;outline:none;box-sizing:border-box;"></div>
+      <div style="display:flex;gap:8px;"><button type="submit" data-i18n="login_submit" style="flex:1;background:#2563eb;color:#fff;border:none;border-radius:6px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">Accedi</button></div>
+    </form>
+  </div>
+</div>
+<script>
+function toggleUserMenu(e){e&&e.stopPropagation();var d=document.getElementById('user-dd');d.style.display=d.style.display==='block'?'none':'block';}
+document.addEventListener('click',function(){var d=document.getElementById('user-dd');if(d)d.style.display='none';});
+function openLoginModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';document.getElementById('login-modal-form').action='/login?next='+encodeURIComponent(window.location.pathname);document.getElementById('login-modal').style.display='flex';}
+function closeLoginModal(){document.getElementById('login-modal').style.display='none';}
+(async function(){try{var r=await fetch('/api/auth/status');var d=await r.json();var lbl=document.getElementById('user-label');var li=document.getElementById('dd-login');var lo=document.getElementById('dd-logout');var hdr=document.getElementById('dd-header');var uname=document.getElementById('dd-username');var drole=document.getElementById('dd-role');var prof=document.getElementById('dd-profile');if(d.logged_in){if(lbl)lbl.textContent=d.username||'Admin';if(li)li.style.display='none';if(lo)lo.style.display='flex';if(prof)prof.style.display='flex';if(hdr)hdr.style.display='block';if(uname)uname.textContent=d.username||'admin';if(drole)drole.textContent=d.role==='admin'?'Amministratore':d.role||'';}else{if(lbl)lbl.textContent='Guest';if(li)li.style.display='flex';if(lo)lo.style.display='none';if(prof)prof.style.display='none';if(hdr)hdr.style.display='none';}}catch(e){}})();
+</script>
+</body>
+</html>

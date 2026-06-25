@@ -66,6 +66,7 @@
     #ob-modal > div:last-child { flex: 0 0 50% !important; }
   }
 </style>
+<style>#tv-attr-logo{display:none!important}</style>
 </head>
 <body>
 
@@ -76,25 +77,31 @@
   <span style="color:#374151;font-size:11px;">|</span>
   <span id="hdr-vol"    style="font-size:11px;color:#60a5fa;white-space:nowrap;"></span>
   <a id="hdr-bybit" href="#" target="_blank" rel="noopener"
-     style="font-size:11px;color:#f59e0b;background:#2A2E39;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:2px;"
+     style="font-size:11px;color:#f59e0b;background:#2A2E39;border:none;border-radius:3px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:2px;"
      data-i18n-title="open_bybit" title="Apri su Bybit">Bybit ↗</a>
+  <a id="hdr-trade" href="#" target="_blank" rel="noopener"
+     style="font-size:11px;color:#fff;background:#2563eb;border:none;border-radius:3px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:2px;font-weight:600;"
+     title="Trade">Trade ↗</a>
+  <a id="hdr-chart" href="chart"
+     style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:5px 7px;cursor:pointer;line-height:1;flex-shrink:0;text-decoration:none;display:flex;align-items:center;"
+     title="Chart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.035-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.035.84-1.875 1.875-1.875h.75c1.035 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z"/></svg></a>
   <div style="flex:1;"></div>
   <button id="alerts-btn" onclick="openAlertsPanel()"
     style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
     data-i18n-title="nav_alerts" title="Alert attivi"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none" style="display:block"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5z"/></svg></button>
   <span style="color:#374151;font-size:11px;margin:0 6px;">|</span>
   <button onclick="window.open('orderbook?symbol=' + SYM, '_blank')"
-    style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
     title="Order Book">OB</button>
   <span id="bb-sep" style="color:#374151;font-size:11px;margin:0 6px;">|</span>
   <button id="bb-btn" onclick="toggleBB()"
-    style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
     title="Bollinger Bands (20,2)" data-i18n="mtf_bb">BB</button>
   <button id="btn-f11" onclick="toggleBrowserFullscreen()"
     data-i18n-title="f11_title" title="F11"
-    style="font-size:11px;color:#9CA3AF;background:#1E222D;border:1px solid #2A2E39;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;transition:background .15s,color .15s;">F11</button>
+    style="font-size:11px;color:#9CA3AF;background:#1E222D;border:none;border-radius:3px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;transition:background .15s,color .15s;">F11</button>
   <button onclick="window.opener ? window.close() : history.length > 1 ? history.back() : location.href='./'"
-    style="margin-left:4px;font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;">
+    style="margin-left:4px;font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;">
     ✕
   </button>
 </div>
@@ -350,7 +357,7 @@ setInterval(()=>{ for(const s of slots){if(s.chart)try{s.chart.applyOptions({});
 function makeChart(el, bigSlot) {
   return LC.createChart(el, {
     autoSize: true,
-    layout: { background:{color:'#101014'}, textColor:'#B2B5BE', fontSize: 13 },
+    layout: {background:{color:'#101014'}, textColor:'#B2B5BE', fontSize: 13 },
     grid:   { vertLines:{color:'#FFFFFF0F'}, horzLines:{color:'#FFFFFF0F'} },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
     rightPriceScale: { borderVisible:false, scaleMargins:{top:0.05,bottom:0.05} },
@@ -511,7 +518,7 @@ const fsBtn = document.createElement('button');
       dayHighLine:null, dayLowLine:null,
       prevHighLine:null, prevLowLine:null,
       athLine:null, atlLine:null,
-      rangeActive: false, rangeP1: null, rangeP2: null, _rangeSub: null, _rangeCsSub: null,
+      rangeActive: false, rangeP1: null, _rangeMD: null, _rangeMM: null, _rangeMU: null, _rangeCM: null,
       dayPrimitive: null,
       lastCandleStartUtc: null,
       lastWsMs: 0,
@@ -554,6 +561,7 @@ async function loadAll() {
     const coin = SYM.replace('USDT','');
     document.getElementById('hdr-coin').textContent = coin;
     document.getElementById('hdr-bybit').href = `https://www.bybit.com/trade/usdt/${SYM}`;
+    document.getElementById('hdr-trade').href = `chart?symbol=${SYM}&tf=D&layout=1x1&trade=1&noheader=1`;
     if (jt.success) {
       const pct = jt.change_24h;
       const el  = document.getElementById('hdr-change');
@@ -564,6 +572,7 @@ async function loadAll() {
   } catch(e) {
     document.getElementById('hdr-coin').textContent = SYM.replace('USDT','');
     document.getElementById('hdr-bybit').href = `https://www.bybit.com/trade/usdt/${SYM}`;
+    document.getElementById('hdr-trade').href = `chart?symbol=${SYM}&tf=D&layout=1x1&trade=1&noheader=1`;
   }
 
   // Daily H/L for all charts
@@ -885,7 +894,7 @@ let fsTF = 'D', fsWS = null, fsWsTimer = null, fsKlineCount = 0;
 let fsDayHighLine = null, fsDayLowLine = null, fsPrevHighLine = null, fsPrevLowLine = null;
 let fsAthLine = null, fsAtlLine = null;
 let fsDayPrimitive = null, obDayPrimitive = null;
-let fsRangeActive = false, fsRangeP1 = null, fsRangeP2 = null, _fsRangeSub = null, _fsRangeCsSub = null;
+let fsRangeActive = false, fsRangeP1 = null, _fsRangeMD = null, _fsRangeMM = null, _fsRangeMU = null, _fsRangeCM = null;
 
 function initFSChart() {
     if (fsChart) return;
@@ -1143,27 +1152,40 @@ function toggleSlotRange(idx) {
   const s = slots[idx];
   s.rangeActive = !s.rangeActive;
   s.rangeBtn.style.color = s.rangeActive ? '#f59e0b' : '#4B5563';
-  if (!s.rangeActive) {
-    s.rangeP1 = null; s.rangeP2 = null;
-    try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
-    if (s._rangeSub)   { try { s.chart.unsubscribeClick(s._rangeSub); }          catch(e){} s._rangeSub   = null; }
-    if (s._rangeCsSub) { try { s.chart.unsubscribeCrosshairMove(s._rangeCsSub); } catch(e){} s._rangeCsSub = null; }
-  } else {
-    s.rangeP1 = null; s.rangeP2 = null;
-    s._rangeSub = param => {
-      if (!param.point) return;
-      const price = s.candleS.coordinateToPrice(param.point.y);
+  if (s._rangeMD) { s.rangeCanvas.removeEventListener('mousedown', s._rangeMD); s._rangeMD = null; }
+  if (s._rangeMM) { document.removeEventListener('mousemove', s._rangeMM); s._rangeMM = null; }
+  if (s._rangeMU) { document.removeEventListener('mouseup', s._rangeMU); s._rangeMU = null; }
+  if (s._rangeCM) { s.rangeCanvas.removeEventListener('contextmenu', s._rangeCM); s._rangeCM = null; }
+  s.rangeP1 = null;
+  try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
+  s.rangeCanvas.style.pointerEvents = s.rangeActive ? 'auto' : 'none';
+  s.rangeCanvas.style.cursor = s.rangeActive ? 'crosshair' : '';
+  if (s.rangeActive) {
+    s._rangeMD = e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const rect = s.rangeCanvas.getBoundingClientRect();
+      const price = s.candleS.coordinateToPrice(e.clientY - rect.top);
       if (price == null) return;
-      if (s.rangeP1 === null || s.rangeP2 !== null) { s.rangeP1 = price; s.rangeP2 = null; }
-      else { s.rangeP2 = price; _drawRangeCanvas(s.rangeCanvas, s.candleS, s.rangeP1, s.rangeP2); }
+      s.rangeP1 = price;
     };
-    s._rangeCsSub = param => {
-      if (s.rangeP2 !== null) return;
-      const p2 = param.point ? s.candleS.coordinateToPrice(param.point.y) : null;
+    s._rangeMM = e => {
+      if (s.rangeP1 === null || !(e.buttons & 1)) return;
+      const rect = s.rangeCanvas.getBoundingClientRect();
+      const p2 = s.candleS.coordinateToPrice(e.clientY - rect.top);
+      if (p2 == null) return;
       _drawRangeCanvas(s.rangeCanvas, s.candleS, s.rangeP1, p2);
     };
-    s.chart.subscribeClick(s._rangeSub);
-    s.chart.subscribeCrosshairMove(s._rangeCsSub);
+    s._rangeMU = e => {
+      if (e.button !== 0) return;
+      s.rangeP1 = null;
+      try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
+    };
+    s._rangeCM = e => { e.preventDefault(); toggleSlotRange(idx); };
+    s.rangeCanvas.addEventListener('mousedown', s._rangeMD);
+    document.addEventListener('mousemove', s._rangeMM);
+    document.addEventListener('mouseup', s._rangeMU);
+    s.rangeCanvas.addEventListener('contextmenu', s._rangeCM);
   }
 }
 
@@ -1173,27 +1195,40 @@ function toggleFsRange() {
   const canvas = document.getElementById('fs-range-canvas');
   btn.style.color      = fsRangeActive ? '#f59e0b' : '#B2B5BE';
   canvas.style.display = fsRangeActive ? 'block' : 'none';
-  if (!fsRangeActive) {
-    fsRangeP1 = null; fsRangeP2 = null;
-    try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
-    if (_fsRangeSub)   { try { fsChart.unsubscribeClick(_fsRangeSub); }          catch(e){} _fsRangeSub   = null; }
-    if (_fsRangeCsSub) { try { fsChart.unsubscribeCrosshairMove(_fsRangeCsSub); } catch(e){} _fsRangeCsSub = null; }
-  } else {
-    fsRangeP1 = null; fsRangeP2 = null;
-    _fsRangeSub = param => {
-      if (!param.point) return;
-      const price = fsCandleS.coordinateToPrice(param.point.y);
+  if (_fsRangeMD) { canvas.removeEventListener('mousedown', _fsRangeMD); _fsRangeMD = null; }
+  if (_fsRangeMM) { document.removeEventListener('mousemove', _fsRangeMM); _fsRangeMM = null; }
+  if (_fsRangeMU) { document.removeEventListener('mouseup', _fsRangeMU); _fsRangeMU = null; }
+  if (_fsRangeCM) { canvas.removeEventListener('contextmenu', _fsRangeCM); _fsRangeCM = null; }
+  fsRangeP1 = null;
+  try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
+  canvas.style.pointerEvents = fsRangeActive ? 'auto' : 'none';
+  canvas.style.cursor = fsRangeActive ? 'crosshair' : '';
+  if (fsRangeActive) {
+    _fsRangeMD = e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const price = fsCandleS.coordinateToPrice(e.clientY - rect.top);
       if (price == null) return;
-      if (fsRangeP1 === null || fsRangeP2 !== null) { fsRangeP1 = price; fsRangeP2 = null; }
-      else { fsRangeP2 = price; _drawRangeCanvas(canvas, fsCandleS, fsRangeP1, fsRangeP2); }
+      fsRangeP1 = price;
     };
-    _fsRangeCsSub = param => {
-      if (fsRangeP2 !== null) return;
-      const p2 = param.point ? fsCandleS.coordinateToPrice(param.point.y) : null;
+    _fsRangeMM = e => {
+      if (fsRangeP1 === null || !(e.buttons & 1)) return;
+      const rect = canvas.getBoundingClientRect();
+      const p2 = fsCandleS.coordinateToPrice(e.clientY - rect.top);
+      if (p2 == null) return;
       _drawRangeCanvas(canvas, fsCandleS, fsRangeP1, p2);
     };
-    fsChart.subscribeClick(_fsRangeSub);
-    fsChart.subscribeCrosshairMove(_fsRangeCsSub);
+    _fsRangeMU = e => {
+      if (e.button !== 0) return;
+      fsRangeP1 = null;
+      try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
+    };
+    _fsRangeCM = e => { e.preventDefault(); toggleFsRange(); };
+    canvas.addEventListener('mousedown', _fsRangeMD);
+    document.addEventListener('mousemove', _fsRangeMM);
+    document.addEventListener('mouseup', _fsRangeMU);
+    canvas.addEventListener('contextmenu', _fsRangeCM);
   }
 }
 

@@ -40,15 +40,6 @@ def mtf_link(symbol, base_url=''):
     return name
 
 
-def build_caption(symbol, change_pct, note, base_url='', title='🔔 Alert'):
-    """Standard caption format used by all scanners."""
-    lines = [title, '', f'Coin: {symbol}', f'Vol 24h: {change_pct:+.2f}%', f'Segnale: {note}', '']
-    base = (base_url or 'https://cryptoscannerpro.com').rstrip('/')
-    lines.append(f'<a href="https://www.bybit.com/trade/usdt/{symbol}">- View Bybit</a>')
-    lines.append(f'<a href="{base}/mtf?symbol={symbol}">- View Desktop</a>')
-    lines.append(f'<a href="{base}/chart?symbol={symbol}&layout=1x1">- View Mobile</a>')
-    return '\n'.join(lines)
-
 
 def log_alert(symbol, alert_type, emoji='🔔', note='', tf=None):
     """Write an alert entry to the daily log (resets at UTC midnight)."""
@@ -95,10 +86,15 @@ def get_chart(symbol, interval='30', signal=None):
       price      : float   (for price alerts)
       condition  : 'above' | 'below'  (for price alerts)
     """
-    sig_type  = signal.get('type')      if signal else None
-    sig_price = signal.get('price')     if signal else None
-    sig_cond  = signal.get('condition') if signal else None
-    sig_time  = signal.get('time')      if signal else None
+    sig_type       = signal.get('type')           if signal else None
+    sig_price      = signal.get('price')          if signal else None
+    sig_cond       = signal.get('condition')      if signal else None
+    sig_time       = signal.get('time')           if signal else None
+    sig_ath        = signal.get('ath', 0)         if signal else 0
+    sig_atl        = signal.get('atl', 0)         if signal else 0
+    sig_no_ind     = signal.get('no_indicators')  if signal else False
+    sig_no_levels  = signal.get('no_levels')      if signal else False
+    sig_flip_level = signal.get('flip_level', 0)  if signal else 0
 
     # Primary: Selenium screenshot of chart.html-style page
     try:
@@ -109,6 +105,11 @@ def get_chart(symbol, interval='30', signal=None):
             signal_price=sig_price,
             signal_condition=sig_cond,
             signal_time=sig_time,
+            signal_ath=sig_ath,
+            signal_atl=sig_atl,
+            no_indicators=sig_no_ind,
+            no_levels=sig_no_levels,
+            flip_level=sig_flip_level,
         )
         if img:
             return img

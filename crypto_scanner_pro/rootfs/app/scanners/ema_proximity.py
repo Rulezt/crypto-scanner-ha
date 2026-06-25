@@ -16,26 +16,28 @@ KLINE_SUB_REFRESH = 4 * 3600
 class EMAProximityScanner:
     def __init__(self, telegram_config, enabled=True,
                  proximity_threshold=1.5, touch_threshold=2.0,
-                 min_volume_24h=10_000_000, screenshot_tf='30',
+                 min_volume_24h=10_000_000,
+                 scan_tf=None,
                  ws_manager=None, live_config=None, **kwargs):
         self.telegram_token      = telegram_config['token']
         self.telegram_chat_id    = telegram_config['chat_id']
-        self.base_url              = telegram_config.get('base_url', '')
+        self.base_url            = telegram_config.get('base_url', '')
         self.enabled             = enabled
         self.proximity_threshold = proximity_threshold
         self.touch_threshold     = touch_threshold
         self.min_volume_24h      = min_volume_24h
-        self.screenshot_tf       = screenshot_tf
+        raw_tf                   = scan_tf if scan_tf is not None else ['30']
+        self.scan_tfs            = raw_tf if isinstance(raw_tf, list) else [raw_tf]
         self._live_config        = live_config
         self._ws_manager         = ws_manager
         self._lock               = threading.Lock()
-        self._alerted: dict      = self._load_cooldown()  # {symbol: "YYYY-MM-DD"}
+        self._alerted: dict      = self._load_cooldown()  # {symbol_tf: "YYYY-MM-DD"}
 
         if ws_manager is not None:
             ws_manager.add_kline_callback(self._on_kline)
             threading.Thread(target=self._init_kline_subs, daemon=True).start()
 
-        print(f'🔎 EMA Proximity Scanner init — proximity={self.proximity_threshold}% touch_thr={self.touch_threshold}%')
+        print(f'🔎 EMA60 Scanner init — proximity={self.proximity_threshold}% touch_thr={self.touch_threshold}% tf={",".join(self.scan_tfs)}')
 
     # ── cooldown ──────────────────────────────────────────────────────────────
 
@@ -88,8 +90,8 @@ class EMAProximityScanner:
             return
         ranked = sorted(tickers.items(), key=lambda x: x[1].get('volume_24h', 0), reverse=True)
         top = [s for s, d in ranked if d.get('volume_24h', 0) >= self.min_volume_24h][:TOP_KLINE_SYMBOLS]
-        self._ws_manager.subscribe_klines(top, intervals=['30'])
-        print(f'🔎 EMAProx: subscribed 30m klines for {len(top)} symbols')
+        self._ws_manager.subscribe_klines(top, intervals=self.scan_tfs)
+        print(f'🔎 EMAProx: subscribed klines {len(top)} symbols × {len(self.scan_tfs)} TF')
         threading.Timer(KLINE_SUB_REFRESH, self._refresh_kline_subs).start()
 
     # ── EMA helpers ──────────────────────────────────────────────────────────
@@ -140,12 +142,12 @@ class EMAProximityScanner:
     # ── kline callback ────────────────────────────────────────────────────────
 
     def _on_kline(self, symbol, interval, candle, is_closed):
-        if not self.enabled or interval != '30':
+        if not self.enabled or interval not in self.scan_tfs:
             return
         if not self._is_in_schedule():
             return
 
-        klines = self._ws_manager.get_klines(symbol, '30')
+        klines = self._ws_manager.get_klines(symbol, interval)
         if len(klines) < 60:
             return
 
@@ -166,13 +168,15 @@ class EMAProximityScanner:
         if touch_count is None or touch_count > 0:
             return
 
+        cooldown_key = f'{symbol}_{interval}'
         coin = None
         with self._lock:
-            if self._alerted_today(symbol):
+            if self._alerted_today(cooldown_key):
                 return
             ticker = self._ws_manager.get_all_tickers().get(symbol, {})
             coin = {
                 'symbol': symbol,
+                'interval': interval,
                 'price': live_price,
                 'ema60': ema60,
                 'distance_pct': dist,
@@ -180,7 +184,7 @@ class EMAProximityScanner:
                 'volume_24h': ticker.get('volume_24h', 0),
                 'change_pct': ticker.get('change_24h', 0.0),
             }
-            self._alerted[symbol] = self._today_utc()
+            self._alerted[cooldown_key] = self._today_utc()
             self._save_cooldown()
 
         if coin:
@@ -195,35 +199,38 @@ class EMAProximityScanner:
             from alert_utils import send_photo, send_text, get_chart, log_alert
         except ImportError:
             return
-        sym    = coin['symbol']
-        dist   = coin['distance_pct']
-        side   = coin['side']
-        change = coin.get('change_pct', 0.0)
+        TF_LABEL = {'D': '1D', '240': '4h', '60': '1h', '30': '30m', '15': '15m', '5': '5m', '1': '1m'}
+        sym      = coin['symbol']
+        interval = coin.get('interval', '30')
+        tf_label = TF_LABEL.get(interval, interval)
+        dist     = coin['distance_pct']
+        change   = coin.get('change_pct', 0.0)
         lines = [
-            '🔔 EMA60', '',
-            f'Coin: {sym}',
-            f'Prezzo: ${coin["price"]}',
-            f'EMA60 30m: ${coin["ema60"]:.6f}',
-            f'Distanza: {dist:.2f}% ({side})',
-            f'Var 24h: {change:+.2f}%',
+            f'🔔 EMA60 {tf_label}',
             '',
+            '------------------------------------------------',
+            f'- Coin: {sym}',
+            f'- Distanza: {dist:.2f}%',
+            f'- Var: {change:+.2f}%',
+            '------------------------------------------------',
         ]
         base = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
+        lines.append('')
         lines.append(f'<a href="https://www.bybit.com/trade/usdt/{sym}">- View Bybit</a>')
         lines.append(f'<a href="{base}/mtf?symbol={sym}">- View Desktop</a>')
         lines.append(f'<a href="{base}/chart?symbol={sym}&layout=1x1">- View Mobile</a>')
         caption = '\n'.join(lines)
-        img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ema'})
+        img = get_chart(sym, interval=interval, signal={'type': 'ema'})
         if img:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
         else:
             send_text(self.telegram_token, self.telegram_chat_id, caption)
-        log_alert(sym, 'EMA Proximity', emoji='🔎', note=f'dist={dist:.2f}%', tf='30m')
-        print(f'🔎 EMAProx alert: {sym} dist={dist:.2f}%')
+        log_alert(sym, 'EMA60', emoji='🔎', note=f'dist={dist:.2f}%', tf=tf_label)
+        print(f'🔎 EMAProx alert: {sym} {tf_label} dist={dist:.2f}%')
 
     # ── status ────────────────────────────────────────────────────────────────
 
     def get_today_alerts(self):
         today = self._today_utc()
         with self._lock:
-            return [s for s, d in self._alerted.items() if d == today]
+            return [k.split('_')[0] for k, d in self._alerted.items() if d == today]

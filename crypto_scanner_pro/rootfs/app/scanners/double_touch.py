@@ -1,4 +1,4 @@
-"""Double Touch / Terzo Tocco Scanner"""
+"""Double Touch / Terzo Tocco Scanner — real-time via kline WebSocket"""
 import threading
 import requests
 import time
@@ -9,8 +9,10 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-COOLDOWN_FILE = '/data/double_touch_cooldown.json'
-MAX_COINS = 1000
+COOLDOWN_FILE      = '/data/double_touch_cooldown.json'
+MAX_COINS          = 1000
+TOP_KLINE_SYMBOLS  = 500
+KLINE_SUB_REFRESH  = 4 * 3600
 
 
 class DoubleTouchScanner:
@@ -19,27 +21,35 @@ class DoubleTouchScanner:
                  scan_tf=None, min_volume_24h=10_000_000,
                  scan_interval_minutes=240, cooldown_hours=12,
                  max_coins_per_alert=5,
-                 ws_manager=None, **kwargs):
+                 ws_manager=None, live_config=None, **kwargs):
 
-        self.telegram_token   = telegram_config['token']
-        self.telegram_chat_id = telegram_config['chat_id']
-        self.base_url           = telegram_config.get('base_url', '')
-        self.enabled          = enabled
-        self.tolerance        = float(tolerance)
-        self.proximity        = float(proximity)
-        raw_tf = scan_tf if scan_tf is not None else 'D'
-        self.scan_tfs         = raw_tf if isinstance(raw_tf, list) else [raw_tf]
-        self.min_volume_24h   = min_volume_24h
+        self.telegram_token      = telegram_config['token']
+        self.telegram_chat_id    = telegram_config['chat_id']
+        self.base_url            = telegram_config.get('base_url', '')
+        self.enabled             = enabled
+        self.tolerance           = float(tolerance)
+        self.proximity           = float(proximity)
+        raw_tf                   = scan_tf if scan_tf is not None else 'D'
+        self.scan_tfs            = raw_tf if isinstance(raw_tf, list) else [raw_tf]
+        self.min_volume_24h      = min_volume_24h
         self.max_coins_per_alert = max_coins_per_alert
-        self.cooldown_hours   = cooldown_hours
+        self.cooldown_hours      = cooldown_hours
+        self._live_config        = live_config
 
-        self.last_alerts     = self._load_cooldown()
-        self._lock           = threading.Lock()
+        self.last_alerts      = self._load_cooldown()
+        self._lock            = threading.Lock()
         self._last_scan_count = 0
+        self._ws_manager      = ws_manager
 
-        print(f'🔁 Terzo Tocco Scanner init — tol={self.tolerance}% prox={self.proximity}% tf={",".join(self.scan_tfs)}')
+        if ws_manager is not None:
+            ws_manager.add_kline_callback(self._on_kline)
+            threading.Thread(target=self._init_kline_subs, daemon=True).start()
 
-    # ── cooldown ─────────────────────────────────────────────────────────────
+        mode = 'WebSocket' if ws_manager else 'polling'
+        print(f'🔁 Terzo Tocco Scanner init — tol={self.tolerance}% prox={self.proximity}% '
+              f'tf={",".join(self.scan_tfs)} mode={mode}')
+
+    # ── cooldown ──────────────────────────────────────────────────────────────
 
     def _load_cooldown(self):
         try:
@@ -47,7 +57,7 @@ class DoubleTouchScanner:
                 with open(COOLDOWN_FILE, 'r') as f:
                     return {k: datetime.fromisoformat(v) for k, v in json.load(f).items()}
         except Exception as e:
-            print(f'⚠️ Error loading double touch cooldown: {e}')
+            print(f'⚠️ Terzo Tocco: load cooldown: {e}')
         return {}
 
     def _save_cooldown(self):
@@ -56,7 +66,7 @@ class DoubleTouchScanner:
             with open(COOLDOWN_FILE, 'w') as f:
                 json.dump({k: v.isoformat() for k, v in self.last_alerts.items()}, f)
         except Exception as e:
-            print(f'⚠️ Error saving double touch cooldown: {e}')
+            print(f'⚠️ Terzo Tocco: save cooldown: {e}')
 
     def is_in_cooldown(self, key):
         if key not in self.last_alerts:
@@ -67,7 +77,76 @@ class DoubleTouchScanner:
         self.last_alerts[key] = datetime.now()
         self._save_cooldown()
 
-    # ── data fetching ─────────────────────────────────────────────────────────
+    # ── schedule ──────────────────────────────────────────────────────────────
+
+    def _is_in_schedule(self):
+        from alert_utils import is_in_schedule
+        gen = (self._live_config or {}).get('general', {})
+        return is_in_schedule(
+            gen.get('schedule_start', ''),
+            gen.get('schedule_end', ''),
+            float(gen.get('utc_offset') or 2),
+        )
+
+    # ── kline subscriptions ───────────────────────────────────────────────────
+
+    def _init_kline_subs(self):
+        if not self._ws_manager.ready.wait(timeout=120):
+            print('⚠️ Terzo Tocco: WS not ready after 120s')
+            return
+        time.sleep(30)  # let ticker cache populate before first subscription
+        self._refresh_kline_subs()
+
+    def _refresh_kline_subs(self):
+        tickers = self._ws_manager.get_all_tickers()
+        if not tickers:
+            return
+        ranked = sorted(tickers.items(), key=lambda x: x[1].get('volume_24h', 0), reverse=True)
+        top = [s for s, d in ranked
+               if d.get('volume_24h', 0) >= self.min_volume_24h][:TOP_KLINE_SYMBOLS]
+        self._ws_manager.subscribe_klines(top, intervals=self.scan_tfs)
+        self._last_scan_count = len(top)
+        print(f'🔁 Terzo Tocco: subscribed klines {len(top)} symbols × {len(self.scan_tfs)} TF')
+        threading.Timer(KLINE_SUB_REFRESH, self._refresh_kline_subs).start()
+
+    # ── WebSocket callback ────────────────────────────────────────────────────
+
+    def _on_kline(self, symbol, interval, candle, is_closed):
+        if not self.enabled or not is_closed:
+            return
+        if interval not in self.scan_tfs:
+            return
+        if not self._is_in_schedule():
+            return
+
+        klines = self._ws_manager.get_klines(symbol, interval)
+        if len(klines) < 10:
+            return
+
+        ticker = self._ws_manager.get_all_tickers().get(symbol, {})
+        if ticker.get('volume_24h', 0) < self.min_volume_24h:
+            return
+
+        current_price = ticker.get('price') or candle['close']
+        patterns = self._find_double_touches(klines, current_price)
+
+        for p in patterns:
+            cooldown_key = f"{symbol}_{interval}_{p['type']}"
+            coin = None
+            with self._lock:
+                if not self.is_in_cooldown(cooldown_key):
+                    self.mark_alerted(cooldown_key)
+                    coin = {
+                        'symbol': symbol, 'tf': interval,
+                        'price': current_price,
+                        'volume': ticker.get('volume_24h', 0),
+                        'change_pct': ticker.get('change_24h', 0.0),
+                        **p,
+                    }
+            if coin:
+                threading.Thread(target=self.send_alert, args=([coin],), daemon=True).start()
+
+    # ── REST data fetching (polling fallback) ─────────────────────────────────
 
     def _fetch_tickers(self):
         try:
@@ -89,7 +168,7 @@ class DoubleTouchScanner:
             result.sort(key=lambda x: x['volume'], reverse=True)
             return result[:MAX_COINS]
         except Exception as e:
-            print(f'❌ Double touch: fetch tickers: {e}')
+            print(f'❌ Terzo Tocco: fetch tickers: {e}')
             return []
 
     def _fetch_klines(self, symbol, tf):
@@ -101,7 +180,6 @@ class DoubleTouchScanner:
             data = r.json()
             if data.get('retCode') != 0:
                 return []
-            # Bybit newest-first → reverse, drop last (incomplete) candle
             raw = list(reversed(data['result']['list']))[:-1]
             return [{'time':  int(c[0]) // 1000,
                      'open':  float(c[1]), 'high': float(c[2]),
@@ -139,7 +217,6 @@ class DoubleTouchScanner:
                 gap = j - i
                 if gap < 3 or gap > 60:
                     continue
-                # Level never violated in full history before j (except T1)
                 violated = False
                 for k in range(j):
                     if k == i:
@@ -152,13 +229,19 @@ class DoubleTouchScanner:
                     continue
                 if current_price >= level:
                     continue
-                # No post-T2 violation
                 post_violated = False
                 for k in range(j + 1, n):
                     if candles[k]['close'] > level or candles[k]['high'] > level:
                         post_violated = True
                         break
                 if post_violated:
+                    continue
+                # 3rd touch: price must have bounced away after touch 2 before returning
+                bounced_away = any(
+                    candles[k]['close'] <= level * (1 - tol_frac)
+                    for k in range(j + 1, n)
+                )
+                if not bounced_away:
                     continue
                 dist_pct = (current_price - level) / level * 100
                 if abs(dist_pct) > prox_abs:
@@ -209,6 +292,13 @@ class DoubleTouchScanner:
                         break
                 if post_violated:
                     continue
+                # 3rd touch: price must have bounced away after touch 2 before returning
+                bounced_away = any(
+                    candles[k]['close'] >= level * (1 + tol_frac)
+                    for k in range(j + 1, n)
+                )
+                if not bounced_away:
+                    continue
                 dist_pct = (current_price - level) / level * 100
                 if abs(dist_pct) > prox_abs:
                     continue
@@ -219,7 +309,6 @@ class DoubleTouchScanner:
                     'touchATime': candles[i]['time'],
                 })
 
-        # Keep best pattern per type (freshest, then most precise)
         best = {}
         for p in patterns:
             t = p['type']
@@ -233,12 +322,15 @@ class DoubleTouchScanner:
                     best[t] = p
         return list(best.values())
 
-    # ── polling scan ──────────────────────────────────────────────────────────
+    # ── polling scan (fallback / manual) ──────────────────────────────────────
 
     def scan(self):
         if not self.enabled:
             return []
-        print(f'🔁 Terzo Tocco Scanner — scanning top {MAX_COINS} coin (tol={self.tolerance}% prox={self.proximity}% tf={",".join(self.scan_tfs)})...')
+        # If WebSocket is active, polling is redundant but kept as manual fallback
+        if self._ws_manager and self._ws_manager.ready.is_set():
+            return []
+        print(f'🔁 Terzo Tocco Scanner — polling scan (tol={self.tolerance}% prox={self.proximity}% tf={",".join(self.scan_tfs)})...')
         found = []
         try:
             tickers = self._fetch_tickers()
@@ -259,7 +351,6 @@ class DoubleTouchScanner:
                                               'price': ticker['price'],
                                               'volume': ticker['volume'],
                                               'change_pct': ticker.get('change_pct', 0.0), **p})
-                # Gentle rate limit
                 if (i + 1) % 10 == 0:
                     time.sleep(0.5)
 
@@ -270,8 +361,10 @@ class DoubleTouchScanner:
             return found
 
         except Exception as e:
-            print(f'❌ Double touch scanner error: {e}')
+            print(f'❌ Terzo Tocco scanner error: {e}')
             return []
+
+    # ── alert ─────────────────────────────────────────────────────────────────
 
     def send_alert(self, patterns):
         if not self.telegram_token or not self.telegram_chat_id:
@@ -285,15 +378,18 @@ class DoubleTouchScanner:
             sym      = p['symbol']
             tf       = p.get('tf', self.scan_tfs[0])
             tf_label = TF_LABEL.get(tf, tf)
-            segnale  = 'Short' if p['type'] == 'resistance' else 'Long'
+            segnale  = 'Long' if p['type'] == 'resistance' else 'Short'
             change   = p.get('change_pct', 0.0)
             lines    = [
-                f'🔔 Terzo Tocco {tf_label} — {segnale}', '',
-                f'Coin: {sym}',
-                f'Vol: {change:+.2f}%',
+                f'🔔 Terzo Tocco {tf_label}',
                 '',
+                '------------------------------------------------',
+                f'- Coin: {sym}',
+                f'- Vol: {change:+.2f}%',
+                '------------------------------------------------',
             ]
             base = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
+            lines.append('')
             lines.append(f'<a href="https://www.bybit.com/trade/usdt/{sym}">- View Bybit</a>')
             lines.append(f'<a href="{base}/mtf?symbol={sym}">- View Desktop</a>')
             lines.append(f'<a href="{base}/chart?symbol={sym}&layout=1x1">- View Mobile</a>')
@@ -308,9 +404,8 @@ class DoubleTouchScanner:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
-            segnale_label = 'Short' if p['type'] == 'resistance' else 'Long'
-            log_alert(sym, 'Terzo Tocco', emoji='🔁', note=segnale_label, tf=tf_label)
-            print(f'Terzo Tocco alert: {sym} ({p["type"]})')
+            log_alert(sym, 'Terzo Tocco', emoji='🔁', note=segnale, tf=tf_label)
+            print(f'🔁 Terzo Tocco alert: {sym} {tf_label} ({p["type"]})')
 
     # ── status ────────────────────────────────────────────────────────────────
 

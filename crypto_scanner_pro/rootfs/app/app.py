@@ -20,6 +20,7 @@ from scanners.ema_proximity import EMAProximityScanner
 from scanners.ath_atl_scanner import ATHATLScanner
 from scanners.ico_levels_scanner import ICOLevelsScanner
 from scanners.double_touch import DoubleTouchScanner
+from scanners.daily_flip import DailyFlipScanner
 from ws_manager import BybitWSManager
 
 # Setup logging
@@ -209,7 +210,13 @@ DEFAULT_CONFIG = {
         'enabled': True,
         'proximity_threshold': 1.5,
         'touch_threshold': 2.0,
-        'screenshot_tf': '30',
+        'scan_tf': ['30'],
+    },
+    'daily_flip': {
+        'enabled': True,
+        'flip_threshold': 2.0,
+        'flip_type': 'both',
+        'cooldown_hours': 2,
     },
     'general': {
         'min_volume_24h': 10000000,
@@ -359,6 +366,8 @@ def init_scanners():
 
         scanners['double_touch'] = DoubleTouchScanner(
             telegram_config=telegram_config,
+            ws_manager=ws_manager,
+            live_config=config,
             **config['double_touch'],
             **{k: v for k, v in config['general'].items() if k in ('min_volume_24h', 'max_coins_per_alert')}
         )
@@ -369,6 +378,15 @@ def init_scanners():
             live_config=config,
             **config['ema_proximity'],
             **config['general']
+        )
+
+        scanners['daily_flip'] = DailyFlipScanner(
+            telegram_config=telegram_config,
+            ws_manager=ws_manager,
+            live_config=config,
+            **config['daily_flip'],
+            **{k: v for k, v in config['general'].items()
+               if k in ('min_volume_24h', 'cooldown_hours') and k not in config['daily_flip']}
         )
 
         logger.info("✅ Scanners initialized")
@@ -458,6 +476,7 @@ def health():
             'ico_levels': config['ico_levels']['enabled'],
             'double_touch': config['double_touch']['enabled'],
             'ema_proximity': config['ema_proximity']['enabled'],
+            'daily_flip': config['daily_flip']['enabled'],
         }
     })
 
@@ -558,6 +577,13 @@ def get_ath_atl_status():
         logger.error(f"❌ Error getting ATH/ATL status: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/scanner-api/ath-atl/visual', methods=['GET'])
+def ath_atl_visual():
+    scanner = scanners.get('ath_atl')
+    if not scanner:
+        return jsonify({'symbols': []})
+    return jsonify({'symbols': scanner.get_visual_data()})
+
 @app.route('/scanner-api/ema-proximity/status', methods=['GET'])
 def ema_proximity_status():
     scanner = scanners.get('ema_proximity')
@@ -582,9 +608,24 @@ def ico_levels_status():
     alerts = scanner.get_today_alerts()
     return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count(), 'monitored_symbols': scanner.get_monitored_symbols()})
 
+@app.route('/scanner-api/ico-levels/visual', methods=['GET'])
+def ico_levels_visual():
+    scanner = scanners.get('ico_levels')
+    if not scanner:
+        return jsonify({'symbols': []})
+    return jsonify({'symbols': scanner.get_visual_data()})
+
 @app.route('/scanner-api/double-touch/status', methods=['GET'])
 def double_touch_status():
     scanner = scanners.get('double_touch')
+    if not scanner:
+        return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
+    alerts = scanner.get_today_alerts()
+    return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count()})
+
+@app.route('/scanner-api/daily-flip/status', methods=['GET'])
+def daily_flip_status():
+    scanner = scanners.get('daily_flip')
     if not scanner:
         return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
     alerts = scanner.get_today_alerts()
@@ -1850,6 +1891,27 @@ def double_touch_page():
 @app.route('/double-touch.html', methods=['GET'])
 def double_touch_redirect():
     return redirect('/third-touch', code=301)
+
+@app.route('/ema60', methods=['GET'])
+@app.route('/ema60.html', methods=['GET'])
+def ema60_page():
+    return send_file('/usr/share/nginx/html/ema60.html')
+
+
+@app.route('/flip', methods=['GET'])
+@app.route('/flip.html', methods=['GET'])
+def flip_page():
+    return send_file('/usr/share/nginx/html/flip.html')
+
+@app.route('/ico', methods=['GET'])
+@app.route('/ico.html', methods=['GET'])
+def ico_page():
+    return send_file('/usr/share/nginx/html/ico.html')
+
+@app.route('/ath-atl', methods=['GET'])
+@app.route('/ath-atl.html', methods=['GET'])
+def ath_atl_page():
+    return send_file('/usr/share/nginx/html/ath_atl.html')
 
 
 @app.route('/orderbook', methods=['GET'])

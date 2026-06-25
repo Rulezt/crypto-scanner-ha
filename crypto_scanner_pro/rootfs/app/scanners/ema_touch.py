@@ -389,19 +389,20 @@ class EMAScanner:
             sym    = coin['symbol']
             change = coin.get('change_pct', 0.0)
             dist   = coin['distance_pct']
+            base = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
             lines  = [
-                '🔔 Alert', '',
-                f'Coin: {sym}',
-                f'Segnale: EMA60',
-                f'Vol: {change:+.2f}%',
-                f'Timeframe: {scan_tf_label}',
-                f'Distanza: {dist:.2f}%',
+                f'🔔 EMA Touch {scan_tf_label}',
                 '',
+                '------------------------------------------------',
+                f'- Coin: {sym}',
+                f'- Distanza: {dist:.2f}%',
+                f'- Vol: {change:+.2f}%',
+                '------------------------------------------------',
+                '',
+                f'<a href="https://www.bybit.com/trade/usdt/{sym}">- View Bybit</a>',
+                f'<a href="{base}/mtf?symbol={sym}">- View Desktop</a>',
+                f'<a href="{base}/chart?symbol={sym}&layout=1x1">- View Mobile</a>',
             ]
-            base = self.base_url.rstrip('/') if self.base_url else ''
-            lines.append(f'<a href="https://www.bybit.com/trade/usdt/{sym}">View Bybit</a>')
-            if base:
-                lines.append(f'<a href="{base}/mtf?symbol={sym}">View MultiTimeframe</a>')
             caption = '\n'.join(lines)
             img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ema'})
             if img:

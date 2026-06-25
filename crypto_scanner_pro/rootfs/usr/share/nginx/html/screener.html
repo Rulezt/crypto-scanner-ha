@@ -88,11 +88,7 @@
                         class="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-dark-hover hover:bg-dark-border transition-colors text-gray-400 hover:text-gray-200 text-lg">
                         ⚙
                     </button>
-                    <div id="bot-status" class="flex items-center space-x-1.5 px-2 sm:px-3 py-1.5 bg-dark-hover rounded-lg">
-                        <div class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
-                        <span class="text-sm text-gray-400 hidden sm:inline" data-i18n="loading">Caricamento...</span>
-                    </div>
-                    <div id="user-menu-wrap" style="position:relative;display:flex;align-items:center;margin-left:4px;">
+<div id="user-menu-wrap" style="position:relative;display:flex;align-items:center;margin-left:4px;">
                       <button onclick="toggleUserMenu(event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:32px;background:#1E222D;border:none;border-radius:6px;color:#9CA3AF;cursor:pointer;transition:background .15s,color .15s;font-family:inherit;" onmouseover="this.style.background='#2A2E39';this.style.color='#E5E7EB'" onmouseout="this.style.background='#1E222D';this.style.color='#9CA3AF'">
                         <svg viewBox="0 0 24 24" width="18" height="18" style="flex-shrink:0;"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"></path></svg>
                         <span id="user-label" style="font-size:12px;font-weight:500;">Guest</span>
@@ -145,13 +141,13 @@
             <!-- Scanner Cards -->
             <div class="space-y-6">
                 <!-- Scanner Cards Grid -->
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-4">
                     <!-- ATH/ATL Scanner -->
                     <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-amber-500 transition-all">
                         <div class="flex items-center justify-between mb-2">
                             <div class="text-amber-400 text-xs sm:text-sm font-medium">ATH/ATL</div>
                             <div class="flex items-center gap-1.5">
-                                <button onclick="openScannerModal('ath')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
+                                <button onclick="openScannerModal('ath')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura" data-i18n-title="scr_configure">⚙</button>
                                 <span class="text-gray-700 text-xs">|</span>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" id="ath-toggle" class="sr-only peer" checked onchange="toggleScanner('ath_atl')">
@@ -167,6 +163,7 @@
                             <span class="text-xs font-medium text-amber-400" id="ath-monitored">-</span>
                         </div>
                         <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block" data-i18n="scr_ath_desc">Prezzo vicino al massimo/minimo storico annuale</div>
+                        <a href="ath-atl" class="mt-2 block text-xs text-amber-500 hover:text-amber-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
                     </div>
 
                     <!-- ICO Levels Scanner -->
@@ -174,7 +171,7 @@
                         <div class="flex items-center justify-between mb-2">
                             <div class="text-pink-400 text-xs sm:text-sm font-medium">ICO</div>
                             <div class="flex items-center gap-1.5">
-                                <button onclick="openScannerModal('ico')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
+                                <button onclick="openScannerModal('ico')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura" data-i18n-title="scr_configure">⚙</button>
                                 <span class="text-gray-700 text-xs">|</span>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" id="ico-toggle" class="sr-only peer" checked onchange="toggleScanner('ico_levels')">
@@ -190,14 +187,15 @@
                             <span class="text-xs font-medium text-pink-400" id="ico-monitored">-</span>
                         </div>
                         <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block" data-i18n="scr_ico_desc">Nuove coin vicino al prezzo di listing iniziale</div>
+                        <a href="ico" class="mt-2 block text-xs text-pink-500 hover:text-pink-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
                     </div>
 
                     <!-- Terzo Tocco Scanner -->
                     <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-cyan-500 transition-all">
                         <div class="flex items-center justify-between mb-2">
-                            <div class="text-cyan-400 text-xs sm:text-sm font-medium">Terzo Tocco</div>
+                            <div class="text-cyan-400 text-xs sm:text-sm font-medium" data-i18n="scr_dt_name">Terzo Tocco</div>
                             <div class="flex items-center gap-1.5">
-                                <button onclick="openScannerModal('dt')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
+                                <button onclick="openScannerModal('dt')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura" data-i18n-title="scr_configure">⚙</button>
                                 <span class="text-gray-700 text-xs">|</span>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" id="dt-toggle" class="sr-only peer" checked onchange="toggleScanner('double_touch')">
@@ -221,7 +219,7 @@
                         <div class="flex items-center justify-between mb-2">
                             <div class="text-emerald-400 text-xs sm:text-sm font-medium">EMA60</div>
                             <div class="flex items-center gap-1.5">
-                                <button onclick="openScannerModal('emprox')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura">⚙</button>
+                                <button onclick="openScannerModal('emprox')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura" data-i18n-title="scr_configure">⚙</button>
                                 <span class="text-gray-700 text-xs">|</span>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" id="emprox-toggle" class="sr-only peer" checked onchange="toggleScanner('ema_proximity')">
@@ -237,6 +235,46 @@
                             <span class="text-xs font-medium text-emerald-400" id="emprox-monitored">-</span>
                         </div>
                         <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block" data-i18n="scr_ema_desc">Avvicinamento EMA60 30m — 0 tocchi oggi</div>
+                        <a href="ema60" class="mt-2 block text-xs text-emerald-500 hover:text-emerald-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
+                    </div>
+
+                    <!-- Daily Flip Scanner -->
+                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-violet-500 transition-all">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-violet-400 text-xs sm:text-sm font-medium">Daily Flip</div>
+                            <div class="flex items-center gap-1.5">
+                                <button onclick="openScannerModal('flip')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura" data-i18n-title="scr_configure">⚙</button>
+                                <span class="text-gray-700 text-xs">|</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="flip-toggle" class="sr-only peer" checked onchange="toggleScanner('daily_flip')">
+                                    <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-violet-600"></div>
+                                </label>
+                                <div id="flip-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                            </div>
+                        </div>
+                        <div class="text-xl sm:text-2xl font-bold" id="flip-count">-</div>
+                        <div class="text-xs text-gray-500 mt-1" data-i18n="scr_alert_today">Alert oggi</div>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="text-xs text-gray-500" data-i18n="scr_monitored">Monitorate:</span>
+                            <span class="text-xs font-medium text-violet-400" id="flip-monitored">-</span>
+                        </div>
+                        <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block" data-i18n="scr_flip_desc">Coin che invertono il segno 24h (verde↔rosso)</div>
+                        <a href="flip" class="mt-2 block text-xs text-violet-500 hover:text-violet-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
+                    </div>
+                </div>
+
+                <!-- Alert Recenti -->
+                <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
+                    <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between cursor-pointer select-none" onclick="toggleAlerts()">
+                        <h3 class="text-sm font-medium flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none" style="flex-shrink:0"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5m-2.031 1.324.002-.003v-.008z"/></svg><span id="alerts-count" class="hidden text-xs bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full font-medium">0</span> <span data-i18n="alerts_recent">Alert Recenti</span></h3>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-500" data-i18n="live">Live</span>
+                            <svg id="alerts-chevron" class="w-4 h-4 text-gray-400 transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+                    </div>
+                    <div id="alerts-filter-bar" class="hidden px-3 py-2 border-b border-dark-border flex flex-wrap gap-1.5"></div>
+                    <div id="alerts-container" class="p-4 space-y-3 max-h-96 overflow-y-auto hidden">
+                        <div class="text-center py-8 text-gray-500 text-sm" data-i18n="alerts_waiting">In attesa di alert...</div>
                     </div>
                 </div>
 
@@ -258,7 +296,7 @@
                     <button id="hvf-emprox" data-color="#10b981" onclick="setHvFilter('emprox')" style="font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid transparent;background:#1E2329;color:#10b981;cursor:pointer;opacity:0.45;" >EMA60</button>
                     <button id="hvf-ath"    data-color="#f59e0b" onclick="setHvFilter('ath')"    style="font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid transparent;background:#1E2329;color:#f59e0b;cursor:pointer;opacity:0.45;" >ATH/ATL</button>
                     <button id="hvf-ico"    data-color="#ec4899" onclick="setHvFilter('ico')"    style="font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid transparent;background:#1E2329;color:#ec4899;cursor:pointer;opacity:0.45;" >ICO</button>
-                    <button id="hvf-dt"     data-color="#06b6d4" onclick="setHvFilter('dt')"     style="font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid transparent;background:#1E2329;color:#06b6d4;cursor:pointer;opacity:0.45;" >Terzo Tocco</button>
+                    <button id="hvf-dt"     data-color="#06b6d4" onclick="setHvFilter('dt')"     style="font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid transparent;background:#1E2329;color:#06b6d4;cursor:pointer;opacity:0.45;" ><span data-i18n="scr_dt_name">Terzo Tocco</span></button>
                 </div>
                 <span id="hv-updated" class="text-xs text-gray-500"></span>
             </div>
@@ -311,7 +349,7 @@
                     <div class="flex justify-between items-center"><span class="text-gray-500" data-i18n="cfg_schedule_active">Orario attivo:</span><span id="view-schedule" class="text-gray-300">Sempre</span></div>
                 </div>
                 <div class="bg-dark-hover/50 rounded p-3">
-                    <div class="text-xs text-gray-500">Impostazioni grafici (EMA, Livelli, Candele) → <a href="chart" class="text-blue-400 hover:text-blue-300">⚙ su chart.html</a></div>
+                    <div class="text-xs text-gray-500"><span data-i18n="cfg_graph">Chart settings (EMA, Levels, Candles) → </span><a href="chart" class="text-blue-400 hover:text-blue-300"><span data-i18n="cfg_graph_link">⚙ in chart.html</span></a></div>
                 </div>
             </div>
             <!-- Edit Mode -->
@@ -325,7 +363,7 @@
                 <div class="space-y-3">
                     <div class="font-medium text-gray-400 text-sm" data-i18n="cfg_schedule_s">🕐 Orario Scanner</div>
                     <div><label class="text-xs text-gray-500 block mb-1" data-i18n="lbl_timezone">Fuso orario (offset UTC):</label>
-                        <input type="number" id="input-utc-offset" min="-12" max="14" step="0.5" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none" placeholder="es. 2 per UTC+2">
+                        <input type="number" id="input-utc-offset" min="-12" max="14" step="0.5" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none" placeholder="es. 2 per UTC+2" data-i18n-placeholder="lbl_timezone_ph">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div><label class="text-xs text-gray-500 block mb-1" data-i18n="lbl_sched_start">Inizio (lascia vuoto = sempre):</label><input type="time" id="input-schedule-start" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none"></div>
@@ -346,12 +384,12 @@
     <div id="scanner-modal-ath" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('ath',event)">
         <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
-                <span style="font-size:13px;font-weight:700;color:#FCD34D;">🏆 Scanner ATH/ATL</span>
+                <span style="font-size:13px;font-weight:700;color:#FCD34D;" data-i18n="scr_ath_modal">🏆 Scanner ATH/ATL</span>
                 <button onclick="closeScannerModal('ath')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
             </div>
             <div class="p-4 space-y-3">
-                <div><label class="text-xs text-gray-500 block mb-1">Prossimità (%):</label><input type="number" step="0.1" id="ath-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="ath-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
+                <div><label class="text-xs text-gray-500 block mb-1" data-i18n="scr_proximity">Prossimità (%):</label><input type="number" step="0.1" id="ath-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1" data-i18n="scr_screenshot_tf">Screenshot TF alert:</label><select id="ath-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-amber-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D" data-i18n="opt_daily">Giornaliero</option></select></div>
             </div>
             <div class="px-4 pb-3 flex gap-2">
                 <button onclick="saveScannerConfig('ath')" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors" data-i18n="cfg_save">💾 Salva</button>
@@ -365,22 +403,22 @@
     <div id="scanner-modal-ico" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('ico',event)">
         <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
-                <span style="font-size:13px;font-weight:700;color:#F9A8D4;">🚀 Scanner ICO Levels</span>
+                <span style="font-size:13px;font-weight:700;color:#F9A8D4;" data-i18n="scr_ico_modal">🚀 Scanner ICO Levels</span>
                 <button onclick="closeScannerModal('ico')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
             </div>
             <div class="p-4 space-y-3">
-                <div><label class="text-xs text-gray-500 block mb-1">Soglia prossimità (%):</label><input type="number" step="0.1" id="ico-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Timeframe:</label>
+                <div><label class="text-xs text-gray-500 block mb-1" data-i18n="scr_proximity_thr">Soglia prossimità (%):</label><input type="number" step="0.1" id="ico-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1" data-i18n="scr_tf_label">Timeframe:</label>
                     <select id="ico-cfg-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none">
-                        <option value="D">Daily (D)</option>
+                        <option value="D" data-i18n="opt_daily_d">Giornaliero (D)</option>
                         <option value="240">4h</option>
                         <option value="60">1h</option>
                         <option value="30">30m</option>
                         <option value="15">15m</option>
                     </select>
                 </div>
-                <div><label class="text-xs text-gray-500 block mb-1">Giorni listing recenti:</label><input type="number" id="ico-cfg-days" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="ico-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
+                <div><label class="text-xs text-gray-500 block mb-1" data-i18n="scr_days_listing">Giorni dal listing:</label><input type="number" id="ico-cfg-days" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1" data-i18n="scr_screenshot_tf">Screenshot TF alert:</label><select id="ico-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-pink-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D" data-i18n="opt_daily">Giornaliero</option></select></div>
             </div>
             <div class="px-4 pb-3 flex gap-2">
                 <button onclick="saveScannerConfig('ico')" class="flex-1 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors" data-i18n="cfg_save">💾 Salva</button>
@@ -394,14 +432,14 @@
     <div id="scanner-modal-dt" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('dt',event)">
         <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
-                <span style="font-size:13px;font-weight:700;color:#67E8F9;">🔁 Terzo Tocco Scanner</span>
+                <span style="font-size:13px;font-weight:700;color:#67E8F9;" data-i18n="scr_dt_modal">🔁 Terzo Tocco Scanner</span>
                 <button onclick="closeScannerModal('dt')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
             </div>
             <div class="p-4 space-y-3">
-                <div><label class="text-xs text-gray-500 block mb-1">Tolleranza tocchi (%):</label><input type="number" step="0.1" id="dt-cfg-tolerance" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">Prossimità al livello (%):</label><input type="number" step="0.1" id="dt-cfg-proximity" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1" data-i18n="scr_touch_tol">Tolleranza tocco (%):</label><input type="number" step="0.1" id="dt-cfg-tolerance" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1" data-i18n="scr_level_prox">Prossimità livello (%):</label><input type="number" step="0.1" id="dt-cfg-proximity" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
                 <div>
-                    <label class="text-xs text-gray-500 block mb-1">Timeframe (multi-selezione):</label>
+                    <label class="text-xs text-gray-500 block mb-1" data-i18n="scr_tf_multi">Timeframe (multi-selezione):</label>
                     <div id="dt-cfg-tf-group" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;background:#1E222D;border:1px solid #2B3139;border-radius:6px;">
                         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-D"   value="D"   style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">D</span></label>
                         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-240" value="240" style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">4h</span></label>
@@ -410,12 +448,12 @@
                         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-5"   value="5"   style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">5m</span></label>
                         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="dt-tf-1"   value="1"   style="accent-color:#67E8F9;width:14px;height:14px;"> <span class="text-sm text-gray-300">1m</span></label>
                     </div>
-                    <p style="font-size:10px;color:#4B5563;margin-top:4px;">Lo screenshot usa automaticamente il TF dell'alert.</p>
+                    <p style="font-size:10px;color:#4B5563;margin-top:4px;" data-i18n="scr_screenshot_auto">Lo screenshot usa automaticamente il timeframe dell'alert.</p>
                 </div>
-                <div><label class="text-xs text-gray-500 block mb-1">Cooldown alert (ore):</label><input type="number" id="dt-cfg-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 block mb-1" data-i18n="scr_cooldown_hours">Cooldown alert (ore):</label><input type="number" id="dt-cfg-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-cyan-500 focus:outline-none"></div>
             </div>
             <div class="px-4 pb-3 flex gap-2">
-                <button onclick="saveScannerConfig('dt')" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
+                <button onclick="saveScannerConfig('dt')" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors" data-i18n="cfg_save">💾 Save</button>
                 <button onclick="closeScannerModal('dt')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors" data-i18n="cfg_cancel">Annulla</button>
             </div>
             <div id="dt-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
@@ -426,19 +464,75 @@
     <div id="scanner-modal-emprox" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('emprox',event)">
         <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
-                <span style="font-size:13px;font-weight:700;color:#6EE7B7;">🔎 EMA Proximity Scanner</span>
+                <span style="font-size:13px;font-weight:700;color:#6EE7B7;" data-i18n="scr_ema_modal">🔎 EMA60 Scanner</span>
                 <button onclick="closeScannerModal('emprox')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
             </div>
             <div class="p-4 space-y-3">
-                <div><label class="text-xs text-gray-500 block mb-1">Distanza soglia (%):</label><input type="number" step="0.1" id="emprox-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"></div>
-                <div><label class="text-xs text-gray-500 block mb-1">TF screenshot alert:</label><select id="emprox-cfg-screenshot-tf" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="D">Daily</option></select></div>
-                <p class="text-xs text-gray-600">Alert una volta al giorno per coin (reset mezzanotte UTC). Solo coin con 0 tocchi EMA oggi.</p>
+                <div><label class="text-xs text-gray-500 block mb-1" data-i18n="scr_dist_thr">Soglia distanza (%):</label><input type="number" step="0.1" id="emprox-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-emerald-500 focus:outline-none"></div>
+                <div>
+                    <label class="text-xs text-gray-500 block mb-1" data-i18n="scr_tf_multi">Timeframe (multi-selezione):</label>
+                    <div id="emprox-cfg-tf-group" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;background:#1E222D;border:1px solid #2B3139;border-radius:6px;">
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="emprox-tf-D"   value="D"   style="accent-color:#6EE7B7;width:14px;height:14px;"> <span class="text-sm text-gray-300">D</span></label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="emprox-tf-240" value="240" style="accent-color:#6EE7B7;width:14px;height:14px;"> <span class="text-sm text-gray-300">4h</span></label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="emprox-tf-60"  value="60"  style="accent-color:#6EE7B7;width:14px;height:14px;"> <span class="text-sm text-gray-300">1h</span></label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="emprox-tf-30"  value="30"  style="accent-color:#6EE7B7;width:14px;height:14px;"> <span class="text-sm text-gray-300">30m</span></label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="emprox-tf-5"   value="5"   style="accent-color:#6EE7B7;width:14px;height:14px;"> <span class="text-sm text-gray-300">5m</span></label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="emprox-tf-1"   value="1"   style="accent-color:#6EE7B7;width:14px;height:14px;"> <span class="text-sm text-gray-300">1m</span></label>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-600" data-i18n="scr_ema_note">Un alert al giorno per coin per TF (reset a mezzanotte UTC). Solo coin con 0 tocchi EMA oggi.</p>
             </div>
             <div class="px-4 pb-3 flex gap-2">
-                <button onclick="saveScannerConfig('emprox')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">💾 Salva</button>
+                <button onclick="saveScannerConfig('emprox')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors" data-i18n="cfg_save">💾 Save</button>
                 <button onclick="closeScannerModal('emprox')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors" data-i18n="cfg_cancel">Annulla</button>
             </div>
             <div id="emprox-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
+        </div>
+    </div>
+
+    <!-- Daily Flip Modal -->
+    <div id="scanner-modal-flip" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('flip',event)">
+        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
+                <span style="font-size:13px;font-weight:700;color:#C4B5FD;" data-i18n="scr_flip_modal">🔄 Daily Flip Scanner</span>
+                <button onclick="closeScannerModal('flip')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
+            </div>
+            <div class="p-4 space-y-3">
+                <div>
+                    <label class="text-xs text-gray-500 block mb-1" data-i18n="scr_flip_thr">Soglia flip (%):</label>
+                    <input type="number" step="0.1" min="0.1" id="flip-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-violet-500 focus:outline-none">
+                    <p class="text-xs text-gray-600 mt-1" data-i18n="scr_flip_thr_note">Allerta quando la variazione 24h è entro questa soglia dallo 0%.</p>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 block mb-1" data-i18n="scr_flip_type">Direzione:</label>
+                    <select id="flip-cfg-type" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-violet-500 focus:outline-none">
+                        <option value="both" data-i18n="scr_flip_both">Entrambe (verde↔rosso)</option>
+                        <option value="green_to_red" data-i18n="scr_flip_g2r">Solo verde → rosso</option>
+                        <option value="red_to_green" data-i18n="scr_flip_r2g">Solo rosso → verde</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 block mb-1" data-i18n="scr_cooldown_h">Cooldown (ore):</label>
+                    <input type="number" step="1" min="1" id="flip-cfg-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-violet-500 focus:outline-none">
+                </div>
+                <div class="flex items-center gap-2 pt-1">
+                    <input type="checkbox" id="flip-cfg-no-indicators" class="rounded accent-violet-500">
+                    <label for="flip-cfg-no-indicators" class="text-xs text-gray-400 cursor-pointer" data-i18n="scr_flip_no_indicators">Nascondi indicatori nello screenshot</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="flip-cfg-show-level" class="rounded accent-violet-500">
+                    <label for="flip-cfg-show-level" class="text-xs text-gray-400 cursor-pointer" data-i18n="scr_flip_show_level">Mostra livello flip (0%) nello screenshot</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="flip-cfg-no-levels" class="rounded accent-violet-500">
+                    <label for="flip-cfg-no-levels" class="text-xs text-gray-400 cursor-pointer" data-i18n="scr_flip_no_levels">Nascondi livelli min/max nello screenshot</label>
+                </div>
+            </div>
+            <div class="px-4 pb-3 flex gap-2">
+                <button onclick="saveScannerConfig('flip')" class="flex-1 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors" data-i18n="cfg_save">💾 Save</button>
+                <button onclick="closeScannerModal('flip')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors" data-i18n="cfg_cancel">Annulla</button>
+            </div>
+            <div id="flip-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
         </div>
     </div>
 
@@ -471,19 +565,133 @@
             _tipTimer = setTimeout(() => { const t = document.getElementById('screenshot-tip'); if (t) t.style.display = 'none'; }, 150);
         }
 
+        function chartUrl(symbol) {
+            const isMobile = window.innerWidth < 640 ||
+                window.matchMedia('(orientation: landscape) and (pointer: coarse) and (max-height: 700px)').matches;
+            return (isMobile ? 'chart' : 'mtf') + '?symbol=' + symbol;
+        }
+
+        let _alertsData = [];
+        let _alertFilter = null;
+        const _ALERT_TYPE_NORM  = { 'EMA Proximity': 'EMA60' };
+        const _ALERT_TYPE_LABEL = {
+            'EMA60':       { it: 'EMA60',       en: 'EMA60'       },
+            'EMA Touch':   { it: 'EMA Touch',   en: 'EMA Touch'   },
+            'Terzo Tocco': { it: 'Terzo Tocco', en: 'Third Touch' },
+            'ATH':         { it: 'ATH',          en: 'ATH'         },
+            'ATL':         { it: 'ATL',          en: 'ATL'         },
+            'Daily Flip':  { it: 'Daily Flip',   en: 'Daily Flip'  },
+        };
+        function alertTypeLabel(raw) {
+            const norm = _ALERT_TYPE_NORM[raw] || raw;
+            const lang = window._cspLang || 'en';
+            return (_ALERT_TYPE_LABEL[norm] || {})[lang] || norm;
+        }
+
+        function renderAlerts() {
+            const container = document.getElementById('alerts-container');
+            const countEl   = document.getElementById('alerts-count');
+            const filtered  = _alertFilter ? _alertsData.filter(a => a.type === _alertFilter) : _alertsData;
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-gray-500 text-sm">'+window.t('alerts_waiting')+'</div>';
+            } else {
+                container.innerHTML = filtered.map(a => {
+                    const _d = new Date(a.time);
+                    const timeStr = String(_d.getHours()).padStart(2,'0') + ':' + String(_d.getMinutes()).padStart(2,'0');
+                    const coin = a.symbol.replace('USDT', '');
+                    const tf   = a.tf ? a.tf.replace('m','').replace('h','60').replace('D','D') : '30';
+                    const typeLabel = alertTypeLabel(a.type);
+                    const tfSuffix  = a.type === 'EMA60' && a.tf ? ' ('+a.tf+')' : '';
+                    return `<div class="flex items-center justify-between py-2 px-3 bg-dark-hover rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <div>
+                                <span class="text-sm font-medium text-gray-200 cursor-default" data-symbol="${a.symbol}" data-tf="${tf}" onmouseenter="showScreenshotTip(this)" onmouseleave="hideScreenshotTip()">${coin}</span>
+                                <span class="text-xs text-gray-500 ml-1">${typeLabel}${tfSuffix}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <a href="${chartUrl(a.symbol)}" class="text-xs text-blue-400 hover:text-blue-300">${window.t('col_chart')}</a>
+                            <span class="text-xs text-gray-500">${timeStr}</span>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+            if (countEl) {
+                const n = _alertsData.length;
+                countEl.textContent = n;
+                n > 0 ? countEl.classList.remove('hidden') : countEl.classList.add('hidden');
+            }
+        }
+
+        function renderAlertFilterBar() {
+            const bar       = document.getElementById('alerts-filter-bar');
+            const container = document.getElementById('alerts-container');
+            if (!bar) return;
+            if (!container || container.classList.contains('hidden')) { bar.classList.add('hidden'); return; }
+            const types = [...new Set(_alertsData.map(a => a.type))];
+            if (types.length <= 1) { bar.innerHTML = ''; bar.classList.add('hidden'); return; }
+            bar.classList.remove('hidden');
+            bar.innerHTML = [null, ...types].map(t => {
+                const active = _alertFilter === t;
+                const label  = t === null ? window.t('scr_all') : alertTypeLabel(t);
+                const arg    = t === null ? 'null' : `'${t.replace(/'/g, "\\'")}'`;
+                return `<button onclick="setAlertFilter(${arg})"
+                    style="font-size:12px;padding:2px 10px;border-radius:999px;border:1px solid ${active?'#FF9C2E':'#374151'};background:${active?'rgba(255,156,46,0.15)':'transparent'};color:${active?'#FF9C2E':'#9CA3AF'};cursor:pointer;white-space:nowrap;">${label}</button>`;
+            }).join('');
+        }
+
+        function setAlertFilter(type) {
+            _alertFilter = type;
+            renderAlertFilterBar();
+            renderAlerts();
+        }
+
+        function toggleAlerts() {
+            const container = document.getElementById('alerts-container');
+            const filterBar = document.getElementById('alerts-filter-bar');
+            const chevron   = document.getElementById('alerts-chevron');
+            const isHidden  = container.classList.toggle('hidden');
+            chevron.style.transform = isHidden ? '' : 'rotate(90deg)';
+            if (filterBar) {
+                if (isHidden) filterBar.classList.add('hidden');
+                else renderAlertFilterBar();
+            }
+        }
+
+        async function loadAlerts() {
+            try {
+                const res  = await fetch(`${API_URL}/scanner-api/alerts/recent`);
+                const data = await res.json();
+                if (!data.success || !data.alerts || data.alerts.length === 0) {
+                    _alertsData = [];
+                } else {
+                    _alertsData = data.alerts.map(a => ({ ...a, type: _ALERT_TYPE_NORM[a.type] || a.type }));
+                }
+                if (_alertFilter && !_alertsData.some(a => a.type === _alertFilter)) _alertFilter = null;
+                renderAlertFilterBar();
+                renderAlerts();
+            } catch (e) {
+                console.error('Error loading alerts:', e);
+            }
+        }
+
         async function init() {
             await loadConfig();
             await loadHighVolume();
+            await loadAlerts();
             checkHealth();
             loadEmaProxCount();
             loadAthStatus();
             loadIcoStatus();
             loadDtStatus();
+            loadFlipStatus();
             setInterval(loadHighVolume, 2000);
             setInterval(loadEmaProxCount, 30000);
             setInterval(loadAthStatus, 30000);
             setInterval(loadIcoStatus, 30000);
             setInterval(loadDtStatus, 30000);
+            setInterval(loadFlipStatus, 30000);
+            setInterval(loadAlerts, 60000);
         }
 
         async function loadEmaProxCount() {
@@ -543,6 +751,16 @@
             } catch (e) { /* ignore */ }
         }
 
+        async function loadFlipStatus() {
+            try {
+                const res = await fetch(`${API_URL}/scanner-api/daily-flip/status`);
+                const data = await res.json();
+                document.getElementById('flip-count').textContent = data.count ?? 0;
+                const monEl = document.getElementById('flip-monitored');
+                if (monEl) monEl.textContent = data.monitored ?? '-';
+            } catch (e) { /* ignore */ }
+        }
+
         function fmtPrice(p) {
             if (p >= 10000) return p.toLocaleString('en-US', {maximumFractionDigits: 0});
             if (p >= 1)     return p.toFixed(3);
@@ -559,8 +777,8 @@
         let _hvKey  = null;
         let _hvSort = { col: null, dir: -1 };
         let _hvFilter = 'all';
-        let _scannerSets = { emprox: new Set(), ath: new Set(), ico: new Set(), dt: new Set() };
-        let _scannerExtraSymbols = { emprox: [], ath: [], ico: [], dt: [] };
+        let _scannerSets = { emprox: new Set(), ath: new Set(), ico: new Set(), dt: new Set(), flip: new Set() };
+        let _scannerExtraSymbols = { emprox: [], ath: [], ico: [], dt: [], flip: [] };
 
         function sortHvData(data) {
             if (!_hvSort.col) return data;
@@ -663,7 +881,7 @@
         function rebuildHvTable() {
             const filtered = filterHvData(_hvData);
             const sorted = sortHvData(filtered);
-            const empty = '<tr><td colspan="11" class="text-center py-8 text-gray-500 text-sm">Nessuna coin per questo filtro</td></tr>';
+            const empty = '<tr><td colspan="11" class="text-center py-8 text-gray-500 text-sm">'+window.t('scr_no_filter_coin')+'</td></tr>';
             document.getElementById('hv-tbody').innerHTML = sorted.length ? sorted.map((c, i) => renderHvRow(c, i)).join('') : empty;
             const countEl = document.getElementById('hv-count');
             if (countEl) { countEl.textContent = sorted.length; countEl.classList.toggle('hidden', sorted.length === 0); }
@@ -755,6 +973,7 @@
                 if (currentConfig.ico_levels)    document.getElementById('ico-toggle').checked    = currentConfig.ico_levels.enabled;
                 if (currentConfig.double_touch)  document.getElementById('dt-toggle').checked     = currentConfig.double_touch.enabled;
                 if (currentConfig.ema_proximity) document.getElementById('emprox-toggle').checked = currentConfig.ema_proximity.enabled;
+                if (currentConfig.daily_flip)    document.getElementById('flip-toggle').checked   = currentConfig.daily_flip.enabled;
                 updateDashboardInfo();
                 updateBotStatus();
             } catch (e) {
@@ -849,11 +1068,11 @@
                     updateBotStatus();
                     setTimeout(() => { closeConfigModal(); statusEl.classList.add('hidden'); }, 2000);
                 } else {
-                    throw new Error(result.error || 'Errore sconosciuto');
+                    throw new Error(result.error || window.t('err_unknown'));
                 }
             } catch (e) {
                 statusEl.className = 'p-3 rounded text-sm bg-red-500/20 text-red-300';
-                statusEl.textContent = '❌ Errore: ' + e.message;
+                statusEl.textContent = '❌ Error: ' + e.message;
             }
         }
 
@@ -881,7 +1100,19 @@
                 });
             } else if (name === 'emprox') {
                 document.getElementById('emprox-cfg-threshold').value     = cfg.ema_proximity?.proximity_threshold ?? 1.5;
-                document.getElementById('emprox-cfg-screenshot-tf').value = cfg.ema_proximity?.screenshot_tf ?? '30';
+                const rawEmTf = cfg.ema_proximity?.scan_tf ?? ['30'];
+                const selEmTfs = Array.isArray(rawEmTf) ? rawEmTf : [rawEmTf];
+                ['D','240','60','30','5','1'].forEach(v => {
+                    const cb = document.getElementById(`emprox-tf-${v}`);
+                    if (cb) cb.checked = selEmTfs.includes(v);
+                });
+            } else if (name === 'flip') {
+                document.getElementById('flip-cfg-threshold').value        = cfg.daily_flip?.flip_threshold ?? 2.0;
+                document.getElementById('flip-cfg-type').value             = cfg.daily_flip?.flip_type ?? 'both';
+                document.getElementById('flip-cfg-cooldown').value         = cfg.daily_flip?.cooldown_hours ?? 2;
+                document.getElementById('flip-cfg-no-indicators').checked  = cfg.daily_flip?.screenshot_no_indicators ?? false;
+                document.getElementById('flip-cfg-show-level').checked     = cfg.daily_flip?.show_flip_level ?? false;
+                document.getElementById('flip-cfg-no-levels').checked      = cfg.daily_flip?.screenshot_no_levels ?? false;
             }
             const statusEl = document.getElementById(`${name}-cfg-status`);
             if (statusEl) statusEl.className = 'hidden';
@@ -930,10 +1161,21 @@
                         cooldown_hours:        parseInt(document.getElementById('dt-cfg-cooldown').value) || 12,
                     };
                 } else if (name === 'emprox') {
+                    const chosenEmTfs = ['D','240','60','30','5','1'].filter(v => document.getElementById(`emprox-tf-${v}`)?.checked);
                     updates.ema_proximity = {
                         ...currentConfig.ema_proximity,
                         proximity_threshold: parseFloat(document.getElementById('emprox-cfg-threshold').value) || 1.5,
-                        screenshot_tf:       document.getElementById('emprox-cfg-screenshot-tf').value || '30',
+                        scan_tf:             chosenEmTfs.length > 0 ? chosenEmTfs : ['30'],
+                    };
+                } else if (name === 'flip') {
+                    updates.daily_flip = {
+                        ...currentConfig.daily_flip,
+                        flip_threshold:             parseFloat(document.getElementById('flip-cfg-threshold').value) || 2.0,
+                        flip_type:                  document.getElementById('flip-cfg-type').value || 'both',
+                        cooldown_hours:             parseInt(document.getElementById('flip-cfg-cooldown').value) || 2,
+                        screenshot_no_indicators:   document.getElementById('flip-cfg-no-indicators').checked,
+                        show_flip_level:            document.getElementById('flip-cfg-show-level').checked,
+                        screenshot_no_levels:       document.getElementById('flip-cfg-no-levels').checked,
                     };
                 }
                 const newConfig = { ...currentConfig, ...updates };
@@ -969,6 +1211,7 @@
             'ico_levels':    'ico-toggle',
             'double_touch':  'dt-toggle',
             'ema_proximity': 'emprox-toggle',
+            'daily_flip':    'flip-toggle',
         };
 
         async function toggleScanner(scannerName) {
@@ -1003,6 +1246,7 @@
                 'ico-status':    currentConfig.ico_levels?.enabled,
                 'dt-status':     currentConfig.double_touch?.enabled,
                 'emprox-status': currentConfig.ema_proximity?.enabled,
+                'flip-status':   currentConfig.daily_flip?.enabled,
             };
             Object.entries(scanners).forEach(([id, enabled]) => {
                 const el = document.getElementById(id);
@@ -1010,7 +1254,7 @@
             });
             const allEnabled = Object.values(scanners).some(v => v);
             const statusEl = document.getElementById('bot-status');
-            statusEl.innerHTML = allEnabled
+            if (statusEl) statusEl.innerHTML = allEnabled
                 ? `<div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div><span class="text-sm text-emerald-400 font-medium hidden sm:inline">Online</span>`
                 : `<div class="w-2 h-2 bg-gray-500 rounded-full"></div><span class="text-sm text-gray-500 hidden sm:inline">Offline</span>`;
         }
@@ -1051,7 +1295,7 @@
         <input id="lm-password" type="password" name="password" autocomplete="current-password" placeholder="••••••••" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:9px 12px;font-size:13px;color:#E5E7EB;outline:none;box-sizing:border-box;">
       </div>
       <div id="lm-confirm-wrap" style="display:none;margin-bottom:18px;">
-        <div style="font-size:12px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">CONFERMA PASSWORD</div>
+        <div style="font-size:12px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">CONFIRM PASSWORD</div>
         <input id="lm-confirm" type="password" autocomplete="new-password" placeholder="••••••••" style="width:100%;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:9px 12px;font-size:13px;color:#E5E7EB;outline:none;box-sizing:border-box;">
       </div>
       <div style="display:flex;gap:8px;">
@@ -1071,8 +1315,9 @@ function _lmSetMode(m){_lmMode=m;var r=m==='register';document.getElementById('l
 function _lmMsg(t,ok){var el=document.getElementById('lm-msg');el.textContent=t;el.style.display='block';el.style.background=ok?'rgba(16,185,129,.1)':'rgba(239,68,68,.1)';el.style.border='1px solid '+(ok?'rgba(16,185,129,.3)':'rgba(239,68,68,.3)');el.style.color=ok?'#34d399':'#f87171';}
 function lmLogin(){if(_lmMode==='register'){_lmSetMode('login');return;}document.getElementById('login-modal-form').submit();}
 async function lmRegister(){if(_lmMode==='login'){_lmSetMode('register');return;}var u=document.getElementById('lm-username').value.trim(),e=document.getElementById('lm-email').value.trim(),p=document.getElementById('lm-password').value,c=document.getElementById('lm-confirm').value,btn=document.getElementById('lm-btn-reg');btn.disabled=true;btn.textContent='...';try{var res=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,email:e,password:p,confirm:c})});var d=await res.json();if(d.success){_lmMsg(window.t('reg_done_simple'),true);_lmSetMode('login');document.getElementById('lm-username').value=u;document.getElementById('lm-password').value='';}else{_lmMsg(d.error||'Errore',false);}}catch(ex){_lmMsg(window.t('net_error'),false);}finally{btn.disabled=false;btn.textContent=window.t('register_submit');}}
-async function openApiKeyModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';try{var s=await fetch('/api/settings').then(r=>r.json());var key=s.bybit_api_key||'';document.getElementById('ak-key').textContent=key?(key.length<=8?'●'.repeat(key.length):key.slice(0,4)+'●●●●●●●●'+key.slice(-4)):window.t('not_configured');document.getElementById('ak-secret').textContent=s.bybit_secret_set?'●●●●●●●●●●●●':window.t('not_configured2');var badge=document.getElementById('ak-trade-badge');if(s.trading_enabled&&s.bybit_secret_set&&key){badge.textContent=window.t('trade_active');badge.style.background='#064e3b';badge.style.color='#34d399';}else{badge.textContent=window.t('trade_disabled');badge.style.background='#1f2937';badge.style.color='#6B7280';}}catch(e){document.getElementById('ak-key').textContent=window.t('load_err');}document.getElementById('apikey-modal').style.display='flex';}
+async function openApiKeyModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';try{var s=await fetch('/api/settings').then(r=>r.json());var key=s.bybit_api_key||'';document.getElementById('ak-key').value=key;document.getElementById('ak-secret').value='';document.getElementById('ak-secret').placeholder=s.bybit_secret_set?'●●●●●●●●●●●● (lascia vuoto per non modificare)':'Inserisci API Secret';var badge=document.getElementById('ak-trade-badge');if(s.trading_enabled&&s.bybit_secret_set&&key){badge.textContent=window.t('trade_active');badge.style.background='#064e3b';badge.style.color='#34d399';}else{badge.textContent=window.t('trade_disabled');badge.style.background='#1f2937';badge.style.color='#6B7280';}}catch(e){document.getElementById('ak-key').value='';}document.getElementById('ak-modal-msg').textContent='';document.getElementById('apikey-modal').style.display='flex';}
 function closeApiKeyModal(){document.getElementById('apikey-modal').style.display='none';}
+async function saveApiKeyModal(){var key=document.getElementById('ak-key').value.trim();var sec=document.getElementById('ak-secret').value.trim();var msg=document.getElementById('ak-modal-msg');msg.textContent='...';msg.style.color='#9CA3AF';try{var body={bybit_api_key:key,trading_enabled:true};if(sec)body.bybit_api_secret=sec;var r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});var d=await r.json();if(d.success){msg.textContent='Salvato';msg.style.color='#34d399';document.getElementById('ak-secret').value='';var s=await fetch('/api/settings').then(r=>r.json());var badge=document.getElementById('ak-trade-badge');if(s.trading_enabled&&s.bybit_secret_set&&key){badge.textContent=window.t('trade_active');badge.style.background='#064e3b';badge.style.color='#34d399';}else{badge.textContent=window.t('trade_disabled');badge.style.background='#1f2937';badge.style.color='#6B7280';}document.getElementById('ak-secret').placeholder=s.bybit_secret_set?'●●●●●●●●●●●● (lascia vuoto per non modificare)':'Inserisci API Secret';}else{msg.textContent='Errore';msg.style.color='#ef4444';}}catch(e){msg.textContent='Errore';msg.style.color='#ef4444';}}
 async function openTelegramModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';try{var s=await fetch('/api/settings').then(r=>r.json());document.getElementById('tg-tok-m').value=s.telegram_token||'';document.getElementById('tg-chat-m').value=s.telegram_chat_id||'';}catch(e){}document.getElementById('telegram-modal').style.display='flex';}
 function closeTelegramModal(){document.getElementById('telegram-modal').style.display='none';}
 async function saveTelegramModal(){var msg=document.getElementById('tg-modal-msg');try{var d=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegram_token:document.getElementById('tg-tok-m').value,telegram_chat_id:document.getElementById('tg-chat-m').value})}).then(r=>r.json());if(d.success){msg.textContent=window.t('saved');msg.style.color='#10b981';}else{msg.textContent=window.t('save_err');msg.style.color='#ef4444';}}catch(e){msg.textContent=window.t('save_err');msg.style.color='#ef4444';}setTimeout(()=>msg.textContent='',3000);}
@@ -1090,15 +1335,19 @@ function closeUsersModal(){document.getElementById('users-modal').style.display=
     </div>
     <div style="margin-bottom:14px;">
       <div style="font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">API KEY</div>
-      <div id="ak-key" style="font-family:monospace;font-size:12px;color:#E5E7EB;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 12px;word-break:break-all;min-height:34px;">—</div>
+      <input id="ak-key" type="text" autocomplete="off" style="width:100%;font-family:monospace;font-size:12px;color:#E5E7EB;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 12px;box-sizing:border-box;outline:none;" placeholder="Inserisci API Key">
     </div>
     <div style="margin-bottom:16px;">
       <div style="font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500;">API SECRET</div>
-      <div id="ak-secret" style="font-family:monospace;font-size:12px;color:#6B7280;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 12px;">—</div>
+      <input id="ak-secret" type="password" autocomplete="off" style="width:100%;font-family:monospace;font-size:12px;color:#E5E7EB;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 12px;box-sizing:border-box;outline:none;" placeholder="Inserisci API Secret">
     </div>
-    <div style="display:flex;align-items:center;gap:8px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
       <div style="font-size:11px;color:#9CA3AF;font-weight:500;">Trading:</div>
       <span id="ak-trade-badge" style="font-size:10px;font-weight:600;padding:2px 10px;border-radius:12px;background:#1f2937;color:#6B7280;">—</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button onclick="saveApiKeyModal()" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;" data-i18n="cfg_save">Salva</button>
+      <span id="ak-modal-msg" style="font-size:12px;min-height:18px;"></span>
     </div>
   </div>
 </div>
@@ -1130,7 +1379,7 @@ function closeUsersModal(){document.getElementById('users-modal').style.display=
     <button onclick="closeUsersModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#6B7280;cursor:pointer;font-size:22px;line-height:1;padding:0;">×</button>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
       <svg viewBox="0 0 24 24" width="20" height="20" style="color:#F7931A;flex-shrink:0;"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-      <span style="font-size:15px;font-weight:700;color:#E5E7EB;">Utenti Registrati</span>
+      <span style="font-size:15px;font-weight:700;color:#E5E7EB;" data-i18n="users_title">Registered Users</span>
     </div>
     <div style="overflow-y:auto;flex:1;">
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
@@ -1138,8 +1387,8 @@ function closeUsersModal(){document.getElementById('users-modal').style.display=
           <tr style="border-bottom:1px solid #2A2E39;">
             <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">USERNAME</th>
             <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">EMAIL</th>
-            <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">ISCRIZIONE</th>
-            <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">RUOLO</th>
+            <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">REGISTERED</th>
+            <th style="text-align:left;padding:8px 10px;color:#9CA3AF;font-weight:600;white-space:nowrap;">ROLE</th>
           </tr>
         </thead>
         <tbody id="users-tbody"></tbody>

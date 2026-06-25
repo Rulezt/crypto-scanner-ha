@@ -18,6 +18,7 @@
   #chart { width:1280px; height:720px; }
 </style>
 <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
+<style>#tv-attr-logo{display:none!important}</style>
 </head>
 <body>
 
@@ -46,6 +47,11 @@ const SIG       = qp.get('signal_type') || '';
 const SIG_PRICE = parseFloat(qp.get('signal_price') || '0');
 const SIG_COND  = qp.get('signal_condition') || 'above';
 const SIG_TIME  = parseInt(qp.get('signal_time') || '0');
+const SIG_ATH        = parseFloat(qp.get('signal_ath') || '0');
+const SIG_ATL        = parseFloat(qp.get('signal_atl') || '0');
+const NO_INDICATORS  = qp.get('no_indicators') === '1';
+const NO_LEVELS      = qp.get('no_levels') === '1';
+const FLIP_LEVEL     = parseFloat(qp.get('flip_level') || '0');
 
 const TF_LABEL = {'1':'1m','5':'5m','15':'15m','30':'30m','60':'1h','240':'4h','D':'D'};
 
@@ -99,7 +105,7 @@ async function init() {
   const chart = LC.createChart(document.getElementById('chart'), {
     width: 1280,
     height: 720,
-    layout: { background:{color:'#0B0E11'}, textColor:'#B2B5BE', fontSize:11 },
+    layout: {background:{color:'#0B0E11'}, textColor:'#B2B5BE', fontSize:11 },
     grid:   { vertLines:{color:'#FFFFFF0F'}, horzLines:{color:'#FFFFFF0F'} },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
     rightPriceScale: { borderColor:'#2A2E39', scaleMargins:{top:0.05,bottom:0.05} },
@@ -178,14 +184,20 @@ async function init() {
       const klines = jk.data;
       candleS.setData(klines);
       candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
-      for (const {p} of EMA_CFG) emaS[p].setData(calcEMA(klines, p));
+      if (!NO_INDICATORS) for (const {p} of EMA_CFG) emaS[p].setData(calcEMA(klines, p));
 
       const nowUtcS = Math.floor(Date.now() / 1000);
       const dayStartUtcS = Math.floor(nowUtcS / 86400) * 86400;
       candleS.attachPrimitive(new DayOpenLine(dayStartUtcS));
 
+      // ATH/ATL lines
+      const dashed = LC.LineStyle ? LC.LineStyle.Dashed : 2;
+      if (SIG_ATH > 0) candleS.createPriceLine({ price: SIG_ATH, color: '#fbbf24', lineWidth: 1, lineStyle: dashed, axisLabelVisible: false, title: '' });
+      if (SIG_ATL > 0) candleS.createPriceLine({ price: SIG_ATL, color: '#60a5fa', lineWidth: 1, lineStyle: dashed, axisLabelVisible: false, title: '' });
+      if (FLIP_LEVEL > 0) candleS.createPriceLine({ price: FLIP_LEVEL, color: '#a78bfa', lineWidth: 2, lineStyle: dashed, axisLabelVisible: false, title: '' });
+
       // Daily H/L lines: solo per alert EMA, non per livelli Terzo Tocco
-      if (SIG !== 'price' && jd.success && jd.data && jd.data.length >= 2) {
+      if (!NO_LEVELS && SIG !== 'price' && jd.success && jd.data && jd.data.length >= 2) {
         const today = jd.data[jd.data.length-1];
         const prev  = jd.data[jd.data.length-2];
         candleS.createPriceLine({price:today.high,color:'#22c55e',lineWidth:2,lineStyle:0,axisLabelVisible:false,title:''});

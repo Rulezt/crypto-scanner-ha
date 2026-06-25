@@ -13,6 +13,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login — Crypto Scanner Pro</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
+<script src="/i18n.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
@@ -111,7 +112,7 @@
     </svg>
     <div>
       <div class="logo-text">Crypto Scanner Pro</div>
-      <div class="logo-sub" id="mode-subtitle">Accesso riservato</div>
+      <div class="logo-sub" id="mode-subtitle" data-i18n="login_private">Accesso riservato</div>
     </div>
   </div>
 
@@ -134,12 +135,12 @@
       <input id="password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required>
     </div>
     <div class="field" id="confirm-field" style="display:none;">
-      <label for="confirm">Conferma Password</label>
+      <label for="confirm" data-i18n="login_confirm_lbl">Conferma Password</label>
       <input id="confirm" type="password" placeholder="••••••••" autocomplete="new-password">
     </div>
     <div class="btn-row">
-      <button type="button" id="btn-login" class="btn" onclick="handleLogin()">Accedi</button>
-      <button type="button" id="btn-register" class="btn btn-secondary" onclick="handleRegister()">Iscriviti</button>
+      <button type="button" id="btn-login" class="btn" onclick="handleLogin()" data-i18n="login_submit">Accedi</button>
+      <button type="button" id="btn-register" class="btn btn-secondary" onclick="handleRegister()" data-i18n="register_submit">Iscriviti</button>
     </div>
   </form>
 </div>
@@ -154,7 +155,7 @@ function setMode(m) {
   document.getElementById('confirm-field').style.display = isReg ? 'block' : 'none';
   document.getElementById('btn-login').className    = isReg ? 'btn btn-secondary' : 'btn';
   document.getElementById('btn-register').className = isReg ? 'btn' : 'btn btn-secondary';
-  document.getElementById('mode-subtitle').textContent = isReg ? 'Crea un account' : 'Accesso riservato';
+  document.getElementById('mode-subtitle').textContent = window.t(isReg ? 'login_create_acc' : 'login_private');
   document.getElementById('password').autocomplete = isReg ? 'new-password' : 'current-password';
   hideMsg();
 }
@@ -191,17 +192,17 @@ async function handleRegister() {
     });
     const d = await r.json();
     if (d.success) {
-      showMsg('Registrazione completata! Accedi ora.', 'success');
+      showMsg(window.t('reg_done_simple'), 'success');
       setMode('login');
       document.getElementById('username').value = username;
       document.getElementById('password').value = '';
     } else {
-      showMsg(d.error || 'Errore durante la registrazione', 'error');
+      showMsg(d.error || window.t('login_reg_error'), 'error');
     }
   } catch(e) {
-    showMsg('Errore di rete', 'error');
+    showMsg(window.t('net_error'), 'error');
   } finally {
-    btn.disabled = false; btn.textContent = 'Iscriviti';
+    btn.disabled = false; btn.textContent = window.t('register_submit');
   }
 }
 

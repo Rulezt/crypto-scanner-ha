@@ -129,6 +129,8 @@ function fmtVol(v) {
 // ── Vue App ───────────────────────────────────────────────────────────────────
 createApp({
     setup() {
+        const t = (key) => window.t ? window.t(key) : key;
+
         const urlParams = new URLSearchParams(window.location.search);
         const symbol    = ref(urlParams.get('symbol') || 'BTCUSDT');
         const isStandalone = ref(window.parent === window);
@@ -746,6 +748,7 @@ createApp({
         });
 
         return {
+            t,
             symbol, symBase, isStandalone,
             ticker, TF_OPTIONS, chartTF, ohlc, chartContainerEl,
             displayLevels, grouping, groupingOptions,
