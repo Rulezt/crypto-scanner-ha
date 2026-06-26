@@ -277,6 +277,13 @@
           <span data-i18n="logout">Logout</span>
         </a>
         <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-top:1px solid #2A2E39;margin-top:2px;">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path fill="#9CA3AF" d="M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v4h12V4H6zm0 6v4h12v-4H6zm0 6v4h12v-4H6z"/></svg>
+          <div style="display:flex;align-items:center;background:#131722;border-radius:4px;padding:2px;gap:1px;">
+            <button id="src-bybit" onclick="switchSource('bybit')" style="padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700;background:#2563EB;color:#fff;white-space:nowrap;border:none;cursor:pointer;">Bybit</button>
+            <button id="src-ibkr" onclick="switchSource('ibkr')" style="padding:2px 10px;border-radius:4px;font-size:11px;font-weight:500;background:transparent;color:#6B7280;white-space:nowrap;border:none;cursor:pointer;">IBKR</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-top:1px solid #2A2E39;">
           <svg viewBox="0 0 24 24" width="13" height="13"><path fill="#9CA3AF" d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0014.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04M18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12m-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
           <button data-lang-btn="it" onclick="switchLang('it')" style="font-size:11px;background:none;border:none;cursor:pointer;padding:0;color:#9CA3AF;font-family:inherit;">IT</button>
           <span style="color:#374151;font-size:10px;">|</span>
@@ -593,6 +600,47 @@
 </div>
 
 <script>
+// ── source switch (Bybit / IBKR) ──────────────────────────────────────────────
+const IBKR_BASE = '/ibkr-api';
+
+const IBKR_DEFAULT_SYMBOLS = [
+    {symbol:'AAPL',  sectype:'STK', exchange:'SMART', currency:'USD'},
+    {symbol:'TSLA',  sectype:'STK', exchange:'SMART', currency:'USD'},
+    {symbol:'NVDA',  sectype:'STK', exchange:'SMART', currency:'USD'},
+    {symbol:'MSFT',  sectype:'STK', exchange:'SMART', currency:'USD'},
+    {symbol:'AMZN',  sectype:'STK', exchange:'SMART', currency:'USD'},
+    {symbol:'META',  sectype:'STK', exchange:'SMART', currency:'USD'},
+    {symbol:'GOOGL', sectype:'STK', exchange:'SMART', currency:'USD'},
+    {symbol:'NFLX',  sectype:'STK', exchange:'SMART', currency:'USD'},
+    {symbol:'SPY',   sectype:'STK', exchange:'SMART', currency:'USD'},
+];
+
+function getIbkrSymbols() {
+    try {
+        const s = localStorage.getItem('ibkr_symbols');
+        return s ? JSON.parse(s) : IBKR_DEFAULT_SYMBOLS;
+    } catch(e) { return IBKR_DEFAULT_SYMBOLS; }
+}
+
+function updateSourceToggle() {
+    const isIbkr = curMode === 'ibkr';
+    document.getElementById('src-bybit').style.cssText = isIbkr
+        ? 'padding:2px 10px;border-radius:4px;font-size:11px;font-weight:500;background:transparent;color:#6B7280;white-space:nowrap;border:none;cursor:pointer;'
+        : 'padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700;background:#2563EB;color:#fff;white-space:nowrap;border:none;cursor:pointer;';
+    document.getElementById('src-ibkr').style.cssText = isIbkr
+        ? 'padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700;background:#2563EB;color:#fff;white-space:nowrap;border:none;cursor:pointer;'
+        : 'padding:2px 10px;border-radius:4px;font-size:11px;font-weight:500;background:transparent;color:#6B7280;white-space:nowrap;border:none;cursor:pointer;';
+}
+
+function switchSource(src) {
+    localStorage.setItem('chart_source', src);
+    if (src === 'ibkr') {
+        switchMode('ibkr');
+    } else {
+        if (curMode === 'ibkr') switchMode('gainers');
+    }
+}
+
 // ── constants ─────────────────────────────────────────────────────────────────
 const LC          = LightweightCharts;
 let TZ_OFFSET_S   = 0;
@@ -1745,7 +1793,7 @@ async function loadPage() {
         for (let i = 0; i < visible; i++) {
             if (!slots[i].coin) slots[i].cell.style.display = 'none';
         }
-        openWS();
+        if (curMode !== 'ibkr') openWS();
         await syncAllAlertLines();
     }
 }
@@ -1754,37 +1802,71 @@ async function loadSlot(idx, coin) {
     const s = slots[idx];
     s.symbol = coin.symbol; s.coin = coin;
     const pct = coin.change_24h;
-    s.titleEl.textContent  = (curMode === 'stock' || curMode === 'commodity')
-        ? (INSTRUMENT_NAMES[coin.symbol] || coin.symbol.replace('USDT',''))
-        : coin.symbol.replace('USDT','');
-    s.changeEl.textContent = '(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)';
-    s.changeEl.style.color = pct >= 0 ? '#34d399' : '#f87171';
-    s.volEl.textContent    = fmtVol(coin.volume_24h);
-    s.bybitEl.href         = `https://www.bybit.com/trade/usdt/${coin.symbol}`;
+    if (curMode === 'ibkr') {
+        s.titleEl.textContent  = coin.symbol;
+        s.changeEl.textContent = '';
+        s.volEl.textContent    = '';
+        s.bybitEl.href         = '#';
+    } else {
+        s.titleEl.textContent  = (curMode === 'stock' || curMode === 'commodity')
+            ? (INSTRUMENT_NAMES[coin.symbol] || coin.symbol.replace('USDT',''))
+            : coin.symbol.replace('USDT','');
+        s.changeEl.textContent = '(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)';
+        s.changeEl.style.color = pct >= 0 ? '#34d399' : '#f87171';
+        s.volEl.textContent    = fmtVol(coin.volume_24h);
+        s.bybitEl.href         = `https://www.bybit.com/trade/usdt/${coin.symbol}`;
+    }
     const isFav = favoriteSymbols.has(coin.symbol);
     s.starEl.textContent = isFav ? '★' : '☆';
     s.starEl.style.color = isFav ? '#fbbf24' : '#4B5563';
     renderSlotTF(idx);
     await loadSlotData(idx);
-    if (s.obActive) {
-        clearInterval(s.obTimer); s.obTimer = null;
-        fetchSlotOBLevels(idx);
-        s.obTimer = setInterval(() => fetchSlotOBLevels(idx), 15000);
+    if (curMode !== 'ibkr') {
+        if (s.obActive) {
+            clearInterval(s.obTimer); s.obTimer = null;
+            fetchSlotOBLevels(idx);
+            s.obTimer = setInterval(() => fetchSlotOBLevels(idx), 15000);
+        }
+        fetchSlotATHATL(idx);
     }
-    fetchSlotATHATL(idx);
 }
 
 async function loadSlotData(idx) {
     const s = slots[idx];
     try {
-        const [r, rd] = await Promise.all([
-            fetch(`api/klines?symbol=${s.symbol}&interval=${s.curTF}`),
-            fetch(`api/klines?symbol=${s.symbol}&interval=D`),
-        ]);
-        const j  = await r.json();
-        const jd = await rd.json();
-        if (!j.success) return;
-        const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
+        let klines, jd;
+        if (curMode === 'ibkr') {
+            const coin = s.coin;
+            const sec  = coin.ibkrSectype  || 'STK';
+            const exch = coin.ibkrExchange || 'SMART';
+            const cur  = coin.ibkrCurrency || 'USD';
+            const [r, rd] = await Promise.all([
+                fetch(`${IBKR_BASE}/api/bars?symbol=${s.symbol}&sectype=${sec}&exchange=${exch}&currency=${cur}&interval=${s.curTF}`),
+                fetch(`${IBKR_BASE}/api/bars?symbol=${s.symbol}&sectype=${sec}&exchange=${exch}&currency=${cur}&interval=D`),
+            ]);
+            const j  = await r.json();
+            const jdj = await rd.json();
+            if (!j.success) return;
+            klines = j.bars;
+            jd = { success: jdj.success, data: jdj.bars || [] };
+            if (jdj.success && jdj.bars && jdj.bars.length >= 2) {
+                const prev = jdj.bars[jdj.bars.length - 2].close;
+                const curr = jdj.bars[jdj.bars.length - 1].close;
+                const pct  = ((curr - prev) / prev) * 100;
+                s.changeEl.textContent = '(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)';
+                s.changeEl.style.color = pct >= 0 ? '#34d399' : '#f87171';
+            }
+        } else {
+            const [r, rd] = await Promise.all([
+                fetch(`api/klines?symbol=${s.symbol}&interval=${s.curTF}`),
+                fetch(`api/klines?symbol=${s.symbol}&interval=D`),
+            ]);
+            const j  = await r.json();
+            const jdj = await rd.json();
+            if (!j.success) return;
+            klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
+            jd = jdj;
+        }
         s.klineCount = klines.length;
         s.klines = klines.slice();
         s.candleS.setData(klines);
@@ -2175,6 +2257,7 @@ function renderModeButtons() {
     document.getElementById('btn-mode-stock').className     = `px-3 py-1 rounded text-xs font-medium transition-colors ${st?'btn-stock-active':'btn-stock-idle'}`;
     document.getElementById('btn-mode-fav').className       = `px-3 py-1 rounded text-xs font-medium transition-colors ${f?'btn-fav-active':'btn-fav-idle'}`;
     document.getElementById('btn-mode-ico').className       = `px-3 py-1 rounded text-xs font-medium transition-colors ${ic?'btn-ico-active':'btn-ico-idle'}`;
+    updateSourceToggle();
 }
 
 function renderTFBar() {
@@ -2237,6 +2320,15 @@ async function fetchCoins() {
             }))
             .sort((a, b) => b.volume_24h - a.volume_24h);
         await fetchFavoritesList();
+    } else if (curMode === 'ibkr') {
+        allCoins = getIbkrSymbols().map(s => ({
+            symbol:        s.symbol,
+            change_24h:    0,
+            volume_24h:    0,
+            ibkrSectype:   s.sectype  || 'STK',
+            ibkrExchange:  s.exchange || 'SMART',
+            ibkrCurrency:  s.currency || 'USD',
+        }));
     } else {
         const r = await fetch(`api/top-coins?min_volume=10000000&sort=${curMode}`);
         const j = await r.json();
@@ -2428,6 +2520,22 @@ async function init() {
         await openFullscreen(0);
         const _tb2 = document.getElementById('fs-trade-btn'); if (_tb2) _tb2.style.display = 'inline-flex';
         document.querySelectorAll('#fs-overlay button[onclick="closeFullscreen()"]').forEach(b => { b.onclick = () => window.close(); });
+    }
+
+    const _savedSrc = localStorage.getItem('chart_source');
+    if (_savedSrc === 'ibkr') {
+        await switchMode('ibkr');
+        updateSourceToggle();
+        if (_urlSym) {
+            const _ibkrSym = _urlSym.replace(/USDT$/, '');
+            const _ibkrIdx = allCoins.findIndex(c => c.symbol === _ibkrSym);
+            if (_ibkrIdx > 0) {
+                const [_ibkrItem] = allCoins.splice(_ibkrIdx, 1);
+                allCoins.unshift(_ibkrItem);
+                curPage = 0;
+                await loadPage();
+            }
+        }
     }
 }
 

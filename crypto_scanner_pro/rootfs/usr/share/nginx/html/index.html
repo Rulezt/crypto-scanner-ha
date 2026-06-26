@@ -230,7 +230,7 @@
             </div>
 
             <!-- Heatmap -->
-            <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
+            <div id="heatmap-section" class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
                 <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between cursor-pointer select-none" onclick="toggleHeatmap()">
                     <h3 class="text-sm font-medium flex items-center gap-1.5">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -245,7 +245,7 @@
             </div>
 
             <!-- News Bybit (collapsible) -->
-            <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
+            <div id="news-section" class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
                 <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between cursor-pointer select-none" onclick="toggleNews()">
                     <h3 class="text-sm font-medium flex items-center gap-1.5">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>
@@ -289,7 +289,7 @@
                             <span class="inline-flex items-center justify-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="16" height="16" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;flex-shrink:0"><path fill-rule="evenodd" clip-rule="evenodd" d="M22.2187 7.37842L33.8868 16.6216L36.1778 23.9998L25.2625 26.0852L12.5889 14.5312L15.281 9.00148L22.2187 7.37842Z"/><path d="M15.2808 9.00146L26.4862 18.6016"/><path d="M25.2625 26.0852L26.4864 18.1324L33.8867 16.6216"/><path d="M24.993 31.0228L27.2792 38.1032L15.601 40.3785L4 29.014L6.57052 22.6253L12.0285 21.3535"/><path d="M6.57056 22.625L17.284 32.7577"/><path d="M15.6011 39.8648L17.4865 32.1324L24.9908 31.0435"/><path fill-rule="evenodd" clip-rule="evenodd" d="M34.8868 29.6077L34 36.7999L43.236 34.9985L41.2813 28.1875L34.8868 29.6077Z"/></svg><span class="hidden sm:inline">Commodity</span><span class="sm:hidden">Comm.</span></span>
                         </button>
                         <button onclick="switchMarketTab('ico')" id="tab-ico" class="flex-1 px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-300">
-                            <span class="inline-flex items-center justify-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" style="vertical-align:middle;flex-shrink:0"><path d="M30,52.16c.81-2.07,7.06-17,19.76-19.86a.09.09,0,0,0,0-.18c-2.14-.86-15.22-6.57-19.38-20.26a.09.09,0,0,0-.18,0c-.51,2.27-3.94,14.43-20,20a.1.1,0,0,0,0,.19c2.24.38,13.48,3.14,19.62,20.15A.1.1,0,0,0,30,52.16Z"/><path d="M48.79,25.08c.29-.74,2.52-6.07,7.06-7.09a0,0,0,0,0,0-.07c-.76-.3-5.43-2.34-6.92-7.23a0,0,0,0,0-.07,0c-.18.82-1.4,5.16-7.14,7.13a0,0,0,0,0,0,.07c.8.14,4.81,1.12,7,7.2A0,0,0,0,0,48.79,25.08Z"/></svg>ICO</span>
+                            <span class="inline-flex items-center justify-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" style="vertical-align:middle;flex-shrink:0"><path d="M30,52.16c.81-2.07,7.06-17,19.76-19.86a.09.09,0,0,0,0-.18c-2.14-.86-15.22-6.57-19.38-20.26a.09.09,0,0,0-.18,0c-.51,2.27-3.94,14.43-20,20a.1.1,0,0,0,0,.19c2.24.38,13.48,3.14,19.62,20.15A.1.1,0,0,0,30,52.16Z"/><path d="M48.79,25.08c.29-.74,2.52-6.07,7.06-7.09a0,0,0,0,0,0-.07c-.76-.3-5.43-2.34-6.92-7.23a0,0,0,0,0-.07,0c-.18.82-1.4,5.16-7.14,7.13a0,0,0,0,0,0,.07c.8.14,4.81,1.12,7,7.2A0,0,0,0,0,48.79,25.08Z"/></svg><span id="ico-tab-label">ICO</span></span>
                         </button>
                     </div>
 
@@ -496,6 +496,7 @@
         let _icoSyms   = new Set();
         let _coinChangeMap = {};
         let _rawIcoData = [];
+        let _stocksCache = null;
         const _CAT_ICONS = {
             gainers:   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="14" height="14" fill="currentColor" style="color:#34d399;flex-shrink:0"><path d="M63.029,42.285l-13.08-7.848c-0.175,4.299-0.787,8.26-1.494,11.562H64v-2C64,43.297,63.632,42.646,63.029,42.285z"/><path d="M46.905,52H62c1.104,0,2-0.896,2-2v-2H47.999C47.625,49.537,47.245,50.889,46.905,52z"/><path d="M14.051,34.438l-13.08,7.848C0.368,42.646,0,43.297,0,44v2h15.545C14.839,42.697,14.226,38.737,14.051,34.438z"/><path d="M0,48v2c0,1.104,0.896,2,2,2h15.095c-0.34-1.111-0.72-2.463-1.093-4H0z"/><path d="M32,64c2.06,0,4.239-2.343,4.837-6h-9.672C27.763,61.656,29.94,64,32,64z"/><path d="M33.109,0.336C32.773,0.112,32.387,0,32,0s-0.773,0.112-1.109,0.336C23.692,5.135,16,15.974,16,32c0,4.399,0.516,8.508,1.181,12h29.639C47.484,40.508,48,36.399,48,32C48,15.974,40.308,5.135,33.109,0.336zM32,30c-3.313,0-6-2.687-6-6s2.687-6,6-6s6,2.687,6,6S35.313,30,32,30z"/><circle cx="32" cy="24" r="4"/><path d="M20.143,54.742C20.447,55.502,21.183,56,22,56h20c0.817,0,1.553-0.498,1.857-1.258c0.097-0.24,1.427-3.62,2.554-8.742H17.589C18.716,51.122,20.046,54.502,20.143,54.742z"/></svg>`,
             losers:    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#f87171;flex-shrink:0"><path d="M21 17L13 9L9 13L3 7M21 17H15M21 17V11"/></svg>`,
@@ -600,16 +601,23 @@
         }
 
         async function init() {
-            await loadConfig();
-            await loadMarketData();
-            await loadAlerts();
-            loadHeatmap();
-            loadStockCommodityData();
-            checkHealth();
-            setInterval(loadMarketData, 30000);
-            setInterval(loadStockCommodityData, 60000);
-            setInterval(loadAlerts, 60000);
-            setInterval(loadHeatmap, 30000);
+            if (localStorage.getItem('chart_source') === 'ibkr') {
+                applySourceMode();
+                await loadIbkrMarketOverview();
+                setInterval(loadIbkrMarketOverview, 30000);
+            } else {
+                await loadConfig();
+                await loadMarketData();
+                await loadAlerts();
+                applySourceMode();
+                loadHeatmap();
+                loadStockCommodityData();
+                checkHealth();
+                setInterval(loadMarketData, 30000);
+                setInterval(loadStockCommodityData, 60000);
+                setInterval(loadAlerts, 60000);
+                setInterval(loadHeatmap, 30000);
+            }
         }
 
         function updateBotStatus() {
@@ -936,7 +944,7 @@
             }).join('');
         }
 
-        function renderTable(tbodyId, coins) {
+        function renderTable(tbodyId, coins, urlFn) {
             const tbody = document.getElementById(tbodyId);
             if (!coins || coins.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">'+window.t('no_data')+'</td></tr>';
@@ -946,6 +954,7 @@
                 const isPositive = coin.change_24h >= 0;
                 const changeColor = isPositive ? 'text-emerald-400' : 'text-red-400';
                 const bgColor = isPositive ? 'bg-emerald-400/5' : 'bg-red-400/5';
+                const url = urlFn ? urlFn(coin) : chartUrl(coin.symbol);
                 return `
                     <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-gray-500 hidden sm:table-cell">${index + 1}</td>
@@ -958,7 +967,7 @@
                         </td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-400 text-sm hidden md:table-cell">$${formatVolume(coin.volume_24h)}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-center">
-                            <a href="${chartUrl(coin.symbol)}" class="text-xs text-blue-400 hover:text-blue-300 hover:bg-dark-hover px-2 py-1 rounded transition-colors">▶</a>
+                            <a href="${url}" class="text-xs text-blue-400 hover:text-blue-300 hover:bg-dark-hover px-2 py-1 rounded transition-colors">▶</a>
                         </td>
                     </tr>
                 `;
@@ -1015,10 +1024,71 @@
                     .map(mapCoin).sort((a, b) => b.change_24h - a.change_24h);
                 const comms  = jt.result.list.filter(x => commSyms.has(x.symbol) && x.lastPrice)
                     .map(mapCoin).sort((a, b) => b.change_24h - a.change_24h);
+                _stocksCache = stocks;
                 renderTable('stock-tbody', stocks);
                 renderTable('commodity-tbody', comms);
                 if (_rawIcoData.length > 0) _applyIcoFilter();
             } catch(e) { console.error('Error loading stock/commodity data:', e); }
+        }
+
+        const IBKR_BASE = '/ibkr-api';
+
+        async function loadIbkrMarketOverview() {
+            try {
+                const r = await fetch(`${IBKR_BASE}/api/market-overview`);
+                const d = await r.json();
+                if (d.success) {
+                    const ibkrUrl = c => chartUrl(c.symbol);
+                    renderTable('gainers-tbody', d.gainers, ibkrUrl);
+                    renderTable('losers-tbody',  d.losers,  ibkrUrl);
+                    renderIndicesTable(d.indices || []);
+                } else {
+                    const msg = d.error === 'loading' ? 'Caricamento dati...' :
+                                d.error === 'not_connected' ? 'IBKR non connesso' : (d.error || 'Errore');
+                    ['gainers-tbody','losers-tbody','ico-tbody'].forEach(id => {
+                        document.getElementById(id).innerHTML =
+                            `<tr><td colspan="6" class="text-center py-8 text-gray-500">${msg}</td></tr>`;
+                    });
+                }
+            } catch(e) {
+                ['gainers-tbody','losers-tbody','ico-tbody'].forEach(id => {
+                    document.getElementById(id).innerHTML =
+                        `<tr><td colspan="6" class="text-center py-8 text-gray-500">IBKR non raggiungibile</td></tr>`;
+                });
+            }
+        }
+
+        function renderIndicesTable(indices) {
+            const tbody = document.getElementById('ico-tbody');
+            if (!indices.length) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500">Nessun dato</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = indices.map((idx, i) => {
+                const chg = idx.change_24h;
+                const chgClass = chg > 0 ? 'text-emerald-400' : chg < 0 ? 'text-red-400' : 'text-gray-400';
+                const chgSign  = chg > 0 ? '+' : '';
+                return `<tr class="border-b border-dark-hover hover:bg-dark-hover/50 cursor-pointer">
+                    <td class="px-3 py-2 sm:px-4 sm:py-3 text-gray-500 hidden sm:table-cell">${i+1}</td>
+                    <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium">
+                        <div class="flex items-center gap-2">
+                            <span class="text-white font-bold">${idx.symbol}</span>
+                            <span class="text-gray-400 text-xs hidden sm:inline">${idx.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-3 py-2 sm:px-4 sm:py-3 text-right font-mono">$${idx.price.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                    <td class="px-3 py-2 sm:px-4 sm:py-3 text-right font-mono ${chgClass}">${chgSign}${chg.toFixed(2)}%</td>
+                    <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-500 hidden md:table-cell">—</td>
+                    <td class="px-3 py-2 sm:px-4 sm:py-3 text-center">—</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function applySourceMode() {
+            const isIbkr = localStorage.getItem('chart_source') === 'ibkr';
+            document.getElementById('heatmap-section').style.display = isIbkr ? 'none' : '';
+            document.getElementById('news-section').style.display    = isIbkr ? 'none' : '';
+            document.getElementById('ico-tab-label').textContent = isIbkr ? 'Indici' : 'ICO';
         }
 
         async function checkHealth() {
