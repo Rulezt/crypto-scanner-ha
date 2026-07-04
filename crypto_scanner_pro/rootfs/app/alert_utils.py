@@ -31,6 +31,14 @@ def fmt_price(p):
     return f'{p:.7f}'
 
 
+def fmt_vol(v):
+    """Format a 24h volume in USD to a human-readable string."""
+    if v >= 1_000_000_000: return f'{v/1_000_000_000:.1f}B'
+    if v >= 1_000_000:     return f'{v/1_000_000:.1f}M'
+    if v >= 1_000:         return f'{v/1_000:.0f}K'
+    return f'{v:.0f}'
+
+
 def mtf_link(symbol, base_url=''):
     """Return HTML link to MTF page if base_url is set, else plain name."""
     name = symbol.replace('USDT', '')
@@ -41,11 +49,11 @@ def mtf_link(symbol, base_url=''):
 
 
 
-def log_alert(symbol, alert_type, emoji='🔔', note='', tf=None):
+def log_alert(symbol, alert_type, emoji='🔔', note='', tf=None, screenshot=None):
     """Write an alert entry to the daily log (resets at UTC midnight)."""
     try:
         from daily_log import append_alert
-        append_alert(symbol, alert_type, emoji=emoji, note=note, tf=tf)
+        append_alert(symbol, alert_type, emoji=emoji, note=note, tf=tf, screenshot=screenshot)
     except Exception as e:
         logger.warning(f'daily_log error: {e}')
 

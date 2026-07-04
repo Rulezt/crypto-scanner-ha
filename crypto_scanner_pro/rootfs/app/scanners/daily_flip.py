@@ -148,7 +148,7 @@ class DailyFlipScanner:
                 self.mark_alerted(symbol)
                 coin = {
                     'symbol': symbol, 'price': price, 'change_pct': change,
-                    'daily_open': daily_open,
+                    'daily_open': daily_open, 'volume': volume,
                     'flip_direction': '🟢➡️🔴' if change > 0 else '🔴➡️🟢',
                 }
                 threading.Thread(
@@ -169,6 +169,7 @@ class DailyFlipScanner:
             from alert_utils import send_photo, send_text, get_chart, log_alert
         except ImportError:
             return
+        from alert_utils import fmt_vol
         sym  = coin['symbol']
         base = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
         lines = [
@@ -176,7 +177,9 @@ class DailyFlipScanner:
             '',
             '------------------------------------------------',
             f'- Coin: {sym}',
+            f'- Var: {coin["change_pct"]:+.2f}%',
             f'- Distanza flip: {abs(coin["change_pct"]):.2f}%',
+            f'- Volume: {fmt_vol(coin.get("volume", 0))}',
             '------------------------------------------------',
             '',
             f'<a href="https://www.bybit.com/trade/usdt/{sym}">- View Bybit</a>',
@@ -189,7 +192,7 @@ class DailyFlipScanner:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
         else:
             send_text(self.telegram_token, self.telegram_chat_id, caption)
-        log_alert(sym, 'Daily Flip', emoji='🔄', note=f'{abs(coin["change_pct"]):.2f}%')
+        log_alert(sym, 'Daily Flip', emoji='🔄', note=f'{abs(coin["change_pct"]):.2f}%', screenshot=img)
         print(f'🔄 Flip alert: {sym} ({coin["change_pct"]:+.2f}% vs open {coin["daily_open"]})')
 
     # ── polling scan (fallback / manuale) ─────────────────────────────────────
@@ -266,6 +269,7 @@ class DailyFlipScanner:
             from alert_utils import send_photo, send_text, get_chart, log_alert
         except ImportError:
             return
+        from alert_utils import fmt_vol
         for coin in coins[:2]:
             sym  = coin['symbol']
             base = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
@@ -274,7 +278,9 @@ class DailyFlipScanner:
                 '',
                 '------------------------------------------------',
                 f'- Coin: {sym}',
+                f'- Var: {coin["change_pct"]:+.2f}%',
                 f'- Distanza flip: {abs(coin["change_pct"]):.2f}%',
+                f'- Volume: {fmt_vol(coin.get("volume", 0))}',
                 '------------------------------------------------',
                 '',
                 f'<a href="https://www.bybit.com/trade/usdt/{sym}">- View Bybit</a>',
@@ -287,7 +293,7 @@ class DailyFlipScanner:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
-            log_alert(sym, 'Daily Flip', emoji='🔄', note=f'{abs(coin["change_pct"]):.2f}%')
+            log_alert(sym, 'Daily Flip', emoji='🔄', note=f'{abs(coin["change_pct"]):.2f}%', screenshot=img)
             print(f'🔄 Flip alert inviato: {sym} ({coin["change_pct"]:+.2f}%)')
 
     # ── status ────────────────────────────────────────────────────────────────

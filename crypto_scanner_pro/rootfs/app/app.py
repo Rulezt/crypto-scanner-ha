@@ -16,11 +16,14 @@ import logging
 import uuid
 import sqlite3
 import re
-from scanners.ema_proximity import EMAProximityScanner
+from scanners.ema_touch import EMAScanner
 from scanners.ath_atl_scanner import ATHATLScanner
 from scanners.ico_levels_scanner import ICOLevelsScanner
 from scanners.double_touch import DoubleTouchScanner
 from scanners.daily_flip import DailyFlipScanner
+from scanners.shimano_scanner import ShimanoScanner
+from scanners.pattern_scanner import PatternScanner
+from scanners.bot_engine import BotEngine
 from ws_manager import BybitWSManager
 
 # Setup logging
@@ -206,17 +209,43 @@ DEFAULT_CONFIG = {
         'scan_interval_minutes': 240,
         'cooldown_hours': 12,
     },
-    'ema_proximity': {
+    'ema_touch': {
         'enabled': True,
-        'proximity_threshold': 1.5,
-        'touch_threshold': 2.0,
-        'scan_tf': ['30'],
+        'ema_touch_threshold': 2.0,
+        'touch_tolerance': 0.05,
+        'scan_tfs': ['240', '60', '30', '5', '1'],
     },
     'daily_flip': {
         'enabled': True,
         'flip_threshold': 2.0,
         'flip_type': 'both',
         'cooldown_hours': 2,
+    },
+    'pattern': {
+        'enabled': True,
+        'scan_tf': ['D', '240', '60', '30', '5', '1'],
+        'cooldown_hours': 24,
+        'scan_interval_minutes': 60,
+        'doji_threshold': 0.1,
+    },
+    'shimano': {
+        'enabled': True,
+        'scan_tf': ['D'],
+        'cooldown_hours': 24,
+        'scan_interval_minutes': 240,
+        'fuori_enabled': True,
+    },
+    'bot': {
+        'symbol': '',
+        'tf': '60',
+        'mode': 'signal',
+        'sizing': {'type': 'fixed', 'value': 50.0},
+        'leverage': 1,
+        'sma_lenta_period': 10, 'sma_lenta_source': 'close',
+        'sma_veloce_period': 60, 'sma_veloce_source': 'close',
+        'filter_enabled': True, 'filter_period': 200, 'filter_source': 'close',
+        'candle_filter_enabled': False,
+        'sl_pct': 1.0, 'tp_pct': 1.7,
     },
     'general': {
         'min_volume_24h': 10000000,
@@ -372,12 +401,13 @@ def init_scanners():
             **{k: v for k, v in config['general'].items() if k in ('min_volume_24h', 'max_coins_per_alert')}
         )
 
-        scanners['ema_proximity'] = EMAProximityScanner(
+        scanners['ema_touch'] = EMAScanner(
             telegram_config=telegram_config,
             ws_manager=ws_manager,
             live_config=config,
-            **config['ema_proximity'],
-            **config['general']
+            **config['ema_touch'],
+            **{k: v for k, v in config['general'].items()
+               if k in ('min_volume_24h', 'max_coins_per_alert') and k not in config['ema_touch']}
         )
 
         scanners['daily_flip'] = DailyFlipScanner(
@@ -387,6 +417,32 @@ def init_scanners():
             **config['daily_flip'],
             **{k: v for k, v in config['general'].items()
                if k in ('min_volume_24h', 'cooldown_hours') and k not in config['daily_flip']}
+        )
+
+        scanners['shimano'] = ShimanoScanner(
+            telegram_config=telegram_config,
+            ws_manager=ws_manager,
+            live_config=config,
+            **config['shimano'],
+            **{k: v for k, v in config['general'].items()
+               if k in ('min_volume_24h', 'max_coins_per_alert') and k not in config['shimano']}
+        )
+
+        scanners['pattern'] = PatternScanner(
+            telegram_config=telegram_config,
+            ws_manager=ws_manager,
+            live_config=config,
+            **config['pattern'],
+            **{k: v for k, v in config['general'].items()
+               if k in ('min_volume_24h', 'max_coins_per_alert') and k not in config['pattern']}
+        )
+
+        scanners['bot'] = BotEngine(
+            telegram_config=telegram_config,
+            ws_manager=ws_manager,
+            live_config=config,
+            trade_client=_bot_trade_client,
+            **config['bot']
         )
 
         logger.info("✅ Scanners initialized")
@@ -440,6 +496,8 @@ def start_scanners():
         ('ath_atl',        'ath_atl',    config['ath_atl']['scan_interval_minutes']),
         ('ico_levels',     'ico_levels',    config['ico_levels']['scan_interval_minutes']),
         ('double_touch',   'double_touch',  config['double_touch']['scan_interval_minutes']),
+        ('shimano',        'shimano',        config['shimano']['scan_interval_minutes']),
+        ('pattern',        'pattern',        config['pattern']['scan_interval_minutes']),
     ]
 
     for config_name, scanner_key, interval in threads_config:
@@ -475,8 +533,10 @@ def health():
             'ath_atl': config['ath_atl']['enabled'],
             'ico_levels': config['ico_levels']['enabled'],
             'double_touch': config['double_touch']['enabled'],
-            'ema_proximity': config['ema_proximity']['enabled'],
+            'ema_touch': config['ema_touch']['enabled'],
             'daily_flip': config['daily_flip']['enabled'],
+            'shimano': config['shimano']['enabled'],
+            'pattern': config['pattern']['enabled'],
         }
     })
 
@@ -537,9 +597,8 @@ def get_ath_atl_status():
         if data['retCode'] != 0:
             return jsonify({'success': False, 'error': 'Bybit API error'}), 500
 
-        # Filter and sort pairs
+        # Filter and sort pairs (no volume filter — show all coins)
         all_pairs = []
-        min_volume = config['general']['min_volume_24h']
 
         for item in data['result']['list']:
             if not item['symbol'].endswith('USDT'):
@@ -548,9 +607,6 @@ def get_ath_atl_status():
             last_price = float(item['lastPrice'])
             change_pct = float(item.get('price24hPcnt', 0)) * 100
             volume_24h_usd = float(item.get('volume24h', 0)) * last_price
-
-            if volume_24h_usd < min_volume:
-                continue
 
             all_pairs.append({
                 'symbol': item['symbol'],
@@ -584,13 +640,14 @@ def ath_atl_visual():
         return jsonify({'symbols': []})
     return jsonify({'symbols': scanner.get_visual_data()})
 
-@app.route('/scanner-api/ema-proximity/status', methods=['GET'])
-def ema_proximity_status():
-    scanner = scanners.get('ema_proximity')
+@app.route('/scanner-api/ema-touch/status', methods=['GET'])
+def ema_touch_status():
+    scanner = scanners.get('ema_touch')
     if not scanner:
-        return jsonify({'count': 0, 'alerts': []})
+        return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
     alerts = scanner.get_today_alerts()
-    return jsonify({'count': len(alerts), 'alerts': alerts})
+    return jsonify({'count': len(alerts), 'alerts': alerts,
+                    'monitored': scanner.get_monitored_count()})
 
 @app.route('/scanner-api/ath-atl/alerts', methods=['GET'])
 def ath_atl_alerts():
@@ -631,6 +688,14 @@ def daily_flip_status():
     alerts = scanner.get_today_alerts()
     return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count()})
 
+@app.route('/scanner-api/shimano/status', methods=['GET'])
+def shimano_status():
+    scanner = scanners.get('shimano')
+    if not scanner:
+        return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
+    alerts = scanner.get_today_alerts()
+    return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count()})
+
 @app.route('/scanner-api/alerts/recent', methods=['GET'])
 def get_recent_alerts():
     """Return all alerts fired today (UTC). Resets automatically at midnight."""
@@ -641,6 +706,17 @@ def get_recent_alerts():
     except Exception as e:
         logger.error(f"❌ Error getting recent alerts: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/scanner-api/screenshots/<filename>', methods=['GET'])
+def get_screenshot_file(filename):
+    if not re.match(r'^[\w\-\.]+\.png$', filename):
+        return '', 404
+    path = f'/data/screenshots/{filename}'
+    if not os.path.exists(path):
+        return '', 404
+    with open(path, 'rb') as f:
+        return Response(f.read(), mimetype='image/png',
+                        headers={'Cache-Control': 'public, max-age=86400'})
 
 _news_cache = {'data': None, 'ts': 0}
 _news_lock = threading.Lock()
@@ -827,7 +903,7 @@ def get_high_volume():
             ema = _compute_ema(closes, 60)
             coin['ema60_30m'] = ema
             coin['ema60_dist'] = round((coin['price'] - ema) / ema * 100, 2) if ema else None
-            coin['ema_touch_count'] = _count_ema_touches_daily(klines_30m, period=60, threshold=config['ema_proximity'].get('touch_threshold', 2.0))
+            coin['ema_touch_count'] = _count_ema_touches_daily(klines_30m, period=60, threshold=2.0)
             aa = ath_scanner.get_ath_atl(coin['symbol']) if ath_scanner else None
             if aa:
                 p = coin['price']
@@ -1153,13 +1229,56 @@ def get_recent_triggered():
         _recently_triggered.clear()
     return jsonify({'success': True, 'data': data})
 
+def _fetch_klines_bybit(symbol, interval, max_pages):
+    """Paginated Bybit kline fetch, shared by /api/klines and the bot backtest."""
+    import requests as req
+
+    utc_off = config.get('general', {}).get('utc_offset', 2)
+    try:
+        utc_off = float(utc_off)
+    except (TypeError, ValueError):
+        utc_off = 2
+    tz_s = int(utc_off * 3600)
+
+    url      = 'https://api.bybit.com/v5/market/kline'
+    all_raw  = []
+    end_time = None
+
+    for _ in range(max_pages):
+        params = {'category': 'linear', 'symbol': symbol, 'interval': interval, 'limit': 1000}
+        if end_time:
+            params['end'] = end_time
+        data = req.get(url, params=params, timeout=8).json()
+        if data.get('retCode') != 0:
+            raise RuntimeError(data.get('retMsg', 'Bybit API error'))
+        batch = data['result']['list']  # newest first
+        if not batch:
+            break
+        all_raw.extend(batch)
+        if len(batch) < 1000:
+            break  # reached the beginning of available data
+        end_time = int(batch[-1][0]) - 1  # move window further back
+
+    # Reverse to chronological order, deduplicate by timestamp
+    all_raw.reverse()
+    seen   = set()
+    result = []
+    for k in all_raw:
+        ts = int(k[0]) // 1000 + tz_s
+        if ts in seen:
+            continue
+        seen.add(ts)
+        result.append({'time': ts, 'open': float(k[1]), 'high': float(k[2]),
+                        'low': float(k[3]), 'close': float(k[4]), 'volume': float(k[5])})
+    return result, tz_s
+
+
 @app.route('/api/klines', methods=['GET'])
 def get_klines():
-    """Proxy Bybit klines for the chart page"""
-    import requests as req
+    """Proxy Bybit klines — paginated to fetch all available data"""
     import re
 
-    symbol = request.args.get('symbol', 'BTCUSDT').upper()
+    symbol   = request.args.get('symbol', 'BTCUSDT').upper()
     interval = request.args.get('interval', '15')
 
     if not re.match(r'^[A-Z0-9]{3,20}$', symbol) or not symbol.endswith('USDT'):
@@ -1168,32 +1287,11 @@ def get_klines():
     if interval not in {'1', '5', '15', '30', '60', '240', 'D', 'W', 'M'}:
         return jsonify({'error': 'Invalid interval'}), 400
 
+    # Max pages per TF to keep response times reasonable
+    max_pages = {'1': 2, '5': 3, '15': 3, '30': 4, '60': 4, '240': 5}.get(interval, 5)
+
     try:
-        url = 'https://api.bybit.com/v5/market/kline'
-        params = {'category': 'linear', 'symbol': symbol, 'interval': interval, 'limit': 500}
-        response = req.get(url, params=params, timeout=10)
-        data = response.json()
-
-        if data.get('retCode') != 0:
-            return jsonify({'error': 'Bybit API error', 'detail': data.get('retMsg')}), 502
-
-        # Bybit returns newest first — reverse to chronological order
-        klines = list(reversed(data['result']['list']))
-        utc_off = config.get('general', {}).get('utc_offset', 2)
-        try:
-            utc_off = float(utc_off)
-        except (TypeError, ValueError):
-            utc_off = 2
-        tz_s = int(utc_off * 3600)
-        result = [{
-            'time':   int(k[0]) // 1000 + tz_s,
-            'open':   float(k[1]),
-            'high':   float(k[2]),
-            'low':    float(k[3]),
-            'close':  float(k[4]),
-            'volume': float(k[5]),
-        } for k in klines]
-
+        result, tz_s = _fetch_klines_bybit(symbol, interval, max_pages)
         resp = jsonify({'success': True, 'data': result, 'symbol': symbol,
                         'interval': interval, 'utc_offset_s': tz_s})
         resp.headers['Cache-Control'] = 'no-store'
@@ -1640,6 +1738,248 @@ def trade_set_sltp():
 
 # ── END TRADING ────────────────────────────────────────────────────────────────
 
+# ── BOT ────────────────────────────────────────────────────────────────────────
+
+class _BotTradeClient:
+    """Adapter sottile che riusa _tcfg()/_bsign()/_BYB per il motore BOT —
+    nessuna duplicazione della logica di firma/decrypt già usata da /api/trade/*."""
+
+    def get_position(self, symbol):
+        import requests as rq
+        k, s, en = _tcfg()
+        if not en:
+            return None
+        qs = f'category=linear&symbol={symbol}'
+        try:
+            d = rq.get(f'{_BYB}/v5/position/list?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+        except Exception:
+            return None
+        if d.get('retCode') != 0:
+            return None
+        lst = d['result']['list']
+        if not lst or float(lst[0].get('size', 0)) == 0:
+            return None
+        p = lst[0]
+        return {'side': p['side'], 'size': float(p['size']), 'entryPrice': float(p['avgPrice']),
+                'positionIdx': int(p.get('positionIdx', 0))}
+
+    def get_balance(self):
+        import requests as rq
+        k, s, en = _tcfg()
+        if not en:
+            return {'available': 0.0, 'equity': 0.0}
+        qs = 'accountType=UNIFIED'
+        try:
+            d = rq.get(f'{_BYB}/v5/account/wallet-balance?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+        except Exception:
+            return {'available': 0.0, 'equity': 0.0}
+        if d.get('retCode') != 0:
+            return {'available': 0.0, 'equity': 0.0}
+        for acc in d['result']['list']:
+            for c in acc.get('coin', []):
+                if c['coin'] == 'USDT':
+                    def _f(v): return float(v) if v not in ('', None) else 0.0
+                    avail = _f(c.get('availableToWithdraw')) or _f(c.get('walletBalance', 0))
+                    return {'available': avail, 'equity': _f(c.get('equity', 0))}
+        return {'available': 0.0, 'equity': 0.0}
+
+    def get_instrument(self, symbol):
+        import requests as rq
+        try:
+            d = rq.get(f'{_BYB}/v5/market/instruments-info',
+                       params={'category': 'linear', 'symbol': symbol}, timeout=6).json()
+        except Exception:
+            return {'qtyStep': 0.001, 'minOrderQty': 0.001, 'maxLeverage': 100.0}
+        if d.get('retCode') != 0 or not d['result']['list']:
+            return {'qtyStep': 0.001, 'minOrderQty': 0.001, 'maxLeverage': 100.0}
+        info = d['result']['list'][0]
+        lot = info.get('lotSizeFilter', {}); lev = info.get('leverageFilter', {})
+        return {'qtyStep': float(lot.get('qtyStep', 0.001)),
+                'minOrderQty': float(lot.get('minOrderQty', 0.001)),
+                'maxLeverage': float(lev.get('maxLeverage', 100))}
+
+    def place_order(self, symbol, side, qty, leverage=1, stop_loss=None, take_profit=None):
+        import requests as rq
+        k, s, en = _tcfg()
+        if not en:
+            return False, None, 'trading non configurato'
+        lev = str(int(leverage or 1))
+        lb = json.dumps({'category': 'linear', 'symbol': symbol, 'buyLeverage': lev, 'sellLeverage': lev})
+        try:
+            rq.post(f'{_BYB}/v5/position/set-leverage', headers=_bsign(k, s, lb), data=lb, timeout=6)
+        except Exception:
+            pass
+        order = {'category': 'linear', 'symbol': symbol, 'side': side, 'orderType': 'Market',
+                 'qty': str(qty), 'timeInForce': 'IOC'}
+        if stop_loss:
+            order['stopLoss'] = str(round(stop_loss, 8))
+        if take_profit:
+            order['takeProfit'] = str(round(take_profit, 8))
+        body = json.dumps(order)
+        try:
+            d = rq.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
+        except Exception as e:
+            return False, None, str(e)
+        if d.get('retCode') != 0:
+            return False, None, d.get('retMsg', 'order failed')
+        return True, d['result'].get('orderId'), None
+
+    def close_position(self, symbol, position_side, qty):
+        import requests as rq
+        k, s, en = _tcfg()
+        if not en:
+            return False, 'trading non configurato'
+        close_side = 'Sell' if position_side == 'Buy' else 'Buy'
+        body = json.dumps({'category': 'linear', 'symbol': symbol, 'side': close_side,
+                           'orderType': 'Market', 'qty': str(qty), 'reduceOnly': True,
+                           'timeInForce': 'IOC'})
+        try:
+            d = rq.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
+        except Exception as e:
+            return False, str(e)
+        if d.get('retCode') != 0:
+            return False, d.get('retMsg')
+        return True, None
+
+
+_bot_trade_client = _BotTradeClient()
+
+
+def _bot_admin_gate():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Accesso negato'}), 403
+    return None
+
+
+@app.route('/api/bot/config', methods=['GET'])
+@login_required
+def bot_get_config():
+    err = _bot_admin_gate()
+    if err: return err
+    return jsonify(config.get('bot', {}))
+
+
+@app.route('/api/bot/config', methods=['POST'])
+@login_required
+def bot_save_config():
+    err = _bot_admin_gate()
+    if err: return err
+    bot = scanners.get('bot')
+    if bot and bot.running:
+        return jsonify({'error': 'Ferma il bot prima di modificare la configurazione'}), 400
+    data = request.get_json() or {}
+    config.setdefault('bot', {}).update(data)
+    if save_config():
+        init_scanners()
+        return jsonify({'success': True})
+    return jsonify({'error': 'Errore salvataggio configurazione'}), 500
+
+
+@app.route('/api/bot/start', methods=['POST'])
+@login_required
+def bot_start():
+    err = _bot_admin_gate()
+    if err: return err
+    bot = scanners.get('bot')
+    if not bot:
+        return jsonify({'error': 'Bot non inizializzato'}), 500
+    ok, msg = bot.start()
+    if not ok:
+        return jsonify({'error': msg}), 400
+    return jsonify({'success': True})
+
+
+@app.route('/api/bot/stop', methods=['POST'])
+@login_required
+def bot_stop():
+    err = _bot_admin_gate()
+    if err: return err
+    bot = scanners.get('bot')
+    if not bot:
+        return jsonify({'error': 'Bot non inizializzato'}), 500
+    data = request.get_json(silent=True) or {}
+    return jsonify(bot.stop(close_position=bool(data.get('close_position'))))
+
+
+@app.route('/api/bot/status', methods=['GET'])
+@login_required
+def bot_status():
+    err = _bot_admin_gate()
+    if err: return err
+    bot = scanners.get('bot')
+    if not bot:
+        return jsonify({'running': False})
+    return jsonify(bot.status())
+
+
+@app.route('/api/bot/signals', methods=['GET'])
+@login_required
+def bot_signals():
+    err = _bot_admin_gate()
+    if err: return err
+    bot = scanners.get('bot')
+    if not bot:
+        return jsonify({'signals': []})
+    return jsonify({'signals': bot.get_signals()})
+
+
+@app.route('/api/bot/backtest', methods=['POST'])
+@login_required
+def bot_backtest():
+    err = _bot_admin_gate()
+    if err: return err
+    import re
+    from scanners.bot_engine import normalize_params, run_backtest, TF_SECONDS
+
+    data     = request.get_json() or {}
+    symbol   = (data.get('symbol') or '').upper()
+    interval = str(data.get('tf', '60'))
+
+    if not re.match(r'^[A-Z0-9]{3,20}$', symbol) or not symbol.endswith('USDT'):
+        return jsonify({'error': 'Simbolo non valido'}), 400
+    if interval not in {'1', '5', '15', '30', '60', '240', 'D', 'W', 'M'}:
+        return jsonify({'error': 'TF non valido'}), 400
+
+    # Il backtest, a differenza del popup grafico interattivo di /api/klines, ha
+    # bisogno di storico lungo (anche 1+ anno) — calcoliamo le pagine necessarie
+    # in base ai giorni richiesti invece di usare il cap ridotto per TF pensato
+    # per i popup. Bybit limita 1000 candele a richiesta: più il TF è fine, più
+    # pagine (richieste sequenziali) servono per coprire lo stesso periodo.
+    try:
+        lookback_days = float(data.get('lookback_days', 365))
+    except (TypeError, ValueError):
+        lookback_days = 365.0
+    lookback_days = max(1.0, min(lookback_days, 1095.0))  # cap 3 anni
+
+    iv_s = TF_SECONDS.get(interval, 3600)
+    candles_needed = int(lookback_days * 86400 / iv_s) + 5
+    max_pages = max(1, min(100, -(-candles_needed // 1000)))  # ceil, cap 100 pagine (100k candele)
+
+    try:
+        candles, _ = _fetch_klines_bybit(symbol, interval, max_pages)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 502
+
+    params = normalize_params(data)
+    params['_interval_seconds'] = TF_SECONDS.get(interval, 3600)
+    initial_capital = float(data.get('initial_capital', 1000.0))
+    sizing = data.get('sizing') or {'type': 'fixed', 'value': 50.0}
+
+    try:
+        result = run_backtest(candles, params, initial_capital, sizing)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    # Le candele usate per il backtest vengono restituite (senza volume, non
+    # serve per il grafico) così il frontend può disegnare i marker di
+    # entrata/uscita senza dover rifare un secondo fetch identico a Bybit.
+    result['candles'] = [{'time': c['time'], 'open': c['open'], 'high': c['high'],
+                          'low': c['low'], 'close': c['close']} for c in candles]
+
+    return jsonify({'success': True, **result})
+
+# ── END BOT ────────────────────────────────────────────────────────────────────
+
 # ── AUTH ───────────────────────────────────────────────────────────────────────
 
 @app.route('/api/login', methods=['POST'])
@@ -1914,20 +2254,62 @@ def ath_atl_page():
     return send_file('/usr/share/nginx/html/ath_atl.html')
 
 
+@app.route('/ema223-60', methods=['GET'])
+@app.route('/ema223-60.html', methods=['GET'])
+@app.route('/shimano', methods=['GET'])
+@app.route('/shimano.html', methods=['GET'])
+def shimano_page():
+    return send_file('/usr/share/nginx/html/shimano.html')
+
+
+@app.route('/pattern', methods=['GET'])
+@app.route('/pattern.html', methods=['GET'])
+def pattern_page():
+    return send_file('/usr/share/nginx/html/pattern.html')
+
+
+@app.route('/bot', methods=['GET'])
+@app.route('/bot.html', methods=['GET'])
+@login_required
+def bot_page():
+    if session.get('role') != 'admin':
+        return redirect(url_for('index'))
+    return send_file('/usr/share/nginx/html/bot.html')
+
+
+@app.route('/scanner-api/pattern/status', methods=['GET'])
+def pattern_status():
+    scanner = scanners.get('pattern')
+    if not scanner:
+        return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
+    alerts = scanner.get_today_alerts()
+    return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count()})
+
+
+@app.route('/trade', methods=['GET'])
+@app.route('/trade.html', methods=['GET'])
 @app.route('/orderbook', methods=['GET'])
 @app.route('/orderbook.html', methods=['GET'])
-def orderbook_page():
-    return send_file('/usr/share/nginx/html/orderbook.html')
+def trade_page():
+    return send_file('/usr/share/nginx/html/trade.html')
 
 
+@app.route('/trade-panel', methods=['GET'])
+@app.route('/trade-panel.html', methods=['GET'])
+def trade_panel_page():
+    return send_file('/usr/share/nginx/html/trade-panel.html')
+
+
+@app.route('/trade.js', methods=['GET'])
 @app.route('/orderbook.js', methods=['GET'])
-def orderbook_js():
-    return send_file('/usr/share/nginx/html/orderbook.js', mimetype='application/javascript')
+def trade_js():
+    return send_file('/usr/share/nginx/html/trade.js', mimetype='application/javascript')
 
 
+@app.route('/trade-styles.css', methods=['GET'])
 @app.route('/orderbook-styles.css', methods=['GET'])
-def orderbook_css():
-    return send_file('/usr/share/nginx/html/orderbook-styles.css', mimetype='text/css')
+def trade_css():
+    return send_file('/usr/share/nginx/html/trade-styles.css', mimetype='text/css')
 
 
 @app.route('/favicon.svg', methods=['GET'])

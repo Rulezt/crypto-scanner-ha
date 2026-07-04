@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Book - Crypto Scanner Pro v4.4.7</title>
+    <title>Trade - Crypto Scanner Pro v4.4.7</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxsaW5lIHgxPSIxIiB5MT0iOSIgeDI9IjMxIiB5Mj0iOSIgc3Ryb2tlPSIjMWEzYTRhIiBzdHJva2Utd2lkdGg9IjAuNCIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMTciIHgyPSIzMSIgeTI9IjE3IiBzdHJva2U9IiMxYTNhNGEiIHN0cm9rZS13aWR0aD0iMC40Ii8+CiAgPGxpbmUgeDE9IjEiIHkxPSIyNSIgeDI9IjMxIiB5Mj0iMjUiIHN0cm9rZT0iIzFhM2E0YSIgc3Ryb2tlLXdpZHRoPSIwLjQiLz4KICA8bGluZSB4MT0iNCIgeTE9IjciIHgyPSI0IiB5Mj0iMjkiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyLjUiIHk9IjE0IiB3aWR0aD0iMyIgaGVpZ2h0PSI5IiBmaWxsPSIjMDBDOEZGIi8+CiAgPGxpbmUgeDE9IjEyIiB5MT0iMyIgeDI9IjEyIiB5Mj0iMjYiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIxMC41IiB5PSI3IiB3aWR0aD0iMyIgaGVpZ2h0PSIxMyIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIyMCIgeTE9IjYiIHgyPSIyMCIgeTI9IjI4IiBzdHJva2U9IiMwMEM4RkYiIHN0cm9rZS13aWR0aD0iMC44Ii8+CiAgPHJlY3QgeD0iMTguNSIgeT0iMTMiIHdpZHRoPSIzIiBoZWlnaHQ9IjkiIGZpbGw9IiMwMEM4RkYiLz4KICA8bGluZSB4MT0iMjgiIHkxPSIxMCIgeDI9IjI4IiB5Mj0iMzAiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyNi41IiB5PSIxNiIgd2lkdGg9IjMiIGhlaWdodD0iOCIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMzAiIHgyPSIzMCIgeTI9IjIiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIxLjIiLz4KICA8cG9seWdvbiBwb2ludHM9IjMwLDIgMjQsNS41IDI2LjUsOC41IiBmaWxsPSIjMDBDOEZGIi8+Cjwvc3ZnPgo=">
-    <link rel="stylesheet" href="orderbook-styles.css">
+    <link rel="stylesheet" href="trade-styles.css">
     <script src="/i18n.js"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
-    <script defer src="orderbook.js"></script>
+    <script defer src="trade.js"></script>
     <style>
         /* ===== HORIZONTAL IMBALANCE BAR ===== */
         .imbalance-hbar {
@@ -100,11 +100,11 @@
                     <span v-if="ticker.vol" class="ob-vol">{{ ticker.vol }}</span>
                 </div>
                 <div class="header-controls">
-                    <div class="max-level-info">
+                    <div v-show="!showBook" class="max-level-info">
                         <span class="max-ask-dist">🔴 -{{ maxLevelDistance.askPercent }}%</span>
                         <span class="max-bid-dist">🟢 -{{ maxLevelDistance.bidPercent }}%</span>
                     </div>
-                    <div class="control-item">
+                    <div v-if="showBook" class="control-item">
                         <label data-i18n="ob_levels_lbl">Livelli</label>
                         <select v-model="displayLevels" @change="updateDisplay">
                             <option value="10">10</option>
@@ -113,17 +113,12 @@
                             <option value="100">100</option>
                         </select>
                     </div>
-                    <div class="control-item">
+                    <div v-if="showBook" class="control-item">
                         <label data-i18n="ob_groupby_lbl">Raggruppa</label>
                         <select v-model="grouping" @change="updateDisplay">
                             <option v-for="opt in groupingOptions" :key="opt" :value="opt">{{ opt }}</option>
                         </select>
                     </div>
-                    <button @click="showImbalance = !showImbalance"
-                            :class="['imbalance-toggle', showImbalance ? 'active' : '']"
-                            :title="t('ob_tt_imb')">
-                        IMB
-                    </button>
                     <button v-if="isStandalone" @click="toggleObLines()"
                             :class="['imbalance-toggle', showObLines ? 'active' : '']"
                             :title="t('ob_tt_ob_lines')">
@@ -140,6 +135,9 @@
                         <svg v-if="!nakedChart" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>
                         <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M11.83,9L15,12.16C15,12.11 15,12.05 15,12A3,3 0 0,0 12,9C11.94,9 11.89,9 11.83,9M7.53,9.8L9.08,11.35C9.03,11.56 9,11.77 9,12A3,3 0 0,0 12,15C12.22,15 12.44,14.97 12.65,14.92L14.2,16.47C13.53,16.8 12.79,17 12,17A5,5 0 0,1 7,12C7,11.21 7.2,10.47 7.53,9.8M2,4.27L4.28,6.55L4.73,7C3.08,8.3 1.78,10 1,12C2.73,16.39 7,19.5 12,19.5C13.55,19.5 15.03,19.2 16.38,18.66L16.81,19.08L19.73,22L21,20.73L3.27,3M12,7A5,5 0 0,1 17,12C17,12.64 16.87,13.26 16.64,13.82L19.57,16.75C21.07,15.5 22.27,13.86 23,12C21.27,7.61 17,4.5 12,4.5C10.6,4.5 9.26,4.75 8,5.2L10.17,7.35C10.74,7.13 11.35,7 12,7Z"/></svg>
                     </button>
+                    <button v-if="isStandalone" onclick="openChartSearch()" class="imbalance-toggle" title="Cerca coin">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    </button>
                 </div>
             </div>
 
@@ -154,7 +152,7 @@
                                     @click="changeChartTF(tf.v)"
                                     :class="['ob-tf-btn', chartTF === tf.v ? 'active' : '']">
                                 <span style="line-height:1.3;">{{ tf.l }}</span>
-                                <span v-if="tfCountdowns[tf.v]" :style="{fontSize:'10px',fontFamily:'monospace',lineHeight:'1',minWidth:'28px',textAlign:'center',color:tfCountdowns[tf.v].color}">{{ tfCountdowns[tf.v].text }}</span>
+                                <span v-if="tfCountdowns[tf.v]" :class="tfCountdowns[tf.v].blink ? 'ob-cd-blink' : ''" :style="{fontSize:'10px',fontFamily:'monospace',lineHeight:'1',minWidth:'28px',textAlign:'center',color:tfCountdowns[tf.v].color}">{{ tfCountdowns[tf.v].text }}</span>
                             </button>
                         </div>
                         <div class="ob-ohlc-info" v-if="ohlc.c">
@@ -170,19 +168,29 @@
                         </div>
                         <div style="display:flex;align-items:center;gap:2px;margin-left:auto;">
                             <button id="ob-range-btn" onclick="toggleObRange()"
-                                style="padding:4px 8px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;"
+                                style="padding:4px 8px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
                                 title="Price Range">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="14" height="14" style="vertical-align:middle"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="18" height="18" style="vertical-align:middle"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg>
                             </button>
                             <button id="ob-hline-btn" onclick="toggleObHline()"
-                                style="padding:4px 8px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;"
+                                style="padding:4px 8px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
                                 title="Horizontal Line">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="14" height="14" style="vertical-align:middle" fill="currentColor"><rect x="2" y="13" width="7" height="2" rx="1"/><circle cx="13" cy="14" r="3"/><rect x="19" y="13" width="7" height="2" rx="1"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="18" height="18" style="vertical-align:middle" fill="currentColor"><rect x="2" y="13" width="7" height="2" rx="1"/><circle cx="13" cy="14" r="3"/><rect x="19" y="13" width="7" height="2" rx="1"/></svg>
                             </button>
                             <button id="ob-trend-btn" onclick="toggleObTrend()"
-                                style="padding:4px 8px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;"
+                                style="padding:4px 8px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
                                 title="Trendline">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="14" height="14" style="vertical-align:middle"><path d="M5 22 L23 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="5" cy="22" r="2.5" fill="currentColor"/><circle cx="23" cy="6" r="2.5" fill="currentColor"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="18" height="18" style="vertical-align:middle"><path d="M5 22 L23 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="5" cy="22" r="2.5" fill="currentColor"/><circle cx="23" cy="6" r="2.5" fill="currentColor"/></svg>
+                            </button>
+                            <span style="color:#374151;margin:0 2px;">|</span>
+                            <button @click="openMtf"
+                                style="padding:4px 8px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
+                                title="Multi Timeframe">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="18" height="18" style="vertical-align:middle" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1.5"/><rect x="15" y="3" width="10" height="10" rx="1.5"/><rect x="3" y="15" width="10" height="10" rx="1.5"/><rect x="15" y="15" width="10" height="10" rx="1.5"/></svg>
                             </button>
                         </div>
                     </div>
@@ -207,27 +215,80 @@
                         <button @click="fetchOrderBook" class="retry-btn">{{ t('ob_retry') }}</button>
                     </div>
                     <template v-else>
-                        <div v-if="showImbalance" class="imbalance-hbar" :class="imbalance.signal">
-                            <div class="imh-label imh-ask">
-                                <span>🔴</span>
-                                <span class="imh-pct">{{ (100 - parseFloat(imbalance.percent)).toFixed(1) }}%</span>
-                                <span class="imh-vol">{{ imbalance.askTotal }}</span>
+                        <!-- CVD Widget -->
+                        <div class="cvd-box">
+                            <div class="cvd-header">
+                                <span class="cvd-title">CVD
+                                    <span class="cvd-help">?
+                                        <span class="cvd-tooltip">
+                                            <b>Cumulative Volume Delta</b><br>
+                                            Misura la pressione reale di acquisto/vendita sui trade eseguiti, non sugli ordini limite (manipolabili).<br><br>
+                                            <b>Come funziona:</b><br>
+                                            • Trade che colpisce l'ask = acquisto aggressivo (+)<br>
+                                            • Trade che colpisce il bid = vendita aggressiva (−)<br>
+                                            • Il delta si accumula nel TF selezionato<br><br>
+                                            <b>Sparkline:</b><br>
+                                            • Curva che sale = compratori dominano<br>
+                                            • Curva che scende = venditori dominano<br>
+                                            • Curva piatta con prezzo in salita = rialzo debole<br><br>
+                                            <b>% sbilanciamento = (buy − sell) / (buy + sell) × 100</b><br>
+                                            • +45% → 72.5% del volume è acquisto aggressivo<br>
+                                            • −45% → 72.5% del volume è vendita aggressiva<br>
+                                            • 0% → perfetto equilibrio<br><br>
+                                            <b>Segnali:</b><br>
+                                            • ▲ LONG: % &gt; +10%<br>
+                                            • ▼ SHORT: % &lt; −10%<br>
+                                            • ● NEUTRO: tra −10% e +10%<br><br>
+                                            <b>Attenzione:</b> su 1m un picco può essere un singolo whale. Su 1h–4h il segnale è molto più affidabile.
+                                        </span>
+                                    </span>
+                                </span>
+                                <div class="cvd-windows">
+                                    <button v-for="w in CVD_WINDOWS" :key="w.value"
+                                        @click="cvdWindow = w.value"
+                                        :class="['cvd-win-btn', cvdWindow === w.value ? 'active' : '']">
+                                        {{ w.label }}
+                                    </button>
+                                </div>
                             </div>
-                            <div class="imh-track">
-                                <div class="imh-fill-ask"
-                                     :style="{ width: (100 - parseFloat(imbalance.percent)) + '%' }"></div>
-                                <div class="imh-fill-bid"
-                                     :style="{ width: parseFloat(imbalance.percent) + '%' }"></div>
+                            <svg class="cvd-spark" viewBox="0 0 120 32" preserveAspectRatio="none">
+                                <line x1="0" y1="16" x2="120" y2="16" stroke="#2A2E39" stroke-width="0.5"/>
+                                <polyline v-if="cvdData.spark.length > 1"
+                                    :points="cvdData.spark.map((v,i) => {
+                                        const min = Math.min(...cvdData.spark);
+                                        const max = Math.max(...cvdData.spark);
+                                        const range = max - min || 1;
+                                        const x = (i / (cvdData.spark.length - 1)) * 120;
+                                        const y = 30 - ((v - min) / range) * 28;
+                                        return x + ',' + y;
+                                    }).join(' ')"
+                                    :stroke="cvdData.color" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+                            </svg>
+                            <div class="cvd-footer">
+                                <span :style="{ color: cvdData.color, fontWeight: 700 }">{{ cvdData.dir }}</span>
+                                <span style="font-size:10px;color:#6B7280;">{{ cvdData.pct }}%</span>
                             </div>
-                            <div class="imh-center">
-                                <span>{{ imbalance.direction }}</span>
-                                <span class="imh-ratio">{{ imbalance.ratio }}x</span>
+                        </div>
+                        <!-- Pressure Thermometer -->
+                        <div class="pressure-box">
+                            <div class="pressure-header">
+                                <span class="pressure-title">Pressione Book</span>
                             </div>
-                            <div class="imh-label imh-bid">
-                                <span class="imh-vol">{{ imbalance.bidTotal }}</span>
-                                <span class="imh-pct">{{ imbalance.percent }}%</span>
-                                <span>🟢</span>
+                            <div class="pressure-bar-wrap">
+                                <div class="pressure-bar-short" :style="{ width: pressure.short + '%' }"></div>
+                                <div class="pressure-bar-long"  :style="{ width: pressure.long  + '%' }"></div>
                             </div>
+                            <div class="pressure-labels">
+                                <span style="color:#ef4444;">SHORT {{ pressure.short }}% <span style="font-size:9px;color:#6B7280;font-weight:400;">{{ pressure.askK }}</span></span>
+                                <span :style="{ color: pressure.color, fontWeight: 700 }">{{ pressure.label }}</span>
+                                <span style="color:#10b981;">LONG {{ pressure.long }}% <span style="font-size:9px;color:#6B7280;font-weight:400;">{{ pressure.bidK }}</span></span>
+                            </div>
+                        </div>
+                        <div v-show="showBook" class="book-col-header">
+                            <span data-i18n="col_price">Prezzo</span>
+                            <span data-i18n="col_qty">Qtà</span>
+                            <span>{{ symQuote }}</span>
+                            <span>Tot.{{ symQuote }}</span>
                         </div>
                         <div v-show="showBook" class="orderbook-container"
                              @mousedown="isPaused = true"
@@ -248,6 +309,7 @@
                                     <div class="price-cell ask-price">{{ ask.price }}</div>
                                     <div class="amount-cell">{{ ask.amount }}</div>
                                     <div class="total-cell">{{ ask.total }}</div>
+                                    <div class="total-cell">{{ ask.cumTotal }}</div>
                                 </div>
                             </div>
                             <div class="current-price-box">
@@ -266,6 +328,7 @@
                                     <div class="price-cell bid-price">{{ bid.price }}</div>
                                     <div class="amount-cell">{{ bid.amount }}</div>
                                     <div class="total-cell">{{ bid.total }}</div>
+                                    <div class="total-cell">{{ bid.cumTotal }}</div>
                                 </div>
                             </div>
                         </div>
@@ -452,27 +515,10 @@
                     <button @click="fetchOrderBook" class="retry-btn">{{ t('ob_retry') }}</button>
                 </div>
                 <div v-else class="orderbook-wrapper">
-                    <div v-if="showImbalance" class="imbalance-hbar" :class="imbalance.signal">
-                        <div class="imh-label imh-ask">
-                            <span>🔴</span>
-                            <span class="imh-pct">{{ (100 - parseFloat(imbalance.percent)).toFixed(1) }}%</span>
-                            <span class="imh-vol">{{ imbalance.askTotal }}</span>
-                        </div>
-                        <div class="imh-track">
-                            <div class="imh-fill-ask"
-                                 :style="{ width: (100 - parseFloat(imbalance.percent)) + '%' }"></div>
-                            <div class="imh-fill-bid"
-                                 :style="{ width: parseFloat(imbalance.percent) + '%' }"></div>
-                        </div>
-                        <div class="imh-center">
-                            <span>{{ imbalance.direction }}</span>
-                            <span class="imh-ratio">{{ imbalance.ratio }}x</span>
-                        </div>
-                        <div class="imh-label imh-bid">
-                            <span class="imh-vol">{{ imbalance.bidTotal }}</span>
-                            <span class="imh-pct">{{ imbalance.percent }}%</span>
-                            <span>🟢</span>
-                        </div>
+                    <div v-show="showBook" class="book-col-header">
+                        <span data-i18n="col_price">Prezzo</span>
+                        <span data-i18n="col_qty">Qtà</span>
+                        <span data-i18n="col_total">Totale</span>
                     </div>
                     <div v-show="showBook" class="orderbook-container"
                          @mousedown="isPaused = true"
@@ -515,5 +561,117 @@
 
         </div>
     </div>
+
+<!-- ===== CRYPTO SEARCH (identico a chart.html) ===== -->
+<div id="csearch-overlay" onclick="closeChartSearch()"
+     style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.65);backdrop-filter:blur(2px);"></div>
+<div id="csearch-modal"
+     style="display:none;position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:501;width:100%;max-width:480px;padding:0 16px;">
+    <div style="background:#161A1E;border:1px solid #2A2E39;border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #2A2E39;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#6B7280" stroke-width="2.5" style="flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input id="csearch-input" type="text" autocomplete="off" spellcheck="false"
+                placeholder="Cerca coin Bybit… (es. BTC, ETH, SOL)"
+                style="flex:1;background:transparent;border:none;outline:none;color:#E5E7EB;font-size:13px;font-family:inherit;"
+                oninput="onChartSearchInput(this.value)"
+                onkeydown="onChartSearchKey(event)">
+            <kbd onclick="closeChartSearch()"
+                 style="font-size:10px;color:#6B7280;background:#1E222D;padding:2px 6px;border-radius:4px;border:1px solid #2A2E39;cursor:pointer;font-family:inherit;">ESC</kbd>
+        </div>
+        <div id="csearch-results" style="max-height:320px;overflow-y:auto;">
+            <div style="padding:32px 0;text-align:center;font-size:11px;color:#4B5563;">Digita per cercare tra le crypto su Bybit</div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+    let _csCache = null, _csTimer = null;
+    window.openChartSearch = function() {
+        document.getElementById('csearch-overlay').style.display = 'block';
+        document.getElementById('csearch-modal').style.display   = 'block';
+        const inp = document.getElementById('csearch-input');
+        inp.value = '';
+        document.getElementById('csearch-results').innerHTML =
+            '<div style="padding:32px 0;text-align:center;font-size:11px;color:#4B5563;">Digita per cercare tra le crypto su Bybit</div>';
+        requestAnimationFrame(() => inp.focus());
+    };
+    window.closeChartSearch = function() {
+        document.getElementById('csearch-overlay').style.display = 'none';
+        document.getElementById('csearch-modal').style.display   = 'none';
+    };
+    async function _csLoadCache() {
+        if (_csCache) return _csCache;
+        try {
+            const r = await fetch('https://api.bybit.com/v5/market/tickers?category=linear');
+            const d = await r.json();
+            if (d.retCode !== 0) return [];
+            _csCache = d.result.list
+                .filter(t => t.symbol.endsWith('USDT') && !t.symbol.includes('-') && parseFloat(t.lastPrice) > 0)
+                .map(t => ({
+                    symbol: t.symbol,
+                    coin:   t.symbol.replace('USDT',''),
+                    price:  parseFloat(t.lastPrice),
+                    change: parseFloat(t.price24hPcnt) * 100,
+                    volume: parseFloat(t.turnover24h),
+                }))
+                .sort((a, b) => b.volume - a.volume);
+        } catch(e) { _csCache = []; }
+        return _csCache;
+    }
+    window.onChartSearchInput = function(raw) {
+        clearTimeout(_csTimer);
+        _csTimer = setTimeout(() => _csRun(raw.trim().toUpperCase()), 120);
+    };
+    async function _csRun(q) {
+        const el = document.getElementById('csearch-results');
+        if (!q) {
+            el.innerHTML = '<div style="padding:32px 0;text-align:center;font-size:11px;color:#4B5563;">Digita per cercare</div>';
+            return;
+        }
+        el.innerHTML = '<div style="padding:24px 0;text-align:center;font-size:11px;color:#6B7280;">⏳</div>';
+        const coins = await _csLoadCache();
+        const matches = coins.filter(c => c.coin.startsWith(q) || c.coin.includes(q)).slice(0, 25);
+        if (!matches.length) {
+            el.innerHTML = `<div style="padding:32px 0;text-align:center;font-size:11px;color:#6B7280;">Nessun risultato per "<b style="color:#D1D5DB">${q}</b>"</div>`;
+            return;
+        }
+        el.innerHTML = matches.map((c, i) => {
+            const sgn = c.change >= 0 ? '+' : '';
+            const clr = c.change >= 0 ? '#34d399' : '#f87171';
+            const p   = c.price >= 1000 ? c.price.toLocaleString('en-US',{maximumFractionDigits:1})
+                      : c.price >= 1    ? c.price.toFixed(3)
+                      : c.price >= 0.01 ? c.price.toFixed(5)
+                      :                   c.price.toFixed(7);
+            const v   = c.volume >= 1e9 ? '$'+(c.volume/1e9).toFixed(1)+'B'
+                      : c.volume >= 1e6 ? '$'+(c.volume/1e6).toFixed(0)+'M'
+                      :                   '$'+(c.volume/1e3).toFixed(0)+'K';
+            return `<div data-idx="${i}" onclick="csSelectCoin('${c.symbol}')"
+                style="display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;border-bottom:1px solid #1E222D;transition:background .1s;"
+                onmouseover="this.style.background='#1E222D'" onmouseout="this.style.background='transparent'">
+                <span style="font-weight:700;font-size:13px;color:#E5E7EB;width:80px;flex-shrink:0;">${c.coin}<span style="color:#4B5563;font-weight:400;font-size:10px;">/USDT</span></span>
+                <span style="font-family:monospace;font-size:11px;color:#9CA3AF;">${p}</span>
+                <span style="font-size:11px;font-weight:600;flex-shrink:0;color:${clr};">${sgn}${c.change.toFixed(2)}%</span>
+                <span style="margin-left:auto;font-size:10px;color:#4B5563;flex-shrink:0;">${v}</span>
+            </div>`;
+        }).join('');
+    }
+    window.onChartSearchKey = function(e) {
+        if (e.key === 'Escape') { closeChartSearch(); return; }
+        if (e.key === 'Enter') {
+            const first = document.querySelector('#csearch-results [data-idx="0"]');
+            if (first) first.click();
+        }
+    };
+    window.csSelectCoin = function(symbol) {
+        closeChartSearch();
+        window.location.href = `/trade?symbol=${symbol}`;
+    };
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeChartSearch();
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openChartSearch(); }
+    });
+})();
+</script>
 </body>
 </html>

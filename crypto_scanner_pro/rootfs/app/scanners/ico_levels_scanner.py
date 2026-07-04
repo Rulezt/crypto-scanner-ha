@@ -176,6 +176,7 @@ class ICOLevelsScanner:
 
         price      = data.get('price', 0)
         change_pct = data.get('change_24h', 0.0)
+        volume     = data.get('volume_24h', 0)
         if price <= 0:
             return
         first_high = levels['first_high']
@@ -201,7 +202,7 @@ class ICOLevelsScanner:
             state['alerted'] = dict(self._alerted)
             self._save_state(state)
             threading.Thread(
-                target=self._send_alert, args=(symbol, side, dist, level, price, change_pct),
+                target=self._send_alert, args=(symbol, side, dist, level, price, change_pct, volume),
                 daemon=True).start()
 
     # ── polling scan (fallback / manual) ─────────────────────────────────────
@@ -282,7 +283,7 @@ class ICOLevelsScanner:
 
     # ── alert ─────────────────────────────────────────────────────────────────
 
-    def _send_alert(self, sym, side, dist, level, price=0, change_pct=0.0):
+    def _send_alert(self, sym, side, dist, level, price=0, change_pct=0.0, volume=0):
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
@@ -294,12 +295,14 @@ class ICOLevelsScanner:
         side_str = 'massimo' if side == 'high' else 'minimo'
         sig_type = 'ath' if side == 'high' else 'atl'
         base = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
+        from alert_utils import fmt_vol
         lines = [
             f'🔔 ICO {side_str} {dist:.2f}%',
             '',
             '------------------------------------------------',
             f'- Coin: {sym}',
-            f'- Vol: {change_pct:+.2f}%',
+            f'- Var: {change_pct:+.2f}%',
+            f'- Volume: {fmt_vol(volume)}',
             '------------------------------------------------',
             '',
             f'<a href="https://www.bybit.com/trade/usdt/{sym}">- View Bybit</a>',
@@ -312,7 +315,7 @@ class ICOLevelsScanner:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
         else:
             send_text(self.telegram_token, self.telegram_chat_id, caption)
-        log_alert(sym, 'ICO Level', emoji='🚀', note=note)
+        log_alert(sym, 'ICO Level', emoji='🚀', note=f'{side_str} {dist:.2f}%', screenshot=img)
         logger.info(f'ICO levels alert: {sym} {side} dist={dist:.2f}%')
 
     # ── status ────────────────────────────────────────────────────────────────

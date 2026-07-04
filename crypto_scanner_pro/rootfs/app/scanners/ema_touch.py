@@ -1,117 +1,284 @@
-"""EMA Touch Scanner — 30m Timeframe, EMA 60 Focus (real-time via kline WebSocket)"""
+"""EMA60 Pre-Touch Proximity Scanner — Multi-TF Independent Regime
+Architecture: one EMA per TF per symbol, each TF tracked and alerted independently.
+Touch on a TF is a permanent kill signal for THAT TF only (for the rest of the day) —
+it never blocks the other TFs. Any configured TF can fire its own proximity alert.
+"""
 import threading
-import requests
-from datetime import datetime, timedelta
-import sys
-import os
+import queue
+import time
 import json
+import os
+import sys
+import requests
+from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-COOLDOWN_FILE = None  # set in __init__
-ZONE_FILE = '/data/ema_zone.json'
-
-# How many top coins to subscribe klines for
+STATE_FILE        = '/data/ema_state.json'
 TOP_KLINE_SYMBOLS = 500
-# Refresh kline subscription list every N seconds
-KLINE_SUB_REFRESH = 4 * 3600
+KLINE_SUB_REFRESH = 3600
+EMA_PERIOD        = 60
+MIN_SEED_BARS     = EMA_PERIOD + 5
+
+DEFAULT_SCAN_TFS  = ['240', '60', '30', '5', '1']
 
 
 class EMAScanner:
     def __init__(self, telegram_config, enabled=True, ema_touch_threshold=2.0,
-                 scan_interval_minutes=30, min_volume_24h=10000000,
+                 touch_tolerance=0.05,
+                 scan_interval_minutes=30, min_volume_24h=10_000_000,
                  max_coins_per_alert=10, screenshot_tf='30',
-                 ws_manager=None, live_config=None,
-                 schedule_start='', schedule_end='', utc_offset=2, **kwargs):
+                 scan_tfs=None,
+                 ws_manager=None, live_config=None, **kwargs):
 
-        self.telegram_token   = telegram_config['token']
-        self.telegram_chat_id = telegram_config['chat_id']
-        self.base_url           = telegram_config.get('base_url', '')
-        self.enabled          = enabled
+        self.telegram_token      = telegram_config['token']
+        self.telegram_chat_id    = telegram_config['chat_id']
+        self.base_url            = telegram_config.get('base_url', '')
+        self.enabled             = enabled
         self.ema_touch_threshold = ema_touch_threshold
-        self.min_volume_24h   = min_volume_24h
+        self.touch_tolerance     = touch_tolerance
+        self.min_volume_24h      = min_volume_24h
         self.max_coins_per_alert = max_coins_per_alert
-        self.screenshot_tf    = screenshot_tf
-        self._live_config     = live_config
+        self.screenshot_tf       = screenshot_tf
+        self._live_config        = live_config
 
-        self._setup_cooldown_path()
-        self.last_alerts = self._load_cooldown()
-        self._lock       = threading.Lock()
-        # Zone persisted to file so it survives restarts.
-        # Merge: file-based zone + last-24h cooldown entries (backwards compat).
-        self._in_zone: set = self._load_zone()
-        cutoff = datetime.utcnow() - timedelta(hours=24)
-        for sym, ts in self.last_alerts.items():
-            if ts >= cutoff:
-                self._in_zone.add(sym)
+        raw_tfs         = scan_tfs or DEFAULT_SCAN_TFS
+        self.scan_tfs   = raw_tfs if isinstance(raw_tfs, list) else [raw_tfs]
+
+        self._lock        = threading.Lock()
+        self._state       = self._load_state()
+        self._alert_queue = queue.Queue(maxsize=200)
+        threading.Thread(target=self._alert_worker, daemon=True).start()
 
         self._ws_manager = ws_manager
         if ws_manager is not None:
             ws_manager.add_kline_callback(self._on_kline)
             threading.Thread(target=self._init_kline_subs, daemon=True).start()
 
-        print(f'🎯 EMA Touch Scanner init — threshold={self.ema_touch_threshold}% ws={"on" if ws_manager else "off"}')
+        print(f'📡 EMA Proximity init — tfs={",".join(self.scan_tfs)} (indipendenti) thr={self.ema_touch_threshold}%')
 
-    # ── cooldown ─────────────────────────────────────────────────────────────
+    # ── State persistence ─────────────────────────────────────────────────────
 
-    def _setup_cooldown_path(self):
-        global COOLDOWN_FILE
-        for path in ['/config/ema_cooldown.json', '/share/ema_cooldown.json', '/data/ema_cooldown.json']:
-            try:
-                d = os.path.dirname(path)
-                if os.path.exists(d):
-                    tf = os.path.join(d, '.test_write')
-                    with open(tf, 'w') as f: f.write('test')
-                    os.remove(tf)
-                    COOLDOWN_FILE = path
-                    return
-            except Exception:
-                continue
-        COOLDOWN_FILE = '/data/ema_cooldown.json'
-
-    def _load_zone(self):
+    def _load_state(self):
         try:
-            if os.path.exists(ZONE_FILE):
-                with open(ZONE_FILE, 'r') as f:
-                    return set(json.load(f))
+            if os.path.exists(STATE_FILE):
+                with open(STATE_FILE, 'r') as f:
+                    return json.load(f)
         except Exception as e:
-            print(f'⚠️ Error loading EMA zone: {e}')
-        return set()
-
-    def _save_zone(self):
-        try:
-            os.makedirs(os.path.dirname(ZONE_FILE), exist_ok=True)
-            with open(ZONE_FILE, 'w') as f:
-                json.dump(list(self._in_zone), f)
-        except Exception as e:
-            print(f'⚠️ Error saving EMA zone: {e}')
-
-    def _load_cooldown(self):
-        try:
-            if COOLDOWN_FILE and os.path.exists(COOLDOWN_FILE):
-                with open(COOLDOWN_FILE, 'r') as f:
-                    return {k: datetime.fromisoformat(v) for k, v in json.load(f).items()}
-        except Exception as e:
-            print(f'⚠️ Error loading EMA cooldown: {e}')
+            print(f'⚠️ EMA: load state: {e}')
         return {}
 
-    def _save_cooldown(self):
+    def _save_state(self):
+        with self._lock:
+            snapshot = json.loads(json.dumps(self._state))
         try:
-            if COOLDOWN_FILE:
-                os.makedirs(os.path.dirname(COOLDOWN_FILE), exist_ok=True)
-                with open(COOLDOWN_FILE, 'w') as f:
-                    json.dump({k: v.isoformat() for k, v in self.last_alerts.items()}, f)
+            os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+            tmp = STATE_FILE + '.tmp'
+            with open(tmp, 'w') as f:
+                json.dump(snapshot, f)
+            os.replace(tmp, STATE_FILE)
         except Exception as e:
-            print(f'⚠️ Error saving EMA cooldown: {e}')
+            print(f'⚠️ EMA: save state: {e}')
 
-    def is_in_cooldown(self, symbol):
-        return symbol in self._in_zone
+    # ── Utils ─────────────────────────────────────────────────────────────────
 
-    def mark_alerted(self, symbol):
-        self.last_alerts[symbol] = datetime.utcnow()
-        self._save_cooldown()
+    @staticmethod
+    def _today_utc():
+        return datetime.now(timezone.utc).date().isoformat()
 
-    # ── schedule check ───────────────────────────────────────────────────────
+    def _get_state(self, symbol):
+        """Return per-symbol state, auto-resetting on new day. Call inside lock.
+        Per-symbol fields:
+          day  — YYYY-MM-DD reset key
+          tf   — {tf: {ema, touched, alerted, recalc}} fully independent per TF
+                   ema      — float, persisted across days
+                   touched  — bool: permanent kill signal for THIS tf, for today only
+                   alerted  — per-approach debounce (resets when price exits zone)
+                   recalc   — closed-candle counter for EMA recalibration
+          alerted_today — True if ANY tf fired an alert today (never resets mid-day)
+        """
+        today = self._today_utc()
+        st = self._state.get(symbol)
+        if not st or st.get('day') != today or 'tf' not in st:
+            legacy_ema = (st or {}).get('ema', {})   # pre-migration schema (top-level 'ema' dict)
+            prev_tf    = (st or {}).get('tf', {})
+            st = {
+                'day': today,
+                'tf': {
+                    tf: {
+                        'ema':     prev_tf.get(tf, {}).get('ema', legacy_ema.get(tf)),
+                        'touched': False,
+                        'alerted': False,
+                        'recalc':  0,
+                    }
+                    for tf in self.scan_tfs
+                },
+                'alerted_today': False,
+            }
+            self._state[symbol] = st
+        return st
+
+    # ── EMA helpers ───────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _ema_from_closes(closes):
+        if len(closes) < EMA_PERIOD:
+            return None
+        k   = 2.0 / (EMA_PERIOD + 1)
+        ema = sum(closes[:EMA_PERIOD]) / EMA_PERIOD
+        for c in closes[EMA_PERIOD:]:
+            ema = c * k + ema * (1 - k)
+        return ema
+
+    def _seed_ema_tf(self, symbol, tf):
+        """Bootstrap EMA60 for one TF from WS kline cache."""
+        if not self._ws_manager:
+            return False
+        klines = self._ws_manager.get_klines(symbol, tf)
+        closed = klines[:-1]
+        if len(closed) < MIN_SEED_BARS:
+            return False
+        ema = self._ema_from_closes([k['close'] for k in closed])
+        if ema is None:
+            return False
+        cfg       = (self._live_config or {}).get('ema_touch', {})
+        tolerance = float(cfg.get('touch_tolerance', self.touch_tolerance))
+        touched_today = self._touched_today(closed, ema, tolerance)
+        with self._lock:
+            st = self._get_state(symbol)
+            st['tf'][tf]['ema'] = ema
+            if touched_today:
+                st['tf'][tf]['touched'] = True
+        return True
+
+    def _touched_today(self, closed_klines, ema, tolerance):
+        """Retroactive check: did any already-closed candle from today cross this EMA
+        (within `tolerance`%)? Approximation — uses the current (just-seeded) EMA value
+        against today's candles, since we don't have the historical EMA series. Prevents
+        firing a fresh pre-touch alert on a symbol that's only NOW being seeded (bot
+        restart, or newly promoted into the tracked top-volume list) but already crossed
+        the level earlier today.
+        """
+        today = self._today_utc()
+        tol   = ema * (tolerance / 100.0)
+        for k in closed_klines:
+            if datetime.fromtimestamp(k['time'], timezone.utc).date().isoformat() != today:
+                continue
+            if k['low'] - tol <= ema <= k['high'] + tol:
+                return True
+        return False
+
+    def _seed_all_tfs(self, symbol):
+        """Seed EMA for every configured TF. Returns True if at least one TF got seeded."""
+        seeded = False
+        for tf in self.scan_tfs:
+            if self._seed_ema_tf(symbol, tf):
+                seeded = True
+        return seeded
+
+    # ── Core logic ────────────────────────────────────────────────────────────
+
+    def _evaluate_candle(self, symbol, tf, candle, is_closed, ticker_data, threshold, tolerance):
+        """
+        Per-candle logic for one TF. Must be called WITHOUT holding self._lock.
+
+        Every TF is fully independent: touch on this TF permanently silences THIS
+        TF for the rest of the day, but never affects the other TFs.
+        """
+        fire_coin   = None
+        save_needed = False
+
+        with self._lock:
+            st  = self._get_state(symbol)
+            tst = st['tf'][tf]
+
+            # Snapshot BEFORE this call can overwrite it — represents the close of
+            # the last COMPLETED bar, stable across every tick of the current bar.
+            prev_close = tst.get('prev_close')
+
+            # ── EMA update (closed only) + recalibration every 50 bars ────────
+            if is_closed:
+                ema = tst['ema']
+                if ema is None:
+                    return None
+                k       = 2.0 / (EMA_PERIOD + 1)
+                new_ema = candle['close'] * k + ema * (1 - k)
+                tst['ema_slope_pct'] = (new_ema - ema) / ema * 100.0
+                tst['prev_close']    = candle['close']
+                tst['ema']    = new_ema
+                tst['recalc'] += 1
+                if tst['recalc'] % 50 == 0 and self._ws_manager:
+                    kl  = self._ws_manager.get_klines(symbol, tf)
+                    new = self._ema_from_closes([c['close'] for c in kl[:-1]])
+                    if new:
+                        tst['ema'] = new
+
+            ema = tst['ema']
+            if not ema or ema <= 0:
+                return None
+
+            # ── TOUCH DETECTION (full candle: body + wick, ± tolerance) → permanent kill signal ─
+            tol = ema * (tolerance / 100.0)
+            if candle['low'] - tol <= ema <= candle['high'] + tol:
+                if not tst['touched']:
+                    tst['touched'] = True
+                    save_needed    = True
+                return None
+
+            if tst['touched']:
+                return None
+
+            # ── PROXIMITY ALERT: independent per tf ───────────────────────────
+            effective_threshold = max(threshold, 0.2)   # min 0.2%
+            distance_pct        = abs(candle['close'] - ema) / ema * 100.0
+            in_zone             = distance_pct <= effective_threshold
+            # Hysteresis: re-arm the debounce only once price is clearly away from
+            # the zone (2x threshold), not at the first tiny wobble back out of it —
+            # avoids alert spam when price chops right on the zone boundary.
+            re_armed            = distance_pct > effective_threshold * 2
+
+            if in_zone:
+                # Anti-spam: skip near-flat / low-conviction candles hugging the EMA
+                range_pct = abs(candle['high'] - candle['low']) / ema * 100.0
+                body_pct  = abs(candle['close'] - candle['open']) / ema * 100.0
+                if range_pct < 0.1 or body_pct < 0.03:
+                    return None
+
+                # Directional check: only alert if price actually moved toward the
+                # EMA since the last closed bar (not just sitting/drifting nearby)
+                if prev_close is not None:
+                    moving_toward = abs(candle['close'] - ema) < abs(prev_close - ema)
+                    if not moving_toward:
+                        return None
+
+                # EMA slope filter: skip a dead-flat EMA (no real trend context)
+                slope = tst.get('ema_slope_pct')
+                if slope is not None and abs(slope) < 0.01:
+                    return None
+
+            if in_zone and not tst['alerted']:
+                tst['alerted']      = True
+                st['alerted_today'] = True
+                save_needed         = True
+                fire_coin = {
+                    'symbol':       symbol,
+                    'tf':           tf,
+                    'price':        candle['close'],
+                    'ema60':        round(ema, 6),
+                    'distance_pct': round(distance_pct, 4),
+                    'approach':     'from_above' if candle['close'] > ema else 'from_below',
+                    'volume_24h':   ticker_data.get('volume_24h', 0),
+                    'change_pct':   ticker_data.get('change_24h',
+                                     ticker_data.get('change_pct', 0.0)),
+                }
+            elif re_armed and tst['alerted']:
+                tst['alerted'] = False
+
+        if save_needed:
+            self._save_state()
+        return fire_coin
+
+    # ── Schedule ──────────────────────────────────────────────────────────────
 
     def _is_in_schedule(self):
         from alert_utils import is_in_schedule
@@ -122,281 +289,187 @@ class EMAScanner:
             float(gen.get('utc_offset') or 2),
         )
 
-    # ── kline subscription management ────────────────────────────────────────
+    # ── kline subscriptions ───────────────────────────────────────────────────
 
     def _init_kline_subs(self):
-        """Wait for WS ready, then subscribe 30m klines for top N coins."""
         if not self._ws_manager.ready.wait(timeout=120):
-            print('⚠️ EMA: WS not ready after 120s, skipping kline subscription')
+            print('⚠️ EMA: WS not ready after 120s')
             return
-        self._refresh_kline_subs()
+        time.sleep(30)
+        self._kline_refresh_loop()
+
+    def _kline_refresh_loop(self):
+        while True:
+            self._refresh_kline_subs()
+            time.sleep(KLINE_SUB_REFRESH)
 
     def _refresh_kline_subs(self):
         tickers = self._ws_manager.get_all_tickers()
-        if not tickers:
+        if not tickers or len(tickers) < 30:
+            time.sleep(30)
+            self._refresh_kline_subs()
             return
         ranked = sorted(tickers.items(), key=lambda x: x[1].get('volume_24h', 0), reverse=True)
-        top_syms = [s for s, d in ranked
-                    if d.get('volume_24h', 0) >= self.min_volume_24h][:TOP_KLINE_SYMBOLS]
-        self._ws_manager.subscribe_klines(top_syms, intervals=['30'])
-        print(f'🎯 EMA: subscribed 30m klines for {len(top_syms)} symbols')
-        # Schedule next refresh
-        threading.Timer(KLINE_SUB_REFRESH, self._refresh_kline_subs).start()
+        top    = [s for s, d in ranked if d.get('volume_24h', 0) >= self.min_volume_24h][:TOP_KLINE_SYMBOLS]
+        self._ws_manager.subscribe_klines(top, intervals=self.scan_tfs)
+        print(f'📡 EMA: subscribed {len(top)} symbols × {len(self.scan_tfs)} TF')
 
-    # ── daily touch count ─────────────────────────────────────────────────────
-
-    def _count_ema_touches_today(self, klines):
-        """Count closed 30m candles since midnight UTC where close >= EMA60
-        and distance < threshold (same criterion as the scanner trigger).
-        Excludes the current live candle (last entry)."""
-        import calendar
-        from datetime import datetime
-        period = 60
-        past = klines[:-1]   # only closed candles
-        if len(past) < period:
-            return None
-        closes = [k['close'] for k in past]
-        k_mult = 2.0 / (period + 1)
-        series = [None] * (period - 1)
-        ema = sum(closes[:period]) / period
-        series.append(ema)
-        for p in closes[period:]:
-            ema = p * k_mult + ema * (1.0 - k_mult)
-            series.append(ema)
-        now = datetime.utcnow()
-        midnight_ts = calendar.timegm((now.year, now.month, now.day, 0, 0, 0, 0, 0, 0))
-        count = 0
-        for i, kl in enumerate(past):
-            if kl['time'] < midnight_ts:
-                continue
-            ev = series[i]
-            if ev is None:
-                continue
-            if kl['close'] >= ev and abs((kl['close'] - ev) / ev * 100) < self.ema_touch_threshold:
-                count += 1
-        return count
-
-    # ── EMA calculation ───────────────────────────────────────────────────────
-
-    @staticmethod
-    def _calc_ema(prices, period):
-        if len(prices) < period:
-            return None
-        mult = 2 / (period + 1)
-        ema  = sum(prices[:period]) / period
-        for p in prices[period:]:
-            ema = (p - ema) * mult + ema
-        return ema
-
-    def _calc_ema_from_closes(self, closes):
-        if len(closes) < 223:
-            return None
-        ema5   = self._calc_ema(closes, 5)
-        ema10  = self._calc_ema(closes, 10)
-        ema60  = self._calc_ema(closes, 60)
-        ema223 = self._calc_ema(closes, 223)
-        if ema60 is None:
-            return None
-        price = closes[-1]
-        return {
-            'current_price': price, 'ema60': ema60,
-            'ema5': ema5, 'ema10': ema10, 'ema223': ema223,
-            'distance_pct': abs((price - ema60) / ema60 * 100)
-        }
-
-    # ── real-time kline callback ──────────────────────────────────────────────
+    # ── WS callback ───────────────────────────────────────────────────────────
 
     def _on_kline(self, symbol, interval, candle, is_closed):
-        """Called on every kline update from WebSocket (live + closed)."""
-        if not self.enabled or interval != '30':
+        if not self.enabled or interval not in self.scan_tfs:
             return
         if not self._is_in_schedule():
             return
 
-        klines = self._ws_manager.get_klines(symbol, '30')
-        if len(klines) < 223:
-            return  # Cache not seeded yet
-
-        closes = [k['close'] for k in klines]
-        ema_data = self._calc_ema_from_closes(closes)
-        if not ema_data:
-            return
-
-        # Use live price from the current candle, not last closed close
-        live_price   = candle['close']
-        ema60        = ema_data['ema60']
-
-        distance_pct   = abs((live_price - ema60) / ema60 * 100)
-        exit_threshold = self.ema_touch_threshold * 3.0
-
-        # When price is below EMA still check exit so zone resets if price dropped far enough
-        if live_price < ema60:
-            if distance_pct >= exit_threshold:
-                with self._lock:
-                    if symbol in self._in_zone:
-                        self._in_zone.discard(symbol)
-                        self._save_zone()
-            return
-
-        if distance_pct >= exit_threshold:
-            # Price moved significantly above EMA → reset zone, next touch will alert
-            with self._lock:
-                if symbol in self._in_zone:
-                    self._in_zone.discard(symbol)
-                    self._save_zone()
-            return
-
-        if distance_pct < self.ema_touch_threshold:
-            # Skip if EMA60 was already touched today on a previous closed candle
-            touch_count = self._count_ema_touches_today(klines)
-            if touch_count is None or touch_count > 0:
+        # Seed this TF if needed
+        with self._lock:
+            needs_seed = self._get_state(symbol)['tf'][interval]['ema'] is None
+        if needs_seed:
+            if not self._seed_ema_tf(symbol, interval):
                 return
-            coin = None
-            with self._lock:
-                if symbol not in self._in_zone:
-                    self._in_zone.add(symbol)
-                    self._save_zone()
-                    self.mark_alerted(symbol)
-                    ticker_data = self._ws_manager.get_all_tickers().get(symbol, {}) if self._ws_manager else {}
-                    coin = {
-                        'symbol': symbol,
-                        'price': live_price,
-                        'ema60': ema60,
-                        'distance_pct': distance_pct,
-                        'approach': 'from above' if live_price > ema60 else 'from below',
-                        'volume_24h': ticker_data.get('volume_24h', 0),
-                        'change_pct': ticker_data.get('change_24h', 0.0),
-                    }
-            if coin:
-                threading.Thread(
-                    target=self.send_alert, args=([coin],), daemon=True).start()
 
-    # ── REST kline + EMA (used by polling scan) ───────────────────────────────
+        cfg       = (self._live_config or {}).get('ema_touch', {})
+        threshold = float(cfg.get('ema_touch_threshold', self.ema_touch_threshold))
+        tolerance = float(cfg.get('touch_tolerance', self.touch_tolerance))
+        ticker    = self._ws_manager.get_all_tickers().get(symbol, {}) if self._ws_manager else {}
 
-    def fetch_klines_and_calculate_ema(self, symbol, interval='30', limit=250):
-        # Try WS cache first
-        if self._ws_manager:
-            klines = self._ws_manager.get_klines(symbol, interval)
-            if len(klines) >= 223:
-                closes = [k['close'] for k in klines]
-                return self._calc_ema_from_closes(closes)
+        fire_coin = self._evaluate_candle(symbol, interval, candle, is_closed, ticker, threshold, tolerance)
 
-        # Fall back to REST
-        try:
-            url    = 'https://api.bybit.com/v5/market/kline'
-            params = {'category': 'linear', 'symbol': symbol,
-                      'interval': interval, 'limit': limit}
-            response = requests.get(url, params=params, timeout=10)
-            data = response.json()
-            if data['retCode'] != 0:
-                return None
-            klines = data['result']['list']
-            if len(klines) < 223:
-                return None
-            klines.sort(key=lambda x: int(x[0]))
-            closes = [float(k[4]) for k in klines]
-            return self._calc_ema_from_closes(closes)
-        except Exception as e:
-            print(f'❌ EMA: fetch_klines {symbol}: {e}')
-            return None
+        if fire_coin:
+            try:
+                self._alert_queue.put_nowait([fire_coin])
+            except queue.Full:
+                try:
+                    old     = self._alert_queue.get_nowait()
+                    evicted = old[0].get('symbol', '?') if old else '?'
+                    self._alert_queue.put_nowait([fire_coin])
+                    print(f'⚠️ EMA queue full: evicted {evicted}, queued {symbol}')
+                except Exception:
+                    print(f'⚠️ EMA queue full: dropped {symbol}')
 
-    # ── polling scan (fallback / manual) ─────────────────────────────────────
+    # ── Alert worker ──────────────────────────────────────────────────────────
+
+    def _alert_worker(self):
+        while True:
+            try:
+                coins = self._alert_queue.get(timeout=5)
+                if coins:
+                    self.send_alert(coins)
+                self._alert_queue.task_done()
+            except queue.Empty:
+                pass
+            except Exception as e:
+                print(f'❌ EMA alert worker: {e}')
+
+    # ── Polling scan ──────────────────────────────────────────────────────────
 
     def scan(self):
         if not self.enabled:
             return []
-
-        print(f'🎯 EMA Touch Scanner — polling scan ({self.ema_touch_threshold}% threshold)...')
+        print(f'📡 EMA Proximity scan (tfs={",".join(self.scan_tfs)} thr={self.ema_touch_threshold}%)...')
         try:
             if self._ws_manager and self._ws_manager.ready.is_set():
-                raw = self._ws_manager.get_all_tickers()
-                all_pairs = [
-                    {'item': {'symbol': s, 'volume24h': str(d.get('volume_24h', 0))},
-                     'change_pct': d.get('change_24h', 0)}
+                raw        = self._ws_manager.get_all_tickers()
+                ticker_map = raw
+                all_pairs  = [
+                    {'symbol': s, 'volume_24h': d.get('volume_24h', 0),
+                     'change_pct': d.get('change_24h', 0.0)}
                     for s, d in raw.items()
-                    if d.get('price', 0) > 0 and d.get('volume_24h', 0) >= self.min_volume_24h
+                    if d.get('volume_24h', 0) >= self.min_volume_24h
                 ]
             else:
-                url = 'https://api.bybit.com/v5/market/tickers?category=linear'
-                response = requests.get(url, timeout=10)
-                data = response.json()
+                r = requests.get('https://api.bybit.com/v5/market/tickers',
+                                 params={'category': 'linear'}, timeout=10)
+                data = r.json()
                 if data['retCode'] != 0:
                     return []
-                all_pairs = []
+                all_pairs  = []
+                ticker_map = {}
                 for item in data['result']['list']:
                     if not item['symbol'].endswith('USDT'):
                         continue
-                    vol_usd = float(item.get('volume24h', 0)) * float(item.get('lastPrice', 0))
-                    if vol_usd < self.min_volume_24h:
+                    price = float(item.get('lastPrice', 0))
+                    vol   = float(item.get('volume24h', 0)) * price
+                    if vol < self.min_volume_24h:
                         continue
-                    all_pairs.append({'item': item,
-                                      'change_pct': float(item.get('price24hPcnt', 0)) * 100})
+                    td = {'volume_24h': vol,
+                          'change_pct': float(item.get('price24hPcnt', 0)) * 100}
+                    all_pairs.append({'symbol': item['symbol'], **td})
+                    ticker_map[item['symbol']] = td
 
-            all_pairs.sort(key=lambda x: x['change_pct'], reverse=True)
-            change_pct_map   = {p['item']['symbol']: p['change_pct'] for p in all_pairs}
-            pairs_to_analyze = [p['item'] for p in all_pairs[:10]] + \
-                               [p['item'] for p in all_pairs[-10:]]
+            cfg       = (self._live_config or {}).get('ema_touch', {})
+            threshold = float(cfg.get('ema_touch_threshold', self.ema_touch_threshold))
+            tolerance = float(cfg.get('touch_tolerance', self.touch_tolerance))
+            found     = []
 
-            found = []
-            for pair in pairs_to_analyze:
-                symbol   = pair['symbol']
-                ema_data = self.fetch_klines_and_calculate_ema(symbol, interval='30', limit=250)
-                if not ema_data:
-                    continue
-                exit_threshold = self.ema_touch_threshold * 3.0
-                d = ema_data['distance_pct']
-                if d >= exit_threshold:
+            for p in all_pairs:
+                sym = p['symbol']
+                # Every TF is independent: evaluate ALL of them, not just the first hit
+                for tf in self.scan_tfs:
                     with self._lock:
-                        if symbol in self._in_zone:
-                            self._in_zone.discard(symbol)
-                            self._save_zone()
-                elif d < self.ema_touch_threshold:
-                    with self._lock:
-                        if symbol not in self._in_zone:
-                            self._in_zone.add(symbol)
-                            self._save_zone()
-                            self.mark_alerted(symbol)
-                            found.append({
-                                'symbol': symbol,
-                                'price': ema_data['current_price'],
-                                'ema60': ema_data['ema60'],
-                                'distance_pct': d,
-                                'approach': 'from above' if ema_data['current_price'] > ema_data['ema60'] else 'from below',
-                                'volume_24h': float(pair.get('volume24h', 0)),
-                                'change_pct': change_pct_map.get(symbol, 0.0),
-                            })
+                        ema = self._get_state(sym)['tf'][tf]['ema']
+                    if ema is None:
+                        if not self._seed_ema_tf(sym, tf):
+                            continue
+                    klines = self._ws_manager.get_klines(sym, tf) if self._ws_manager else []
+                    if not klines:
+                        continue
+                    fc = self._evaluate_candle(sym, tf, klines[-1], False,
+                                               ticker_map.get(sym, p), threshold, tolerance)
+                    if fc:
+                        found.append(fc)
+                if len(found) >= self.max_coins_per_alert:
+                    break
 
-            found = found[:self.max_coins_per_alert]
             if found:
                 self.send_alert(found)
-
             return found
 
         except Exception as e:
-            print(f'❌ EMA scanner error: {e}')
+            print(f'❌ EMA scan: {e}')
             return []
+
+    # ── Status helpers ────────────────────────────────────────────────────────
+
+    def get_today_alerts(self):
+        today = self._today_utc()
+        with self._lock:
+            return [sym for sym, st in self._state.items()
+                    if st.get('day') == today and st.get('alerted_today')]
+
+    def get_monitored_count(self):
+        today = self._today_utc()
+        with self._lock:
+            return sum(1 for st in self._state.values() if st.get('day') == today)
+
+    # ── send_alert ────────────────────────────────────────────────────────────
 
     def send_alert(self, coins):
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, log_alert
+            from alert_utils import send_photo, send_text, get_chart, log_alert, fmt_vol
         except ImportError:
             return
-        TF_LABEL = {'1':'1m','5':'5m','15':'15m','30':'30m','60':'1h','240':'4h','D':'1D'}
-        scan_tf_label = TF_LABEL.get('30', '30m')
+        tf_label = {'D': '1D', '240': '4h', '60': '1h', '30': '30m', '5': '5m', '1': '1m'}
         for coin in coins[:3]:
-            sym    = coin['symbol']
-            change = coin.get('change_pct', 0.0)
-            dist   = coin['distance_pct']
-            base = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
-            lines  = [
-                f'🔔 EMA Touch {scan_tf_label}',
+            sym      = coin['symbol']
+            tf       = coin['tf']
+            al       = tf_label.get(tf, tf)
+            dist     = coin.get('distance_pct', 0.0)
+            change   = coin.get('change_pct', 0.0)
+            approach = coin.get('approach', '').replace('_', ' ')
+            base     = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
+            lines = [
+                f'📡 EMA60 Proximity {al}',
                 '',
                 '------------------------------------------------',
                 f'- Coin: {sym}',
-                f'- Distanza: {dist:.2f}%',
-                f'- Vol: {change:+.2f}%',
+                f'- Var: {change:+.2f}%',
+                f'- Distanza EMA60: {dist:.2f}%',
+                f'- Direzione: {approach}',
+                f'- Volume: {fmt_vol(coin.get("volume_24h", 0))}',
                 '------------------------------------------------',
                 '',
                 f'<a href="https://www.bybit.com/trade/usdt/{sym}">- View Bybit</a>',
@@ -404,10 +477,11 @@ class EMAScanner:
                 f'<a href="{base}/chart?symbol={sym}&layout=1x1">- View Mobile</a>',
             ]
             caption = '\n'.join(lines)
-            img = get_chart(sym, interval=self.screenshot_tf, signal={'type': 'ema'})
+            img = get_chart(sym, interval=tf, signal={'type': 'ema'})
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
-            log_alert(sym, 'EMA Touch', emoji='🎯', note='EMA60', tf='30m')
-            print(f'EMA alert: {sym}')
+            log_alert(sym, 'EMA Proximity', emoji='📡',
+                      note=f'dist={dist:.2f}% tf={al}', tf=al, screenshot=img)
+            print(f'📡 EMA proximity: {sym} {al} dist={dist:.2f}% {approach}')

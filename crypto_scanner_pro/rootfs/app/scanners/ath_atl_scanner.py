@@ -187,14 +187,16 @@ class ATHATLScanner:
                 threading.Thread(target=self._send_single_alert,
                                  args=(coin, 'atl'), daemon=True).start()
 
-    def _build_caption(self, sym, label, dist_pct, change_pct):
+    def _build_caption(self, sym, label, dist_pct, change_pct, volume=0):
+        from alert_utils import fmt_vol
         base   = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
         lines  = [
             f'🔔 {label} {dist_pct:.2f}%',
             '',
             '------------------------------------------------',
             f'- Coin: {sym}',
-            f'- Vol: {change_pct:+.2f}%',
+            f'- Var: {change_pct:+.2f}%',
+            f'- Volume: {fmt_vol(volume)}',
             '------------------------------------------------',
             '',
             f'<a href="https://www.bybit.com/trade/usdt/{sym}">- View Bybit</a>',
@@ -217,7 +219,8 @@ class ATHATLScanner:
             emoji, label = '⬇️', 'ATL'
         dist   = coin.get('distance_pct', 0.0)
         change = coin.get('change_pct', 0.0)
-        caption = self._build_caption(sym, label, dist, change)
+        volume = coin.get('volume_24h_usd', 0)
+        caption = self._build_caption(sym, label, dist, change, volume)
         with self._ath_cache_lock:
             aa = self._ath_cache.get(sym, {})
         img = get_chart(sym, interval=self.screenshot_tf, signal={
@@ -229,7 +232,7 @@ class ATHATLScanner:
             send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
         else:
             send_text(self.telegram_token, self.telegram_chat_id, caption)
-        log_alert(sym, label, emoji=emoji, note=f'{dist:.2f}%')
+        log_alert(sym, label, emoji=emoji, note=f'{dist:.2f}%', screenshot=img)
         print(f'ATH/ATL alert: {sym} ({alert_type})')
 
     # ── public cache accessor ─────────────────────────────────────────────────
@@ -414,7 +417,7 @@ class ATHATLScanner:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
-            log_alert(sym, 'ATH', emoji='🏆', note=f'{dist:.2f}%')
+            log_alert(sym, 'ATH', emoji='🏆', note=f'{dist:.2f}%', screenshot=img)
 
         for coin in result.get('atl', [])[:3]:
             sym     = coin['symbol']
@@ -430,7 +433,7 @@ class ATHATLScanner:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
-            log_alert(sym, 'ATL', emoji='⬇️', note=f'{dist:.2f}%')
+            log_alert(sym, 'ATL', emoji='⬇️', note=f'{dist:.2f}%', screenshot=img)
 
     # ── status ────────────────────────────────────────────────────────────────
 

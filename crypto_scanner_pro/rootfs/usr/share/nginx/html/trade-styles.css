@@ -1,5 +1,147 @@
 /* Stili Order Book */
 
+/* ===== CVD ===== */
+.cvd-box {
+    padding: 6px 8px;
+    border-bottom: 1px solid #2A2E39;
+    background: #0d0f12;
+}
+.cvd-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    height: 22px;
+}
+.cvd-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #6B7280;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+}
+.cvd-windows {
+    display: flex;
+    gap: 2px;
+}
+.cvd-win-btn {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: none;
+    background: #1E222D;
+    color: #6B7280;
+    cursor: pointer;
+    transition: background .15s;
+}
+.cvd-win-btn.active {
+    background: #2A3550;
+    color: #60a5fa;
+    font-weight: 700;
+}
+.cvd-spark {
+    width: 100%;
+    height: 32px;
+    display: block;
+    margin-bottom: 4px;
+}
+.cvd-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #2A2E39;
+    color: #6B7280;
+    font-size: 9px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: 4px;
+    position: relative;
+    vertical-align: top;
+    flex-shrink: 0;
+}
+.cvd-help:hover { background: #374151; color: #D1D5DB; }
+.cvd-tooltip {
+    display: none;
+    position: absolute;
+    left: 18px;
+    top: -4px;
+    width: 230px;
+    background: #1a1d23;
+    border: 1px solid #374151;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 10px;
+    line-height: 1.6;
+    color: #D1D5DB;
+    z-index: 999;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+    pointer-events: none;
+    white-space: normal;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.cvd-help:hover .cvd-tooltip { display: block; }
+.cvd-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+}
+
+/* ===== PRESSURE THERMOMETER ===== */
+.pressure-box {
+    padding: 6px 8px;
+    border-bottom: 1px solid #2A2E39;
+    background: #0d0f12;
+}
+.pressure-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+.pressure-title {
+    font-size: 10px;
+    font-weight: 600;
+    color: #6B7280;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+.pressure-tf {
+    font-size: 10px;
+    color: #4B5563;
+}
+.pressure-bar-wrap {
+    display: flex;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #1a1d23;
+    margin-bottom: 4px;
+}
+.pressure-bar-short {
+    background: #ef4444;
+    transition: width 0.4s ease;
+    border-radius: 4px 0 0 4px;
+}
+.pressure-bar-long {
+    background: #10b981;
+    transition: width 0.4s ease;
+    border-radius: 0 4px 4px 0;
+}
+.pressure-labels {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
 /* === Stili per finestra standalone (solo orderbook.html) === */
 body.orderbook-page {
     margin: 0;
@@ -98,9 +240,28 @@ body.orderbook-page #app {
     font-size: 0.7rem;
     line-height: 1.2;
 }
+.book-col-header {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    padding: 3px 5px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #6B7280;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    border-bottom: 1px solid #2A2E39;
+    position: sticky;
+    top: 0;
+    background: #0B0E11;
+    z-index: 30;
+}
+.book-col-header span:first-child { text-align: left; }
+.book-col-header span:nth-child(2) { text-align: right; }
+.book-col-header span:nth-child(3) { text-align: right; }
+.book-col-header span:last-child { text-align: right; }
 .book-row {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
     padding: 1px 3px;
     position: relative;
     transition: background-color 0.1s;
@@ -423,6 +584,14 @@ body.orderbook-page #app {
 @keyframes pulse-red {
     0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
     50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+@keyframes ob-cd-blink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.25; }
+}
+.ob-cd-blink {
+    animation: ob-cd-blink 0.6s step-start infinite;
 }
 
 

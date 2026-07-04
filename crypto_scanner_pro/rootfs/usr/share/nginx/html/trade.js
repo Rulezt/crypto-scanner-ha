@@ -71,15 +71,19 @@ function getPriceFormat(price) {
 }
 
 function makeOBChart(el) {
-    return LC.createChart(el, {
+    const chart = LC.createChart(el, {
         autoSize: true,
         layout: { background: { color: '#101014' }, textColor: '#B2B5BE', fontSize: 13 },
         grid:    { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
         crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
-        rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.05, bottom: 0.05 } },
+        rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.05, bottom: 0.05 }, autoScale: true },
         timeScale: { borderVisible: false, visible: true, timeVisible: true, secondsVisible: false,
                      barSpacing: 6, rightOffset: 30 },
     });
+    el.addEventListener('wheel', () => {
+        requestAnimationFrame(() => { chart.priceScale('right').applyOptions({ autoScale: true }); });
+    }, { passive: true });
+    return chart;
 }
 
 function addSeries(chart, type, opts) {
@@ -1725,9 +1729,12 @@ function _showAgreementError(symbol) {
 
 // ── DRAWING TOOLS ─────────────────────────────────────────────────────────────
 let _obRangeActive = false, _obRangeP1 = null, _obRangeMD = null, _obRangeMM = null, _obRangeMU = null, _obRangeCM = null;
+let _obRangeHoverLine = null, _obRangeHoverMM = null, _obRangeHoverML = null;
 let _obHlineActive = false, _obHlines = [], _obHlineMD = null, _obHlineMM = null, _obHlineMU = null, _obHlineCM = null, _obHlineDragging = null;
+let _obHlineHoverLine = null, _obHlineHoverMM = null, _obHlineHoverML = null;
 let _obTrendActive = false, _obTrendlines = [], _obTrendP1 = null, _obTrendPrev = null;
 let _obTrendMD = null, _obTrendMM = null, _obTrendMU = null, _obTrendCM = null, _obTrendDrag = null, _obTrendSub = null;
+let _obTrendHoverLine = null;
 
 function _drawRangeCanvas(canvas, series, p1, p2) {
     canvas.width  = canvas.clientWidth  || canvas.parentElement?.clientWidth  || 100;
@@ -1775,6 +1782,9 @@ function toggleObRange() {
     if (_obRangeMM) { document.removeEventListener('mousemove', _obRangeMM); _obRangeMM = null; }
     if (_obRangeMU) { document.removeEventListener('mouseup', _obRangeMU); _obRangeMU = null; }
     if (_obRangeCM) { canvas.removeEventListener('contextmenu', _obRangeCM); _obRangeCM = null; }
+    if (_obRangeHoverMM) { canvas.removeEventListener('mousemove', _obRangeHoverMM); _obRangeHoverMM = null; }
+    if (_obRangeHoverML) { canvas.removeEventListener('mouseleave', _obRangeHoverML); _obRangeHoverML = null; }
+    if (_obRangeHoverLine) { try { _obCandleS.removePriceLine(_obRangeHoverLine); } catch(e) {} _obRangeHoverLine = null; }
     _obRangeP1 = null;
     try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
     canvas.style.pointerEvents = _obRangeActive ? 'auto' : 'none';
@@ -1804,6 +1814,22 @@ function toggleObRange() {
         document.addEventListener('mousemove', _obRangeMM);
         document.addEventListener('mouseup', _obRangeMU);
         canvas.addEventListener('contextmenu', _obRangeCM);
+        _obRangeHoverMM = e => {
+            if (!_obCandleS) return;
+            const rect = canvas.getBoundingClientRect();
+            const price = _obCandleS.coordinateToPrice(e.clientY - rect.top);
+            if (price == null) return;
+            if (_obRangeHoverLine) {
+                try { _obRangeHoverLine.applyOptions({ price }); } catch(ex) {}
+            } else {
+                try { _obRangeHoverLine = _obCandleS.createPriceLine({ price, color: '#f59e0b', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {}
+            }
+        };
+        _obRangeHoverML = () => {
+            if (_obRangeHoverLine) { try { _obCandleS.removePriceLine(_obRangeHoverLine); } catch(e) {} _obRangeHoverLine = null; }
+        };
+        canvas.addEventListener('mousemove', _obRangeHoverMM);
+        canvas.addEventListener('mouseleave', _obRangeHoverML);
     }
 }
 
@@ -1829,6 +1855,9 @@ function toggleObHline() {
     if (_obHlineMM) { document.removeEventListener('mousemove', _obHlineMM); _obHlineMM = null; }
     if (_obHlineMU) { document.removeEventListener('mouseup', _obHlineMU); _obHlineMU = null; }
     if (_obHlineCM) { canvas.removeEventListener('contextmenu', _obHlineCM); _obHlineCM = null; }
+    if (_obHlineHoverMM) { canvas.removeEventListener('mousemove', _obHlineHoverMM); _obHlineHoverMM = null; }
+    if (_obHlineHoverML) { canvas.removeEventListener('mouseleave', _obHlineHoverML); _obHlineHoverML = null; }
+    if (_obHlineHoverLine) { try { _obCandleS?.removePriceLine(_obHlineHoverLine); } catch(e) {} _obHlineHoverLine = null; }
     _obHlineDragging = null;
     canvas.style.pointerEvents = _obHlineActive ? 'auto' : 'none';
     canvas.style.cursor = _obHlineActive ? 'crosshair' : '';
@@ -1867,12 +1896,46 @@ function toggleObHline() {
         document.addEventListener('mousemove', _obHlineMM);
         document.addEventListener('mouseup', _obHlineMU);
         canvas.addEventListener('contextmenu', _obHlineCM);
+        _obHlineHoverMM = e => {
+            if (_obHlineDragging || !_obCandleS) return;
+            const rect = canvas.getBoundingClientRect();
+            const price = _obCandleS.coordinateToPrice(e.clientY - rect.top);
+            if (price == null) return;
+            if (_obHlineHoverLine) { try { _obHlineHoverLine.applyOptions({ price }); } catch(ex) {} }
+            else { try { _obHlineHoverLine = _obCandleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
+        };
+        _obHlineHoverML = () => {
+            if (_obHlineHoverLine) { try { _obCandleS.removePriceLine(_obHlineHoverLine); } catch(e) {} _obHlineHoverLine = null; }
+        };
+        canvas.addEventListener('mousemove', _obHlineHoverMM);
+        canvas.addEventListener('mouseleave', _obHlineHoverML);
+    } else {
+        if (_obHlineHoverLine) { try { _obCandleS?.removePriceLine(_obHlineHoverLine); } catch(e) {} _obHlineHoverLine = null; }
     }
 }
 
 const _OB_TREND_HIT = 8;
 
 function _obTrendSync(canvas) { const w = canvas.clientWidth, h = canvas.clientHeight; if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; } }
+
+function _obTrendPriceTag(ctx, x, y, price, W, H) {
+    if (y < 0 || y > H) return;
+    const label = typeof fmtPrice === 'function' ? fmtPrice(price) : price.toPrecision(6);
+    ctx.save();
+    ctx.font = '10px -apple-system,BlinkMacSystemFont,sans-serif';
+    const tw = ctx.measureText(label).width, pad = 4, bh = 14;
+    const bx = Math.min(x + 6, W - tw - pad * 2 - 2);
+    const by = y - bh / 2;
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bx, by, tw + pad * 2, bh, 2); else ctx.rect(bx, by, tw + pad * 2, bh);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, bx + pad, y);
+    ctx.restore();
+}
 
 function _obTrendDrawAll() {
     const canvas = document.getElementById('ob-trend-canvas');
@@ -1892,6 +1955,8 @@ function _obTrendDrawAll() {
             ctx.fillStyle = '#22c55e';
             ctx.beginPath(); ctx.arc(x1,y1,4,0,Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(x2,y2,4,0,Math.PI*2); ctx.fill();
+            if (y1 >= 0 && y1 <= H) _obTrendPriceTag(ctx, x1, y1, tl.p1, W, H);
+            if (y2 >= 0 && y2 <= H) _obTrendPriceTag(ctx, x2, y2, tl.p2, W, H);
         } catch(ex) {}
     }
     if (_obTrendP1 && _obTrendPrev) {
@@ -1902,6 +1967,7 @@ function _obTrendDrawAll() {
                 ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(_obTrendPrev.x, _obTrendPrev.y); ctx.stroke();
                 ctx.setLineDash([]);
                 ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(x1,y1,4,0,Math.PI*2); ctx.fill();
+                if (y1 >= 0 && y1 <= H) _obTrendPriceTag(ctx, x1, y1, _obTrendP1.p, W, H);
             }
         } catch(ex) {}
     }
@@ -1962,8 +2028,15 @@ function toggleObTrend() {
             if (t != null && p != null) _obTrendP1 = { t, p };
         } else {
             const t2 = _obChart.timeScale().coordinateToTime(px), p2 = _obCandleS.coordinateToPrice(py);
-            if (t2 != null && p2 != null) _obTrendlines.push({ t1: _obTrendP1.t, p1: _obTrendP1.p, t2, p2 });
-            _obTrendP1 = null; _obTrendPrev = null; _obTrendDrawAll();
+            if (t2 != null && p2 != null) {
+                let pl1, pl2;
+                try { pl1 = _obCandleS.createPriceLine({ price: _obTrendP1.p, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {}
+                try { pl2 = _obCandleS.createPriceLine({ price: p2,           color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {}
+                _obTrendlines.push({ t1: _obTrendP1.t, p1: _obTrendP1.p, t2, p2, pl1, pl2 });
+            }
+            _obTrendP1 = null; _obTrendPrev = null;
+            if (_obTrendHoverLine) { try { _obCandleS?.removePriceLine(_obTrendHoverLine); } catch(e) {} _obTrendHoverLine = null; }
+            _obTrendDrawAll();
         }
     };
     _obTrendMM = e => {
@@ -1971,13 +2044,20 @@ function toggleObTrend() {
         if (_obTrendDrag) {
             if (!(e.buttons & 1)) { _obTrendDrag = null; return; }
             const { tl, part } = _obTrendDrag;
-            if (part === 'p1') { const t=_obChart.timeScale().coordinateToTime(px), p=_obCandleS.coordinateToPrice(py); if(t&&p){tl.t1=t;tl.p1=p;} }
-            else if (part === 'p2') { const t=_obChart.timeScale().coordinateToTime(px), p=_obCandleS.coordinateToPrice(py); if(t&&p){tl.t2=t;tl.p2=p;} }
-            else { const dpx=px-_obTrendDrag.sx, dpy=py-_obTrendDrag.sy; const nt1=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox1+dpx), np1=_obCandleS.coordinateToPrice(_obTrendDrag.oy1+dpy); const nt2=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox2+dpx), np2=_obCandleS.coordinateToPrice(_obTrendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2;} }
+            if (part === 'p1') { const t=_obChart.timeScale().coordinateToTime(px), p=_obCandleS.coordinateToPrice(py); if(t&&p){tl.t1=t;tl.p1=p; if(tl.pl1) try{tl.pl1.applyOptions({price:p});}catch(ex){}} }
+            else if (part === 'p2') { const t=_obChart.timeScale().coordinateToTime(px), p=_obCandleS.coordinateToPrice(py); if(t&&p){tl.t2=t;tl.p2=p; if(tl.pl2) try{tl.pl2.applyOptions({price:p});}catch(ex){}} }
+            else { const dpx=px-_obTrendDrag.sx, dpy=py-_obTrendDrag.sy; const nt1=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox1+dpx), np1=_obCandleS.coordinateToPrice(_obTrendDrag.oy1+dpy); const nt2=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox2+dpx), np2=_obCandleS.coordinateToPrice(_obTrendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2; if(tl.pl1) try{tl.pl1.applyOptions({price:np1});}catch(ex){} if(tl.pl2) try{tl.pl2.applyOptions({price:np2});}catch(ex){}} }
             _obTrendDrawAll();
         } else if (_obTrendP1) {
-            _obTrendPrev = { x: px, y: py }; _obTrendDrawAll();
+            _obTrendPrev = { x: px, y: py };
+            const hp = _obCandleS?.coordinateToPrice(py);
+            if (hp != null) {
+                if (_obTrendHoverLine) { try { _obTrendHoverLine.applyOptions({ price: hp }); } catch(ex) {} }
+                else { try { _obTrendHoverLine = _obCandleS.createPriceLine({ price: hp, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
+            }
+            _obTrendDrawAll();
         } else {
+            if (_obTrendHoverLine) { try { _obCandleS?.removePriceLine(_obTrendHoverLine); } catch(e) {} _obTrendHoverLine = null; }
             const hit = _obTrendNearest(e.clientX, e.clientY);
             canvas.style.cursor = hit ? (hit.part === 'line' ? 'move' : 'crosshair') : 'crosshair';
         }
@@ -1985,9 +2065,9 @@ function toggleObTrend() {
     _obTrendMU = e => { if (e.button !== 0) return; _obTrendDrag = null; canvas.style.cursor = 'crosshair'; };
     _obTrendCM = e => {
         e.preventDefault();
-        if (_obTrendP1) { _obTrendP1 = null; _obTrendPrev = null; _obTrendDrawAll(); return; }
+        if (_obTrendP1) { _obTrendP1 = null; _obTrendPrev = null; if (_obTrendHoverLine) { try { _obCandleS?.removePriceLine(_obTrendHoverLine); } catch(e) {} _obTrendHoverLine = null; } _obTrendDrawAll(); return; }
         const hit = _obTrendNearest(e.clientX, e.clientY);
-        if (hit) { _obTrendlines = _obTrendlines.filter(tl => tl !== hit.tl); _obTrendDrawAll(); }
+        if (hit) { if(hit.tl.pl1) try{_obCandleS.removePriceLine(hit.tl.pl1);}catch(e){} if(hit.tl.pl2) try{_obCandleS.removePriceLine(hit.tl.pl2);}catch(e){} _obTrendlines = _obTrendlines.filter(tl => tl !== hit.tl); _obTrendDrawAll(); }
         else toggleObTrend();
     };
     canvas.addEventListener('mousedown', _obTrendMD);
@@ -2005,7 +2085,8 @@ createApp({
         const symbol    = ref(urlParams.get('symbol') || 'BTCUSDT');
         const isStandalone = ref(window.parent === window);
 
-        const symBase = computed(() => symbol.value.replace('USDT', ''));
+        const symBase  = computed(() => symbol.value.replace(/USDT$|USDC$|BUSD$|DAI$/, ''));
+        const symQuote = computed(() => { const m = symbol.value.match(/(USDT|USDC|BUSD|DAI)$/); return m ? m[1] : 'USDT'; });
 
         // ── ticker state ──────────────────────────────────────────────────────
         const ticker = ref({ change: null, vol: '' });
@@ -2022,13 +2103,20 @@ createApp({
         let chartPollTimer     = null;
         let _cdLastPrice = null, _cdLastOpen = null;
         let _cdRepaintTimer = null;
+        const openMtf = () => window.open('mtf?symbol=' + symbol.value, '_blank');
+
         const tfCountdowns = ref({});
         const _CD_TF_WARN = new Set(['30','60','240']);
         const _updateTfCountdowns = () => {
             const obj = {};
             for (const tf of ['1','5','30','60','240','D']) {
                 const rem = _obCdRemain(tf);
-                obj[tf] = { text: _obCdFmt(rem), color: _CD_TF_WARN.has(tf) && rem <= 300 ? '#FF9C2E' : '#F3F4F6' };
+                let warn = false, blink = false;
+                if (tf === '1')      { warn = rem <= 10; blink = warn; }
+                else if (tf === '5') { warn = rem <= 60; blink = warn; }
+                else if (tf === '30' || tf === '60') { warn = rem <= 300; blink = rem <= 60; }
+                else if (_CD_TF_WARN.has(tf)) { warn = rem <= 300; }
+                obj[tf] = { text: _obCdFmt(rem), color: warn ? '#FF9C2E' : '#F3F4F6', blink };
             }
             tfCountdowns.value = obj;
         };
@@ -2060,7 +2148,7 @@ createApp({
         const priceColor     = ref('#9ca3af');
         const loading        = ref(true);
         const error          = ref('');
-        const showImbalance  = ref(true);
+        const pressure       = ref({ score: 50, label: '—', color: '#6B7280', long: 50, short: 50 });
         const isPaused       = ref(false);
         const showBook       = ref(true);
 
@@ -2069,10 +2157,6 @@ createApp({
             bidPrice: 0, bidPercent: '0.00'
         });
 
-        const imbalance = ref({
-            ratio: 0, percent: '50.0', signal: 'neutral',
-            bidTotal: '0K', askTotal: '0K', direction: '⚪', strength: ''
-        });
 
         const asksMap = new Map();
         const bidsMap = new Map();
@@ -2114,7 +2198,8 @@ createApp({
             for (const { p, color, width, style } of EMA_CFG)
                 emaS[p] = addSeries(obChart, 'LineSeries', { ...lineBase, color, lineWidth: width + 0.5, lineStyle: style ?? 0 });
 
-            obChart.subscribeDblClick(() => { if (obKlineCount) obChart.timeScale().setVisibleLogicalRange({ from: obKlineCount - (DEFAULT_CANDLES[chartTF.value] || 80), to: obKlineCount + 3 }); });
+            const _resetChartView = () => { if (obKlineCount) { const n = DEFAULT_CANDLES[chartTF.value]||80; obChart.timeScale().setVisibleLogicalRange({ from: Math.max(0, obKlineCount-n), to: obKlineCount+3 }); } };
+            obChart.subscribeDblClick(_resetChartView);
             obChart.subscribeCrosshairMove(param => {
                 if (param && param.point && param.point.y > 0 && param.seriesData && candleS) {
                     const cd = param.seriesData.get(candleS);
@@ -2167,8 +2252,11 @@ createApp({
                         if (emaS[p]) try { emaS[p].applyOptions({ visible: false }); } catch(e) {}
                 lastConfirmedTime = klines[klines.length - 1].time;
 
-                const n = DEFAULT_CANDLES[tf] || 80;
-                obChart.timeScale().setVisibleLogicalRange({ from: klines.length - n, to: klines.length + 3 });
+                const _TF_N = {'1':120,'5':100,'15':80,'30':80,'60':80,'240':60,'D':50,'W':52,'M':24};
+                const _rn = _TF_N[tf] || 80;
+                const _applyRange = () => { if (obChart) obChart.timeScale().setVisibleLogicalRange({ from: Math.max(0, obKlineCount - _rn), to: obKlineCount + 3 }); };
+                _applyRange();
+                requestAnimationFrame(_applyRange);
 
                 // Day / Prev H/L lines
                 _clearDayLines();
@@ -2365,28 +2453,96 @@ createApp({
                 }
             }
 
-            displayAsks.value = [...asksArray].reverse().map(([price, amount]) => ({
+            const asksReversed = [...asksArray].reverse();
+            let cumAsk = 0;
+            const askCum = new Array(asksReversed.length);
+            for (let i = asksReversed.length - 1; i >= 0; i--) {
+                cumAsk += asksReversed[i][0] * asksReversed[i][1];
+                askCum[i] = cumAsk;
+            }
+            displayAsks.value = asksReversed.map(([price, amount], i) => ({
                 price:        formatPrice(price),
                 rawPrice:     price,
-                amount:       amount > 0 ? amount.toFixed(4) : '-',
-                total:        amount > 0 ? (price * amount).toFixed(2) : '-',
+                amount:       amount > 0 ? fmtQty(amount) : '-',
+                total:        amount > 0 ? fmtTotal(price * amount) : '-',
+                cumTotal:     amount > 0 ? fmtTotal(askCum[i]) : '-',
                 depthPercent: amount > 0 ? (amount / maxAsk) * 100 : 0,
                 isMaxLevel:   amount === maxAsk && amount > 0,
                 isEmpty:      amount === 0,
             }));
 
-            displayBids.value = bidsArray.map(([price, amount]) => ({
-                price:        formatPrice(price),
-                rawPrice:     price,
-                amount:       amount.toFixed(4),
-                total:        (price * amount).toFixed(2),
-                depthPercent: (amount / maxBid) * 100,
-                isMaxLevel:   amount === maxBid,
-            }));
+            let cumBid = 0;
+            displayBids.value = bidsArray.map(([price, amount]) => {
+                cumBid += price * amount;
+                return {
+                    price:        formatPrice(price),
+                    rawPrice:     price,
+                    amount:       fmtQty(amount),
+                    total:        fmtTotal(price * amount),
+                    cumTotal:     fmtTotal(cumBid),
+                    depthPercent: (amount / maxBid) * 100,
+                    isMaxLevel:   amount === maxBid,
+                };
+            });
 
             updateObLines();
+            calcPressure(asksArray, bidsArray, maxAsk, maxBid);
         };
 
+        const calcPressure = (asksArray, bidsArray, maxAsk, maxBid) => {
+            const mid = _obLivePrice || 0;
+            if (!mid || !asksArray.length || !bidsArray.length) return;
+
+            // 1. OBI — volume imbalance (peso 40%)
+            const bidVol = bidsArray.reduce((s, [, a]) => s + a, 0);
+            const askVol = asksArray.reduce((s, [, a]) => s + a, 0);
+            const obi = (bidVol - askVol) / (bidVol + askVol); // -1..+1
+
+            // 2. Depth ratio — USDT cumulativo bid vs ask (peso 30%)
+            const bidUsdt = bidsArray.reduce((s, [p, a]) => s + p * a, 0);
+            const askUsdt = asksArray.reduce((s, [p, a]) => s + p * a, 0);
+            const depthRatio = (bidUsdt - askUsdt) / (bidUsdt + askUsdt); // -1..+1
+
+            // 3. Wall factor — wall più grande: distanza e lato (peso 20%)
+            const maxBidLevel = bidsArray.find(([, a]) => a === maxBid);
+            const maxAskLevel = asksArray.find(([, a]) => a === maxAsk);
+            const bidWallDist = maxBidLevel ? (mid - maxBidLevel[0]) / mid : 0.05;
+            const askWallDist = maxAskLevel ? (maxAskLevel[0] - mid) / mid : 0.05;
+            const wallBias = maxBid * bidWallDist > maxAsk * askWallDist ? 1 : -1;
+            const wallStrength = Math.min(Math.abs(maxBid - maxAsk) / (maxBid + maxAsk), 1);
+            const wallScore = wallBias * wallStrength; // -1..+1
+
+            // 4. OHLC trend — bias dal TF selezionato (peso 10%)
+            const tfBias = (_cdLastPrice != null && _cdLastOpen != null)
+                ? Math.max(-1, Math.min(1, (_cdLastPrice - _cdLastOpen) / (_cdLastOpen * 0.02)))
+                : 0;
+
+            // Pesi
+            const raw = obi * 0.40 + depthRatio * 0.30 + wallScore * 0.20 + tfBias * 0.10;
+            const score = Math.round(((raw + 1) / 2) * 100); // 0-100
+
+            const long  = score;
+            const short = 100 - score;
+            let label, color;
+            if (score >= 65)      { label = 'LONG';    color = '#10b981'; }
+            else if (score <= 35) { label = 'SHORT';   color = '#ef4444'; }
+            else                  { label = 'NEUTRO';  color = '#f59e0b'; }
+
+            const fmtK = v => v >= 1000 ? (v / 1000).toFixed(1) + 'K' : v.toFixed(0);
+            pressure.value = { score, label, color, long, short,
+                bidK: fmtK(bidUsdt), askK: fmtK(askUsdt) };
+        };
+
+        const fmtQty = (q) => {
+            if (q >= 1000) return Math.round(q).toLocaleString('en-US');
+            if (q >= 1)    return parseFloat(q.toFixed(2)).toString();
+            return parseFloat(q.toFixed(4)).toString();
+        };
+        const fmtTotal = (t) => {
+            if (t >= 1000) return (t / 1000).toFixed(1) + 'K';
+            if (t >= 1)    return parseFloat(t.toFixed(2)).toString();
+            return parseFloat(t.toFixed(4)).toString();
+        };
         const formatPrice = (price) => {
             if (price >= 10000)    return price.toFixed(1);
             if (price >= 1000)     return price.toFixed(2);
@@ -2417,6 +2573,7 @@ createApp({
                     processOrderBook(data.result, true);
                     loading.value = false;
                     if (!bookWS) connectBookWS();
+                    if (!tradeWS) connectTradeWS();
                 } else {
                     throw new Error('Failed to fetch order book');
                 }
@@ -2459,34 +2616,6 @@ createApp({
             }
 
             updateDisplay();
-            calculateImbalance();
-        };
-
-        const calculateImbalance = () => {
-            const levels = parseInt(displayLevels.value);
-            const tick   = parseFloat(grouping.value);
-            let asksGrouped = tick > 0 ? groupLevels(asksMap, tick, true)  : asksMap;
-            let bidsGrouped = tick > 0 ? groupLevels(bidsMap, tick, false) : bidsMap;
-            const asksArray = Array.from(asksGrouped.entries()).sort((a, b) => a[0] - b[0]).slice(0, levels);
-            const bidsArray = Array.from(bidsGrouped.entries()).sort((a, b) => b[0] - a[0]).slice(0, levels);
-            const totalAsk  = asksArray.reduce((sum, [p, a]) => sum + (p * a), 0);
-            const totalBid  = bidsArray.reduce((sum, [p, a]) => sum + (p * a), 0);
-            const total     = totalAsk + totalBid;
-            if (total === 0) return;
-            const bidPercent = (totalBid / total) * 100;
-            const ratio      = totalBid / totalAsk;
-            let signal = 'neutral', direction = '⚪', strength = '';
-            if      (ratio > 2.0)  { signal = 'strong-buy';  direction = '🟢🟢🟢'; strength = 'STRONG BUY';  }
-            else if (ratio > 1.5)  { signal = 'buy';         direction = '🟢🟢';   strength = 'BUY';         }
-            else if (ratio > 1.2)  { signal = 'weak-buy';    direction = '🟢';     strength = 'Weak Buy';    }
-            else if (ratio < 0.5)  { signal = 'strong-sell'; direction = '🔴🔴🔴'; strength = 'STRONG SELL'; }
-            else if (ratio < 0.67) { signal = 'sell';        direction = '🔴🔴';   strength = 'SELL';        }
-            else if (ratio < 0.83) { signal = 'weak-sell';   direction = '🔴';     strength = 'Weak Sell';   }
-            imbalance.value = {
-                ratio: ratio.toFixed(2), percent: bidPercent.toFixed(1),
-                signal, bidTotal: (totalBid / 1000).toFixed(1) + 'K',
-                askTotal: (totalAsk / 1000).toFixed(1) + 'K', direction, strength,
-            };
         };
 
         const setWSDot = (state) => {
@@ -2494,6 +2623,82 @@ createApp({
             const d = document.getElementById('ws-dot');
             if (d) { d.style.background = colors[state] || colors.off; d.style.animation = state === 'live' ? 'pulse 2s cubic-bezier(.4,0,.6,1) infinite' : ''; }
         };
+
+        // ============================
+        //  CVD — Cumulative Volume Delta
+        // ============================
+        let tradeWS = null, tradeReconnTimer = null;
+        const cvdWindow  = ref('60');   // minuti finestra
+        const cvdBuffer  = [];          // { ts, delta }
+        const cvdData    = ref({ score: 50, pct: 0, dir: '—', color: '#6B7280', spark: [] });
+        const CVD_WINDOWS = [
+            { label: '1m',  value: '1'    },
+            { label: '5m',  value: '5'    },
+            { label: '30m', value: '30'   },
+            { label: '1h',  value: '60'   },
+            { label: '4h',  value: '240'  },
+            { label: 'D',   value: '1440' },
+        ];
+
+        const cvdTrim = () => {
+            const cutoff = Date.now() - parseInt(cvdWindow.value) * 60000;
+            while (cvdBuffer.length && cvdBuffer[0].ts < cutoff) cvdBuffer.shift();
+        };
+
+        const cvdCalc = () => {
+            cvdTrim();
+            if (!cvdBuffer.length) return;
+            const windowMs = parseInt(cvdWindow.value) * 60000;
+            const now = Date.now();
+
+            // Sparkline: divide window in 30 buckets
+            const buckets = 30;
+            const bucketMs = windowMs / buckets;
+            const bucketArr = new Array(buckets).fill(0);
+            for (const { ts, delta } of cvdBuffer) {
+                const idx = Math.min(buckets - 1, Math.floor((ts - (now - windowMs)) / bucketMs));
+                if (idx >= 0) bucketArr[idx] += delta;
+            }
+            // Cumulative sum for sparkline
+            const spark = [];
+            let cum = 0;
+            for (const v of bucketArr) { cum += v; spark.push(cum); }
+
+            const total = cvdBuffer.reduce((s, { delta }) => s + delta, 0);
+            const totalVol = cvdBuffer.reduce((s, { delta }) => s + Math.abs(delta), 0);
+            const pct = totalVol > 0 ? (total / totalVol) * 100 : 0;
+            const score = Math.round(((pct + 100) / 200) * 100); // 0-100
+
+            let dir, color;
+            if (pct > 10)       { dir = '▲ LONG';  color = '#10b981'; }
+            else if (pct < -10) { dir = '▼ SHORT'; color = '#ef4444'; }
+            else                { dir = '● NEUTRO'; color = '#f59e0b'; }
+
+            cvdData.value = { score, pct: pct.toFixed(1), dir, color, spark };
+        };
+
+        const connectTradeWS = () => {
+            if (tradeWS) { tradeWS.close(); tradeWS = null; }
+            tradeWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+            tradeWS.onopen = () => {
+                tradeWS.send(JSON.stringify({ op: 'subscribe', args: [`publicTrade.${symbol.value}`] }));
+            };
+            tradeWS.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (!data.data || !Array.isArray(data.data)) return;
+                    for (const t of data.data) {
+                        const delta = t.S === 'Buy' ? parseFloat(t.v) : -parseFloat(t.v);
+                        cvdBuffer.push({ ts: t.T, delta });
+                    }
+                    cvdCalc();
+                } catch(e) {}
+            };
+            tradeWS.onerror = () => {};
+            tradeWS.onclose = () => { tradeReconnTimer = setTimeout(connectTradeWS, 4000); };
+        };
+
+        watch(cvdWindow, () => { cvdBuffer.length = 0; cvdCalc(); });
 
         const connectBookWS = () => {
             setWSDot('connecting');
@@ -2596,8 +2801,10 @@ createApp({
         //  CLEANUP
         // ============================
         const cleanup = () => {
-            if (bookWS)        { bookWS.close(); bookWS = null; }
-            if (reconnectTimer)  clearTimeout(reconnectTimer);
+            if (bookWS)          { bookWS.close(); bookWS = null; }
+            if (tradeWS)         { tradeWS.close(); tradeWS = null; }
+            if (reconnectTimer)    clearTimeout(reconnectTimer);
+            if (tradeReconnTimer)  clearTimeout(tradeReconnTimer);
             stopChartPolling();
             _clearDayLines();
             clearObLines();
@@ -2691,7 +2898,7 @@ createApp({
         }
 
         onMounted(() => {
-            document.title = `${symbol.value} Order Book`;
+            document.title = `${symbol.value} Trade`;
             fetchOrderBook();
             if (isStandalone.value) {
                 fetchTicker();
@@ -2734,20 +2941,21 @@ createApp({
 
         return {
             t,
-            symbol, symBase, isStandalone,
+            symbol, symBase, symQuote, isStandalone,
             ticker, TF_OPTIONS, chartTF, ohlc, chartContainerEl,
             displayLevels, grouping, groupingOptions,
-            displayAsks, displayBids,
+            displayAsks, displayBids, pressure,
+            cvdWindow, cvdData, CVD_WINDOWS,
             currentPrice, spread, priceColor,
             loading, error,
-            imbalance, showImbalance, isPaused,
+            isPaused,
             maxLevelDistance, showBook,
             fetchOrderBook, updateDisplay, changeChartTF,
             setHoverLine, clearHoverLine,
             showObLines, toggleObLines,
             nakedChart, toggleNakedChart,
             showTradePanel, toggleBookPanel,
-            tfCountdowns,
+            tfCountdowns, openMtf,
         };
     }
 }).mount('#app');

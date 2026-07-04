@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOT - Crypto Scanner Pro</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxsaW5lIHgxPSIxIiB5MT0iOSIgeDI9IjMxIiB5Mj0iOSIgc3Ryb2tlPSIjMWEzYTRhIiBzdHJva2Utd2lkdGg9IjAuNCIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMTciIHgyPSIzMSIgeTI9IjE3IiBzdHJva2U9IiMxYTNhNGEiIHN0cm9rZS13aWR0aD0iMC40Ii8+CiAgPGxpbmUgeDE9IjEiIHkxPSIyNSIgeDI9IjMxIiB5Mj0iMjUiIHN0cm9rZT0iIzFhM2E0YSIgc3Ryb2tlLXdpZHRoPSIwLjQiLz4KICA8bGluZSB4MT0iNCIgeTE9IjciIHgyPSI0IiB5Mj0iMjkiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyLjUiIHk9IjE0IiB3aWR0aD0iMyIgaGVpZ2h0PSI5IiBmaWxsPSIjMDBDOEZGIi8+CiAgPGxpbmUgeDE9IjEyIiB5MT0iMyIgeDI9IjEyIiB5Mj0iMjYiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIxMC41IiB5PSI3IiB3aWR0aD0iMyIgaGVpZ2h0PSIxMyIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIyMCIgeTE9IjYiIHgyPSIyMCIgeTI9IjI4IiBzdHJva2U9IiMwMEM4RkYiIHN0cm9rZS13aWR0aD0iMC44Ii8+CiAgPHJlY3QgeD0iMTguNSIgeT0iMTMiIHdpZHRoPSIzIiBoZWlnaHQ9IjkiIGZpbGw9IiMwMEM4RkYiLz4KICA8bGluZSB4MT0iMjgiIHkxPSIxMCIgeDI9IjI4IiB5Mj0iMzAiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyNi41IiB5PSIxNiIgd2lkdGg9IjMiIGhlaWdodD0iOCIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMzAiIHgyPSIzMCIgeTI9IjIiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIxLjIiLz4KICA8cG9seWdvbiBwb2ludHM9IjMwLDIgMjQsNS41IDI2LjUsOC41IiBmaWxsPSIjMDBDOEZGIi8+Cjwvc3ZnPgo=">
+    <script src="/i18n.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
+    <style>#tv-attr-logo{display:none!important}</style>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0B0E11; color: #f0f0f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+        .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 16px; background: #161A1E; border-bottom: 1px solid #2a2a2a; position: sticky; top: 0; z-index: 100; }
+        .header-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .header h1 { font-size: 1rem; color: #f9fafb; white-space: nowrap; }
+        select, input[type="number"], input[type="text"] { background: #1f2937; color: #f9fafb; border: 1px solid #374151; border-radius: 4px; padding: 5px 8px; font-size: 0.8rem; }
+        input[type="number"] { width: 85px; }
+        label { font-size: 0.75rem; color: #9ca3af; white-space: nowrap; }
+        .btn { background: #374151; color: #f9fafb; border: 1px solid #4b5563; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; white-space: nowrap; transition: background 0.15s; text-decoration: none; }
+        .btn:hover { background: #4b5563; }
+        .btn:disabled { opacity: .45; cursor: not-allowed; }
+        .btn.primary { background: #d97706; border-color: #d97706; }
+        .btn.primary:hover { background: #b45309; }
+        .btn.danger { background: #7f1d1d; border-color: #991b1b; }
+        .btn.danger:hover { background: #991b1b; }
+        .live-banner { display:flex; align-items:center; justify-content:center; gap:8px; padding:6px; font-size:0.78rem; font-weight:700; letter-spacing:.04em; color:#fff; background:#7f1d1d; animation: pulse-bg 1.4s ease-in-out infinite; }
+        @keyframes pulse-bg { 0%,100% { background:#7f1d1d; } 50% { background:#b91c1c; } }
+        .main-layout { display: flex; align-items: flex-start; }
+        .left-col { flex: 1; min-width: 0; padding: 14px 16px; }
+        .toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom: 12px; }
+        .tabs { display:flex; gap:4px; margin-bottom: 12px; }
+        .tab-btn { background:transparent; border:1px solid #374151; color:#9ca3af; padding:6px 14px; border-radius:6px 6px 0 0; cursor:pointer; font-size:0.8rem; }
+        .tab-btn.active { background:#1f2937; color:#f9fafb; border-color:#d97706; border-bottom-color:#1f2937; }
+        .chart-box { width: 100%; height: 420px; background:#0B0E11; border:1px solid #2A2E39; border-radius:6px; position:relative; }
+        .btn.active { background:#78350f; border-color:#d97706; color:#fbbf24; }
+        .group { border: 1px solid #2A2E39; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+        .group-title { font-size: 0.72rem; font-weight:700; color:#d97706; text-transform:uppercase; letter-spacing:.04em; margin-bottom: 8px; }
+        .row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:7px; }
+        .row:last-child { margin-bottom:0; }
+        .status-pill { font-size:0.72rem; padding:3px 10px; border-radius:12px; font-weight:600; }
+        .status-pill.on { background: rgba(16,185,129,0.18); color:#10b981; }
+        .status-pill.off { background: rgba(107,114,128,0.18); color:#9ca3af; }
+        .stat-cards { display:flex; gap:10px; flex-wrap:wrap; margin: 10px 0 14px; }
+        .stat-card { background:#161A1E; border:1px solid #2A2E39; border-radius:8px; padding:10px 14px; min-width:120px; }
+        .stat-card .lbl { font-size:0.65rem; color:#6b7280; text-transform:uppercase; letter-spacing:.03em; }
+        .stat-card .val { font-size:1.05rem; font-weight:700; margin-top:2px; }
+        .positive { color:#10b981; }
+        .negative { color:#ef4444; }
+        .muted { color:#6b7280; }
+        table.trade-table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+        table.trade-table th { text-align:left; padding:6px 10px; color:#6b7280; font-size:0.66rem; text-transform:uppercase; border-bottom:1px solid #2A2E39; }
+        table.trade-table td { padding:6px 10px; border-bottom:1px solid rgba(42,46,57,0.4); }
+        .signal-item { padding:7px 0; border-bottom:1px solid rgba(42,46,57,0.4); font-size:0.78rem; }
+        .signal-item .t { color:#6b7280; font-size:0.68rem; }
+        .confirm-modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:9000; display:flex; align-items:center; justify-content:center; }
+        .confirm-modal { background:#161A1E; border:1px solid #7f1d1d; border-radius:10px; padding:22px; width:360px; }
+        .header-right { display:flex; align-items:center; gap:8px; }
+        .icon-btn { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:6px; background:transparent; border:1px solid #374151; color:#9ca3af; cursor:pointer; transition:background 0.15s, color 0.15s; }
+        .icon-btn:hover { background:#1f2937; color:#f9fafb; }
+        .settings-modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:9000; display:flex; align-items:flex-start; justify-content:center; overflow-y:auto; padding:60px 16px; }
+        .settings-modal { background:#161A1E; border:1px solid #2A2E39; border-radius:10px; padding:18px; width:380px; max-width:100%; }
+        .settings-modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+        .settings-modal-header h2 { font-size:0.9rem; color:#f9fafb; }
+    </style>
+</head>
+<body>
+<div id="app">
+
+    <div v-if="status.mode==='execution' && status.running" class="live-banner">
+        ⚠ LIVE — DENARO REALE ⚠
+    </div>
+
+    <div class="header">
+        <div class="header-left">
+            <a href="/" style="display:inline-flex;align-items:center;color:#6b7280;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M19 12H5"/><path d="m12 5-7 7 7 7"/></svg>
+            </a>
+            <h1 style="color:#d97706">🤖 BOT — Cross EMA Vincente</h1>
+            <span class="status-pill" :class="status.running ? 'on' : 'off'">{{ status.running ? 'ATTIVO' : 'FERMO' }}</span>
+        </div>
+        <div class="header-right">
+            <button class="icon-btn" title="Impostazioni" @click="showConfigModal = true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="left-col">
+            <div class="toolbar">
+                <button class="btn" @click="openSymbolSearch" :disabled="status.running">
+                    {{ cfg.symbol || 'Scegli simbolo…' }}
+                </button>
+                <select v-model="cfg.tf" :disabled="status.running">
+                    <option v-for="t in TF_LIST" :key="t" :value="t">{{ TF_LABEL[t] }}</option>
+                </select>
+                <button class="btn primary" @click="saveConfig" :disabled="status.running">Salva Config</button>
+                <span style="flex:1"></span>
+                <button v-if="!status.running" class="btn primary" @click="startBot" :disabled="!cfg.symbol">▶ Start</button>
+                <template v-else>
+                    <button class="btn" @click="stopBot(false)">■ Stop</button>
+                    <button class="btn danger" @click="stopBot(true)">■ Stop &amp; Chiudi Posizione</button>
+                </template>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn" :class="tab==='live'?'active':''" @click="tab='live'">Live</button>
+                <button class="tab-btn" :class="tab==='backtest'?'active':''" @click="tab='backtest'">Backtest</button>
+            </div>
+
+            <!-- LIVE TAB -->
+            <div v-if="tab==='live'" style="margin-top:14px;">
+                <div id="chart-box" class="chart-box"></div>
+                <div class="stat-cards">
+                    <div class="stat-card">
+                        <div class="lbl">Modalità</div>
+                        <div class="val" :style="{color: status.mode==='execution' ? '#ef4444' : '#9ca3af'}">
+                            {{ status.mode === 'execution' ? 'Esecuzione Reale' : 'Solo Segnale' }}
+                        </div>
+                    </div>
+                    <div class="stat-card" v-if="status.position">
+                        <div class="lbl">Posizione</div>
+                        <div class="val" :class="status.position.position==='long' ? 'positive' : 'negative'">
+                            {{ status.position.position === 'long' ? 'LONG' : 'SHORT' }}
+                        </div>
+                    </div>
+                    <div class="stat-card" v-if="status.position">
+                        <div class="lbl">Entrata</div>
+                        <div class="val">{{ fmtPrice(status.position.entry_price) }}</div>
+                    </div>
+                    <div class="stat-card" v-if="status.position">
+                        <div class="lbl">SL / TP</div>
+                        <div class="val" style="font-size:0.85rem">
+                            <span class="negative">{{ fmtPrice(status.position.stop) }}</span> /
+                            <span class="positive">{{ fmtPrice(status.position.take) }}</span>
+                        </div>
+                    </div>
+                    <div class="stat-card" v-if="status.exchange_position">
+                        <div class="lbl">PnL non realizzato</div>
+                        <div class="val" :class="(status.exchange_position.unrealizedPnl||0)>=0 ? 'positive':'negative'">
+                            {{ status.exchange_position.unrealizedPnl }}
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="font-size:0.8rem;color:#9ca3af;margin:14px 0 8px;">Feed segnali</h3>
+                <div v-if="signals.length===0" class="muted" style="font-size:0.8rem;">Nessun segnale ancora.</div>
+                <div v-for="s in [...signals].reverse()" :key="s.time+s.type" class="signal-item">
+                    <div class="t">{{ fmtTime(s.time) }} — {{ s.mode==='execution' ? 'Esecuzione' : 'Segnale' }}</div>
+                    <span v-if="s.type==='entry'">
+                        Entrata <b :class="s.side==='long'?'positive':'negative'">{{ s.side==='long'?'LONG':'SHORT' }}</b>
+                        @ {{ fmtPrice(s.price) }} — SL {{ fmtPrice(s.stop) }} / TP {{ fmtPrice(s.take) }}
+                    </span>
+                    <span v-else>
+                        Uscita ({{ REASON_LABEL[s.reason] || s.reason }}) @ {{ fmtPrice(s.price) }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- BACKTEST TAB -->
+            <div v-if="tab==='backtest'" style="margin-top:14px;">
+                <div class="toolbar">
+                    <label>Capitale iniziale (USDT)</label>
+                    <input type="number" v-model.number="btCapital" min="1" step="10">
+                    <label>Storico (giorni)</label>
+                    <input type="number" v-model.number="btLookbackDays" min="1" max="1095" step="1" title="Fino a 1095 giorni (3 anni) — con TF fini (1m/5m/15m) il recupero di storici lunghi può richiedere più tempo">
+                    <button class="btn primary" @click="runBacktest" :disabled="!cfg.symbol || btRunning">
+                        {{ btRunning ? 'Esecuzione… (può richiedere qualche secondo con storici lunghi)' : 'Esegui Backtest' }}
+                    </button>
+                    <button class="btn" :class="{active: btShowBB}" @click="toggleBB" :disabled="!btResult">BB</button>
+                    <button class="btn" :class="{active: btRangeActive}" @click="toggleBtRange" :disabled="!btResult">Range Prezzo</button>
+                </div>
+
+                <div v-if="btResult">
+                    <div class="stat-cards">
+                        <div class="stat-card">
+                            <div class="lbl">Net Profit</div>
+                            <div class="val" :class="btResult.stats.net_profit>=0?'positive':'negative'">
+                                {{ btResult.stats.net_profit }} ({{ btResult.stats.net_profit_pct }}%)
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="lbl">Trade totali</div>
+                            <div class="val">{{ btResult.stats.total_trades }}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="lbl">Win rate</div>
+                            <div class="val">{{ btResult.stats.win_rate }}%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="lbl">Profit factor</div>
+                            <div class="val">{{ btResult.stats.profit_factor ?? '∞' }}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="lbl">Max Drawdown</div>
+                            <div class="val negative">{{ btResult.stats.max_drawdown_pct }}%</div>
+                        </div>
+                    </div>
+
+                    <h3 style="font-size:0.8rem;color:#9ca3af;margin:4px 0 8px;">Grafico trade (▲ entrata / ▼ uscita)</h3>
+                    <div id="bt-price-chart-box" class="chart-box" style="margin-bottom:14px;"></div>
+
+                    <h3 style="font-size:0.8rem;color:#9ca3af;margin:4px 0 8px;">Equity curve</h3>
+                    <div id="equity-chart-box" class="chart-box" style="height:180px;margin-bottom:14px;"></div>
+
+                    <table class="trade-table">
+                        <thead><tr>
+                            <th>#</th><th>Lato</th><th>Entrata</th><th>Prezzo</th>
+                            <th>Uscita</th><th>Prezzo</th><th>Motivo</th><th>PnL %</th>
+                        </tr></thead>
+                        <tbody>
+                            <tr v-for="(tr,i) in btResult.trades" :key="i">
+                                <td>{{ i+1 }}</td>
+                                <td :class="tr.side==='long'?'positive':'negative'" style="cursor:pointer;text-decoration:underline dotted;" title="Vai all'operazione sul grafico" @click="focusTrade(tr)">{{ tr.side==='long'?'LONG':'SHORT' }}</td>
+                                <td class="muted">{{ fmtTime(tr.entry_time) }}</td>
+                                <td>{{ fmtPrice(tr.entry_price) }}</td>
+                                <td class="muted">{{ fmtTime(tr.exit_time) }}</td>
+                                <td>{{ fmtPrice(tr.exit_price) }}</td>
+                                <td class="muted">{{ REASON_LABEL[tr.exit_reason] || tr.exit_reason }}</td>
+                                <td :class="tr.pnl_pct>=0?'positive':'negative'">{{ tr.pnl_pct>=0?'+':'' }}{{ tr.pnl_pct }}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- CONFIG POPUP -->
+    <div v-if="showConfigModal" class="settings-modal-bg" @click.self="showConfigModal = false">
+        <div class="settings-modal">
+            <div class="settings-modal-header">
+                <h2>Impostazioni BOT</h2>
+                <button class="icon-btn" title="Chiudi" @click="showConfigModal = false">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <div class="group">
+                <div class="group-title">SMA Lenta</div>
+                <div class="row"><label>Periodo</label><input type="number" v-model.number="cfg.sma_lenta_period" min="1" :disabled="status.running"></div>
+                <div class="row"><label>Sorgente</label>
+                    <select v-model="cfg.sma_lenta_source" :disabled="status.running">
+                        <option v-for="s in SOURCES" :key="s" :value="s">{{ s }}</option>
+                    </select>
+                </div>
+                <div class="row"><label>Mostra su grafico</label><input type="checkbox" v-model="showSmaLenta"></div>
+            </div>
+            <div class="group">
+                <div class="group-title">SMA Veloce</div>
+                <div class="row"><label>Periodo</label><input type="number" v-model.number="cfg.sma_veloce_period" min="1" :disabled="status.running"></div>
+                <div class="row"><label>Sorgente</label>
+                    <select v-model="cfg.sma_veloce_source" :disabled="status.running">
+                        <option v-for="s in SOURCES" :key="s" :value="s">{{ s }}</option>
+                    </select>
+                </div>
+                <div class="row"><label>Mostra su grafico</label><input type="checkbox" v-model="showSmaVeloce"></div>
+            </div>
+            <div class="group">
+                <div class="group-title">SMA Filtro</div>
+                <div class="row"><label>Attiva filtro</label><input type="checkbox" v-model="cfg.filter_enabled" :disabled="status.running"></div>
+                <div class="row"><label>Periodo</label><input type="number" v-model.number="cfg.filter_period" min="1" :disabled="status.running || !cfg.filter_enabled"></div>
+                <div class="row"><label>Sorgente</label>
+                    <select v-model="cfg.filter_source" :disabled="status.running || !cfg.filter_enabled">
+                        <option v-for="s in SOURCES" :key="s" :value="s">{{ s }}</option>
+                    </select>
+                </div>
+                <div class="row"><label>Mostra su grafico</label><input type="checkbox" v-model="showSmaFiltro" :disabled="!cfg.filter_enabled"></div>
+            </div>
+            <div class="group">
+                <div class="group-title">Filtro Candele</div>
+                <div class="row"><label>Chiudi se prime 2 candele vanno contro</label>
+                    <input type="checkbox" v-model="cfg.candle_filter_enabled" :disabled="status.running">
+                </div>
+            </div>
+            <div class="group">
+                <div class="group-title">SL &amp; TP</div>
+                <div class="row"><label>Stop Loss %</label><input type="number" v-model.number="cfg.sl_pct" min="0.01" step="0.01" :disabled="status.running"></div>
+                <div class="row"><label>Take Profit %</label><input type="number" v-model.number="cfg.tp_pct" min="0.01" step="0.01" :disabled="status.running"></div>
+            </div>
+            <div class="group">
+                <div class="group-title">Modalità</div>
+                <div class="row">
+                    <label><input type="radio" value="signal" v-model="modeChoice" :disabled="status.running" @change="onModeChoice"> Solo Segnale</label>
+                </div>
+                <div class="row">
+                    <label><input type="radio" value="execution" v-model="modeChoice" :disabled="status.running" @change="onModeChoice"> Esecuzione Reale</label>
+                </div>
+            </div>
+            <div class="group">
+                <div class="group-title">Position Sizing</div>
+                <div class="row">
+                    <label><input type="radio" value="fixed" v-model="cfg.sizing.type" :disabled="status.running"> Importo fisso</label>
+                    <input type="number" v-model.number="cfg.sizing.value" min="1" step="1" :disabled="status.running || cfg.sizing.type!=='fixed'" v-if="cfg.sizing.type==='fixed'">
+                </div>
+                <div class="row">
+                    <label><input type="radio" value="pct_balance" v-model="cfg.sizing.type" :disabled="status.running"> % Saldo</label>
+                    <input type="number" v-model.number="cfg.sizing.value" min="0.1" step="0.1" :disabled="status.running || cfg.sizing.type!=='pct_balance'" v-if="cfg.sizing.type==='pct_balance'">
+                </div>
+                <div class="row"><label>Leverage</label><input type="number" v-model.number="cfg.leverage" min="1" max="100" :disabled="status.running"></div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
+                <button class="btn primary" @click="saveConfig(); showConfigModal = false" :disabled="status.running">Salva Config</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONFERMA ESECUZIONE REALE -->
+    <div v-if="showExecConfirm" class="confirm-modal-bg" @click.self="cancelExecConfirm">
+        <div class="confirm-modal">
+            <div style="font-size:0.95rem;font-weight:700;color:#ef4444;margin-bottom:12px;">⚠ Attivazione Esecuzione Reale</div>
+            <p style="font-size:0.8rem;color:#d1d5db;line-height:1.6;margin-bottom:14px;">
+                In questa modalità il bot piazzerà <b>ordini reali</b> su Bybit usando la tua API key,
+                con denaro vero. Assicurati che i parametri di sizing e leverage siano corretti prima di avviare.
+            </p>
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;color:#e5e7eb;margin-bottom:16px;">
+                <input type="checkbox" v-model="execConfirmChecked">
+                Ho capito e confermo: verranno piazzati ordini reali con denaro vero.
+            </label>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button class="btn" @click="cancelExecConfirm">Annulla</button>
+                <button class="btn danger" :disabled="!execConfirmChecked" @click="confirmExecMode">Conferma</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ===== CRYPTO SEARCH OVERLAY (vanilla, pattern chart.html) ===== -->
+<div id="csearch-overlay" onclick="closeChartSearch()"
+     style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.65);backdrop-filter:blur(2px);"></div>
+<div id="csearch-modal"
+     style="display:none;position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:9501;width:100%;max-width:480px;padding:0 16px;">
+    <div style="background:#161A1E;border:1px solid #2A2E39;border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #2A2E39;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#6B7280" stroke-width="2.5" style="flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input id="csearch-input" type="text" autocomplete="off" spellcheck="false"
+                placeholder="Cerca coin Bybit… (es. BTC, ETH, SOL)"
+                style="flex:1;background:transparent;border:none;outline:none;color:#E5E7EB;font-size:13px;font-family:inherit;"
+                oninput="onChartSearchInput(this.value)"
+                onkeydown="onChartSearchKey(event)">
+            <kbd onclick="closeChartSearch()"
+                 style="font-size:10px;color:#6B7280;background:#1E222D;padding:2px 6px;border-radius:4px;border:1px solid #2A2E39;cursor:pointer;font-family:inherit;">ESC</kbd>
+        </div>
+        <div id="csearch-results" style="max-height:320px;overflow-y:auto;">
+            <div style="padding:32px 0;text-align:center;font-size:11px;color:#4B5563;">Digita per cercare tra le crypto su Bybit</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── crypto search (vanilla JS, IIFE — mai Vue, pattern chart.html) ──────────
+let _csCache = null;
+let _csTimer = null;
+
+function openChartSearch() {
+    document.getElementById('csearch-overlay').style.display = 'block';
+    document.getElementById('csearch-modal').style.display   = 'block';
+    const inp = document.getElementById('csearch-input');
+    inp.value = '';
+    document.getElementById('csearch-results').innerHTML =
+        '<div style="padding:32px 0;text-align:center;font-size:11px;color:#4B5563;">Digita per cercare tra le crypto su Bybit</div>';
+    requestAnimationFrame(() => inp.focus());
+}
+function closeChartSearch() {
+    document.getElementById('csearch-overlay').style.display = 'none';
+    document.getElementById('csearch-modal').style.display   = 'none';
+}
+async function _csLoadCache() {
+    if (_csCache) return _csCache;
+    try {
+        const r = await fetch('https://api.bybit.com/v5/market/tickers?category=linear');
+        const d = await r.json();
+        if (d.retCode !== 0) return [];
+        _csCache = d.result.list
+            .filter(t => t.symbol.endsWith('USDT') && !t.symbol.includes('-') && parseFloat(t.lastPrice) > 0)
+            .map(t => ({ symbol: t.symbol, coin: t.symbol.replace('USDT', ''),
+                price: parseFloat(t.lastPrice), change: parseFloat(t.price24hPcnt) * 100,
+                volume: parseFloat(t.turnover24h) }))
+            .sort((a, b) => b.volume - a.volume);
+    } catch(e) { _csCache = []; }
+    return _csCache;
+}
+function onChartSearchInput(raw) {
+    clearTimeout(_csTimer);
+    _csTimer = setTimeout(() => _csRun(raw.trim().toUpperCase()), 120);
+}
+async function _csRun(q) {
+    const el = document.getElementById('csearch-results');
+    if (!q) { el.innerHTML = '<div style="padding:32px 0;text-align:center;font-size:11px;color:#4B5563;">Digita per cercare…</div>'; return; }
+    el.innerHTML = '<div style="padding:24px 0;text-align:center;font-size:11px;color:#6B7280;">⏳</div>';
+    const coins = await _csLoadCache();
+    const matches = coins.filter(c => c.coin.startsWith(q) || c.coin.includes(q)).slice(0, 25);
+    if (!matches.length) { el.innerHTML = `<div style="padding:32px 0;text-align:center;font-size:11px;color:#6B7280;">Nessun risultato per "<b style="color:#D1D5DB">${q}</b>"</div>`; return; }
+    el.innerHTML = matches.map((c, i) => {
+        const sgn = c.change >= 0 ? '+' : '';
+        const clr = c.change >= 0 ? '#34d399' : '#f87171';
+        const p   = c.price >= 1000 ? c.price.toLocaleString('en-US',{maximumFractionDigits:1})
+                  : c.price >= 1    ? c.price.toFixed(3)
+                  : c.price >= 0.01 ? c.price.toFixed(5) : c.price.toFixed(7);
+        const v   = c.volume >= 1e9 ? '$'+(c.volume/1e9).toFixed(1)+'B'
+                  : c.volume >= 1e6 ? '$'+(c.volume/1e6).toFixed(0)+'M' : '$'+(c.volume/1e3).toFixed(0)+'K';
+        return `<div data-idx="${i}" onclick="csSelectCoin('${c.symbol}')"
+            style="display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;border-bottom:1px solid #1E222D;transition:background .1s;"
+            onmouseover="this.style.background='#1E222D'" onmouseout="this.style.background='transparent'">
+            <span style="font-weight:700;font-size:13px;color:#E5E7EB;width:80px;flex-shrink:0;">${c.coin}<span style="color:#4B5563;font-weight:400;font-size:10px;">/USDT</span></span>
+            <span style="font-family:monospace;font-size:11px;color:#9CA3AF;">${p}</span>
+            <span style="font-size:11px;font-weight:600;flex-shrink:0;color:${clr};">${sgn}${c.change.toFixed(2)}%</span>
+            <span style="margin-left:auto;font-size:10px;color:#4B5563;flex-shrink:0;">${v}</span>
+        </div>`;
+    }).join('');
+}
+function onChartSearchKey(e) {
+    if (e.key === 'Escape') { closeChartSearch(); return; }
+    if (e.key === 'Enter') { const first = document.querySelector('#csearch-results [data-idx="0"]'); if (first) first.click(); }
+}
+function csSelectCoin(symbol) {
+    closeChartSearch();
+    if (window.onBotSymbolSelected) window.onBotSymbolSelected(symbol);
+}
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeChartSearch();
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openChartSearch(); }
+});
+</script>
+
+<script>
+const { createApp, ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } = Vue;
+
+const TF_LIST  = ['1','5','15','30','60','240','D','W','M'];
+const TF_LABEL = { '1':'1m','5':'5m','15':'15m','30':'30m','60':'1h','240':'4h','D':'1D','W':'1W','M':'1M' };
+const SOURCES  = ['close','open','high','low','hl2','hlc3','ohlc4'];
+const REASON_LABEL = { sl:'Stop Loss', tp:'Take Profit', candle_filter_1:'Filtro 1a candela', candle_filter_2:'Filtro 2a candela' };
+const CFG_KEY = 'bot_cfg_draft';
+
+createApp({
+    setup() {
+        const DEFAULT_CFG = {
+            symbol: '', tf: '60', mode: 'signal',
+            sizing: { type: 'fixed', value: 50 }, leverage: 1,
+            sma_lenta_period: 10, sma_lenta_source: 'close',
+            sma_veloce_period: 60, sma_veloce_source: 'close',
+            filter_enabled: true, filter_period: 200, filter_source: 'close',
+            candle_filter_enabled: false, sl_pct: 1.0, tp_pct: 1.7,
+        };
+
+        const cfg = reactive(JSON.parse(JSON.stringify(DEFAULT_CFG)));
+        const modeChoice = ref(cfg.mode);
+        const status = reactive({ running: false, mode: 'signal', symbol: '', tf: '60', position: null, exchange_position: null });
+        const signals = ref([]);
+        const tab = ref('live');
+        const btCapital = ref(1000);
+        const btLookbackDays = ref(365);
+        const btShowBB = ref(false);
+        const btRangeActive = ref(false);
+        const btRunning = ref(false);
+        const btResult = ref(null);
+        const showExecConfirm = ref(false);
+        const execConfirmChecked = ref(false);
+        const showConfigModal = ref(false);
+
+        // Visibilita' linee SMA sul grafico — solo estetico, non influisce sul calcolo/strategia
+        const SMA_VIS_KEY = 'bot_sma_visibility';
+        let savedVis = {};
+        try { savedVis = JSON.parse(localStorage.getItem(SMA_VIS_KEY) || '{}'); } catch(e) {}
+        const showSmaLenta = ref(savedVis.lenta !== false);
+        const showSmaVeloce = ref(savedVis.veloce !== false);
+        const showSmaFiltro = ref(savedVis.filtro !== false);
+        watch([showSmaLenta, showSmaVeloce, showSmaFiltro], ([lenta, veloce, filtro]) => {
+            try { localStorage.setItem(SMA_VIS_KEY, JSON.stringify({ lenta, veloce, filtro })); } catch(e) {}
+            if (smaLentaSeries) smaLentaSeries.applyOptions({ visible: lenta });
+            if (smaVeloceSeries) smaVeloceSeries.applyOptions({ visible: veloce });
+            if (smaFiltroSeries) smaFiltroSeries.applyOptions({ visible: filtro });
+            if (btSmaLentaSeries) btSmaLentaSeries.applyOptions({ visible: lenta });
+            if (btSmaVeloceSeries) btSmaVeloceSeries.applyOptions({ visible: veloce });
+            if (btSmaFiltroSeries) btSmaFiltroSeries.applyOptions({ visible: filtro });
+        });
+
+        const persistDraft = () => {
+            try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch(e) {}
+        };
+        watch(cfg, persistDraft, { deep: true });
+
+        const onModeChoice = () => {
+            if (modeChoice.value === 'execution' && cfg.mode !== 'execution') {
+                showExecConfirm.value = true;
+                execConfirmChecked.value = false;
+                modeChoice.value = 'signal'; // revert finché non confermato
+            } else {
+                cfg.mode = modeChoice.value;
+            }
+        };
+        const confirmExecMode = () => {
+            cfg.mode = 'execution';
+            modeChoice.value = 'execution';
+            showExecConfirm.value = false;
+        };
+        const cancelExecConfirm = () => {
+            showExecConfirm.value = false;
+            modeChoice.value = cfg.mode;
+        };
+
+        const openSymbolSearch = () => { openChartSearch(); };
+        window.onBotSymbolSelected = (symbol) => { cfg.symbol = symbol; loadChart(); };
+
+        const fmtPrice = (p) => {
+            if (p === null || p === undefined) return '—';
+            if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 2 });
+            if (p >= 1)    return p.toFixed(4);
+            if (p >= 0.01) return p.toFixed(5);
+            return p.toFixed(7);
+        };
+        const fmtTime = (t) => t ? new Date(t * 1000).toLocaleString('it-IT') : '—';
+
+        // ── API ──────────────────────────────────────────────────────────────
+        const fetchConfig = async () => {
+            try {
+                const r = await fetch('/api/bot/config');
+                if (!r.ok) return;
+                const d = await r.json();
+                Object.assign(cfg, DEFAULT_CFG, d);
+                if (!cfg.sizing || typeof cfg.sizing !== 'object') cfg.sizing = { type: 'fixed', value: 50 };
+                modeChoice.value = cfg.mode;
+            } catch(e) {}
+        };
+        const saveConfig = async () => {
+            try {
+                const r = await fetch('/api/bot/config', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(cfg),
+                });
+                const d = await r.json();
+                if (!d.success) alert(d.error || 'Errore salvataggio');
+            } catch(e) { alert('Errore di rete'); }
+        };
+        const fetchStatus = async () => {
+            try {
+                const r = await fetch('/api/bot/status');
+                if (!r.ok) return;
+                Object.assign(status, await r.json());
+            } catch(e) {}
+        };
+        const fetchSignals = async () => {
+            try {
+                const r = await fetch('/api/bot/signals');
+                if (!r.ok) return;
+                const d = await r.json();
+                signals.value = d.signals || [];
+            } catch(e) {}
+        };
+        const startBot = async () => {
+            try {
+                const r = await fetch('/api/bot/start', { method: 'POST' });
+                const d = await r.json();
+                if (!d.success) { alert(d.error || 'Impossibile avviare'); return; }
+                await fetchStatus();
+            } catch(e) { alert('Errore di rete'); }
+        };
+        const stopBot = async (closePosition) => {
+            if (closePosition && !confirm('Confermi la chiusura della posizione reale?')) return;
+            try {
+                const r = await fetch('/api/bot/stop', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ close_position: !!closePosition }),
+                });
+                await r.json();
+                await fetchStatus();
+            } catch(e) { alert('Errore di rete'); }
+        };
+        const runBacktest = async () => {
+            if (!cfg.symbol) return;
+            btRunning.value = true;
+            btResult.value = null;
+            try {
+                const body = Object.assign({}, cfg, { initial_capital: btCapital.value, lookback_days: btLookbackDays.value });
+                const r = await fetch('/api/bot/backtest', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                const d = await r.json();
+                if (!d.success) { alert(d.error || 'Errore backtest'); return; }
+                btResult.value = d;
+                await nextTick(); // assicura che i div dei grafici esistano nel DOM
+                await renderBacktestChart(d.candles, d.trades);
+                await renderEquityChart(d.equity_curve);
+            } catch(e) { alert('Errore di rete'); }
+            finally { btRunning.value = false; }
+        };
+
+        // ── Chart principale ─────────────────────────────────────────────────
+        const LC = LightweightCharts;
+        const addS = (chart, type, opts) => {
+            if (typeof chart.addSeries === 'function' && LC[type]) return chart.addSeries(LC[type], opts);
+            const m = { CandlestickSeries: 'addCandlestickSeries', LineSeries: 'addLineSeries' };
+            return chart[m[type]](opts);
+        };
+        let mainChart = null, candleSeries = null, slLine = null, tpLine = null;
+        let smaLentaSeries = null, smaVeloceSeries = null, smaFiltroSeries = null;
+        let btSmaLentaSeries = null, btSmaVeloceSeries = null, btSmaFiltroSeries = null;
+        let equityChart = null;
+        let btChart = null, btMarkers = null, btCandles = null, bbSeries = [], btCandleSeries = null;
+        let btRangeP1 = null, btRangeMD = null, btRangeMM = null, btRangeMU = null, btRangeCM = null;
+        let btRangeHoverLine = null, btRangeHoverMM = null, btRangeHoverML = null;
+
+        const smaSeriesJs = (klines, period, source) => {
+            if (klines.length < period) return [];
+            const val = (c) => source==='open'?c.open : source==='high'?c.high : source==='low'?c.low
+                       : source==='hl2'?(c.high+c.low)/2 : source==='hlc3'?(c.high+c.low+c.close)/3
+                       : source==='ohlc4'?(c.open+c.high+c.low+c.close)/4 : c.close;
+            const vals = klines.map(val);
+            let s = vals.slice(0, period).reduce((a,b)=>a+b, 0);
+            const out = [{ time: klines[period-1].time, value: s/period }];
+            for (let i = period; i < vals.length; i++) {
+                s += vals[i] - vals[i-period];
+                out.push({ time: klines[i].time, value: s/period });
+            }
+            return out;
+        };
+
+        const computeBollinger = (candles, period = 20, mult = 2) => {
+            if (candles.length < period) return { upper: [], middle: [], lower: [] };
+            const closes = candles.map(c => c.close);
+            const upper = [], middle = [], lower = [];
+            for (let i = period - 1; i < closes.length; i++) {
+                const win = closes.slice(i - period + 1, i + 1);
+                const avg = win.reduce((a, b) => a + b, 0) / period;
+                const variance = win.reduce((a, b) => a + (b - avg) * (b - avg), 0) / period;
+                const sd = Math.sqrt(variance);
+                const t = candles[i].time;
+                middle.push({ time: t, value: avg });
+                upper.push({ time: t, value: avg + mult * sd });
+                lower.push({ time: t, value: avg - mult * sd });
+            }
+            return { upper, middle, lower };
+        };
+
+        const removeBB = () => {
+            bbSeries.forEach(s => { try { btChart.removeSeries(s); } catch(e) {} });
+            bbSeries = [];
+        };
+
+        const addBB = () => {
+            if (!btChart || !btCandles) return;
+            removeBB();
+            const { upper, middle, lower } = computeBollinger(btCandles, 20, 2);
+            if (!middle.length) return;
+            const bandOpts = { color: '#38bdf8', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false };
+            bbSeries.push(addS(btChart, 'LineSeries', bandOpts));
+            bbSeries.push(addS(btChart, 'LineSeries', { ...bandOpts, lineStyle: 0 }));
+            bbSeries.push(addS(btChart, 'LineSeries', bandOpts));
+            bbSeries[0].setData(upper);
+            bbSeries[1].setData(middle);
+            bbSeries[2].setData(lower);
+        };
+
+        const toggleBB = () => {
+            btShowBB.value = !btShowBB.value;
+            if (btShowBB.value) addBB(); else removeBB();
+        };
+
+        const destroyMainChart = () => {
+            if (mainChart) { try { mainChart.remove(); } catch(e) {} mainChart = null; }
+            candleSeries = null; slLine = null; tpLine = null;
+            smaLentaSeries = null; smaVeloceSeries = null; smaFiltroSeries = null;
+            const el = document.getElementById('chart-box');
+            if (el) el.innerHTML = '';
+        };
+
+        let chartLoadSeq = 0;
+        const loadChart = async () => {
+            if (!cfg.symbol) return;
+            const seq = ++chartLoadSeq;
+            destroyMainChart();
+            const container = document.getElementById('chart-box');
+            if (!container) return;
+            try {
+                const res = await fetch(`api/klines?symbol=${cfg.symbol}&interval=${cfg.tf}`);
+                const data = await res.json();
+                // durante il mount cfg.tf puo' cambiare piu' volte (localStorage + fetchConfig),
+                // scatenando piu' loadChart() in parallelo: solo l'ultima chiamata in ordine di
+                // avvio puo' disegnare, altrimenti restano chart duplicati sovrapposti
+                if (seq !== chartLoadSeq) return;
+                if (!data.success || !data.data?.length) return;
+                const klines = data.data.filter(c => isFinite(c.open) && isFinite(c.close) && c.high >= c.low);
+
+                mainChart = LC.createChart(container, {
+                    width: container.clientWidth, height: 420,
+                    layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
+                    grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
+                    rightPriceScale: { borderColor: '#2a2e39' },
+                    timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 10 },
+                });
+                candleSeries = addS(mainChart, 'CandlestickSeries', {
+                    upColor: '#089981', downColor: '#F23645', borderVisible: false,
+                    wickUpColor: '#089981', wickDownColor: '#F23645',
+                });
+                candleSeries.setData(klines);
+
+                const s1 = smaSeriesJs(klines, cfg.sma_lenta_period, cfg.sma_lenta_source);
+                const s2 = smaSeriesJs(klines, cfg.sma_veloce_period, cfg.sma_veloce_source);
+                if (s1.length) { smaLentaSeries = addS(mainChart, 'LineSeries', { color:'#22c55e', lineWidth:1.5, priceLineVisible:false, lastValueVisible:false, visible: showSmaLenta.value }); smaLentaSeries.setData(s1); }
+                if (s2.length) { smaVeloceSeries = addS(mainChart, 'LineSeries', { color:'#ef4444', lineWidth:1.5, priceLineVisible:false, lastValueVisible:false, visible: showSmaVeloce.value }); smaVeloceSeries.setData(s2); }
+                if (cfg.filter_enabled) {
+                    const sf = smaSeriesJs(klines, cfg.filter_period, cfg.filter_source);
+                    if (sf.length) { smaFiltroSeries = addS(mainChart, 'LineSeries', { color:'#6b7280', lineWidth:1.5, priceLineVisible:false, lastValueVisible:false, visible: showSmaFiltro.value }); smaFiltroSeries.setData(sf); }
+                }
+                drawPositionLines();
+                mainChart.timeScale().setVisibleLogicalRange({ from: klines.length - 100, to: klines.length + 5 });
+            } catch(e) { console.error('bot chart error', e); }
+        };
+
+        const drawPositionLines = () => {
+            if (!candleSeries) return;
+            if (slLine) { try { candleSeries.removePriceLine(slLine); } catch(e) {} slLine = null; }
+            if (tpLine) { try { candleSeries.removePriceLine(tpLine); } catch(e) {} tpLine = null; }
+            const pos = status.position;
+            if (!pos) return;
+            slLine = candleSeries.createPriceLine({ price: pos.stop, color:'#ef4444', lineWidth:1, lineStyle:2, title:'SL' });
+            tpLine = candleSeries.createPriceLine({ price: pos.take, color:'#10b981', lineWidth:1, lineStyle:2, title:'TP' });
+        };
+
+        const _drawBtRangeCanvas = (canvas, series, p1, p2) => {
+            canvas.width = canvas.clientWidth || canvas.parentElement?.clientWidth || 100;
+            canvas.height = canvas.clientHeight || canvas.parentElement?.clientHeight || 100;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (p1 === null || p2 === null) return;
+            let y1 = series.priceToCoordinate(p1);
+            let y2 = series.priceToCoordinate(p2);
+            if (y1 === null) y1 = p2 > p1 ? canvas.height : 0;
+            if (y2 === null) y2 = p2 > p1 ? 0 : canvas.height;
+            const top = Math.min(y1, y2), bottom = Math.max(y1, y2), h = Math.max(bottom - top, 1);
+            const isUp = p2 > p1, color = isUp ? '#20B26C' : '#EF454A';
+            ctx.fillStyle = isUp ? 'rgba(8,153,129,0.12)' : 'rgba(242,54,69,0.12)';
+            ctx.fillRect(0, top, canvas.width, h);
+            ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.setLineDash([5, 3]);
+            ctx.beginPath(); ctx.moveTo(0, y1); ctx.lineTo(canvas.width, y1); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, y2); ctx.lineTo(canvas.width, y2); ctx.stroke();
+            ctx.setLineDash([]);
+            const delta = p2 - p1, pct = (delta / p1) * 100, sign = delta >= 0 ? '+' : '';
+            const absDelta = Math.abs(delta);
+            const dStr = absDelta >= 100 ? delta.toFixed(1) : absDelta >= 1 ? delta.toFixed(2) : delta.toFixed(4);
+            const label = `${sign}${dStr}  (${sign}${pct.toFixed(2)}%)`;
+            const fs = Math.max(9, Math.min(12, Math.floor(h * 0.35)));
+            ctx.font = `bold ${fs}px monospace`;
+            const tw = ctx.measureText(label).width, pad = 4;
+            const lx = canvas.width - tw - pad * 2 - 6, ly = top + h / 2;
+            ctx.fillStyle = isUp ? 'rgba(8,153,129,0.88)' : 'rgba(242,54,69,0.88)';
+            ctx.beginPath();
+            ctx.roundRect ? ctx.roundRect(lx - pad, ly - fs, tw + pad * 2, fs + 6, 3) : ctx.rect(lx - pad, ly - fs, tw + pad * 2, fs + 6);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff'; ctx.fillText(label, lx, ly);
+        };
+
+        const disableBtRangeTool = () => {
+            const canvas = document.getElementById('bt-range-canvas');
+            if (btRangeMD && canvas) canvas.removeEventListener('mousedown', btRangeMD);
+            if (btRangeMM) document.removeEventListener('mousemove', btRangeMM);
+            if (btRangeMU) document.removeEventListener('mouseup', btRangeMU);
+            if (btRangeCM && canvas) canvas.removeEventListener('contextmenu', btRangeCM);
+            if (btRangeHoverMM && canvas) canvas.removeEventListener('mousemove', btRangeHoverMM);
+            if (btRangeHoverML && canvas) canvas.removeEventListener('mouseleave', btRangeHoverML);
+            if (btRangeHoverLine) { try { btCandleSeries?.removePriceLine(btRangeHoverLine); } catch(e) {} btRangeHoverLine = null; }
+            btRangeMD = btRangeMM = btRangeMU = btRangeCM = btRangeHoverMM = btRangeHoverML = null;
+            btRangeP1 = null;
+            btRangeActive.value = false;
+            if (canvas) { canvas.style.display = 'none'; canvas.style.pointerEvents = 'none'; canvas.style.cursor = ''; try { canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height); } catch(e) {} }
+        };
+
+        const toggleBtRange = () => {
+            const canvas = document.getElementById('bt-range-canvas');
+            if (!canvas || !btCandleSeries) return;
+            if (btRangeActive.value) { disableBtRangeTool(); return; }
+            btRangeActive.value = true;
+            canvas.style.display = 'block';
+            canvas.style.pointerEvents = 'auto';
+            canvas.style.cursor = 'crosshair';
+            btRangeMD = e => {
+                if (e.button !== 0) return; e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const price = btCandleSeries?.coordinateToPrice(e.clientY - rect.top);
+                if (price == null) return;
+                btRangeP1 = price;
+            };
+            btRangeMM = e => {
+                if (btRangeP1 === null || !(e.buttons & 1)) return;
+                const rect = canvas.getBoundingClientRect();
+                const p2 = btCandleSeries?.coordinateToPrice(e.clientY - rect.top);
+                if (p2 == null) return;
+                _drawBtRangeCanvas(canvas, btCandleSeries, btRangeP1, p2);
+            };
+            btRangeMU = e => {
+                if (e.button !== 0) return;
+                btRangeP1 = null;
+                try { canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height); } catch(e) {}
+            };
+            btRangeCM = e => { e.preventDefault(); disableBtRangeTool(); };
+            canvas.addEventListener('mousedown', btRangeMD);
+            document.addEventListener('mousemove', btRangeMM);
+            document.addEventListener('mouseup', btRangeMU);
+            canvas.addEventListener('contextmenu', btRangeCM);
+            btRangeHoverMM = e => {
+                if (!btCandleSeries) return;
+                const rect = canvas.getBoundingClientRect();
+                const price = btCandleSeries.coordinateToPrice(e.clientY - rect.top);
+                if (price == null) return;
+                if (btRangeHoverLine) { try { btRangeHoverLine.applyOptions({ price }); } catch(ex) {} }
+                else { try { btRangeHoverLine = btCandleSeries.createPriceLine({ price, color: '#f59e0b', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
+            };
+            btRangeHoverML = () => {
+                if (btRangeHoverLine) { try { btCandleSeries.removePriceLine(btRangeHoverLine); } catch(e) {} btRangeHoverLine = null; }
+            };
+            canvas.addEventListener('mousemove', btRangeHoverMM);
+            canvas.addEventListener('mouseleave', btRangeHoverML);
+        };
+
+        const renderBacktestChart = async (candles, trades) => {
+            const container = document.getElementById('bt-price-chart-box');
+            if (!container || !candles?.length) return;
+            disableBtRangeTool();
+            if (btChart) { try { btChart.remove(); } catch(e) {} btChart = null; }
+            btMarkers = null;
+            bbSeries = [];
+            btSmaLentaSeries = null; btSmaVeloceSeries = null; btSmaFiltroSeries = null;
+            btCandleSeries = null;
+            btCandles = candles;
+            container.innerHTML = '';
+
+            btChart = LC.createChart(container, {
+                width: container.clientWidth, height: 420,
+                layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
+                grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
+                rightPriceScale: { borderColor: '#2a2e39' },
+                timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 10 },
+            });
+            const series = addS(btChart, 'CandlestickSeries', {
+                upColor: '#089981', downColor: '#F23645', borderVisible: false,
+                wickUpColor: '#089981', wickDownColor: '#F23645',
+            });
+            series.setData(candles);
+            btCandleSeries = series;
+
+            const rangeCanvas = document.createElement('canvas');
+            rangeCanvas.id = 'bt-range-canvas';
+            rangeCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;display:none;';
+            container.appendChild(rangeCanvas);
+
+            const s1 = smaSeriesJs(candles, cfg.sma_lenta_period, cfg.sma_lenta_source);
+            const s2 = smaSeriesJs(candles, cfg.sma_veloce_period, cfg.sma_veloce_source);
+            if (s1.length) { btSmaLentaSeries = addS(btChart, 'LineSeries', { color:'#22c55e', lineWidth:1.5, priceLineVisible:false, lastValueVisible:false, visible: showSmaLenta.value }); btSmaLentaSeries.setData(s1); }
+            if (s2.length) { btSmaVeloceSeries = addS(btChart, 'LineSeries', { color:'#ef4444', lineWidth:1.5, priceLineVisible:false, lastValueVisible:false, visible: showSmaVeloce.value }); btSmaVeloceSeries.setData(s2); }
+            if (cfg.filter_enabled) {
+                const sf = smaSeriesJs(candles, cfg.filter_period, cfg.filter_source);
+                if (sf.length) { btSmaFiltroSeries = addS(btChart, 'LineSeries', { color:'#6b7280', lineWidth:1.5, priceLineVisible:false, lastValueVisible:false, visible: showSmaFiltro.value }); btSmaFiltroSeries.setData(sf); }
+            }
+
+            // Marker ▲ entrata / ▼ uscita per ogni trade — LWC richiede i marker
+            // ordinati per tempo crescente.
+            const markers = [];
+            for (const tr of (trades || [])) {
+                markers.push({
+                    time: tr.entry_time,
+                    position: tr.side === 'long' ? 'belowBar' : 'aboveBar',
+                    color: tr.side === 'long' ? '#10b981' : '#ef4444',
+                    shape: tr.side === 'long' ? 'arrowUp' : 'arrowDown',
+                    text: (tr.side === 'long' ? 'LONG' : 'SHORT') + ' ' + fmtPrice(tr.entry_price),
+                });
+                markers.push({
+                    time: tr.exit_time,
+                    position: tr.side === 'long' ? 'aboveBar' : 'belowBar',
+                    color: tr.pnl_pct >= 0 ? '#10b981' : '#ef4444',
+                    shape: tr.side === 'long' ? 'arrowDown' : 'arrowUp',
+                    text: 'Exit ' + (REASON_LABEL[tr.exit_reason] || tr.exit_reason) + ' ' +
+                          (tr.pnl_pct >= 0 ? '+' : '') + tr.pnl_pct + '%',
+                });
+            }
+            markers.sort((a, b) => a.time - b.time);
+            // LWC v5: setMarkers rimosso dalla series API, usa il plugin createSeriesMarkers
+            btMarkers = LC.createSeriesMarkers(series, markers);
+
+            if (btShowBB.value) addBB();
+
+            btChart.timeScale().setVisibleLogicalRange({ from: candles.length - 150, to: candles.length + 5 });
+        };
+
+        const focusTrade = (tr) => {
+            if (!btChart || !btCandles?.length) return;
+            const idxEntry = btCandles.findIndex(c => c.time >= tr.entry_time);
+            const idxExit = btCandles.findIndex(c => c.time >= tr.exit_time);
+            const iEntry = idxEntry === -1 ? btCandles.length - 1 : idxEntry;
+            const iExit = idxExit === -1 ? btCandles.length - 1 : idxExit;
+            const margin = 15;
+            btChart.timeScale().setVisibleLogicalRange({
+                from: Math.max(0, Math.min(iEntry, iExit) - margin),
+                to: Math.max(iEntry, iExit) + margin,
+            });
+            document.getElementById('bt-price-chart-box')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+
+        const renderEquityChart = async (curve) => {
+            const container = document.getElementById('equity-chart-box');
+            if (!container) return;
+            if (equityChart) { try { equityChart.remove(); } catch(e) {} equityChart = null; }
+            container.innerHTML = '';
+            equityChart = LC.createChart(container, {
+                width: container.clientWidth, height: 180,
+                layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
+                grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
+                rightPriceScale: { borderColor: '#2a2e39' },
+                timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false },
+            });
+            const line = addS(equityChart, 'LineSeries', { color:'#d97706', lineWidth:2 });
+            line.setData(curve.map(p => ({ time: p.time, value: p.equity })));
+        };
+
+        watch(() => cfg.tf, loadChart);
+        watch(tab, async (newTab, oldTab) => {
+            // #chart-box esiste solo nel tab Live (v-if) — va distrutto quando si esce
+            // e ricreato ogni volta che si torna, altrimenti restano riferimenti
+            // a un chart/series già rimossi dal DOM.
+            if (oldTab === 'live' && newTab !== 'live') {
+                destroyMainChart();
+            }
+            if (newTab === 'live' && cfg.symbol) {
+                await nextTick();
+                await loadChart();
+            }
+        });
+
+        let pollTimer = null;
+        onMounted(async () => {
+            try {
+                const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+                Object.assign(cfg, DEFAULT_CFG, saved);
+            } catch(e) {}
+            await fetchConfig();
+            await fetchStatus();
+            await fetchSignals();
+            modeChoice.value = cfg.mode;
+            if (cfg.symbol) await loadChart();
+            pollTimer = setInterval(async () => {
+                await fetchStatus();
+                await fetchSignals();
+                if (tab.value === 'live') drawPositionLines();
+            }, 5000);
+        });
+        onUnmounted(() => { if (pollTimer) clearInterval(pollTimer); });
+
+        return {
+            TF_LIST, TF_LABEL, SOURCES, REASON_LABEL,
+            cfg, modeChoice, status, signals, tab, btCapital, btLookbackDays, btRunning, btResult, btShowBB, btRangeActive,
+            showExecConfirm, execConfirmChecked, showConfigModal, showSmaLenta, showSmaVeloce, showSmaFiltro,
+            onModeChoice, confirmExecMode, cancelExecConfirm,
+            openSymbolSearch, saveConfig, startBot, stopBot, runBacktest, toggleBB, toggleBtRange, focusTrade,
+            fmtPrice, fmtTime,
+        };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>

@@ -1,10 +1,12 @@
 """Daily alert log — accumulates all alerts for the current UTC day, resets at midnight."""
 import json
 import os
+import re
 import threading
 from datetime import datetime, timezone
 
 DAILY_LOG_FILE = '/data/daily_alerts.json'
+SCREENSHOTS_DIR = '/data/screenshots'
 _lock = threading.Lock()
 
 
@@ -12,7 +14,24 @@ def _today():
     return datetime.now(timezone.utc).strftime('%Y-%m-%d')
 
 
-def append_alert(symbol, alert_type, emoji='🔔', note='', tf=None):
+def _purge_old_screenshots(now_ts):
+    """Delete PNG files older than 24h from SCREENSHOTS_DIR."""
+    cutoff = now_ts - 86400
+    try:
+        for fname in os.listdir(SCREENSHOTS_DIR):
+            if not fname.endswith('.png'):
+                continue
+            fpath = os.path.join(SCREENSHOTS_DIR, fname)
+            try:
+                if os.path.getmtime(fpath) < cutoff:
+                    os.remove(fpath)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+def append_alert(symbol, alert_type, emoji='🔔', note='', tf=None, screenshot=None):
     """Append an alert to today's log. Thread-safe. Resets automatically at day change."""
     now = datetime.now(timezone.utc)
     today = now.strftime('%Y-%m-%d')
@@ -27,6 +46,18 @@ def append_alert(symbol, alert_type, emoji='🔔', note='', tf=None):
         entry['note'] = note
     if tf:
         entry['tf'] = tf
+
+    if screenshot:
+        try:
+            os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
+            _purge_old_screenshots(now.timestamp())
+            tf_safe = re.sub(r'[^\w]', '_', tf or 'na')
+            filename = f"{int(now.timestamp())}_{symbol}_{tf_safe}.png"
+            with open(os.path.join(SCREENSHOTS_DIR, filename), 'wb') as fh:
+                fh.write(screenshot)
+            entry['screenshot'] = filename
+        except Exception as e:
+            print(f'⚠️ screenshot save error: {e}')
 
     with _lock:
         try:

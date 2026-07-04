@@ -4,23 +4,31 @@ import requests
 import time
 import json
 import os
+import queue
 import sys
-from datetime import datetime, timedelta
+import logging
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+logger = logging.getLogger(__name__)
 
 COOLDOWN_FILE      = '/data/double_touch_cooldown.json'
 MAX_COINS          = 1000
 TOP_KLINE_SYMBOLS  = 500
-KLINE_SUB_REFRESH  = 4 * 3600
+KLINE_SUB_REFRESH  = 3600
 
 
 class DoubleTouchScanner:
+    _MAX_KLINES = 100   # cap passed to _find_double_touches; 100 bars is ample
+
     def __init__(self, telegram_config, enabled=True,
                  tolerance=0.5, proximity=2.0,
                  scan_tf=None, min_volume_24h=10_000_000,
                  scan_interval_minutes=240, cooldown_hours=12,
                  max_coins_per_alert=5,
+                 max_freshness=30, min_gap=3, max_gap=60,
+                 strict_mode=True,
                  ws_manager=None, live_config=None, **kwargs):
 
         self.telegram_token      = telegram_config['token']
@@ -34,20 +42,45 @@ class DoubleTouchScanner:
         self.min_volume_24h      = min_volume_24h
         self.max_coins_per_alert = max_coins_per_alert
         self.cooldown_hours      = cooldown_hours
+        self.max_freshness       = int(max_freshness)
+        self.min_gap             = int(min_gap)
+        self.max_gap             = int(max_gap)
+        self.strict_mode         = bool(strict_mode)
         self._live_config        = live_config
 
         self.last_alerts      = self._load_cooldown()
         self._lock            = threading.Lock()
+        self._last_save       = 0.0
         self._last_scan_count = 0
         self._ws_manager      = ws_manager
+
+        # LOG table pre-computed once; avoids O(n) rebuild inside every _scan_side call
+        _sz = self._MAX_KLINES + 2
+        self._log_table = [0] * _sz
+        for _x in range(2, _sz):
+            self._log_table[_x] = self._log_table[_x >> 1] + 1
+
+        # maxsize=1000 prevents unbounded backlog if Telegram is slow
+        self._alert_queue = queue.Queue(maxsize=1000)
+        threading.Thread(target=self._alert_worker, daemon=True).start()
 
         if ws_manager is not None:
             ws_manager.add_kline_callback(self._on_kline)
             threading.Thread(target=self._init_kline_subs, daemon=True).start()
 
         mode = 'WebSocket' if ws_manager else 'polling'
-        print(f'🔁 Terzo Tocco Scanner init — tol={self.tolerance}% prox={self.proximity}% '
-              f'tf={",".join(self.scan_tfs)} mode={mode}')
+        logger.info('🔁 Terzo Tocco Scanner init — tol=%.1f%% prox=%.1f%% tf=%s mode=%s',
+                    self.tolerance, self.proximity, ','.join(self.scan_tfs), mode)
+
+    # ── alert worker ──────────────────────────────────────────────────────────
+
+    def _alert_worker(self):
+        while True:
+            patterns = self._alert_queue.get()
+            try:
+                self.send_alert(patterns)
+            except Exception as e:
+                logger.warning('⚠️ Terzo Tocco: alert error: %s', e)
 
     # ── cooldown ──────────────────────────────────────────────────────────────
 
@@ -55,27 +88,41 @@ class DoubleTouchScanner:
         try:
             if os.path.exists(COOLDOWN_FILE):
                 with open(COOLDOWN_FILE, 'r') as f:
-                    return {k: datetime.fromisoformat(v) for k, v in json.load(f).items()}
+                    result = {}
+                    for k, v in json.load(f).items():
+                        dt = datetime.fromisoformat(v)
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        result[k] = dt
+                    return result
         except Exception as e:
-            print(f'⚠️ Terzo Tocco: load cooldown: {e}')
+            logger.warning('⚠️ Terzo Tocco: load cooldown: %s', e)
         return {}
 
     def _save_cooldown(self):
+        # Must be called with self._lock held. Atomic write via tmp → replace.
         try:
             os.makedirs(os.path.dirname(COOLDOWN_FILE), exist_ok=True)
-            with open(COOLDOWN_FILE, 'w') as f:
-                json.dump({k: v.isoformat() for k, v in self.last_alerts.items()}, f)
+            tmp = COOLDOWN_FILE + '.tmp'
+            with open(tmp, 'w') as f:
+                json.dump({k: v.astimezone(timezone.utc).isoformat()
+                           for k, v in self.last_alerts.items()}, f)
+            os.replace(tmp, COOLDOWN_FILE)
         except Exception as e:
-            print(f'⚠️ Terzo Tocco: save cooldown: {e}')
+            logger.warning('⚠️ Terzo Tocco: save cooldown: %s', e)
 
     def is_in_cooldown(self, key):
         if key not in self.last_alerts:
             return False
-        return (datetime.now() - self.last_alerts[key]) < timedelta(hours=self.cooldown_hours)
+        return (datetime.now(timezone.utc) - self.last_alerts[key]) < timedelta(hours=self.cooldown_hours)
 
     def mark_alerted(self, key):
-        self.last_alerts[key] = datetime.now()
-        self._save_cooldown()
+        # Must be called with self._lock held
+        self.last_alerts[key] = datetime.now(timezone.utc)
+        now = time.time()
+        if now - self._last_save > 60:
+            self._last_save = now
+            self._save_cooldown()
 
     # ── schedule ──────────────────────────────────────────────────────────────
 
@@ -92,10 +139,15 @@ class DoubleTouchScanner:
 
     def _init_kline_subs(self):
         if not self._ws_manager.ready.wait(timeout=120):
-            print('⚠️ Terzo Tocco: WS not ready after 120s')
+            logger.warning('⚠️ Terzo Tocco: WS not ready after 120s')
             return
         time.sleep(30)  # let ticker cache populate before first subscription
-        self._refresh_kline_subs()
+        self._kline_refresh_loop()
+
+    def _kline_refresh_loop(self):
+        while True:
+            self._refresh_kline_subs()
+            time.sleep(KLINE_SUB_REFRESH)
 
     def _refresh_kline_subs(self):
         tickers = self._ws_manager.get_all_tickers()
@@ -106,8 +158,7 @@ class DoubleTouchScanner:
                if d.get('volume_24h', 0) >= self.min_volume_24h][:TOP_KLINE_SYMBOLS]
         self._ws_manager.subscribe_klines(top, intervals=self.scan_tfs)
         self._last_scan_count = len(top)
-        print(f'🔁 Terzo Tocco: subscribed klines {len(top)} symbols × {len(self.scan_tfs)} TF')
-        threading.Timer(KLINE_SUB_REFRESH, self._refresh_kline_subs).start()
+        logger.info('🔁 Terzo Tocco: subscribed klines %d symbols × %d TF', len(top), len(self.scan_tfs))
 
     # ── WebSocket callback ────────────────────────────────────────────────────
 
@@ -144,7 +195,10 @@ class DoubleTouchScanner:
                         **p,
                     }
             if coin:
-                threading.Thread(target=self.send_alert, args=([coin],), daemon=True).start()
+                try:
+                    self._alert_queue.put_nowait([coin])
+                except queue.Full:
+                    logger.warning('⚠️ Terzo Tocco: alert queue full, dropping %s %s', symbol, interval)
 
     # ── REST data fetching (polling fallback) ─────────────────────────────────
 
@@ -168,7 +222,7 @@ class DoubleTouchScanner:
             result.sort(key=lambda x: x['volume'], reverse=True)
             return result[:MAX_COINS]
         except Exception as e:
-            print(f'❌ Terzo Tocco: fetch tickers: {e}')
+            logger.error('❌ Terzo Tocco: fetch tickers: %s', e)
             return []
 
     def _fetch_klines(self, symbol, tf):
@@ -191,146 +245,142 @@ class DoubleTouchScanner:
     # ── algorithm ─────────────────────────────────────────────────────────────
 
     def _find_double_touches(self, candles, current_price):
-        tol_frac      = self.tolerance / 100
-        prox_abs      = self.proximity
-        max_freshness = 30
-        n             = len(candles)
-        patterns      = []
+        candles = candles[-self._MAX_KLINES:]           # cap: 100 bars is sufficient
+        n      = len(candles)
+        highs  = [c['high']  for c in candles]
+        lows   = [c['low']   for c in candles]
+        closes = [c['close'] for c in candles]
+        times  = [c['time']  for c in candles]
 
-        # ── RESISTANCE: two High touches ──────────────────────────────────────
-        for j in range(max(1, n - max_freshness), n):
-            hJ = candles[j]['high']
-            cJ = candles[j]['close']
-            if cJ >= hJ:
-                continue
-            for i in range(5, j - 2):
-                hI = candles[i]['high']
-                cI = candles[i]['close']
-                if cI >= hI:
-                    continue
-                diff = abs(hI - hJ) / max(hI, hJ)
-                if diff > tol_frac:
-                    continue
-                level = (hI + hJ) / 2
-                if cI >= level or cJ >= level:
-                    continue
-                gap = j - i
-                if gap < 3 or gap > 60:
-                    continue
-                violated = False
-                for k in range(j):
-                    if k == i:
-                        continue
-                    c = candles[k]
-                    if c['high'] >= level or c['close'] > level:
-                        violated = True
-                        break
-                if violated:
-                    continue
-                if current_price >= level:
-                    continue
-                post_violated = False
-                for k in range(j + 1, n):
-                    if candles[k]['close'] > level or candles[k]['high'] > level:
-                        post_violated = True
-                        break
-                if post_violated:
-                    continue
-                # 3rd touch: price must have bounced away after touch 2 before returning
-                bounced_away = any(
-                    candles[k]['close'] <= level * (1 - tol_frac)
-                    for k in range(j + 1, n)
-                )
-                if not bounced_away:
-                    continue
-                dist_pct = (current_price - level) / level * 100
-                if abs(dist_pct) > prox_abs:
-                    continue
-                patterns.append({
-                    'type': 'resistance', 'level': level,
-                    'precision': diff * 100, 'gap': gap,
-                    'freshness': max(1, n - j), 'dist_pct': dist_pct,
-                    'touchATime': candles[i]['time'],
-                })
+        # Build sparse tables ONCE per call, pass to both scan sides
+        sp_h = self._build_sp(highs, max)
+        sp_l = self._build_sp(lows,  min)
 
-        # ── SUPPORT: two Low touches ──────────────────────────────────────────
-        for j in range(max(1, n - max_freshness), n):
-            lJ = candles[j]['low']
-            cJ = candles[j]['close']
-            if cJ <= lJ:
-                continue
-            for i in range(5, j - 2):
-                lI = candles[i]['low']
-                cI = candles[i]['close']
-                if cI <= lI:
-                    continue
-                diff = abs(lI - lJ) / min(lI, lJ)
-                if diff > tol_frac:
-                    continue
-                level = (lI + lJ) / 2
-                if cI <= level or cJ <= level:
-                    continue
-                gap = j - i
-                if gap < 3 or gap > 60:
-                    continue
-                violated = False
-                for k in range(j):
-                    if k == i:
-                        continue
-                    c = candles[k]
-                    if c['low'] <= level or c['close'] < level:
-                        violated = True
-                        break
-                if violated:
-                    continue
-                if current_price <= level:
-                    continue
-                post_violated = False
-                for k in range(j + 1, n):
-                    if candles[k]['close'] < level or candles[k]['low'] < level:
-                        post_violated = True
-                        break
-                if post_violated:
-                    continue
-                # 3rd touch: price must have bounced away after touch 2 before returning
-                bounced_away = any(
-                    candles[k]['close'] >= level * (1 + tol_frac)
-                    for k in range(j + 1, n)
-                )
-                if not bounced_away:
-                    continue
-                dist_pct = (current_price - level) / level * 100
-                if abs(dist_pct) > prox_abs:
-                    continue
-                patterns.append({
-                    'type': 'support', 'level': level,
-                    'precision': diff * 100, 'gap': gap,
-                    'freshness': max(1, n - j), 'dist_pct': dist_pct,
-                    'touchATime': candles[i]['time'],
-                })
+        patterns = (
+            self._scan_side(highs, lows, closes, times, n, current_price, 'resistance', sp_h) +
+            self._scan_side(highs, lows, closes, times, n, current_price, 'support',    sp_l)
+        )
 
+        # Normalized score: each dimension contributes equally regardless of units
         best = {}
         for p in patterns:
-            t = p['type']
-            if t not in best:
-                best[t] = p
-            else:
-                b = best[t]
-                if p['freshness'] < b['freshness']:
-                    best[t] = p
-                elif p['freshness'] == b['freshness'] and p['precision'] < b['precision']:
-                    best[t] = p
-        return list(best.values())
+            t     = p['type']
+            score = (p['freshness']     / self.max_freshness +
+                     p['precision']     / max(self.tolerance, 1e-9) +
+                     abs(p['dist_pct']) / max(self.proximity, 1e-9))
+            if t not in best or score < best[t][0]:
+                best[t] = (score, p)
+        return [v[1] for v in best.values()]
+
+    def _build_sp(self, arr, op):
+        """Sparse table for range max/min: O(n log n) build, O(1) per query."""
+        n  = len(arr)
+        K  = self._log_table[n] + 1
+        sp = [arr[:]]
+        for k in range(1, K):
+            prev = sp[k - 1]
+            half = 1 << (k - 1)
+            sp.append([op(prev[x], prev[x + half]) for x in range(n - (1 << k) + 1)])
+        return sp
+
+    def _scan_side(self, highs, lows, closes, times, n, current_price, mode, sp):
+        tol_frac = self.tolerance / 100
+        res      = mode == 'resistance'
+        extreme  = highs if res else lows
+        op       = max if res else min
+        sentinel = float('-inf') if res else float('inf')
+        LOG      = self._log_table               # pre-computed in __init__, never rebuilt
+        patterns = []
+
+        def rmq(l, r):                           # range max (res) or min (!res) inclusive
+            if l > r: return sentinel
+            k = LOG[r - l + 1]
+            return op(sp[k][l], sp[k][r - (1 << k) + 1])
+
+        # Prefix: O(1) violation check [0, i)
+        pfx_ext = [sentinel] * (n + 1)
+        for k in range(n):
+            pfx_ext[k + 1] = op(pfx_ext[k], extreme[k])
+
+        # Suffix: O(1) post-violation [j+1, n) and bounce check
+        sfx_ext = [sentinel]                               * (n + 1)
+        sfx_cls = [float('inf') if res else float('-inf')] * (n + 1)
+        for k in range(n - 1, -1, -1):
+            sfx_ext[k] = op(extreme[k], sfx_ext[k + 1])
+            sfx_cls[k] = (min if res else max)(closes[k], sfx_cls[k + 1])
+
+        for j in range(max(1, n - self.max_freshness), n):
+            eJ = extreme[j]
+            cJ = closes[j]
+            # strict_mode: touch bar must show rejection (close not at the extreme)
+            if self.strict_mode:
+                if res     and cJ >= eJ: continue
+                if not res and cJ <= eJ: continue
+
+            j1 = j + 1
+
+            for i in range(5, j - 2):
+                eI = extreme[i]
+                cI = closes[i]
+                if self.strict_mode:
+                    if res     and cI >= eI: continue
+                    if not res and cI <= eI: continue
+
+                ref  = max(eI, eJ) if res else min(eI, eJ)
+                diff = abs(eI - eJ) / ref
+                if diff > tol_frac:
+                    continue
+
+                level = (eI + eJ) / 2
+                lower = level * (1 - tol_frac)
+                upper = level * (1 + tol_frac)
+
+                if res     and (cI >= level or cJ >= level): continue
+                if not res and (cI <= level or cJ <= level): continue
+
+                gap = j - i
+                if gap < self.min_gap or gap > self.max_gap:
+                    continue
+
+                # Proximity filter — cheapest check first
+                dist_pct = (current_price - level) / level * 100
+                if abs(dist_pct) > self.proximity:
+                    continue
+
+                if res     and current_price >= level: continue
+                if not res and current_price <= level: continue
+
+                # All remaining checks are O(1) ─────────────────────────────
+                if res     and pfx_ext[i] >= level: continue    # [0, i)
+                if not res and pfx_ext[i] <= level: continue
+
+                if res     and sfx_ext[j1] > level: continue    # [j+1, n)
+                if not res and sfx_ext[j1] < level: continue
+
+                if res     and rmq(i + 1, j - 1) >= level: continue  # (i, j)
+                if not res and rmq(i + 1, j - 1) <= level: continue
+
+                if res     and sfx_cls[j1] > lower: continue    # bounce
+                if not res and sfx_cls[j1] < upper: continue
+
+                patterns.append({
+                    'type': mode, 'level': level,
+                    'precision': diff * 100, 'gap': gap,
+                    'freshness': max(1, n - j), 'dist_pct': dist_pct,
+                    'touchATime': times[i],
+                })
+
+        return patterns
 
     # ── polling scan (fallback / manual) ──────────────────────────────────────
 
     def scan(self):
         if not self.enabled:
             return []
-        # If WebSocket is active, polling is redundant but kept as manual fallback
         if self._ws_manager and self._ws_manager.ready.is_set():
             return []
-        print(f'🔁 Terzo Tocco Scanner — polling scan (tol={self.tolerance}% prox={self.proximity}% tf={",".join(self.scan_tfs)})...')
+        logger.info('🔁 Terzo Tocco Scanner — polling scan (tol=%.1f%% prox=%.1f%% tf=%s)...',
+                    self.tolerance, self.proximity, ','.join(self.scan_tfs))
         found = []
         try:
             tickers = self._fetch_tickers()
@@ -357,11 +407,11 @@ class DoubleTouchScanner:
             found = found[:self.max_coins_per_alert]
             if found:
                 self.send_alert(found)
-            print(f'🔁 Terzo Tocco: {len(found)} pattern found')
+            logger.info('🔁 Terzo Tocco: %d pattern found', len(found))
             return found
 
         except Exception as e:
-            print(f'❌ Terzo Tocco scanner error: {e}')
+            logger.error('❌ Terzo Tocco scanner error: %s', e)
             return []
 
     # ── alert ─────────────────────────────────────────────────────────────────
@@ -370,7 +420,7 @@ class DoubleTouchScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, log_alert
+            from alert_utils import send_photo, send_text, get_chart, log_alert, fmt_vol
         except ImportError:
             return
         TF_LABEL = {'D': '1D', '240': '4h', '60': '1h', '30': '30m', '15': '15m', '5': '5m', '1': '1m'}
@@ -385,7 +435,8 @@ class DoubleTouchScanner:
                 '',
                 '------------------------------------------------',
                 f'- Coin: {sym}',
-                f'- Vol: {change:+.2f}%',
+                f'- Var: {change:+.2f}%',
+                f'- Volume: {fmt_vol(p.get("volume", 0))}',
                 '------------------------------------------------',
             ]
             base = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
@@ -404,13 +455,13 @@ class DoubleTouchScanner:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
-            log_alert(sym, 'Terzo Tocco', emoji='🔁', note=segnale, tf=tf_label)
-            print(f'🔁 Terzo Tocco alert: {sym} {tf_label} ({p["type"]})')
+            log_alert(sym, 'Terzo Tocco', emoji='🔁', note=segnale, tf=tf_label, screenshot=img)
+            logger.info('🔁 Terzo Tocco alert: %s %s (%s)', sym, tf_label, p['type'])
 
     # ── status ────────────────────────────────────────────────────────────────
 
     def get_today_alerts(self):
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         symbols = set()
         with self._lock:
             for key, dt in self.last_alerts.items():

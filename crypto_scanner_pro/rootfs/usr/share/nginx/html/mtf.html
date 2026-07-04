@@ -40,6 +40,9 @@
   .cell-body { flex:1; position:relative; min-height:0; }
   .chart-el  { position:absolute; inset:0; }
 
+  .hdr-btn { background:none; border-radius:6px; transition:background-color .15s,color .15s; }
+  .hdr-btn:hover { background-color:#2B3139; color:#E5E7EB; }
+
   @media (max-width: 639px) {
     /* Grid mobile: 1 TF per volta, navigazione via JS */
     #grid {
@@ -86,22 +89,18 @@
      style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:5px 7px;cursor:pointer;line-height:1;flex-shrink:0;text-decoration:none;display:flex;align-items:center;"
      title="Chart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.035-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.035.84-1.875 1.875-1.875h.75c1.035 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z"/></svg></a>
   <div style="flex:1;"></div>
-  <button id="alerts-btn" onclick="openAlertsPanel()"
-    style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
-    data-i18n-title="nav_alerts" title="Alert attivi"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none" style="display:block"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5z"/></svg></button>
-  <span style="color:#374151;font-size:11px;margin:0 6px;">|</span>
-  <button onclick="window.open('orderbook?symbol=' + SYM, '_blank')"
-    style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
-    title="Order Book">OB</button>
-  <span id="bb-sep" style="color:#374151;font-size:11px;margin:0 6px;">|</span>
-  <button id="bb-btn" onclick="toggleBB()"
-    style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+  <button id="alerts-btn" onclick="openAlertsPanel()" class="hdr-btn"
+    style="font-size:14px;color:#B2B5BE;border:none;padding:5px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    data-i18n-title="nav_alerts" title="Alert attivi"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="22" height="22" fill="none" style="display:block"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5z"/></svg></button>
+  <span id="bb-sep" style="color:#374151;font-size:14px;margin:0 2px;">|</span>
+  <button id="bb-btn" onclick="toggleBB()" class="hdr-btn"
+    style="font-size:14px;font-weight:700;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
     title="Bollinger Bands (20,2)" data-i18n="mtf_bb">BB</button>
-  <button id="btn-f11" onclick="toggleBrowserFullscreen()"
+  <button id="btn-f11" onclick="toggleBrowserFullscreen()" class="hdr-btn"
     data-i18n-title="f11_title" title="F11"
-    style="font-size:11px;color:#9CA3AF;background:#1E222D;border:none;border-radius:3px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;transition:background .15s,color .15s;">F11</button>
-  <button onclick="window.opener ? window.close() : history.length > 1 ? history.back() : location.href='./'"
-    style="margin-left:4px;font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;">
+    style="font-size:14px;font-weight:700;color:#9CA3AF;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;">F11</button>
+  <button onclick="closeMtfTab()" class="hdr-btn"
+    style="margin-left:2px;font-size:18px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;">
     ✕
   </button>
 </div>
@@ -355,17 +354,21 @@ class _MtfCountdownPrimitive {
 setInterval(()=>{ for(const s of slots){if(s.chart)try{s.chart.applyOptions({});}catch(e){}} },1000);
 
 function makeChart(el, bigSlot) {
-  return LC.createChart(el, {
+  const chart = LC.createChart(el, {
     autoSize: true,
     layout: {background:{color:'#101014'}, textColor:'#B2B5BE', fontSize: 13 },
     grid:   { vertLines:{color:'#FFFFFF0F'}, horzLines:{color:'#FFFFFF0F'} },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
-    rightPriceScale: { borderVisible:false, scaleMargins:{top:0.05,bottom:0.05} },
+    rightPriceScale: { borderVisible:false, scaleMargins:{top:0.05,bottom:0.05}, autoScale:true },
     timeScale: {
       borderVisible:false, visible:true, timeVisible:true, secondsVisible:false,
       barSpacing: bigSlot ? 8 : 6, rightOffset: bigSlot ? 20 : 15,
     },
   });
+  el.addEventListener('wheel', () => {
+    requestAnimationFrame(() => { chart.priceScale('right').applyOptions({ autoScale: true }); });
+  }, { passive: true });
+  return chart;
 }
 
 function fmtPrice(p) {
@@ -432,7 +435,21 @@ const fsBtn = document.createElement('button');
     rangeBtn.onmouseenter = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#B2B5BE'; };
     rangeBtn.onmouseleave = () => { if (!slots[i]?.rangeActive) rangeBtn.style.color = '#4B5563'; };
     rangeBtn.onclick = () => toggleSlotRange(i);
-    hdr.append(tfLbl, spacer, pctEl, rangeBtn, fsBtn);
+    const hlineBtn = document.createElement('button');
+    hlineBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="13" height="13" style="vertical-align:middle" fill="currentColor"><rect x="2" y="13" width="7" height="2" rx="1"/><circle cx="13" cy="14" r="3"/><rect x="19" y="13" width="7" height="2" rx="1"/></svg>';
+    hlineBtn.title = window.t('hline_tool'); hlineBtn.dataset.i18nTitle = 'hline_tool';
+    hlineBtn.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+    hlineBtn.onmouseenter = () => { if (!slots[i]?.hlineActive) hlineBtn.style.color = '#B2B5BE'; };
+    hlineBtn.onmouseleave = () => { if (!slots[i]?.hlineActive) hlineBtn.style.color = '#4B5563'; };
+    hlineBtn.onclick = () => toggleSlotHline(i);
+    const trendBtn = document.createElement('button');
+    trendBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="13" height="13" style="vertical-align:middle"><path d="M5 22 L23 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="5" cy="22" r="2.5" fill="currentColor"/><circle cx="23" cy="6" r="2.5" fill="currentColor"/></svg>';
+    trendBtn.title = window.t('trend_tool'); trendBtn.dataset.i18nTitle = 'trend_tool';
+    trendBtn.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+    trendBtn.onmouseenter = () => { if (!slots[i]?.trendActive) trendBtn.style.color = '#B2B5BE'; };
+    trendBtn.onmouseleave = () => { if (!slots[i]?.trendActive) trendBtn.style.color = '#4B5563'; };
+    trendBtn.onclick = () => toggleSlotTrend(i);
+    hdr.append(tfLbl, spacer, pctEl, rangeBtn, hlineBtn, trendBtn, fsBtn);
     cell.appendChild(hdr);
 
     // ── chart body ─────────────────────────────────────────────────────────
@@ -444,6 +461,12 @@ const fsBtn = document.createElement('button');
     const rangeCanvas = document.createElement('canvas');
     rangeCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;';
     body.appendChild(rangeCanvas);
+    const hlineCanvas = document.createElement('canvas');
+    hlineCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;';
+    body.appendChild(hlineCanvas);
+    const trendCanvas = document.createElement('canvas');
+    trendCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:7;';
+    body.appendChild(trendCanvas);
     const alertBtnEl = document.createElement('div');
     alertBtnEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="20" height="20"><path fill="currentColor" d="M13.5 6a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM4 14.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z"/><path fill="currentColor" d="M9 14h4v-4h1v4h4v1h-4v4h-1v-4H9v-1z"/></svg>`;
     alertBtnEl.title = window.t('set_alert');
@@ -460,6 +483,7 @@ const fsBtn = document.createElement('button');
     const candleS = addS(chart, 'CandlestickSeries', {
       upColor:'#20B26C', downColor:'#EF454A',
       borderVisible:false, wickUpColor:'#20B26C', wickDownColor:'#EF454A',
+      priceLineVisible:true, lastValueVisible:true,
     });
     const lineBase = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
     const emaS = {};
@@ -511,14 +535,16 @@ const fsBtn = document.createElement('button');
     });
 
     slots.push({
-      cfg, chart, candleS, emaS, cell, rangeCanvas, rangeBtn,
+      cfg, chart, candleS, emaS, cell, rangeCanvas, rangeBtn, hlineCanvas, hlineBtn, trendCanvas, trendBtn,
       alertBtn: alertBtnEl,
       klineCount: 0,
       lastEMA: {5:null,10:null,60:null,223:null},
       dayHighLine:null, dayLowLine:null,
       prevHighLine:null, prevLowLine:null,
       athLine:null, atlLine:null,
-      rangeActive: false, rangeP1: null, _rangeMD: null, _rangeMM: null, _rangeMU: null, _rangeCM: null,
+      rangeActive: false, rangeP1: null, _rangeMD: null, _rangeMM: null, _rangeMU: null, _rangeCM: null, _rangeHoverLine: null, _rangeHoverMM: null, _rangeHoverML: null,
+      hlineActive: false, hlines: [], _hlineMD: null, _hlineMM: null, _hlineMU: null, _hlineCM: null, _hlineDragging: null, _hlineHoverLine: null, _hlineHoverMM: null, _hlineHoverML: null,
+      trendActive: false, trendlines: [], _trendP1: null, _trendPrev: null, _trendMD: null, _trendMM: null, _trendMU: null, _trendCM: null, _trendDrag: null, _trendSub: null, _trendHoverLine: null,
       dayPrimitive: null,
       lastCandleStartUtc: null,
       lastWsMs: 0,
@@ -561,7 +587,7 @@ async function loadAll() {
     const coin = SYM.replace('USDT','');
     document.getElementById('hdr-coin').textContent = coin;
     document.getElementById('hdr-bybit').href = `https://www.bybit.com/trade/usdt/${SYM}`;
-    document.getElementById('hdr-trade').href = `chart?symbol=${SYM}&tf=D&layout=1x1&trade=1&noheader=1`;
+    document.getElementById('hdr-trade').href = `trade?symbol=${SYM}`;
     if (jt.success) {
       const pct = jt.change_24h;
       const el  = document.getElementById('hdr-change');
@@ -572,7 +598,7 @@ async function loadAll() {
   } catch(e) {
     document.getElementById('hdr-coin').textContent = SYM.replace('USDT','');
     document.getElementById('hdr-bybit').href = `https://www.bybit.com/trade/usdt/${SYM}`;
-    document.getElementById('hdr-trade').href = `chart?symbol=${SYM}&tf=D&layout=1x1&trade=1&noheader=1`;
+    document.getElementById('hdr-trade').href = `trade?symbol=${SYM}`;
   }
 
   // Daily H/L for all charts
@@ -738,6 +764,11 @@ function setWSDot(state) {
 
 window.addEventListener('beforeunload', closeWS);
 
+function closeMtfTab() {
+  window.close();
+  setTimeout(() => { if (!document.hidden) window.location.href = 'screener'; }, 200);
+}
+
 // ── Order Book fullscreen ─────────────────────────────────────────────────────
 function initOBChart() {
     if (obChart) return;
@@ -843,7 +874,7 @@ function closeOBWS() {
 
 function openOBModal() {
     document.getElementById('ob-chart-sym').textContent = SYM.replace('USDT','');
-    document.getElementById('ob-iframe').src = `orderbook?symbol=${SYM}`;
+    document.getElementById('ob-iframe').src = `trade?symbol=${SYM}`;
     document.getElementById('ob-modal').style.display = 'flex';
     initOBChart();
     renderOBTFBar();
@@ -895,6 +926,12 @@ let fsDayHighLine = null, fsDayLowLine = null, fsPrevHighLine = null, fsPrevLowL
 let fsAthLine = null, fsAtlLine = null;
 let fsDayPrimitive = null, obDayPrimitive = null;
 let fsRangeActive = false, fsRangeP1 = null, _fsRangeMD = null, _fsRangeMM = null, _fsRangeMU = null, _fsRangeCM = null;
+let _fsRangeHoverLine = null, _fsRangeHoverMM = null, _fsRangeHoverML = null;
+let fsHlineActive = false, fsHlines = [], _fsHlineMD = null, _fsHlineMM = null, _fsHlineMU = null, _fsHlineCM = null, _fsHlineDragging = null;
+let _fsHlineHoverLine = null, _fsHlineHoverMM = null, _fsHlineHoverML = null;
+let fsTrendActive = false, fsTrendlines = [], _fsTrendP1 = null, _fsTrendPrev = null;
+let _fsTrendMD = null, _fsTrendMM = null, _fsTrendMU = null, _fsTrendCM = null, _fsTrendDrag = null, _fsTrendSub = null;
+let _fsTrendHoverLine = null;
 
 function initFSChart() {
     if (fsChart) return;
@@ -1012,6 +1049,12 @@ function openFSModal(idx) {
     initFSChart();
     renderFSTFBar();
     _clearFSLines();
+    for (const hl of fsHlines) { try { fsCandleS.removePriceLine(hl.priceLine); } catch(ex) {} }
+    fsHlines = [];
+    if (_fsTrendSub) { try { fsCandleS.chart?.timeScale().unsubscribeVisibleTimeRangeChange(_fsTrendSub); } catch(ex) {} }
+    if (fsTrendActive) { fsTrendActive = false; const _fb = document.getElementById('fs-trend-btn'); if (_fb) _fb.style.color = '#B2B5BE'; }
+    fsTrendlines = []; _fsTrendP1 = null; _fsTrendPrev = null; _fsTrendDrag = null; _fsTrendSub = null;
+    try { const _ftc = document.getElementById('fs-trend-canvas'); if (_ftc) { const ctx = _ftc.getContext('2d'); ctx.clearRect(0,0,_ftc.width,_ftc.height); _ftc.style.pointerEvents = 'none'; _ftc.style.cursor = ''; } } catch(ex) {}
     if (fsDayPrimitive) { try { fsCandleS.detachPrimitive(fsDayPrimitive); } catch(e) {} fsDayPrimitive = null; }
     fsCandleS.setData([]);
     for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
@@ -1026,6 +1069,8 @@ function openFSModal(idx) {
 
 function closeFSModal() {
     if (fsRangeActive) toggleFsRange();
+    if (fsHlineActive) toggleFsHline();
+    if (fsTrendActive) toggleFsTrend();
     document.getElementById('fs-modal').style.display = 'none';
     closeFSWS();
     if (fsCandleS) {
@@ -1150,12 +1195,16 @@ function _drawRangeCanvas(canvas, series, p1, p2) {
 
 function toggleSlotRange(idx) {
   const s = slots[idx];
+  if (!s.rangeActive) { if (s.hlineActive) toggleSlotHline(idx); if (s.trendActive) toggleSlotTrend(idx); }
   s.rangeActive = !s.rangeActive;
   s.rangeBtn.style.color = s.rangeActive ? '#f59e0b' : '#4B5563';
   if (s._rangeMD) { s.rangeCanvas.removeEventListener('mousedown', s._rangeMD); s._rangeMD = null; }
   if (s._rangeMM) { document.removeEventListener('mousemove', s._rangeMM); s._rangeMM = null; }
   if (s._rangeMU) { document.removeEventListener('mouseup', s._rangeMU); s._rangeMU = null; }
   if (s._rangeCM) { s.rangeCanvas.removeEventListener('contextmenu', s._rangeCM); s._rangeCM = null; }
+  if (s._rangeHoverMM) { s.rangeCanvas.removeEventListener('mousemove', s._rangeHoverMM); s._rangeHoverMM = null; }
+  if (s._rangeHoverML) { s.rangeCanvas.removeEventListener('mouseleave', s._rangeHoverML); s._rangeHoverML = null; }
+  if (s._rangeHoverLine) { try { s.candleS?.removePriceLine(s._rangeHoverLine); } catch(e) {} s._rangeHoverLine = null; }
   s.rangeP1 = null;
   try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
   s.rangeCanvas.style.pointerEvents = s.rangeActive ? 'auto' : 'none';
@@ -1186,10 +1235,24 @@ function toggleSlotRange(idx) {
     document.addEventListener('mousemove', s._rangeMM);
     document.addEventListener('mouseup', s._rangeMU);
     s.rangeCanvas.addEventListener('contextmenu', s._rangeCM);
+    s._rangeHoverMM = e => {
+      if (s.rangeP1 !== null || !s.candleS) return;
+      const rect = s.rangeCanvas.getBoundingClientRect();
+      const price = s.candleS.coordinateToPrice(e.clientY - rect.top);
+      if (price == null) return;
+      if (s._rangeHoverLine) { try { s._rangeHoverLine.applyOptions({ price }); } catch(ex) {} }
+      else { try { s._rangeHoverLine = s.candleS.createPriceLine({ price, color: '#f59e0b', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
+    };
+    s._rangeHoverML = () => {
+      if (s._rangeHoverLine) { try { s.candleS.removePriceLine(s._rangeHoverLine); } catch(e) {} s._rangeHoverLine = null; }
+    };
+    s.rangeCanvas.addEventListener('mousemove', s._rangeHoverMM);
+    s.rangeCanvas.addEventListener('mouseleave', s._rangeHoverML);
   }
 }
 
 function toggleFsRange() {
+  if (!fsRangeActive) { if (fsHlineActive) toggleFsHline(); if (fsTrendActive) toggleFsTrend(); }
   fsRangeActive = !fsRangeActive;
   const btn    = document.getElementById('fs-range-btn');
   const canvas = document.getElementById('fs-range-canvas');
@@ -1199,6 +1262,9 @@ function toggleFsRange() {
   if (_fsRangeMM) { document.removeEventListener('mousemove', _fsRangeMM); _fsRangeMM = null; }
   if (_fsRangeMU) { document.removeEventListener('mouseup', _fsRangeMU); _fsRangeMU = null; }
   if (_fsRangeCM) { canvas.removeEventListener('contextmenu', _fsRangeCM); _fsRangeCM = null; }
+  if (_fsRangeHoverMM) { canvas.removeEventListener('mousemove', _fsRangeHoverMM); _fsRangeHoverMM = null; }
+  if (_fsRangeHoverML) { canvas.removeEventListener('mouseleave', _fsRangeHoverML); _fsRangeHoverML = null; }
+  if (_fsRangeHoverLine) { try { fsCandleS?.removePriceLine(_fsRangeHoverLine); } catch(e) {} _fsRangeHoverLine = null; }
   fsRangeP1 = null;
   try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
   canvas.style.pointerEvents = fsRangeActive ? 'auto' : 'none';
@@ -1229,7 +1295,449 @@ function toggleFsRange() {
     document.addEventListener('mousemove', _fsRangeMM);
     document.addEventListener('mouseup', _fsRangeMU);
     canvas.addEventListener('contextmenu', _fsRangeCM);
+    _fsRangeHoverMM = e => {
+      if (fsRangeP1 !== null || !fsCandleS) return;
+      const rect = canvas.getBoundingClientRect();
+      const price = fsCandleS.coordinateToPrice(e.clientY - rect.top);
+      if (price == null) return;
+      if (_fsRangeHoverLine) { try { _fsRangeHoverLine.applyOptions({ price }); } catch(ex) {} }
+      else { try { _fsRangeHoverLine = fsCandleS.createPriceLine({ price, color: '#f59e0b', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
+    };
+    _fsRangeHoverML = () => {
+      if (_fsRangeHoverLine) { try { fsCandleS.removePriceLine(_fsRangeHoverLine); } catch(e) {} _fsRangeHoverLine = null; }
+    };
+    canvas.addEventListener('mousemove', _fsRangeHoverMM);
+    canvas.addEventListener('mouseleave', _fsRangeHoverML);
   }
+}
+
+function _hlineNearest(s, clientY) {
+  const rect = s.hlineCanvas.getBoundingClientRect();
+  const y = clientY - rect.top;
+  let best = null, bestDist = 8;
+  for (const hl of s.hlines) {
+    try { const hy = s.candleS.priceToCoordinate(hl.price); if (hy != null && Math.abs(hy - y) < bestDist) { bestDist = Math.abs(hy - y); best = hl; } } catch(e) {}
+  }
+  return best;
+}
+
+function toggleSlotHline(idx) {
+  const s = slots[idx];
+  if (!s) return;
+  if (!s.hlineActive) { if (s.rangeActive) toggleSlotRange(idx); if (s.trendActive) toggleSlotTrend(idx); }
+  s.hlineActive = !s.hlineActive;
+  s.hlineBtn.style.color = s.hlineActive ? '#3b82f6' : '#4B5563';
+  if (s._hlineMD) { s.hlineCanvas.removeEventListener('mousedown', s._hlineMD); s._hlineMD = null; }
+  if (s._hlineMM) { document.removeEventListener('mousemove', s._hlineMM); s._hlineMM = null; }
+  if (s._hlineMU) { document.removeEventListener('mouseup', s._hlineMU); s._hlineMU = null; }
+  if (s._hlineCM) { s.hlineCanvas.removeEventListener('contextmenu', s._hlineCM); s._hlineCM = null; }
+  if (s._hlineHoverMM) { s.hlineCanvas.removeEventListener('mousemove', s._hlineHoverMM); s._hlineHoverMM = null; }
+  if (s._hlineHoverML) { s.hlineCanvas.removeEventListener('mouseleave', s._hlineHoverML); s._hlineHoverML = null; }
+  if (s._hlineHoverLine) { try { s.candleS?.removePriceLine(s._hlineHoverLine); } catch(e) {} s._hlineHoverLine = null; }
+  s._hlineDragging = null;
+  s.hlineCanvas.style.pointerEvents = s.hlineActive ? 'auto' : 'none';
+  s.hlineCanvas.style.cursor = s.hlineActive ? 'crosshair' : '';
+  if (s.hlineActive) {
+    s._hlineMD = e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const nearest = _hlineNearest(s, e.clientY);
+      if (nearest) { s._hlineDragging = nearest; s.hlineCanvas.style.cursor = 'ns-resize'; }
+      else {
+        const rect = s.hlineCanvas.getBoundingClientRect();
+        const price = s.candleS.coordinateToPrice(e.clientY - rect.top);
+        if (price != null) { const pl = s.candleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' }); s.hlines.push({ priceLine: pl, price }); }
+      }
+    };
+    s._hlineMM = e => {
+      if (s._hlineDragging) {
+        const rect = s.hlineCanvas.getBoundingClientRect();
+        const price = s.candleS.coordinateToPrice(e.clientY - rect.top);
+        if (price != null) { s._hlineDragging.price = price; try { s._hlineDragging.priceLine.applyOptions({ price }); } catch(ex) {} }
+      } else {
+        s.hlineCanvas.style.cursor = _hlineNearest(s, e.clientY) ? 'ns-resize' : 'crosshair';
+      }
+    };
+    s._hlineMU = e => {
+      if (e.button !== 0) return;
+      s._hlineDragging = null;
+      s.hlineCanvas.style.cursor = _hlineNearest(s, e.clientY) ? 'ns-resize' : 'crosshair';
+    };
+    s._hlineCM = e => {
+      e.preventDefault();
+      const nearest = _hlineNearest(s, e.clientY);
+      if (nearest) { try { s.candleS.removePriceLine(nearest.priceLine); } catch(ex) {} s.hlines = s.hlines.filter(h => h !== nearest); }
+      else toggleSlotHline(idx);
+    };
+    s.hlineCanvas.addEventListener('mousedown', s._hlineMD);
+    document.addEventListener('mousemove', s._hlineMM);
+    document.addEventListener('mouseup', s._hlineMU);
+    s.hlineCanvas.addEventListener('contextmenu', s._hlineCM);
+    s._hlineHoverMM = e => {
+      if (s._hlineDragging || !s.candleS) return;
+      const rect = s.hlineCanvas.getBoundingClientRect();
+      const price = s.candleS.coordinateToPrice(e.clientY - rect.top);
+      if (price == null) return;
+      if (s._hlineHoverLine) { try { s._hlineHoverLine.applyOptions({ price }); } catch(ex) {} }
+      else { try { s._hlineHoverLine = s.candleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
+    };
+    s._hlineHoverML = () => {
+      if (s._hlineHoverLine) { try { s.candleS.removePriceLine(s._hlineHoverLine); } catch(e) {} s._hlineHoverLine = null; }
+    };
+    s.hlineCanvas.addEventListener('mousemove', s._hlineHoverMM);
+    s.hlineCanvas.addEventListener('mouseleave', s._hlineHoverML);
+  }
+}
+
+function _fsHlineNearest(clientY) {
+  const canvas = document.getElementById('fs-hline-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const y = clientY - rect.top;
+  let best = null, bestDist = 8;
+  for (const hl of fsHlines) {
+    try { const hy = fsCandleS.priceToCoordinate(hl.price); if (hy != null && Math.abs(hy - y) < bestDist) { bestDist = Math.abs(hy - y); best = hl; } } catch(e) {}
+  }
+  return best;
+}
+
+function toggleFsHline() {
+  if (!fsHlineActive) { if (fsRangeActive) toggleFsRange(); if (fsTrendActive) toggleFsTrend(); }
+  fsHlineActive = !fsHlineActive;
+  const btn = document.getElementById('fs-hline-btn');
+  const canvas = document.getElementById('fs-hline-canvas');
+  btn.style.color = fsHlineActive ? '#3b82f6' : '#B2B5BE';
+  if (_fsHlineMD) { canvas.removeEventListener('mousedown', _fsHlineMD); _fsHlineMD = null; }
+  if (_fsHlineMM) { document.removeEventListener('mousemove', _fsHlineMM); _fsHlineMM = null; }
+  if (_fsHlineMU) { document.removeEventListener('mouseup', _fsHlineMU); _fsHlineMU = null; }
+  if (_fsHlineCM) { canvas.removeEventListener('contextmenu', _fsHlineCM); _fsHlineCM = null; }
+  if (_fsHlineHoverMM) { canvas.removeEventListener('mousemove', _fsHlineHoverMM); _fsHlineHoverMM = null; }
+  if (_fsHlineHoverML) { canvas.removeEventListener('mouseleave', _fsHlineHoverML); _fsHlineHoverML = null; }
+  if (_fsHlineHoverLine) { try { fsCandleS?.removePriceLine(_fsHlineHoverLine); } catch(e) {} _fsHlineHoverLine = null; }
+  _fsHlineDragging = null;
+  canvas.style.pointerEvents = fsHlineActive ? 'auto' : 'none';
+  canvas.style.cursor = fsHlineActive ? 'crosshair' : '';
+  if (fsHlineActive) {
+    _fsHlineMD = e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const nearest = _fsHlineNearest(e.clientY);
+      if (nearest) { _fsHlineDragging = nearest; canvas.style.cursor = 'ns-resize'; }
+      else {
+        const rect = canvas.getBoundingClientRect();
+        const price = fsCandleS.coordinateToPrice(e.clientY - rect.top);
+        if (price != null) { const pl = fsCandleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' }); fsHlines.push({ priceLine: pl, price }); }
+      }
+    };
+    _fsHlineMM = e => {
+      if (_fsHlineDragging) {
+        const rect = canvas.getBoundingClientRect();
+        const price = fsCandleS.coordinateToPrice(e.clientY - rect.top);
+        if (price != null) { _fsHlineDragging.price = price; try { _fsHlineDragging.priceLine.applyOptions({ price }); } catch(ex) {} }
+      } else {
+        canvas.style.cursor = _fsHlineNearest(e.clientY) ? 'ns-resize' : 'crosshair';
+      }
+    };
+    _fsHlineMU = e => {
+      if (e.button !== 0) return;
+      _fsHlineDragging = null;
+      canvas.style.cursor = _fsHlineNearest(e.clientY) ? 'ns-resize' : 'crosshair';
+    };
+    _fsHlineCM = e => {
+      e.preventDefault();
+      const nearest = _fsHlineNearest(e.clientY);
+      if (nearest) { try { fsCandleS.removePriceLine(nearest.priceLine); } catch(ex) {} fsHlines = fsHlines.filter(h => h !== nearest); }
+      else toggleFsHline();
+    };
+    canvas.addEventListener('mousedown', _fsHlineMD);
+    document.addEventListener('mousemove', _fsHlineMM);
+    document.addEventListener('mouseup', _fsHlineMU);
+    canvas.addEventListener('contextmenu', _fsHlineCM);
+    _fsHlineHoverMM = e => {
+      if (_fsHlineDragging || !fsCandleS) return;
+      const rect = canvas.getBoundingClientRect();
+      const price = fsCandleS.coordinateToPrice(e.clientY - rect.top);
+      if (price == null) return;
+      if (_fsHlineHoverLine) { try { _fsHlineHoverLine.applyOptions({ price }); } catch(ex) {} }
+      else { try { _fsHlineHoverLine = fsCandleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
+    };
+    _fsHlineHoverML = () => {
+      if (_fsHlineHoverLine) { try { fsCandleS.removePriceLine(_fsHlineHoverLine); } catch(e) {} _fsHlineHoverLine = null; }
+    };
+    canvas.addEventListener('mousemove', _fsHlineHoverMM);
+    canvas.addEventListener('mouseleave', _fsHlineHoverML);
+  }
+}
+
+// ── Trendline tool ────────────────────────────────────────────────────────────
+const _TREND_HIT = 8;
+
+function _trendSync(canvas) { const w = canvas.clientWidth, h = canvas.clientHeight; if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; } }
+
+function _trendDrawExt(ctx, x1, y1, x2, y2, W, H, color, lw) {
+  ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath();
+  if (Math.abs(x2 - x1) < 0.5) { ctx.moveTo(x1, 0); ctx.lineTo(x1, H); }
+  else { const m = (y2 - y1) / (x2 - x1); ctx.moveTo(0, y1 + m * -x1); ctx.lineTo(W, y1 + m * (W - x1)); }
+  ctx.stroke();
+}
+
+function _trendDrawAll(s) {
+  const canvas = s.trendCanvas; _trendSync(canvas);
+  const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  for (const tl of s.trendlines) {
+    try {
+      const x1 = s.chart.timeScale().timeToCoordinate(tl.t1), y1 = s.candleS.priceToCoordinate(tl.p1);
+      const x2 = s.chart.timeScale().timeToCoordinate(tl.t2), y2 = s.candleS.priceToCoordinate(tl.p2);
+      if (x1==null||y1==null||x2==null||y2==null) continue;
+      _trendDrawExt(ctx, x1, y1, x2, y2, W, H, '#22c55e', 1.5);
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath(); ctx.arc(x1, y1, 4, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x2, y2, 4, 0, Math.PI*2); ctx.fill();
+    } catch(ex) {}
+  }
+  if (s._trendP1 && s._trendPrev) {
+    try {
+      const x1 = s.chart.timeScale().timeToCoordinate(s._trendP1.t), y1 = s.candleS.priceToCoordinate(s._trendP1.p);
+      if (x1!=null && y1!=null) {
+        ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1; ctx.setLineDash([5,3]);
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(s._trendPrev.x, s._trendPrev.y); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(x1, y1, 4, 0, Math.PI*2); ctx.fill();
+      }
+    } catch(ex) {}
+  }
+}
+
+function _ptSegDist(px, py, x1, y1, x2, y2) {
+  const dx = x2-x1, dy = y2-y1, L2 = dx*dx+dy*dy;
+  if (!L2) return Math.hypot(px-x1, py-y1);
+  const t = Math.max(0, Math.min(1, ((px-x1)*dx+(py-y1)*dy)/L2));
+  return Math.hypot(px-x1-t*dx, py-y1-t*dy);
+}
+
+function _trendNearest(s, cx, cy) {
+  const rect = s.trendCanvas.getBoundingClientRect(), mx = cx-rect.left, my = cy-rect.top;
+  let best = null, bestDist = _TREND_HIT, bestPart = 'line';
+  for (const tl of s.trendlines) {
+    try {
+      const x1 = s.chart.timeScale().timeToCoordinate(tl.t1), y1 = s.candleS.priceToCoordinate(tl.p1);
+      const x2 = s.chart.timeScale().timeToCoordinate(tl.t2), y2 = s.candleS.priceToCoordinate(tl.p2);
+      if (x1==null||y1==null||x2==null||y2==null) continue;
+      const d1 = Math.hypot(mx-x1, my-y1), d2 = Math.hypot(mx-x2, my-y2);
+      if (d1 <= _TREND_HIT && d1 < bestDist) { best = tl; bestDist = d1; bestPart = 'p1'; }
+      else if (d2 <= _TREND_HIT && d2 < bestDist) { best = tl; bestDist = d2; bestPart = 'p2'; }
+      else { const dl = _ptSegDist(mx, my, x1, y1, x2, y2); if (dl < bestDist) { best = tl; bestDist = dl; bestPart = 'line'; } }
+    } catch(ex) {}
+  }
+  return best ? { tl: best, part: bestPart } : null;
+}
+
+function toggleSlotTrend(idx) {
+  const s = slots[idx]; if (!s) return;
+  if (!s.trendActive) { if (s.rangeActive) toggleSlotRange(idx); if (s.hlineActive) toggleSlotHline(idx); }
+  s.trendActive = !s.trendActive;
+  s.trendBtn.style.color = s.trendActive ? '#22c55e' : '#4B5563';
+  if (s._trendMD) { s.trendCanvas.removeEventListener('mousedown', s._trendMD); s._trendMD = null; }
+  if (s._trendMM) { document.removeEventListener('mousemove', s._trendMM); s._trendMM = null; }
+  if (s._trendMU) { document.removeEventListener('mouseup', s._trendMU); s._trendMU = null; }
+  if (s._trendCM) { s.trendCanvas.removeEventListener('contextmenu', s._trendCM); s._trendCM = null; }
+  s._trendP1 = null; s._trendPrev = null; s._trendDrag = null;
+  s.trendCanvas.style.pointerEvents = s.trendActive ? 'auto' : 'none';
+  s.trendCanvas.style.cursor = s.trendActive ? 'crosshair' : '';
+  if (!s._trendSub) { s._trendSub = () => _trendDrawAll(s); try { s.chart.timeScale().subscribeVisibleTimeRangeChange(s._trendSub); } catch(ex) {} }
+  _trendDrawAll(s);
+  if (!s.trendActive) return;
+  s._trendMD = e => {
+    if (e.button !== 0) return; e.preventDefault();
+    const rect = s.trendCanvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
+    const hit = _trendNearest(s, e.clientX, e.clientY);
+    if (hit && !s._trendP1) {
+      if (hit.part !== 'line') { s._trendDrag = { tl: hit.tl, part: hit.part }; s.trendCanvas.style.cursor = 'crosshair'; }
+      else {
+        const ox1 = s.chart.timeScale().timeToCoordinate(hit.tl.t1), oy1 = s.candleS.priceToCoordinate(hit.tl.p1);
+        const ox2 = s.chart.timeScale().timeToCoordinate(hit.tl.t2), oy2 = s.candleS.priceToCoordinate(hit.tl.p2);
+        s._trendDrag = { tl: hit.tl, part: 'line', sx: px, sy: py, ox1, oy1, ox2, oy2 };
+        s.trendCanvas.style.cursor = 'move';
+      }
+    } else if (!s._trendP1) {
+      const t = s.chart.timeScale().coordinateToTime(px), p = s.candleS.coordinateToPrice(py);
+      if (t != null && p != null) s._trendP1 = { t, p };
+    } else {
+      const t2 = s.chart.timeScale().coordinateToTime(px), p2 = s.candleS.coordinateToPrice(py);
+      if (t2 != null && p2 != null) {
+        let pl1, pl2;
+        try { pl1 = s.candleS.createPriceLine({ price: s._trendP1.p, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {}
+        try { pl2 = s.candleS.createPriceLine({ price: p2,           color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {}
+        s.trendlines.push({ t1: s._trendP1.t, p1: s._trendP1.p, t2, p2, pl1, pl2 });
+      }
+      s._trendP1 = null; s._trendPrev = null;
+      if (s._trendHoverLine) { try { s.candleS?.removePriceLine(s._trendHoverLine); } catch(e) {} s._trendHoverLine = null; }
+      _trendDrawAll(s);
+    }
+  };
+  s._trendMM = e => {
+    const rect = s.trendCanvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
+    if (s._trendDrag) {
+      if (!(e.buttons & 1)) { s._trendDrag = null; return; }
+      const { tl, part } = s._trendDrag;
+      if (part === 'p1') { const t=s.chart.timeScale().coordinateToTime(px),p=s.candleS.coordinateToPrice(py); if(t&&p){tl.t1=t;tl.p1=p; if(tl.pl1) try{tl.pl1.applyOptions({price:p});}catch(ex){}} }
+      else if (part === 'p2') { const t=s.chart.timeScale().coordinateToTime(px),p=s.candleS.coordinateToPrice(py); if(t&&p){tl.t2=t;tl.p2=p; if(tl.pl2) try{tl.pl2.applyOptions({price:p});}catch(ex){}} }
+      else { const dpx=px-s._trendDrag.sx,dpy=py-s._trendDrag.sy; const nt1=s.chart.timeScale().coordinateToTime(s._trendDrag.ox1+dpx),np1=s.candleS.coordinateToPrice(s._trendDrag.oy1+dpy); const nt2=s.chart.timeScale().coordinateToTime(s._trendDrag.ox2+dpx),np2=s.candleS.coordinateToPrice(s._trendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2; if(tl.pl1) try{tl.pl1.applyOptions({price:np1});}catch(ex){} if(tl.pl2) try{tl.pl2.applyOptions({price:np2});}catch(ex){}} }
+      _trendDrawAll(s);
+    } else if (s._trendP1) {
+      s._trendPrev = { x: px, y: py };
+      const hp = s.candleS?.coordinateToPrice(py);
+      if (hp != null) {
+        if (s._trendHoverLine) { try { s._trendHoverLine.applyOptions({ price: hp }); } catch(ex) {} }
+        else { try { s._trendHoverLine = s.candleS.createPriceLine({ price: hp, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
+      }
+      _trendDrawAll(s);
+    } else {
+      if (s._trendHoverLine) { try { s.candleS?.removePriceLine(s._trendHoverLine); } catch(e) {} s._trendHoverLine = null; }
+      const hit = _trendNearest(s, e.clientX, e.clientY);
+      s.trendCanvas.style.cursor = hit ? (hit.part === 'line' ? 'move' : 'crosshair') : 'crosshair';
+    }
+  };
+  s._trendMU = e => { if (e.button !== 0) return; s._trendDrag = null; s.trendCanvas.style.cursor = 'crosshair'; };
+  s._trendCM = e => {
+    e.preventDefault();
+    if (s._trendP1) { s._trendP1 = null; s._trendPrev = null; if (s._trendHoverLine) { try { s.candleS?.removePriceLine(s._trendHoverLine); } catch(e) {} s._trendHoverLine = null; } _trendDrawAll(s); return; }
+    const hit = _trendNearest(s, e.clientX, e.clientY);
+    if (hit) { if(hit.tl.pl1) try{s.candleS.removePriceLine(hit.tl.pl1);}catch(e){} if(hit.tl.pl2) try{s.candleS.removePriceLine(hit.tl.pl2);}catch(e){} s.trendlines = s.trendlines.filter(tl => tl !== hit.tl); _trendDrawAll(s); }
+    else toggleSlotTrend(idx);
+  };
+  s.trendCanvas.addEventListener('mousedown', s._trendMD);
+  document.addEventListener('mousemove', s._trendMM);
+  document.addEventListener('mouseup', s._trendMU);
+  s.trendCanvas.addEventListener('contextmenu', s._trendCM);
+}
+
+function _fsTrendDrawAll() {
+  const canvas = document.getElementById('fs-trend-canvas'); if (!canvas || !fsCandleS || !fsChart) return;
+  _trendSync(canvas);
+  const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  for (const tl of fsTrendlines) {
+    try {
+      const x1 = fsChart.timeScale().timeToCoordinate(tl.t1), y1 = fsCandleS.priceToCoordinate(tl.p1);
+      const x2 = fsChart.timeScale().timeToCoordinate(tl.t2), y2 = fsCandleS.priceToCoordinate(tl.p2);
+      if (x1==null||y1==null||x2==null||y2==null) continue;
+      _trendDrawExt(ctx, x1, y1, x2, y2, W, H, '#22c55e', 1.5);
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath(); ctx.arc(x1, y1, 4, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x2, y2, 4, 0, Math.PI*2); ctx.fill();
+    } catch(ex) {}
+  }
+  if (_fsTrendP1 && _fsTrendPrev) {
+    try {
+      const x1 = fsChart.timeScale().timeToCoordinate(_fsTrendP1.t), y1 = fsCandleS.priceToCoordinate(_fsTrendP1.p);
+      if (x1!=null && y1!=null) {
+        ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1; ctx.setLineDash([5,3]);
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(_fsTrendPrev.x, _fsTrendPrev.y); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(x1, y1, 4, 0, Math.PI*2); ctx.fill();
+      }
+    } catch(ex) {}
+  }
+}
+
+function _fsTrendNearest(cx, cy) {
+  const canvas = document.getElementById('fs-trend-canvas'); if (!canvas) return null;
+  const rect = canvas.getBoundingClientRect(), mx = cx-rect.left, my = cy-rect.top;
+  let best = null, bestDist = _TREND_HIT, bestPart = 'line';
+  for (const tl of fsTrendlines) {
+    try {
+      const x1 = fsChart.timeScale().timeToCoordinate(tl.t1), y1 = fsCandleS.priceToCoordinate(tl.p1);
+      const x2 = fsChart.timeScale().timeToCoordinate(tl.t2), y2 = fsCandleS.priceToCoordinate(tl.p2);
+      if (x1==null||y1==null||x2==null||y2==null) continue;
+      const d1 = Math.hypot(mx-x1, my-y1), d2 = Math.hypot(mx-x2, my-y2);
+      if (d1 <= _TREND_HIT && d1 < bestDist) { best = tl; bestDist = d1; bestPart = 'p1'; }
+      else if (d2 <= _TREND_HIT && d2 < bestDist) { best = tl; bestDist = d2; bestPart = 'p2'; }
+      else { const dl = _ptSegDist(mx, my, x1, y1, x2, y2); if (dl < bestDist) { best = tl; bestDist = dl; bestPart = 'line'; } }
+    } catch(ex) {}
+  }
+  return best ? { tl: best, part: bestPart } : null;
+}
+
+function toggleFsTrend() {
+  if (!fsTrendActive) { if (fsRangeActive) toggleFsRange(); if (fsHlineActive) toggleFsHline(); }
+  fsTrendActive = !fsTrendActive;
+  const btn = document.getElementById('fs-trend-btn');
+  const canvas = document.getElementById('fs-trend-canvas');
+  btn.style.color = fsTrendActive ? '#22c55e' : '#B2B5BE';
+  if (_fsTrendMD) { canvas.removeEventListener('mousedown', _fsTrendMD); _fsTrendMD = null; }
+  if (_fsTrendMM) { document.removeEventListener('mousemove', _fsTrendMM); _fsTrendMM = null; }
+  if (_fsTrendMU) { document.removeEventListener('mouseup', _fsTrendMU); _fsTrendMU = null; }
+  if (_fsTrendCM) { canvas.removeEventListener('contextmenu', _fsTrendCM); _fsTrendCM = null; }
+  _fsTrendP1 = null; _fsTrendPrev = null; _fsTrendDrag = null;
+  canvas.style.pointerEvents = fsTrendActive ? 'auto' : 'none';
+  canvas.style.cursor = fsTrendActive ? 'crosshair' : '';
+  if (!_fsTrendSub) { _fsTrendSub = () => _fsTrendDrawAll(); try { fsChart.timeScale().subscribeVisibleTimeRangeChange(_fsTrendSub); } catch(ex) {} }
+  _fsTrendDrawAll();
+  if (!fsTrendActive) return;
+  _fsTrendMD = e => {
+    if (e.button !== 0) return; e.preventDefault();
+    const rect = canvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
+    const hit = _fsTrendNearest(e.clientX, e.clientY);
+    if (hit && !_fsTrendP1) {
+      if (hit.part !== 'line') { _fsTrendDrag = { tl: hit.tl, part: hit.part }; canvas.style.cursor = 'crosshair'; }
+      else {
+        const ox1 = fsChart.timeScale().timeToCoordinate(hit.tl.t1), oy1 = fsCandleS.priceToCoordinate(hit.tl.p1);
+        const ox2 = fsChart.timeScale().timeToCoordinate(hit.tl.t2), oy2 = fsCandleS.priceToCoordinate(hit.tl.p2);
+        _fsTrendDrag = { tl: hit.tl, part: 'line', sx: px, sy: py, ox1, oy1, ox2, oy2 };
+        canvas.style.cursor = 'move';
+      }
+    } else if (!_fsTrendP1) {
+      const t = fsChart.timeScale().coordinateToTime(px), p = fsCandleS.coordinateToPrice(py);
+      if (t != null && p != null) _fsTrendP1 = { t, p };
+    } else {
+      const t2 = fsChart.timeScale().coordinateToTime(px), p2 = fsCandleS.coordinateToPrice(py);
+      if (t2 != null && p2 != null) {
+        let pl1, pl2;
+        try { pl1 = fsCandleS.createPriceLine({ price: _fsTrendP1.p, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {}
+        try { pl2 = fsCandleS.createPriceLine({ price: p2,           color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {}
+        fsTrendlines.push({ t1: _fsTrendP1.t, p1: _fsTrendP1.p, t2, p2, pl1, pl2 });
+      }
+      _fsTrendP1 = null; _fsTrendPrev = null;
+      if (_fsTrendHoverLine) { try { fsCandleS?.removePriceLine(_fsTrendHoverLine); } catch(e) {} _fsTrendHoverLine = null; }
+      _fsTrendDrawAll();
+    }
+  };
+  _fsTrendMM = e => {
+    const rect = canvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
+    if (_fsTrendDrag) {
+      if (!(e.buttons & 1)) { _fsTrendDrag = null; return; }
+      const { tl, part } = _fsTrendDrag;
+      if (part === 'p1') { const t=fsChart.timeScale().coordinateToTime(px),p=fsCandleS.coordinateToPrice(py); if(t&&p){tl.t1=t;tl.p1=p; if(tl.pl1) try{tl.pl1.applyOptions({price:p});}catch(ex){}} }
+      else if (part === 'p2') { const t=fsChart.timeScale().coordinateToTime(px),p=fsCandleS.coordinateToPrice(py); if(t&&p){tl.t2=t;tl.p2=p; if(tl.pl2) try{tl.pl2.applyOptions({price:p});}catch(ex){}} }
+      else { const dpx=px-_fsTrendDrag.sx,dpy=py-_fsTrendDrag.sy; const nt1=fsChart.timeScale().coordinateToTime(_fsTrendDrag.ox1+dpx),np1=fsCandleS.coordinateToPrice(_fsTrendDrag.oy1+dpy); const nt2=fsChart.timeScale().coordinateToTime(_fsTrendDrag.ox2+dpx),np2=fsCandleS.coordinateToPrice(_fsTrendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2; if(tl.pl1) try{tl.pl1.applyOptions({price:np1});}catch(ex){} if(tl.pl2) try{tl.pl2.applyOptions({price:np2});}catch(ex){}} }
+      _fsTrendDrawAll();
+    } else if (_fsTrendP1) {
+      _fsTrendPrev = { x: px, y: py };
+      const hp = fsCandleS?.coordinateToPrice(py);
+      if (hp != null) {
+        if (_fsTrendHoverLine) { try { _fsTrendHoverLine.applyOptions({ price: hp }); } catch(ex) {} }
+        else { try { _fsTrendHoverLine = fsCandleS.createPriceLine({ price: hp, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
+      }
+      _fsTrendDrawAll();
+    } else {
+      if (_fsTrendHoverLine) { try { fsCandleS?.removePriceLine(_fsTrendHoverLine); } catch(e) {} _fsTrendHoverLine = null; }
+      const hit = _fsTrendNearest(e.clientX, e.clientY);
+      canvas.style.cursor = hit ? (hit.part === 'line' ? 'move' : 'crosshair') : 'crosshair';
+    }
+  };
+  _fsTrendMU = e => { if (e.button !== 0) return; _fsTrendDrag = null; canvas.style.cursor = 'crosshair'; };
+  _fsTrendCM = e => {
+    e.preventDefault();
+    if (_fsTrendP1) { _fsTrendP1 = null; _fsTrendPrev = null; if (_fsTrendHoverLine) { try { fsCandleS?.removePriceLine(_fsTrendHoverLine); } catch(e) {} _fsTrendHoverLine = null; } _fsTrendDrawAll(); return; }
+    const hit = _fsTrendNearest(e.clientX, e.clientY);
+    if (hit) { if(hit.tl.pl1) try{fsCandleS.removePriceLine(hit.tl.pl1);}catch(e){} if(hit.tl.pl2) try{fsCandleS.removePriceLine(hit.tl.pl2);}catch(e){} fsTrendlines = fsTrendlines.filter(tl => tl !== hit.tl); _fsTrendDrawAll(); }
+    else toggleFsTrend();
+  };
+  canvas.addEventListener('mousedown', _fsTrendMD);
+  document.addEventListener('mousemove', _fsTrendMM);
+  document.addEventListener('mouseup', _fsTrendMU);
+  canvas.addEventListener('contextmenu', _fsTrendCM);
 }
 
 // ── Price alert helpers ────────────────────────────────────────────────────────
@@ -1363,10 +1871,10 @@ function updateAlertsBadge() {
   const btn = document.getElementById('alerts-btn');
   if (!btn) return;
   const n = activeAlerts.filter(a => a.symbol === SYM).length;
-  const svgBell = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none" style="display:block"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5z"/></svg>`;
+  const svgBell = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="22" height="22" fill="none" style="display:block"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5z"/></svg>`;
   btn.innerHTML = n > 0 ? `${svgBell}<span style="font-size:9px;line-height:1">${n}</span>` : svgBell;
   btn.style.cssText += ';display:flex;align-items:center;gap:2px;';
-  btn.style.color = n > 0 ? '#fbbf24' : '';
+  btn.style.color = n > 0 ? '#fbbf24' : '#B2B5BE';
 }
 
 let _alertsPanelInterval = null;
@@ -1481,14 +1989,26 @@ if (isMobile) {
         <span id="fs-pct" style="font-size:12px;font-weight:600;font-family:monospace;min-width:70px;"></span>
         <div style="flex:1;"></div>
 <button id="fs-range-btn" onclick="toggleFsRange()"
-                style="background:#2A2E39;border:none;color:#B2B5BE;font-size:11px;padding:3px 8px;border-radius:3px;cursor:pointer;margin-right:4px;"
-                title="Range Prezzo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="14" height="14" style="vertical-align:middle"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg></button>
+                style="background:none;border:none;color:#B2B5BE;font-size:11px;padding:3px 8px;border-radius:3px;cursor:pointer;margin-right:4px;transition:background .15s,color .15s;"
+                onmouseover="if(!fsRangeActive)this.style.background='#2A2E39'" onmouseout="this.style.background='none'"
+                title="Range Prezzo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="14" height="14" style="vertical-align:middle"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg></button>
+<button id="fs-hline-btn" onclick="toggleFsHline()"
+                style="background:none;border:none;color:#B2B5BE;font-size:11px;padding:3px 8px;border-radius:3px;cursor:pointer;margin-right:4px;transition:background .15s,color .15s;"
+                onmouseover="if(!fsHlineActive)this.style.background='#2A2E39'" onmouseout="this.style.background='none'"
+                data-i18n-title="hline_tool" title="Horizontal Line"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="14" height="14" style="vertical-align:middle" fill="currentColor"><rect x="2" y="13" width="7" height="2" rx="1"/><circle cx="13" cy="14" r="3"/><rect x="19" y="13" width="7" height="2" rx="1"/></svg></button>
+<button id="fs-trend-btn" onclick="toggleFsTrend()"
+                style="background:none;border:none;color:#B2B5BE;font-size:11px;padding:3px 8px;border-radius:3px;cursor:pointer;margin-right:4px;transition:background .15s,color .15s;"
+                onmouseover="if(!fsTrendActive)this.style.background='#2A2E39'" onmouseout="this.style.background='none'"
+                data-i18n-title="trend_tool" title="Trendline"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="14" height="14" style="vertical-align:middle"><path d="M5 22 L23 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="5" cy="22" r="2.5" fill="currentColor"/><circle cx="23" cy="6" r="2.5" fill="currentColor"/></svg></button>
         <button onclick="closeFSModal()"
-                style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+                style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;padding:0 4px;line-height:1;transition:color .15s;"
+                onmouseover="this.style.color='#B2B5BE'" onmouseout="this.style.color='#6B7280'">✕</button>
     </div>
     <div style="flex:1;min-height:0;position:relative;">
         <div id="fs-chart-el" style="position:absolute;inset:0;"></div>
         <canvas id="fs-range-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;display:none;"></canvas>
+        <canvas id="fs-hline-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;"></canvas>
+        <canvas id="fs-trend-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:7;"></canvas>
     </div>
 </div>
 

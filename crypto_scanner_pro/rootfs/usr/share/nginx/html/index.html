@@ -134,24 +134,28 @@
                         </svg>
                     </a>
                 </div>
-                <div class="flex items-center space-x-2 sm:space-x-4">
+                <div class="flex items-center">
                     <!-- Search -->
                     <button onclick="openSearch()" data-i18n-title="nav_search" title="Cerca crypto"
-                        class="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-dark-hover hover:bg-dark-border rounded-lg transition-colors text-gray-300 hover:text-gray-100">
+                        class="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 hover:bg-dark-border rounded-lg transition-colors text-gray-300 hover:text-gray-100">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                     </button>
                     <a href="chart" title="Grafici" data-i18n-title="nav_grafici"
-                       class="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-dark-hover hover:bg-dark-border rounded-lg transition-colors text-gray-300 hover:text-gray-100">
+                       class="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 hover:bg-dark-border rounded-lg transition-colors text-gray-300 hover:text-gray-100">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.035-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.035.84-1.875 1.875-1.875h.75c1.035 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z"/></svg>
                     </a>
                     <a href="screener" title="Screener" onclick="if(!_isLoggedIn){event.preventDefault();openLoginModal();}"
-                       class="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-dark-hover hover:bg-dark-border rounded-lg transition-colors text-gray-300 hover:text-gray-100">
+                       class="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 hover:bg-dark-border rounded-lg transition-colors text-gray-300 hover:text-gray-100">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="18" height="18" fill="none"><path fill="currentColor" d="M14 3c6.075 0 11 4.925 11 11s-4.925 11-11 11S3 20.075 3 14 7.925 3 14 3m0 1C8.477 4 4 8.477 4 14s4.477 10 10 10 10-4.477 10-10a9.96 9.96 0 0 0-2.584-6.709l-2.835 2.835a6 6 0 1 1-.707-.707l2.835-2.835A9.96 9.96 0 0 0 14 4m0 5a5 5 0 1 0 3.871 1.836l-2.148 2.148a2 2 0 1 1-.707-.707l2.148-2.148A4.98 4.98 0 0 0 14 9"/></svg>
                     </a>
                     <button id="config-btn" onclick="openConfigModal()" title="Configurazione" data-i18n-title="nav_configurazione" style="display:none;"
-                        class="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-dark-hover hover:bg-dark-border transition-colors text-gray-400 hover:text-gray-200 text-lg">
+                        class="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg hover:bg-dark-border transition-colors text-gray-400 hover:text-gray-200 text-lg">
                         ⚙
                     </button>
+                    <a id="bot-btn" href="bot" title="BOT" data-i18n-title="nav_bot" style="display:none;"
+                        class="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg hover:bg-dark-border transition-colors text-gray-400 hover:text-gray-200 text-xs font-bold">
+                        BOT
+                    </a>
                     <div id="user-menu-wrap" style="position:relative;display:flex;align-items:center;margin-left:4px;">
                       <button id="user-btn" onclick="toggleUserMenu(event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:32px;background:#1E222D;border:none;border-radius:6px;color:#9CA3AF;cursor:pointer;transition:background .15s,color .15s;font-family:inherit;" onmouseover="this.style.background='#2A2E39';this.style.color='#E5E7EB'" onmouseout="this.style.background='#1E222D';this.style.color='#9CA3AF'">
                         <svg viewBox="0 0 24 24" width="18" height="18" style="flex-shrink:0;"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"></path></svg>
@@ -240,7 +244,7 @@
                     <svg id="hm-chevron" class="w-4 h-4 text-gray-400 transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </div>
                 <div id="hm-container" class="p-3 hidden">
-                    <div id="hm-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:3px;"></div>
+                    <div id="hm-grid" style="position:relative;height:300px;"></div>
                 </div>
             </div>
 
@@ -299,10 +303,10 @@
                             <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                 <tr>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left">Coin</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right" data-i18n="col_price">Prezzo</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right" data-i18n="col_change_24h">Var. 24h</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell" data-i18n="col_volume">Volume</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left cursor-pointer select-none hover:text-gray-300" onclick="sortTable('gainers-tbody','coin')">Coin<span id="sa-gainers-tbody-coin" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('gainers-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-gainers-tbody-price" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('gainers-tbody','change')" data-i18n="col_change_24h">Var. 24h<span id="sa-gainers-tbody-change" class="text-gray-400"> ↓</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('gainers-tbody','volume')" data-i18n="col_volume">Volume<span id="sa-gainers-tbody-volume" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
@@ -318,10 +322,10 @@
                             <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                 <tr>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left">Coin</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right" data-i18n="col_price">Prezzo</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right" data-i18n="col_change_24h">Var. 24h</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell" data-i18n="col_volume">Volume</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left cursor-pointer select-none hover:text-gray-300" onclick="sortTable('losers-tbody','coin')">Coin<span id="sa-losers-tbody-coin" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('losers-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-losers-tbody-price" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('losers-tbody','change')" data-i18n="col_change_24h">Var. 24h<span id="sa-losers-tbody-change" class="text-gray-400"> ↑</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('losers-tbody','volume')" data-i18n="col_volume">Volume<span id="sa-losers-tbody-volume" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
@@ -332,22 +336,43 @@
                     </div>
 
                     <!-- Stock Table -->
-                    <div id="content-stock" class="overflow-auto hidden">
-                        <table class="w-full">
-                            <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
-                                <tr>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left" data-i18n="col_asset">Strumento</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right" data-i18n="col_price">Prezzo</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right" data-i18n="col_change_24h">Var. 24h</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell" data-i18n="col_volume">Volume</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
-                                </tr>
-                            </thead>
-                            <tbody id="stock-tbody" class="text-sm">
-                                <tr><td colspan="6" class="text-center py-8 text-gray-500" data-i18n="loading">Caricamento...</td></tr>
-                            </tbody>
-                        </table>
+                    <div id="content-stock" class="hidden">
+                        <div class="grid grid-cols-2 divide-x divide-dark-border">
+                            <!-- Positivi -->
+                            <div class="overflow-auto">
+                                <table class="w-full">
+                                    <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left" data-i18n="col_asset">Strumento</th>
+                                            <th class="px-3 py-2 text-right" data-i18n="col_price">Prezzo</th>
+                                            <th class="px-3 py-2 text-right" data-i18n="col_change_24h">Var. 24h</th>
+                                            <th class="px-3 py-2 text-right hidden md:table-cell" data-i18n="col_volume">Volume</th>
+                                            <th class="px-3 py-2 text-center">Chart</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stock-tbody-pos" class="text-sm">
+                                        <tr><td colspan="5" class="text-center py-8 text-gray-500" data-i18n="loading">Caricamento...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- Negativi -->
+                            <div class="overflow-auto">
+                                <table class="w-full">
+                                    <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left" data-i18n="col_asset">Strumento</th>
+                                            <th class="px-3 py-2 text-right" data-i18n="col_price">Prezzo</th>
+                                            <th class="px-3 py-2 text-right" data-i18n="col_change_24h">Var. 24h</th>
+                                            <th class="px-3 py-2 text-right hidden md:table-cell" data-i18n="col_volume">Volume</th>
+                                            <th class="px-3 py-2 text-center">Chart</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stock-tbody-neg" class="text-sm">
+                                        <tr><td colspan="5" class="text-center py-8 text-gray-500" data-i18n="loading">Caricamento...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Commodity Table -->
@@ -356,10 +381,10 @@
                             <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                 <tr>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left" data-i18n="col_asset">Strumento</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right" data-i18n="col_price">Prezzo</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right" data-i18n="col_change_24h">Var. 24h</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell" data-i18n="col_volume">Volume</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left cursor-pointer select-none hover:text-gray-300" onclick="sortTable('commodity-tbody','coin')" data-i18n="col_asset">Strumento<span id="sa-commodity-tbody-coin" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('commodity-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-commodity-tbody-price" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('commodity-tbody','change')" data-i18n="col_change_24h">Var. 24h<span id="sa-commodity-tbody-change" class="text-gray-400"> ↓</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('commodity-tbody','volume')" data-i18n="col_volume">Volume<span id="sa-commodity-tbody-volume" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
@@ -375,15 +400,16 @@
                             <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                 <tr>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left">Coin</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right" data-i18n="col_price">Prezzo</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right" data-i18n="col_change_24h">Var. 24h</th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell" data-i18n="col_listed">Listata</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-left cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','coin')">Coin<span id="sa-ico-tbody-coin" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-ico-tbody-price" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','change')" data-i18n="col_change_24h">Var. 24h<span id="sa-ico-tbody-change" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','volume')" data-i18n="col_volume">Volume<span id="sa-ico-tbody-volume" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','listed')" data-i18n="col_listed">Listata<span id="sa-ico-tbody-listed" class="text-gray-400"> ↓</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
                             <tbody id="ico-tbody" class="text-sm">
-                                <tr><td colspan="6" class="text-center py-8 text-gray-500" data-i18n="loading">Caricamento...</td></tr>
+                                <tr><td colspan="7" class="text-center py-8 text-gray-500" data-i18n="loading">Caricamento...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -555,29 +581,129 @@
             return              { bg:'#F23645', tx:'#fff' };
         }
 
+        // ── Squarified treemap ────────────────────────────────────────────────
+        let _hmCoins = [];
+
+        function _sqWorst(row, side) {
+            if (!row.length) return Infinity;
+            const s = row.reduce((a, b) => a + b, 0);
+            const rMax = Math.max(...row), rMin = Math.min(...row);
+            return Math.max(side * side * rMax / (s * s), s * s / (side * side * rMin));
+        }
+
+        function _sqLayout(items, x, y, w, h, out) {
+            if (!items.length || w <= 0 || h <= 0) return;
+            const side = Math.min(w, h);
+            const row = [], rowV = [];
+            let i = 0;
+            while (i < items.length) {
+                const v = items[i]._v;
+                const test = [...rowV, v];
+                if (!rowV.length || _sqWorst(test, side) <= _sqWorst(rowV, side)) {
+                    row.push(items[i]); rowV.push(v); i++;
+                } else break;
+            }
+            const rowSum = rowV.reduce((a, b) => a + b, 0);
+            const GAP = 2;
+            if (w >= h) {
+                const sw = rowSum / h; let curY = y;
+                for (let j = 0; j < row.length; j++) {
+                    const ch = rowV[j] / sw;
+                    out.push({ ...row[j], x: x + GAP/2, y: curY + GAP/2, w: sw - GAP, h: ch - GAP });
+                    curY += ch;
+                }
+                _sqLayout(items.slice(i), x + sw, y, w - sw, h, out);
+            } else {
+                const sh = rowSum / w; let curX = x;
+                for (let j = 0; j < row.length; j++) {
+                    const cw = rowV[j] / sh;
+                    out.push({ ...row[j], x: curX + GAP/2, y: y + GAP/2, w: cw - GAP, h: sh - GAP });
+                    curX += cw;
+                }
+                _sqLayout(items.slice(i), x, y + sh, w, h - sh, out);
+            }
+        }
+
+        function _renderCells(scoins, sx, sy, sw, sh) {
+            if (!scoins.length || sw <= 0 || sh <= 0) return '';
+            const w     = c => Math.pow(c.volume_24h || 1, 0.35);
+            const total = scoins.reduce((s, c) => s + w(c), 0);
+            const items = scoins.map(c => ({ ...c, _v: w(c) / total * sw * sh }));
+            const layout = [];
+            _sqLayout(items, sx, sy, sw, sh, layout);
+            return layout.map(cell => {
+                const pct  = cell.change_24h || 0;
+                const clr  = _hmColor(pct);
+                const sign = pct >= 0 ? '+' : '';
+                const name = cell.symbol.replace('USDT', '');
+                const fs   = Math.max(8, Math.min(13, Math.min(cell.w, cell.h) * 0.22));
+                const showName = cell.w > 18 && cell.h > 14;
+                const showPct  = cell.h > 24 && cell.w > 28;
+                return `<a href="${chartUrl(cell.symbol)}"
+                    style="position:absolute;left:${cell.x.toFixed(1)}px;top:${cell.y.toFixed(1)}px;
+                           width:${cell.w.toFixed(1)}px;height:${cell.h.toFixed(1)}px;
+                           display:flex;flex-direction:column;align-items:center;justify-content:center;
+                           border-radius:3px;text-decoration:none;cursor:pointer;overflow:hidden;
+                           background:${clr.bg};color:${clr.tx};transition:filter .15s;"
+                    onmouseover="this.style.filter='brightness(1.25)'"
+                    onmouseout="this.style.filter=''">
+                    ${showName ? `<span style="font-size:${fs}px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;max-width:95%;text-overflow:ellipsis;">${name}</span>` : ''}
+                    ${showPct  ? `<span style="font-size:${Math.max(7,fs-1)}px;line-height:1.2;">${sign}${pct.toFixed(2)}%</span>` : ''}
+                </a>`;
+            }).join('');
+        }
+
         function renderHeatmap(coins) {
             const grid    = document.getElementById('hm-grid');
             const countEl = document.getElementById('hm-count');
             if (!grid) return;
-            grid.innerHTML = coins.map(c => {
-                const pct  = c.change_24h || 0;
-                const clr  = _hmColor(pct);
-                const sign = pct >= 0 ? '+' : '';
-                const name = c.symbol.replace('USDT','');
-                return `<a href="${chartUrl(c.symbol)}"
-                    style="display:flex;flex-direction:column;align-items:center;justify-content:center;
-                           height:52px;border-radius:4px;text-decoration:none;cursor:pointer;
-                           background:${clr.bg};color:${clr.tx};transition:filter .15s;"
-                    onmouseover="this.style.filter='brightness(1.2)'"
-                    onmouseout="this.style.filter=''">
-                    <span style="font-size:10px;font-weight:700;line-height:1.2;">${name}</span>
-                    <span style="font-size:10px;line-height:1.2;">${sign}${pct.toFixed(2)}%</span>
-                </a>`;
-            }).join('');
-            if (countEl) {
-                countEl.textContent = coins.length;
-                coins.length > 0 ? countEl.classList.remove('hidden') : countEl.classList.add('hidden');
+            _hmCoins = coins;
+            const W = grid.offsetWidth, H = 300;
+            if (countEl) { countEl.textContent = coins.length; coins.length > 0 ? countEl.classList.remove('hidden') : countEl.classList.add('hidden'); }
+            if (W <= 0 || !coins.length) return;
+
+            const COMM_KEYS   = new Set(['XAUUSDT','XAGUSDT','CLUSDT']);
+            const commSymsAll = new Set([...COMM_KEYS, ..._commSyms]);
+            const stockSymsAll = new Set([...Object.keys(INSTRUMENT_NAMES).filter(s => !commSymsAll.has(s)), ..._stockSyms]);
+
+            const commodityCoins = coins.filter(c =>  commSymsAll.has(c.symbol));
+            const stockCoins     = coins.filter(c =>  stockSymsAll.has(c.symbol));
+            const icoCoins       = coins.filter(c => !commSymsAll.has(c.symbol) && !stockSymsAll.has(c.symbol) && _icoSyms.has(c.symbol));
+            const cryptoCoins    = coins.filter(c => !commSymsAll.has(c.symbol) && !stockSymsAll.has(c.symbol) && !_icoSyms.has(c.symbol));
+
+            const LABEL_H = 16;
+            const SEC_GAP = 3;
+
+            const _sectorHtml = (label, scoins, sx, sy, sw, sh) => {
+                if (!scoins.length || sw <= 0 || sh <= 0) return '';
+                return `<div style="position:absolute;left:${sx}px;top:${sy}px;width:${sw}px;height:${sh}px;border:1px solid #2a2e39;border-radius:3px;box-sizing:border-box;pointer-events:none;"></div>
+                        <div style="position:absolute;left:${sx+5}px;top:${sy+3}px;font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;pointer-events:none;z-index:2;">${label}</div>`
+                    + _renderCells(scoins, sx, sy + LABEL_H, sw, sh - LABEL_H);
+            };
+
+            const totalVol = coins.reduce((s, c) => s + (c.volume_24h || 1), 0);
+            const _secW = (scoins, minPct) => Math.round(Math.max(W * minPct, W * scoins.reduce((s,c) => s+(c.volume_24h||1),0) / totalVol));
+
+            let html = '';
+            const hasStock = stockCoins.length > 0;
+            const hasComm  = commodityCoins.length > 0;
+            const hasIco   = icoCoins.length > 0;
+
+            if (!hasStock && !hasComm && !hasIco) {
+                html = _sectorHtml('Crypto', cryptoCoins, 0, 0, W, H);
+            } else {
+                const stockW = hasStock ? _secW(stockCoins,      0.12) : 0;
+                const commW  = hasComm  ? _secW(commodityCoins,  0.08) : 0;
+                const icoW   = hasIco   ? _secW(icoCoins,        0.08) : 0;
+                const gaps   = [hasStock, hasComm, hasIco].filter(Boolean).length * SEC_GAP;
+                const cryptoW = W - stockW - commW - icoW - gaps;
+                let curX = 0;
+                html  = _sectorHtml('Crypto',    cryptoCoins,   curX, 0, cryptoW, H); curX += cryptoW;
+                if (hasStock) { curX += SEC_GAP; html += _sectorHtml('Stock',     stockCoins,    curX, 0, stockW, H); curX += stockW; }
+                if (hasComm)  { curX += SEC_GAP; html += _sectorHtml('Commodity', commodityCoins,curX, 0, commW,  H); curX += commW;  }
+                if (hasIco)   { curX += SEC_GAP; html += _sectorHtml('ICO',       icoCoins,      curX, 0, icoW,   H); }
             }
+            grid.innerHTML = html;
         }
 
         function toggleHeatmap() {
@@ -585,15 +711,19 @@
             const v = document.getElementById('hm-chevron');
             const hidden = c.classList.toggle('hidden');
             v.style.transform = hidden ? '' : 'rotate(90deg)';
+            if (!hidden && _hmCoins.length) renderHeatmap(_hmCoins);
         }
 
         async function loadHeatmap() {
             try {
-                const res  = await fetch(`${API_URL}/api/high-volume`);
+                const res  = await fetch(`${API_URL}/api/high-volume?min_volume=0`);
                 const data = await res.json();
                 if (data && data.data) {
-                    const sorted = [...data.data].sort((a,b) => (b.volume_24h||0) - (a.volume_24h||0)).slice(0,120);
-                    renderHeatmap(sorted);
+                    const sorted = [...data.data].sort((a,b) => (b.volume_24h||0) - (a.volume_24h||0));
+                    const top    = sorted.slice(0, 120);
+                    const topSet = new Set(top.map(c => c.symbol));
+                    const icoExtra = sorted.filter(c => _icoSyms.has(c.symbol) && !topSet.has(c.symbol));
+                    renderHeatmap([...top, ...icoExtra]);
                 }
             } catch(e) {
                 console.error('Heatmap load error:', e);
@@ -617,6 +747,7 @@
                 setInterval(loadStockCommodityData, 60000);
                 setInterval(loadAlerts, 60000);
                 setInterval(loadHeatmap, 30000);
+                window.addEventListener('resize', () => { if (_hmCoins.length) { const c = document.getElementById('hm-container'); if (c && !c.classList.contains('hidden')) renderHeatmap(_hmCoins); } });
             }
         }
 
@@ -628,6 +759,7 @@
                 currentConfig.double_touch?.enabled,
             ].some(v => v);
             const statusEl = document.getElementById('bot-status');
+            if (!statusEl) return;
             statusEl.innerHTML = allEnabled
                 ? `<div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div><span class="text-sm text-emerald-400 font-medium hidden sm:inline">Online</span>`
                 : `<div class="w-2 h-2 bg-gray-500 rounded-full"></div><span class="text-sm text-gray-500 hidden sm:inline">Offline</span>`;
@@ -655,6 +787,7 @@
         function renderAlerts() {
             const container = document.getElementById('alerts-container');
             const countEl = document.getElementById('alerts-count');
+            if (!container) return;
             const filtered = _alertFilter ? _alertsData.filter(a => a.type === _alertFilter) : _alertsData;
             if (filtered.length === 0) {
                 container.innerHTML = '<div class="text-center py-8 text-gray-500 text-sm">'+window.t('alerts_waiting')+'</div>';
@@ -860,6 +993,48 @@
             }
         }
 
+        // ── Table sort ────────────────────────────────────────────────────────
+        const _tableSort = {
+            'gainers-tbody':   { col:'change', dir:-1 },
+            'losers-tbody':    { col:'change', dir: 1 },
+            'commodity-tbody': { col:'change', dir:-1 },
+            'ico-tbody':       { col:'listed', dir:-1 },
+        };
+        const _tableCache = {};
+
+        function sortTable(tbodyId, col) {
+            const s = _tableSort[tbodyId];
+            if (!s) return;
+            if (s.col === col) s.dir *= -1; else { s.col = col; s.dir = -1; }
+            _updateSortArrows(tbodyId);
+            const c = _tableCache[tbodyId];
+            if (!c) return;
+            if (tbodyId === 'ico-tbody') renderICOTable(tbodyId, c.coins);
+            else renderTable(tbodyId, c.coins, c.urlFn);
+        }
+
+        function _updateSortArrows(tbodyId) {
+            const s = _tableSort[tbodyId];
+            document.querySelectorAll(`[id^="sa-${tbodyId}-"]`).forEach(el => {
+                const col = el.id.slice(`sa-${tbodyId}-`.length);
+                el.textContent = s.col === col ? (s.dir === -1 ? ' ↓' : ' ↑') : ' ↕';
+                el.style.color  = s.col === col ? '#9ca3af' : '#374151';
+            });
+        }
+
+        function _sortedCoins(coins, tbodyId) {
+            const s = _tableSort[tbodyId];
+            if (!s) return coins;
+            return [...coins].sort((a, b) => {
+                if (s.col === 'coin')   return s.dir * ((a.name||a.symbol||'').localeCompare(b.name||b.symbol||''));
+                if (s.col === 'price')  return s.dir * ((a.price||0) - (b.price||0));
+                if (s.col === 'change') return s.dir * ((a.change_24h||0) - (b.change_24h||0));
+                if (s.col === 'volume') return s.dir * ((a.volume_24h||0) - (b.volume_24h||0));
+                if (s.col === 'listed') return s.dir * ((a.launch_time||0) - (b.launch_time||0));
+                return 0;
+            });
+        }
+
         // ── Market data ───────────────────────────────────────────────────────
         function _applyIcoFilter() {
             const _knownNonCrypto = new Set(Object.keys(INSTRUMENT_NAMES));
@@ -909,9 +1084,12 @@
         }
 
         function renderICOTable(tbodyId, coins) {
+            _tableCache[tbodyId] = { coins };
+            coins = _sortedCoins(coins, tbodyId);
+            _updateSortArrows(tbodyId);
             const tbody = document.getElementById(tbodyId);
             if (!coins || coins.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">'+window.t('no_ico')+'</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">'+window.t('no_ico')+'</td></tr>';
                 return;
             }
             const now = Date.now();
@@ -925,6 +1103,7 @@
                     const diffDays = Math.floor((now - launchMs) / 86400000);
                     listataDays = diffDays === 0 ? window.t('ico_today') : diffDays === 1 ? window.t('ico_day_ago') : `${diffDays} ${window.t('ico_days_ago')}`;
                 }
+                const volColor = coin.volume_24h >= 10e6 ? 'text-emerald-400' : coin.volume_24h >= 5e6 ? 'text-orange-400' : 'text-red-400';
                 return `
                     <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-gray-500 hidden sm:table-cell">${index + 1}</td>
@@ -935,9 +1114,10 @@
                                 ${isPositive ? '+' : ''}${coin.change_24h.toFixed(2)}%
                             </span>
                         </td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-right ${volColor} text-sm hidden md:table-cell">$${formatVolume(coin.volume_24h)}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-400 text-sm hidden md:table-cell">${listataDays}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-center">
-                            <a href="${chartUrl(coin.symbol)}" class="text-xs text-blue-400 hover:text-blue-300 hover:bg-dark-hover px-2 py-1 rounded transition-colors">▶</a>
+                            <a href="${chartUrl(coin.symbol)}" target="_blank" rel="noopener" class="inline-flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-dark-hover p-1 rounded transition-colors"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.035-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.035.84-1.875 1.875-1.875h.75c1.035 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z"/></svg></a>
                         </td>
                     </tr>
                 `;
@@ -945,6 +1125,9 @@
         }
 
         function renderTable(tbodyId, coins, urlFn) {
+            _tableCache[tbodyId] = { coins, urlFn };
+            coins = _sortedCoins(coins, tbodyId);
+            _updateSortArrows(tbodyId);
             const tbody = document.getElementById(tbodyId);
             if (!coins || coins.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">'+window.t('no_data')+'</td></tr>';
@@ -955,6 +1138,7 @@
                 const changeColor = isPositive ? 'text-emerald-400' : 'text-red-400';
                 const bgColor = isPositive ? 'bg-emerald-400/5' : 'bg-red-400/5';
                 const url = urlFn ? urlFn(coin) : chartUrl(coin.symbol);
+                const volColor = coin.volume_24h >= 10e6 ? 'text-emerald-400' : coin.volume_24h >= 5e6 ? 'text-orange-400' : 'text-red-400';
                 return `
                     <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-gray-500 hidden sm:table-cell">${index + 1}</td>
@@ -965,13 +1149,36 @@
                                 ${isPositive ? '+' : ''}${coin.change_24h.toFixed(2)}%
                             </span>
                         </td>
-                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-400 text-sm hidden md:table-cell">$${formatVolume(coin.volume_24h)}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-right ${volColor} text-sm hidden md:table-cell">$${formatVolume(coin.volume_24h)}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-center">
-                            <a href="${url}" class="text-xs text-blue-400 hover:text-blue-300 hover:bg-dark-hover px-2 py-1 rounded transition-colors">▶</a>
+                            <a href="${url}" target="_blank" rel="noopener" class="inline-flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-dark-hover p-1 rounded transition-colors"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.035-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.035.84-1.875 1.875-1.875h.75c1.035 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z"/></svg></a>
                         </td>
                     </tr>
                 `;
             }).join('');
+        }
+
+        function renderStockSplit(coins, urlFn) {
+            _stocksCache = { coins, urlFn };
+            const chartIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.035-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.035.84-1.875 1.875-1.875h.75c1.035 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z"/></svg>`;
+            const rowHtml = coin => {
+                const isPos = coin.change_24h >= 0;
+                const cls = isPos ? 'text-emerald-400 bg-emerald-400/5' : 'text-red-400 bg-red-400/5';
+                const url = urlFn ? urlFn(coin) : chartUrl(coin.symbol);
+                const volColor = coin.volume_24h >= 10e6 ? 'text-emerald-400' : coin.volume_24h >= 5e6 ? 'text-orange-400' : 'text-red-400';
+                return `<tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
+                    <td class="px-3 py-2 font-medium cursor-default" onmouseenter="showChartTooltip('${coin.symbol}',event)" onmouseleave="hideChartTooltip()">${coin.name || coin.symbol.replace('USDT','')}</td>
+                    <td class="px-3 py-2 text-right text-gray-300 text-sm">$${formatPrice(coin.price)}</td>
+                    <td class="px-3 py-2 text-right"><span class="${cls} px-1.5 py-0.5 rounded text-xs font-medium">${isPos?'+':''}${coin.change_24h.toFixed(2)}%</span></td>
+                    <td class="px-3 py-2 text-right ${volColor} text-sm hidden md:table-cell">$${formatVolume(coin.volume_24h)}</td>
+                    <td class="px-3 py-2 text-center"><a href="${url}" target="_blank" rel="noopener" class="inline-flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-dark-hover p-1 rounded transition-colors">${chartIcon}</a></td>
+                </tr>`;
+            };
+            const pos = [...coins].filter(c => c.change_24h >= 0).sort((a,b) => b.change_24h - a.change_24h);
+            const neg = [...coins].filter(c => c.change_24h <  0).sort((a,b) => a.change_24h - b.change_24h);
+            const empty = '<tr><td colspan="3" class="text-center py-6 text-gray-600">—</td></tr>';
+            document.getElementById('stock-tbody-pos').innerHTML = pos.length ? pos.map(rowHtml).join('') : empty;
+            document.getElementById('stock-tbody-neg').innerHTML = neg.length ? neg.map(rowHtml).join('') : empty;
         }
 
         function switchMarketTab(tab) {
@@ -1024,8 +1231,7 @@
                     .map(mapCoin).sort((a, b) => b.change_24h - a.change_24h);
                 const comms  = jt.result.list.filter(x => commSyms.has(x.symbol) && x.lastPrice)
                     .map(mapCoin).sort((a, b) => b.change_24h - a.change_24h);
-                _stocksCache = stocks;
-                renderTable('stock-tbody', stocks);
+                renderStockSplit(stocks);
                 renderTable('commodity-tbody', comms);
                 if (_rawIcoData.length > 0) _applyIcoFilter();
             } catch(e) { console.error('Error loading stock/commodity data:', e); }
@@ -1218,6 +1424,7 @@
             const container = document.getElementById('alerts-container');
             const filterBar = document.getElementById('alerts-filter-bar');
             const chevron = document.getElementById('alerts-chevron');
+            if (!container) return;
             const isHidden = container.classList.toggle('hidden');
             chevron.style.transform = isHidden ? '' : 'rotate(90deg)';
             if (filterBar) {
@@ -1257,8 +1464,8 @@
 
         function _newsRelTime(ts) {
             const d = new Date(ts);
-            const months = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
-            return d.getDate() + ' ' + months[d.getMonth()];
+            const locale = (window._cspLang || 'it') === 'it' ? 'it-IT' : 'en-US';
+            return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
         }
 
         function renderNewsItems() {
@@ -1281,9 +1488,9 @@
         function openNewsModal(idx) {
             const cat = _newsData.categories[_newsTab];
             const item = cat.items[idx];
-            const months = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
             const d = new Date(item.ts);
-            document.getElementById('nm-date').textContent = d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+            const locale = (window._cspLang || 'it') === 'it' ? 'it-IT' : 'en-US';
+            document.getElementById('nm-date').textContent = d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
             document.getElementById('nm-title').textContent = item.title;
             document.getElementById('nm-body').textContent = item.desc || '—';
             document.getElementById('nm-link').href = item.url;
@@ -1301,7 +1508,7 @@
 
         async function loadNews() {
             const el = document.getElementById('news-items');
-            el.innerHTML = '<div class="text-center py-6 text-gray-500 text-sm" data-i18n="loading">Caricamento...</div>';
+            el.innerHTML = '<div class="text-center py-6 text-gray-500 text-sm">'+window.t('news_loading')+'</div>';
             try {
                 const res = await fetch('api/news');
                 const json = await res.json();
@@ -1316,12 +1523,11 @@
                 });
                 const badge = document.getElementById('news-count');
                 if (recent > 0) { badge.textContent = recent; badge.classList.remove('hidden'); }
-                document.getElementById('news-updated').textContent = 'aggiornato ora';
+                document.getElementById('news-updated').textContent = window.t('news_updated_now');
                 renderNewsItems();
-                // aggiorna label aggiornato ogni minuto
                 setInterval(() => {
                     const mins = Math.round((Date.now() - _newsFetchedAt) / 60000);
-                    document.getElementById('news-updated').textContent = mins < 1 ? 'aggiornato ora' : mins + 'm fa';
+                    document.getElementById('news-updated').textContent = mins < 1 ? window.t('news_updated_now') : mins + window.t('news_min_ago');
                 }, 60000);
             } catch(e) {
                 el.innerHTML = '<div class="text-center py-6 text-red-400 text-sm">'+window.t('err_load_news')+'</div>';
@@ -1354,7 +1560,7 @@
           if (!LC) return;
           const el = document.getElementById('chart-tt-el');
           _ttChart = LC.createChart(el, {
-            autoSize:false, width:300, height:170,
+            autoSize:false, width:600, height:340,
             layout:{background:{color:'#0B0E11'}, textColor:'#B2B5BE', fontSize:10 },
             grid:{ vertLines:{color:'#FFFFFF08'}, horzLines:{color:'#FFFFFF08'} },
             crosshair:{ mode:0 },
@@ -1377,7 +1583,7 @@
 
         function _positionTT(cx, cy) {
           const tt = document.getElementById('chart-tt');
-          const W = 312, H = 196;
+          const W = 624, H = 392;
           let x = cx + 18, y = cy - H/2;
           if (x + W > window.innerWidth - 8) x = cx - W - 18;
           if (y < 8) y = 8;
@@ -1432,12 +1638,12 @@
     </script>
 
 <!-- Chart hover tooltip -->
-<div id="chart-tt" style="display:none;position:fixed;z-index:9999;pointer-events:none;background:#0B0E11;border:1px solid #2A2E39;border-radius:6px;box-shadow:0 8px 28px rgba(0,0,0,0.8);overflow:hidden;width:300px;">
+<div id="chart-tt" style="display:none;position:fixed;z-index:9999;pointer-events:none;background:#0B0E11;border:1px solid #2A2E39;border-radius:6px;box-shadow:0 8px 28px rgba(0,0,0,0.8);overflow:hidden;width:600px;">
   <div style="padding:5px 10px;background:#161A1E;display:flex;align-items:center;justify-content:space-between;gap:8px;">
     <span id="chart-tt-sym"    style="font-size:11px;font-weight:700;color:#E5E7EB;white-space:nowrap;"></span>
     <span id="chart-tt-change" style="font-size:11px;font-weight:600;white-space:nowrap;"></span>
   </div>
-  <div id="chart-tt-el" style="width:300px;height:170px;"></div>
+  <div id="chart-tt-el" style="width:600px;height:340px;"></div>
 </div>
 
 <div id="screenshot-tip" style="display:none;position:fixed;z-index:9999;background:#0F0F0F;border:1px solid #2A2E39;border-radius:8px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.9);pointer-events:none;width:480px;height:270px;">
@@ -1499,7 +1705,7 @@ function closeTelegramModal(){document.getElementById('telegram-modal').style.di
 async function saveTelegramModal(){var msg=document.getElementById('tg-modal-msg');try{var d=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegram_token:document.getElementById('tg-tok-m').value,telegram_chat_id:document.getElementById('tg-chat-m').value})}).then(r=>r.json());if(d.success){msg.textContent=window.t('saved');msg.style.color='#10b981';}else{msg.textContent=window.t('save_err');msg.style.color='#ef4444';}}catch(e){msg.textContent=window.t('save_err');msg.style.color='#ef4444';}setTimeout(()=>msg.textContent='',3000);}
 async function openUsersModal(){var d=document.getElementById('user-dd');if(d)d.style.display='none';document.getElementById('users-modal').style.display='flex';var tb=document.getElementById('users-tbody');tb.innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:#6B7280;">'+window.t('loading')+'</td></tr>';try{var r=await fetch('/api/admin/users');var data=await r.json();if(!data.users||data.users.length===0){tb.innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:#6B7280;">'+window.t('no_users')+'</td></tr>';return;}tb.innerHTML=data.users.map(function(u){var dt=u.created_at?u.created_at.split('T')[0]:'-';var role=u.role||'—';var roleColor=u.role==='admin'?'#60a5fa':'#9CA3AF';return '<tr style="border-bottom:1px solid #1E222D;" onmouseover="this.style.background=\'#1E222D\'" onmouseout="this.style.background=\'transparent\'"><td style="padding:8px 10px;color:#E5E7EB;font-weight:500;">'+u.username+'</td><td style="padding:8px 10px;color:#D1D5DB;">'+u.email+'</td><td style="padding:8px 10px;color:#9CA3AF;">'+dt+'</td><td style="padding:8px 10px;color:'+roleColor+';font-weight:500;">'+role+'</td></tr>';}).join('');addDeleteBtns(data.users);}catch(e){tb.innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:#f87171;">'+window.t('load_err')+'</td></tr>';}}
 function closeUsersModal(){document.getElementById('users-modal').style.display='none';}
-(async function(){try{var r=await fetch('/api/auth/status');var d=await r.json();var lbl=document.getElementById('user-label');var li=document.getElementById('dd-login');var lo=document.getElementById('dd-logout');var hdr=document.getElementById('dd-header');var uname=document.getElementById('dd-username');var drole=document.getElementById('dd-role');var prof=document.getElementById('dd-profile');var apik=document.getElementById('dd-apikey');var tg=document.getElementById('dd-telegram');var cfg=document.getElementById('config-btn');var usrs=document.getElementById('dd-users');var wm=document.getElementById('dd-webmail');if(d.logged_in){_isLoggedIn=true;if(lbl)lbl.textContent=d.username||'Admin';if(li)li.style.display='none';if(lo)lo.style.display='flex';if(prof)prof.style.display='flex';if(apik)apik.style.display=(d.role==='admin'?'flex':'none');if(tg)tg.style.display=(d.role==='admin'?'flex':'none');if(cfg)cfg.style.display=(d.role==='admin'?'flex':'none');if(usrs)usrs.style.display=(d.role==='admin'?'flex':'none');if(wm)wm.style.display=(d.role==='admin'?'flex':'none');if(d.role==='admin'){pollUnreadMail();setInterval(pollUnreadMail,60000);}if(hdr)hdr.style.display='block';if(uname)uname.textContent=d.username||'admin';if(drole)drole.textContent=d.role==='admin'?window.t('role_admin'):d.role||'';}else{if(lbl)lbl.textContent=window.t('guest_label');if(li)li.style.display='flex';if(lo)lo.style.display='none';if(prof)prof.style.display='none';if(apik)apik.style.display='none';if(tg)tg.style.display='none';if(cfg)cfg.style.display='none';if(usrs)usrs.style.display='none';if(hdr)hdr.style.display='none';}}catch(e){}})();
+(async function(){try{var r=await fetch('/api/auth/status');var d=await r.json();var lbl=document.getElementById('user-label');var li=document.getElementById('dd-login');var lo=document.getElementById('dd-logout');var hdr=document.getElementById('dd-header');var uname=document.getElementById('dd-username');var drole=document.getElementById('dd-role');var prof=document.getElementById('dd-profile');var apik=document.getElementById('dd-apikey');var tg=document.getElementById('dd-telegram');var cfg=document.getElementById('config-btn');var usrs=document.getElementById('dd-users');var wm=document.getElementById('dd-webmail');var botb=document.getElementById('bot-btn');if(d.logged_in){_isLoggedIn=true;if(lbl)lbl.textContent=d.username||'Admin';if(li)li.style.display='none';if(lo)lo.style.display='flex';if(prof)prof.style.display='flex';if(apik)apik.style.display=(d.role==='admin'?'flex':'none');if(tg)tg.style.display=(d.role==='admin'?'flex':'none');if(cfg)cfg.style.display=(d.role==='admin'?'flex':'none');if(usrs)usrs.style.display=(d.role==='admin'?'flex':'none');if(wm)wm.style.display=(d.role==='admin'?'flex':'none');if(botb)botb.style.display=(d.role==='admin'?'flex':'none');if(d.role==='admin'){pollUnreadMail();setInterval(pollUnreadMail,60000);}if(hdr)hdr.style.display='block';if(uname)uname.textContent=d.username||'admin';if(drole)drole.textContent=d.role==='admin'?window.t('role_admin'):d.role||'';}else{if(lbl)lbl.textContent=window.t('guest_label');if(li)li.style.display='flex';if(lo)lo.style.display='none';if(prof)prof.style.display='none';if(apik)apik.style.display='none';if(tg)tg.style.display='none';if(cfg)cfg.style.display='none';if(usrs)usrs.style.display='none';if(botb)botb.style.display='none';if(hdr)hdr.style.display='none';}}catch(e){}})();
 async function pollUnreadMail(){
   try{
     var r=await fetch('api/admin/unread-mail');
