@@ -51,6 +51,8 @@
         .td-sym { font-weight: 700; }
         .td-sym a { color: #e5e7eb; text-decoration: none; }
         .td-sym a:hover { color: #fde68a; }
+        .fav-star { cursor: pointer; font-size: 0.95rem; color: #4B5563; margin-right: 5px; user-select: none; }
+        .fav-star.active { color: #fbbf24; }
         .td-num { text-align: right; font-family: 'Monaco','Consolas',monospace; font-size: 0.78rem; color: #D1D5DB; }
         .td-center { text-align: center; }
         .positive { color: #10b981; }
@@ -171,6 +173,7 @@
                     <td class="td-num muted" style="text-align:center;font-size:0.7rem;">{{ idx+1 }}</td>
                     <td v-for="col in columns" :key="col.key" :class="col.tdClass(row)">
                         <template v-if="col.key==='symbol'">
+                            <span class="fav-star" :class="{active: isFav(row.symbol)}" @click.stop="toggleFav(row.symbol)" :title="t('fav_title')">{{ isFav(row.symbol) ? '★' : '☆' }}</span>
                             <a :href="'mtf?symbol='+row.symbol" target="_blank">{{ row.symbol.replace('USDT','') }}</a>
                         </template>
                         <template v-else-if="col.key==='level'">
@@ -570,6 +573,30 @@ createApp({
             } catch {}
         });
 
+        // ── favorites ─────────────────────────────────────────────────────────
+        const favoriteSymbols = ref(new Set());
+        async function loadFavorites() {
+            try {
+                const r = await fetch('/api/favorites');
+                const j = await r.json();
+                favoriteSymbols.value = new Set(j.symbols || []);
+            } catch {}
+        }
+        function isFav(sym) { return favoriteSymbols.value.has(sym); }
+        async function toggleFav(sym) {
+            const s = new Set(favoriteSymbols.value);
+            s.has(sym) ? s.delete(sym) : s.add(sym);
+            favoriteSymbols.value = s;
+            try {
+                await fetch('/api/favorites', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols: [...s] }),
+                });
+            } catch {}
+        }
+        onMounted(loadFavorites);
+
         // ── HELPERS ───────────────────────────────────────────────────────────
         const formatPrice = (p) => {
             if (!p) return '—';
@@ -588,6 +615,7 @@ createApp({
 
         return {
             TF_LABEL, thrAth, thrAtl, minVolM, screenshotTf, t,
+            favoriteSymbols, isFav, toggleFav,
             columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
             scanning, statusMsg, displayMsg, initialDone,
             allResults, filteredResults, progressPct,

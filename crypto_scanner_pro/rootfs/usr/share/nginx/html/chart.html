@@ -708,6 +708,35 @@ function getLvCfg() {
 let EMA_CFG = getEmaCfg();
 const TF_DEFAULT_N = {'1':120,'5':100,'15':80,'30':80,'60':80,'240':60,'D':50,'W':52,'M':24};
 
+// ── TF personalizzato (bottone clessidra, solo griglia principale) ────────────
+// Codificato come 'c<secondi>', es. 'c420' = 7 minuti. Stessa lista candidati
+// del backend (_pick_custom_base_interval in app.py) — tenere sincronizzate.
+const _CUSTOM_BASE_CANDIDATES = [['D',86400],['720',43200],['360',21600],['240',14400],
+                                  ['120',7200],['60',3600],['30',1800],['15',900],
+                                  ['5',300],['3',180],['1',60]];
+function customTFInfo(tf) {
+    const m = /^c(\d+)$/.exec(tf);
+    if (!m) return null;
+    const secs = parseInt(m[1], 10);
+    let base = '1';
+    for (const [iv, s] of _CUSTOM_BASE_CANDIDATES) { if (s <= secs && secs % s === 0) { base = iv; break; } }
+    return { secs, base };
+}
+function bestUnitFor(secs) {
+    if (secs % 86400 === 0) return 86400;
+    if (secs % 3600 === 0)  return 3600;
+    if (secs % 60 === 0)    return 60;
+    return 1;
+}
+const _UNIT_SUFFIX = {86400:'D', 3600:'h', 60:'m', 1:'s'};
+function tfLabel(tf) {
+    if (TF_LABEL[tf]) return TF_LABEL[tf];
+    const ci = customTFInfo(tf);
+    if (!ci) return tf;
+    const u = bestUnitFor(ci.secs);
+    return (ci.secs / u) + _UNIT_SUFFIX[u];
+}
+
 // ── state ─────────────────────────────────────────────────────────────────────
 const TGSVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="#29b6f6" style="flex-shrink:0;vertical-align:middle;"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.96 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>';
 
@@ -770,6 +799,8 @@ function getTFRemaining(tf) {
     const nowSec = Math.floor(nowMs / 1000);
     const TF_S = {'1':60,'5':300,'30':1800,'60':3600,'240':14400};
     if (TF_S[tf]) return TF_S[tf] - (nowSec % TF_S[tf]);
+    const ci = customTFInfo(tf);
+    if (ci) return ci.secs - (nowSec % ci.secs);
     const d = new Date(nowMs);
     if (tf === 'D') return Math.max(0, Math.ceil((Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()+1) - nowMs) / 1000));
     if (tf === 'W') {
@@ -1146,9 +1177,6 @@ function makeChart(el, opts) {
         timeScale: { borderVisible:false, visible:true, timeVisible:true, secondsVisible:false,
                      barSpacing: opts?.barSpacing || 6, rightOffset: opts?.rightOffset || 30 },
     });
-    el.addEventListener('wheel', () => {
-        requestAnimationFrame(() => { chart.priceScale('right').applyOptions({ autoScale: true }); });
-    }, { passive: true });
     return chart;
 }
 
@@ -1726,7 +1754,7 @@ function renderSlotTF(idx) {
     }).join('');
     // If header content overflows, collapse TF bar to a dropdown trigger
     if (s.hdr && s.hdr.scrollWidth > s.hdr.clientWidth + 1) {
-        const lbl = TF_LABEL[s.curTF] || s.curTF;
+        const lbl = tfLabel(s.curTF);
         s.tfBtnsEl.innerHTML = `<button id="tf-dd-${idx}" onclick="toggleSlotTFDropdown(event,${idx})" style="font-size:12px;padding:1px 5px;border-radius:2px;border:none;cursor:pointer;background:#1E222D;color:#FF9C2E;font-weight:700;white-space:nowrap;">${lbl} &#9660;</button>`;
     }
 }
@@ -1760,7 +1788,7 @@ async function switchSlotTF(idx, tf) {
     const s = slots[idx];
     if (tf === s.curTF || !s.coin) return;
     if (ws && ws.readyState === WebSocket.OPEN)
-        ws.send(JSON.stringify({ op:'unsubscribe', args:[`kline.${s.curTF}.${s.symbol}`] }));
+        ws.send(JSON.stringify({ op:'unsubscribe', args:[`kline.${(customTFInfo(s.curTF)||{}).base || s.curTF}.${s.symbol}`] }));
     s.curTF = tf;
     renderSlotTF(idx);
     if (s.dayHighLine)  { try { s.candleS.removePriceLine(s.dayHighLine);  } catch(e) {} s.dayHighLine  = null; }
@@ -2193,22 +2221,33 @@ function openWS() {
     ws = new WebSocket('wss://stream.bybit.com/v5/public/linear');
     ws.onopen = () => {
         setWSDot('live');
-        ws.send(JSON.stringify({ op:'subscribe', args: active.map(s => `kline.${s.curTF}.${s.symbol}`) }));
+        ws.send(JSON.stringify({ op:'subscribe', args: active.map(s => `kline.${(customTFInfo(s.curTF)||{}).base || s.curTF}.${s.symbol}`) }));
     };
     ws.onmessage = ev => {
         let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
         if (!msg.topic || !msg.topic.startsWith('kline.')) return;
         const parts   = msg.topic.split('.');
-        const slotIdx = slots.findIndex(s => s.symbol === parts[2] && s.curTF === parts[1]);
+        const slotIdx = slots.findIndex(s => s.symbol === parts[2] && ((customTFInfo(s.curTF)||{}).base || s.curTF) === parts[1]);
         if (slotIdx === -1) return;
         const b = msg.data[0];
         const confirmed = b.confirm === true || b.confirm === 'true';
-        const candle = {
-            time: Math.floor(parseInt(b.start)/1000) + TZ_OFFSET_S,
-            open: parseFloat(b.open), high: parseFloat(b.high),
-            low:  parseFloat(b.low),  close: parseFloat(b.close),
-        };
-        const s = slots[slotIdx];
+        const s  = slots[slotIdx];
+        const ci = customTFInfo(s.curTF);
+        let candle;
+        if (ci) {
+            const rawSec     = Math.floor(parseInt(b.start)/1000);
+            const bucketTime = Math.floor(rawSec / ci.secs) * ci.secs + TZ_OFFSET_S;
+            const last = s.klines[s.klines.length - 1];
+            candle = (last && last.time === bucketTime)
+                ? { time: bucketTime, open: last.open, high: Math.max(last.high, parseFloat(b.high)), low: Math.min(last.low, parseFloat(b.low)), close: parseFloat(b.close) }
+                : { time: bucketTime, open: parseFloat(b.open), high: parseFloat(b.high), low: parseFloat(b.low), close: parseFloat(b.close) };
+        } else {
+            candle = {
+                time: Math.floor(parseInt(b.start)/1000) + TZ_OFFSET_S,
+                open: parseFloat(b.open), high: parseFloat(b.high),
+                low:  parseFloat(b.low),  close: parseFloat(b.close),
+            };
+        }
         s.candleS.update(candle);
         s.lastPrice = candle.close;
         s.lastOpen  = candle.open;
@@ -2295,6 +2334,41 @@ async function switchTF(tf) {
     curTF = tf; mobileChartIdx = 0; renderTFBar(); await loadPage();
 }
 
+// ── TF personalizzato (popup clessidra) ───────────────────────────────────────
+function openCustomTFModal() {
+    const ci = customTFInfo(curTF);
+    const u = ci ? bestUnitFor(ci.secs) : 60;
+    document.getElementById('ctf-value').value = ci ? String(ci.secs / u) : '';
+    document.getElementById('ctf-unit').value = String(u);
+    document.getElementById('ctf-modal-msg').textContent = '';
+    document.getElementById('ctf-modal').style.display = 'flex';
+    document.getElementById('ctf-value').focus();
+}
+
+function closeCustomTFModal() {
+    document.getElementById('ctf-modal').style.display = 'none';
+}
+
+async function confirmCustomTF() {
+    const val  = parseFloat(document.getElementById('ctf-value').value);
+    const unit = parseInt(document.getElementById('ctf-unit').value, 10);
+    const msgEl = document.getElementById('ctf-modal-msg');
+    if (!(val > 0) || !Number.isInteger(val)) {
+        msgEl.textContent = 'Inserisci un numero intero positivo'; msgEl.style.color = '#f87171'; return;
+    }
+    const secs = val * unit;
+    if (secs < 60) {
+        msgEl.textContent = 'Il TF minimo è 60 secondi'; msgEl.style.color = '#f87171'; return;
+    }
+    if (secs > 2592000) {
+        msgEl.textContent = 'Il TF massimo è 30 giorni'; msgEl.style.color = '#f87171'; return;
+    }
+    const code = 'c' + secs;
+    closeCustomTFModal();
+    if (code === curTF) return;
+    curTF = code; mobileChartIdx = 0; renderTFBar(); await loadPage();
+}
+
 async function switchMode(mode) {
     if (mode === curMode) return;
     curMode = mode; curPage = 0; mobileChartIdx = 0;
@@ -2313,8 +2387,11 @@ function renderModeButtons() {
     updateSourceToggle();
 }
 
+const CUSTOM_TF_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M6 2h12M6 22h12M8 2c0 4 8 4 8 8s-8 4-8 8M16 2c0 4-8 4-8 8s8 4 8 8"/></svg>';
+
 function renderTFBar() {
     const _CD_TFS = {'1':1,'5':1,'30':1,'60':1,'240':1,'D':1,'W':1,'M':1};
+    const isCustom = customTFInfo(curTF) !== null;
     document.getElementById('tf-bar').innerHTML =
         TIMEFRAMES.map(tf => {
             const cls = tf === curTF ? 'btn-tf-active' : 'btn-tf-idle';
@@ -2323,7 +2400,11 @@ function renderTFBar() {
                 <span style="line-height:1.3;">${TF_LABEL[tf]}</span>
                 <span id="tf-cd-${tf}" style="font-size:11px;font-family:monospace;color:#F3F4F6;line-height:1;min-width:28px;text-align:center;">${cdTxt}</span>
             </button>`;
-        }).join('');
+        }).join('') +
+        `<button onclick="openCustomTFModal()" title="TF personalizzato" class="px-2 rounded text-xs font-medium transition-colors ${isCustom?'btn-tf-active':'btn-tf-idle'}" style="display:flex;flex-direction:column;align-items:center;padding:2px 8px;gap:1px;">
+            <span style="line-height:1.3;display:flex;align-items:center;gap:3px;">${CUSTOM_TF_ICON}${isCustom ? tfLabel(curTF) : ''}</span>
+            <span id="tf-cd-custom" style="font-size:11px;font-family:monospace;color:#F3F4F6;line-height:1;min-width:28px;text-align:center;">${isCustom ? fmtCountdown(getTFRemaining(curTF)) : ''}</span>
+        </button>`;
     updateCountdown();
 }
 
@@ -2331,6 +2412,16 @@ const _CD_WARN_S  = {'1':30, '5':60, '30':300, '60':600, '240':300, 'D':3600, 'W
 const _CD_BLINK_S = {'1':10, '5':10, '30':60,  '60':60};
 function updateCountdown() {
     const _CD_TFS = {'1':1,'5':1,'30':1,'60':1,'240':1,'D':1,'W':1,'M':1};
+    const ci = customTFInfo(curTF);
+    if (ci) {
+        const rem = getTFRemaining(curTF);
+        const el = document.getElementById('tf-cd-custom');
+        if (el) {
+            el.textContent = fmtCountdown(rem);
+            const warn = rem <= Math.min(30, ci.secs * 0.1);
+            el.style.color = warn ? '#FF9C2E' : '#F3F4F6';
+        }
+    }
     Object.keys(_CD_TFS).forEach(tf => {
         const rem = getTFRemaining(tf);
         const txt = fmtCountdown(rem, tf==='M'||tf==='W'?'days':tf==='D'||tf==='240');
@@ -5377,6 +5468,29 @@ async function openUsersModal(){var d=document.getElementById('user-dd');if(d)d.
 function closeUsersModal(){document.getElementById('users-modal').style.display='none';}
 (async function(){try{var r=await fetch('/api/auth/status');var d=await r.json();var lbl=document.getElementById('user-label');var li=document.getElementById('dd-login');var lo=document.getElementById('dd-logout');var hdr=document.getElementById('dd-header');var uname=document.getElementById('dd-username');var drole=document.getElementById('dd-role');var prof=document.getElementById('dd-profile');var apik=document.getElementById('dd-apikey');var tg=document.getElementById('dd-telegram');var usrs=document.getElementById('dd-users');if(d.logged_in){_isLoggedIn=true;_isAdmin=(d.role==='admin');var balRow=document.getElementById('fs-trade-balance-row');var ordBtn=document.getElementById('fs-order-btn');if(balRow)balRow.style.display='block';if(ordBtn){ordBtn.disabled=false;ordBtn.style.cssText='width:100%;padding:8px 0;font-size:12px;font-weight:700;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;opacity:1;';}if(lbl)lbl.textContent=d.username||'Admin';if(li)li.style.display='none';if(lo)lo.style.display='flex';if(prof)prof.style.display='flex';if(apik)apik.style.display='flex';if(tg)tg.style.display=(d.role==='admin'?'flex':'none');if(usrs)usrs.style.display=(d.role==='admin'?'flex':'none');if(hdr)hdr.style.display='block';if(uname)uname.textContent=d.username||'admin';if(drole)drole.textContent=d.role==='admin'?window.t('role_admin'):d.role||'';}else{if(lbl)lbl.textContent=window.t('guest_label');if(li)li.style.display='flex';if(lo)lo.style.display='none';if(prof)prof.style.display='none';if(apik)apik.style.display='none';if(tg)tg.style.display='none';if(usrs)usrs.style.display='none';if(hdr)hdr.style.display='none';}}catch(e){}})();
 </script>
+<!-- Custom TF Modal -->
+<div id="ctf-modal" onclick="if(event.target===this)closeCustomTFModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#161A1E;border:1px solid #2A2E39;border-radius:12px;padding:28px 24px;width:300px;max-width:90vw;position:relative;">
+    <button onclick="closeCustomTFModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#6B7280;cursor:pointer;font-size:22px;line-height:1;padding:0;">×</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <span style="color:#FF9C2E;display:inline-flex;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h12M6 22h12M8 2c0 4 8 4 8 8s-8 4-8 8M16 2c0 4-8 4-8 8s8 4 8 8"/></svg></span>
+      <span style="font-size:15px;font-weight:700;color:#E5E7EB;">TF personalizzato</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <input id="ctf-value" type="number" min="1" step="1" placeholder="Valore" style="width:100px;font-size:13px;color:#E5E7EB;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 10px;box-sizing:border-box;outline:none;" onkeydown="if(event.key==='Enter')confirmCustomTF()">
+      <select id="ctf-unit" style="flex:1;font-size:13px;color:#E5E7EB;background:#1E222D;border:1px solid #374151;border-radius:6px;padding:8px 10px;box-sizing:border-box;outline:none;">
+        <option value="1">Secondi</option>
+        <option value="60" selected>Minuti</option>
+        <option value="3600">Ore</option>
+        <option value="86400">Giorni</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button onclick="confirmCustomTF()" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;">Applica</button>
+      <span id="ctf-modal-msg" style="font-size:12px;min-height:18px;"></span>
+    </div>
+  </div>
+</div>
 <!-- API Key Modal -->
 <div id="apikey-modal" onclick="if(event.target===this)closeApiKeyModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:#161A1E;border:1px solid #2A2E39;border-radius:12px;padding:28px 24px;width:340px;max-width:90vw;position:relative;">

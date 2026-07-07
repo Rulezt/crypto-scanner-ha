@@ -20,9 +20,7 @@ from scanners.ema_touch import EMAScanner
 from scanners.ath_atl_scanner import ATHATLScanner
 from scanners.ico_levels_scanner import ICOLevelsScanner
 from scanners.double_touch import DoubleTouchScanner
-from scanners.daily_flip import DailyFlipScanner
 from scanners.shimano_scanner import ShimanoScanner
-from scanners.pattern_scanner import PatternScanner
 from scanners.bot_engine import BotEngine
 from ws_manager import BybitWSManager
 
@@ -215,25 +213,12 @@ DEFAULT_CONFIG = {
         'touch_tolerance': 0.05,
         'scan_tfs': ['240', '60', '30', '5', '1'],
     },
-    'daily_flip': {
-        'enabled': True,
-        'flip_threshold': 2.0,
-        'flip_type': 'both',
-        'cooldown_hours': 2,
-    },
-    'pattern': {
-        'enabled': True,
-        'scan_tf': ['D', '240', '60', '30', '5', '1'],
-        'cooldown_hours': 24,
-        'scan_interval_minutes': 60,
-        'doji_threshold': 0.1,
-    },
     'shimano': {
         'enabled': True,
         'scan_tf': ['D'],
         'cooldown_hours': 24,
         'scan_interval_minutes': 240,
-        'fuori_enabled': True,
+        'distance_threshold_pct': 1.0,
     },
     'bot': {
         'symbol': '',
@@ -241,11 +226,10 @@ DEFAULT_CONFIG = {
         'mode': 'signal',
         'sizing': {'type': 'fixed', 'value': 50.0},
         'leverage': 1,
-        'sma_lenta_period': 10, 'sma_lenta_source': 'close',
-        'sma_veloce_period': 60, 'sma_veloce_source': 'close',
-        'filter_enabled': True, 'filter_period': 200, 'filter_source': 'close',
-        'candle_filter_enabled': False,
-        'sl_pct': 1.0, 'tp_pct': 1.7,
+        'pivot_len': 5, 'min_touches': 2, 'max_channel_bars': 120,
+        'convergence_min': 0.02, 'touch_tolerance': 0.15, 'deviation_max': 0.3,
+        'min_channel_width_atr': 0.5, 'vol_confirm': 1.2,
+        'vol_contraction': True, 'momentum_filter': True,
     },
     'general': {
         'min_volume_24h': 10000000,
@@ -410,15 +394,6 @@ def init_scanners():
                if k in ('min_volume_24h', 'max_coins_per_alert') and k not in config['ema_touch']}
         )
 
-        scanners['daily_flip'] = DailyFlipScanner(
-            telegram_config=telegram_config,
-            ws_manager=ws_manager,
-            live_config=config,
-            **config['daily_flip'],
-            **{k: v for k, v in config['general'].items()
-               if k in ('min_volume_24h', 'cooldown_hours') and k not in config['daily_flip']}
-        )
-
         scanners['shimano'] = ShimanoScanner(
             telegram_config=telegram_config,
             ws_manager=ws_manager,
@@ -426,15 +401,6 @@ def init_scanners():
             **config['shimano'],
             **{k: v for k, v in config['general'].items()
                if k in ('min_volume_24h', 'max_coins_per_alert') and k not in config['shimano']}
-        )
-
-        scanners['pattern'] = PatternScanner(
-            telegram_config=telegram_config,
-            ws_manager=ws_manager,
-            live_config=config,
-            **config['pattern'],
-            **{k: v for k, v in config['general'].items()
-               if k in ('min_volume_24h', 'max_coins_per_alert') and k not in config['pattern']}
         )
 
         scanners['bot'] = BotEngine(
@@ -497,7 +463,6 @@ def start_scanners():
         ('ico_levels',     'ico_levels',    config['ico_levels']['scan_interval_minutes']),
         ('double_touch',   'double_touch',  config['double_touch']['scan_interval_minutes']),
         ('shimano',        'shimano',        config['shimano']['scan_interval_minutes']),
-        ('pattern',        'pattern',        config['pattern']['scan_interval_minutes']),
     ]
 
     for config_name, scanner_key, interval in threads_config:
@@ -534,9 +499,7 @@ def health():
             'ico_levels': config['ico_levels']['enabled'],
             'double_touch': config['double_touch']['enabled'],
             'ema_touch': config['ema_touch']['enabled'],
-            'daily_flip': config['daily_flip']['enabled'],
             'shimano': config['shimano']['enabled'],
-            'pattern': config['pattern']['enabled'],
         }
     })
 
@@ -675,14 +638,6 @@ def ico_levels_visual():
 @app.route('/scanner-api/double-touch/status', methods=['GET'])
 def double_touch_status():
     scanner = scanners.get('double_touch')
-    if not scanner:
-        return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
-    alerts = scanner.get_today_alerts()
-    return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count()})
-
-@app.route('/scanner-api/daily-flip/status', methods=['GET'])
-def daily_flip_status():
-    scanner = scanners.get('daily_flip')
     if not scanner:
         return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
     alerts = scanner.get_today_alerts()
@@ -1229,6 +1184,73 @@ def get_recent_triggered():
         _recently_triggered.clear()
     return jsonify({'success': True, 'data': data})
 
+# TF in minuti nativamente supportati dall'API kline di Bybit — tutto il resto
+# (es. 6/7/8/9 minuti) va costruito offline con scripts/bybit_tick_aggregate.py
+# e letto da qui.
+_BYBIT_NATIVE_MINUTES = {1, 3, 5, 15, 30, 60, 120, 240, 360, 720}
+_TICK_CACHE_DIR = '/data/tick_cache'
+
+
+def _load_tick_cache_klines(symbol, minutes, lookback_days):
+    """Candele OHLCV lette dal CSV pre-aggregato da scripts/bybit_tick_aggregate.py
+    (TF non nativi su Bybit, es. 6m/7m/8m/9m). Filtra agli ultimi lookback_days
+    rispetto all'ultima candela disponibile nel file."""
+    import csv as _csv
+    path = os.path.join(_TICK_CACHE_DIR, f'{symbol}_{minutes}m.csv')
+    if not os.path.exists(path):
+        raise RuntimeError(
+            f"Nessuno storico tick aggregato per {symbol} a {minutes}m — "
+            f"esegui prima scripts/bybit_tick_aggregate.py --symbol {symbol} --intervals {minutes} ...")
+    rows = []
+    with open(path, newline='') as f:
+        for row in _csv.DictReader(f):
+            rows.append({'time': int(row['time']), 'open': float(row['open']), 'high': float(row['high']),
+                         'low': float(row['low']), 'close': float(row['close']), 'volume': float(row['volume'])})
+    if not rows:
+        raise RuntimeError(f"File storico tick per {symbol} {minutes}m vuoto")
+    rows.sort(key=lambda r: r['time'])
+    cutoff = rows[-1]['time'] - int(lookback_days * 86400)
+    return [r for r in rows if r['time'] >= cutoff]
+
+
+# TF personalizzato dalla pagina chart (bottone clessidra): codificato come
+# stringa 'c<secondi>', es. 'c420' = 7 minuti. Costruito aggregando il TF nativo
+# Bybit più grande che divide esattamente i secondi richiesti (per minimizzare
+# le candele da scaricare); se nessuno divide esattamente (es. 90s) si usa
+# comunque '1' (1 minuto, il più fine disponibile) con bucket best-effort.
+# NB: stessa lista in JS in chart.html (_CUSTOM_BASE_CANDIDATES) — tenere sincronizzate.
+_CUSTOM_BASE_CANDIDATES = [('D', 86400), ('720', 43200), ('360', 21600), ('240', 14400),
+                           ('120', 7200), ('60', 3600), ('30', 1800), ('15', 900),
+                           ('5', 300), ('3', 180), ('1', 60)]
+
+
+def _pick_custom_base_interval(bucket_s):
+    for iv, secs in _CUSTOM_BASE_CANDIDATES:
+        if secs <= bucket_s and bucket_s % secs == 0:
+            return iv, secs
+    return '1', 60
+
+
+def _aggregate_candles(raw, bucket_s, tz_s):
+    """Raggruppa candele native (già con tz_s applicato a 'time') in bucket da
+    bucket_s secondi. Il bucket è calcolato sul timestamp UTC grezzo (tolto tz_s)
+    così l'allineamento non dipende dal fuso orario configurato."""
+    buckets = {}
+    for c in raw:
+        utc_t = c['time'] - tz_s
+        bstart = (utc_t // bucket_s) * bucket_s + tz_s
+        b = buckets.get(bstart)
+        if b is None:
+            buckets[bstart] = {'time': bstart, 'open': c['open'], 'high': c['high'],
+                                'low': c['low'], 'close': c['close'], 'volume': c['volume']}
+        else:
+            b['high']   = max(b['high'], c['high'])
+            b['low']    = min(b['low'], c['low'])
+            b['close']  = c['close']
+            b['volume'] += c['volume']
+    return list(buckets.values())
+
+
 def _fetch_klines_bybit(symbol, interval, max_pages):
     """Paginated Bybit kline fetch, shared by /api/klines and the bot backtest."""
     import requests as req
@@ -1284,14 +1306,26 @@ def get_klines():
     if not re.match(r'^[A-Z0-9]{3,20}$', symbol) or not symbol.endswith('USDT'):
         return jsonify({'error': 'Invalid symbol'}), 400
 
-    if interval not in {'1', '5', '15', '30', '60', '240', 'D', 'W', 'M'}:
+    custom_m = re.match(r'^c(\d+)$', interval)
+    if not custom_m and interval not in {'1', '5', '15', '30', '60', '240', 'D', 'W', 'M'}:
         return jsonify({'error': 'Invalid interval'}), 400
 
-    # Max pages per TF to keep response times reasonable
-    max_pages = {'1': 2, '5': 3, '15': 3, '30': 4, '60': 4, '240': 5}.get(interval, 5)
-
     try:
-        result, tz_s = _fetch_klines_bybit(symbol, interval, max_pages)
+        if custom_m:
+            bucket_s = int(custom_m.group(1))
+            if bucket_s < 60 or bucket_s > 2592000:  # 60s..30gg
+                return jsonify({'error': 'TF personalizzato non valido (60s–30gg)'}), 400
+            base_iv, base_s = _pick_custom_base_interval(bucket_s)
+            target_bars = 200
+            base_needed = target_bars * max(1, bucket_s // base_s)
+            max_pages = max(1, min(20, -(-base_needed // 1000)))  # ceil
+            raw, tz_s = _fetch_klines_bybit(symbol, base_iv, max_pages)
+            result = _aggregate_candles(raw, bucket_s, tz_s)
+        else:
+            # Max pages per TF to keep response times reasonable
+            max_pages = {'1': 2, '5': 3, '15': 3, '30': 4, '60': 4, '240': 5}.get(interval, 5)
+            result, tz_s = _fetch_klines_bybit(symbol, interval, max_pages)
+
         resp = jsonify({'success': True, 'data': result, 'symbol': symbol,
                         'interval': interval, 'utc_offset_s': tz_s})
         resp.headers['Cache-Control'] = 'no-store'
@@ -1841,6 +1875,23 @@ class _BotTradeClient:
             return False, d.get('retMsg')
         return True, None
 
+    def modify_stop_loss(self, symbol, stop_loss, position_idx=0):
+        """Sposta lo SL di una posizione aperta (es. a breakeven dopo TP1) — riusa
+        lo stesso endpoint di /api/trade/set-sltp, senza toccare il take profit."""
+        import requests as rq
+        k, s, en = _tcfg()
+        if not en:
+            return False, 'trading non configurato'
+        body = json.dumps({'category': 'linear', 'symbol': symbol, 'positionIdx': int(position_idx or 0),
+                           'stopLoss': str(round(stop_loss, 8)), 'slTriggerBy': 'MarkPrice'})
+        try:
+            d = rq.post(f'{_BYB}/v5/position/trading-stop', headers=_bsign(k, s, body), data=body, timeout=6).json()
+        except Exception as e:
+            return False, str(e)
+        if d.get('retCode') != 0:
+            return False, d.get('retMsg')
+        return True, None
+
 
 _bot_trade_client = _BotTradeClient()
 
@@ -1937,7 +1988,10 @@ def bot_backtest():
 
     if not re.match(r'^[A-Z0-9]{3,20}$', symbol) or not symbol.endswith('USDT'):
         return jsonify({'error': 'Simbolo non valido'}), 400
-    if interval not in {'1', '5', '15', '30', '60', '240', 'D', 'W', 'M'}:
+    is_native_symbolic = interval in {'D', 'W', 'M'}
+    is_native_minutes  = interval.isdigit() and int(interval) in _BYBIT_NATIVE_MINUTES
+    is_synthetic_tf    = interval.isdigit() and not is_native_minutes
+    if not (is_native_symbolic or is_native_minutes or is_synthetic_tf):
         return jsonify({'error': 'TF non valido'}), 400
 
     # Il backtest, a differenza del popup grafico interattivo di /api/klines, ha
@@ -1951,17 +2005,21 @@ def bot_backtest():
         lookback_days = 365.0
     lookback_days = max(1.0, min(lookback_days, 1095.0))  # cap 3 anni
 
-    iv_s = TF_SECONDS.get(interval, 3600)
-    candles_needed = int(lookback_days * 86400 / iv_s) + 5
-    max_pages = max(1, min(100, -(-candles_needed // 1000)))  # ceil, cap 100 pagine (100k candele)
+    iv_s = TF_SECONDS.get(interval) or int(interval) * 60 if interval.isdigit() else TF_SECONDS.get(interval, 3600)
 
     try:
-        candles, _ = _fetch_klines_bybit(symbol, interval, max_pages)
+        if is_synthetic_tf:
+            # TF non nativo su Bybit (es. 6/7/8/9 minuti): niente API, si legge
+            # dal CSV pre-aggregato da scripts/bybit_tick_aggregate.py.
+            candles = _load_tick_cache_klines(symbol, int(interval), lookback_days)
+        else:
+            candles_needed = int(lookback_days * 86400 / iv_s) + 5
+            max_pages = max(1, min(100, -(-candles_needed // 1000)))  # ceil, cap 100 pagine (100k candele)
+            candles, _ = _fetch_klines_bybit(symbol, interval, max_pages)
     except Exception as e:
         return jsonify({'error': str(e)}), 502
 
     params = normalize_params(data)
-    params['_interval_seconds'] = TF_SECONDS.get(interval, 3600)
     initial_capital = float(data.get('initial_capital', 1000.0))
     sizing = data.get('sizing') or {'type': 'fixed', 'value': 50.0}
 
@@ -2238,10 +2296,22 @@ def ema60_page():
     return send_file('/usr/share/nginx/html/ema60.html')
 
 
-@app.route('/flip', methods=['GET'])
-@app.route('/flip.html', methods=['GET'])
-def flip_page():
-    return send_file('/usr/share/nginx/html/flip.html')
+@app.route('/breakout', methods=['GET'])
+@app.route('/breakout.html', methods=['GET'])
+def breakout_page():
+    return send_file('/usr/share/nginx/html/breakout.html')
+
+
+@app.route('/ema-cross', methods=['GET'])
+@app.route('/ema-cross.html', methods=['GET'])
+def ema_cross_page():
+    return send_file('/usr/share/nginx/html/ema-cross.html')
+
+
+@app.route('/ema223-flip', methods=['GET'])
+@app.route('/ema223-flip.html', methods=['GET'])
+def ema223_flip_page():
+    return send_file('/usr/share/nginx/html/ema223-flip.html')
 
 @app.route('/ico', methods=['GET'])
 @app.route('/ico.html', methods=['GET'])
@@ -2262,12 +2332,6 @@ def shimano_page():
     return send_file('/usr/share/nginx/html/shimano.html')
 
 
-@app.route('/pattern', methods=['GET'])
-@app.route('/pattern.html', methods=['GET'])
-def pattern_page():
-    return send_file('/usr/share/nginx/html/pattern.html')
-
-
 @app.route('/bot', methods=['GET'])
 @app.route('/bot.html', methods=['GET'])
 @login_required
@@ -2275,15 +2339,6 @@ def bot_page():
     if session.get('role') != 'admin':
         return redirect(url_for('index'))
     return send_file('/usr/share/nginx/html/bot.html')
-
-
-@app.route('/scanner-api/pattern/status', methods=['GET'])
-def pattern_status():
-    scanner = scanners.get('pattern')
-    if not scanner:
-        return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
-    alerts = scanner.get_today_alerts()
-    return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count()})
 
 
 @app.route('/trade', methods=['GET'])

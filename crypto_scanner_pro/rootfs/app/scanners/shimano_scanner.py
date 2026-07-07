@@ -1,4 +1,4 @@
-"""Shimano Scanner — ultime 3 candele chiuse con open+close dentro la banda EMA60–EMA223"""
+"""Shimano Scanner — distanza % tra EMA60 ed EMA223 sotto una soglia configurabile"""
 import threading
 import requests
 import time
@@ -12,27 +12,27 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 COOLDOWN_FILE     = '/data/shimano_cooldown.json'
 TOP_KLINE_SYMBOLS = 500
 KLINE_SUB_REFRESH = 3600
-MIN_KLINES        = 226  # 223 per EMA223 + almeno 3 recenti
+MIN_KLINES        = 226  # margine oltre 223 per una EMA223 stabile
 
 
 class ShimanoScanner:
     def __init__(self, telegram_config, enabled=True,
                  scan_tf=None, min_volume_24h=10_000_000,
                  scan_interval_minutes=240, cooldown_hours=24,
-                 max_coins_per_alert=5, fuori_enabled=True,
+                 max_coins_per_alert=5, distance_threshold_pct=1.0,
                  ws_manager=None, live_config=None, **kwargs):
 
-        self.telegram_token      = telegram_config['token']
-        self.telegram_chat_id    = telegram_config['chat_id']
-        self.base_url            = telegram_config.get('base_url', '')
-        self.enabled             = enabled
-        self.fuori_enabled       = fuori_enabled
-        raw_tf                   = scan_tf if scan_tf is not None else 'D'
-        self.scan_tfs            = raw_tf if isinstance(raw_tf, list) else [raw_tf]
-        self.min_volume_24h      = min_volume_24h
-        self.max_coins_per_alert = max_coins_per_alert
-        self.cooldown_hours      = cooldown_hours
-        self._live_config        = live_config
+        self.telegram_token        = telegram_config['token']
+        self.telegram_chat_id      = telegram_config['chat_id']
+        self.base_url              = telegram_config.get('base_url', '')
+        self.enabled               = enabled
+        self.distance_threshold_pct = distance_threshold_pct
+        raw_tf                     = scan_tf if scan_tf is not None else 'D'
+        self.scan_tfs              = raw_tf if isinstance(raw_tf, list) else [raw_tf]
+        self.min_volume_24h        = min_volume_24h
+        self.max_coins_per_alert   = max_coins_per_alert
+        self.cooldown_hours        = cooldown_hours
+        self._live_config          = live_config
 
         self.last_alerts = self._load_cooldown()
         self._lock       = threading.Lock()
@@ -44,7 +44,7 @@ class ShimanoScanner:
             threading.Thread(target=self._init_kline_subs, daemon=True).start()
 
         mode = 'WebSocket' if ws_manager else 'polling'
-        print(f'🎣 Shimano Scanner init — tf={",".join(self.scan_tfs)} mode={mode}')
+        print(f'🎣 Shimano Scanner init — tf={",".join(self.scan_tfs)} soglia={distance_threshold_pct}% mode={mode}')
 
     # ── cooldown ──────────────────────────────────────────────────────────────
 
@@ -85,6 +85,9 @@ class ShimanoScanner:
             float(gen.get('utc_offset') or 2),
         )
 
+    def _threshold(self):
+        return float((self._live_config or {}).get('shimano', {}).get('distance_threshold_pct', self.distance_threshold_pct))
+
     # ── kline subscriptions ───────────────────────────────────────────────────
 
     def _init_kline_subs(self):
@@ -118,49 +121,21 @@ class ShimanoScanner:
             ema = p * mult + ema * (1 - mult)
         return ema
 
-    def _check_condition(self, klines):
-        """Ritorna (True, ema60, ema223) se le ultime 3 candele chiuse hanno
-        open e close entrambi dentro la banda [min(EMA60,EMA223), max(EMA60,EMA223)]."""
+    def _check_distance(self, klines, threshold_pct):
+        """Ritorna (ok, ema60, ema223, distance_pct): ok se la distanza tra
+        EMA60 ed EMA223, in % del prezzo corrente, è <= threshold_pct."""
         if len(klines) < MIN_KLINES:
-            return False, None, None
+            return False, None, None, None
         closes = [k['close'] for k in klines]
         ema60  = self._calc_ema(closes, 60)
         ema223 = self._calc_ema(closes, 223)
         if ema60 is None or ema223 is None:
-            return False, None, None
-        band_low  = min(ema60, ema223)
-        band_high = max(ema60, ema223)
-        if band_high <= band_low:
-            return False, ema60, ema223
-        for c in klines[-3:]:
-            o, cl = c['open'], c['close']
-            if not (band_low <= o <= band_high and band_low <= cl <= band_high):
-                return False, ema60, ema223
-        return True, ema60, ema223
-
-    def _check_fuori_shimano(self, klines):
-        """Ritorna (direction, ema60, ema223) dove direction è 'up' o 'down'.
-        Condizione: le ultime 2 candele aprono e chiudono entrambe sopra/sotto EMA223,
-        e la candela precedente aveva close sull'altro lato (conferma del taglio)."""
-        if len(klines) < MIN_KLINES:
-            return None, None, None
-        closes = [k['close'] for k in klines]
-        ema60  = self._calc_ema(closes, 60)
-        ema223 = self._calc_ema(closes, 223)
-        if ema60 is None or ema223 is None:
-            return None, None, None
-        c1, c2, c3 = klines[-3], klines[-2], klines[-1]
-        bullish = (c1['close'] < ema223 and
-                   c2['open'] > ema223 and c2['close'] > ema223 and
-                   c3['open'] > ema223 and c3['close'] > ema223)
-        bearish = (c1['close'] > ema223 and
-                   c2['open'] < ema223 and c2['close'] < ema223 and
-                   c3['open'] < ema223 and c3['close'] < ema223)
-        if bullish:
-            return 'up', ema60, ema223
-        if bearish:
-            return 'down', ema60, ema223
-        return None, ema60, ema223
+            return False, None, None, None
+        price = closes[-1]
+        if price <= 0:
+            return False, ema60, ema223, None
+        distance_pct = abs(ema60 - ema223) / price * 100
+        return distance_pct <= threshold_pct, ema60, ema223, distance_pct
 
     # ── WebSocket callback ────────────────────────────────────────────────────
 
@@ -181,39 +156,23 @@ class ShimanoScanner:
         volume = ticker.get('volume_24h', 0)
         change = ticker.get('change_24h', 0.0)
 
-        ok, ema60, ema223 = self._check_condition(klines)
-        if ok:
-            cooldown_key = f"{symbol}_{interval}"
-            coin = None
-            with self._lock:
-                if not self.is_in_cooldown(cooldown_key):
-                    self.mark_alerted(cooldown_key)
-                    coin = {
-                        'symbol': symbol, 'tf': interval,
-                        'price': price, 'ema60': ema60, 'ema223': ema223,
-                        'volume': volume, 'change_pct': change,
-                        'signal_type': 'shimano',
-                    }
-            if coin:
-                threading.Thread(target=self.send_alert, args=([coin],), daemon=True).start()
+        ok, ema60, ema223, distance_pct = self._check_distance(klines, self._threshold())
+        if not ok:
+            return
 
-        fuori_on = (self._live_config or {}).get('shimano', {}).get('fuori_enabled', self.fuori_enabled)
-        if fuori_on:
-            direction, ema60_f, ema223_f = self._check_fuori_shimano(klines)
-            if direction:
-                fuori_key = f"{symbol}_{interval}_fuori"
-                fcoin = None
-                with self._lock:
-                    if not self.is_in_cooldown(fuori_key):
-                        self.mark_alerted(fuori_key)
-                        fcoin = {
-                            'symbol': symbol, 'tf': interval,
-                            'price': price, 'ema60': ema60_f, 'ema223': ema223_f,
-                            'volume': volume, 'change_pct': change,
-                            'signal_type': 'fuori', 'direction': direction,
-                        }
-                if fcoin:
-                    threading.Thread(target=self.send_alert, args=([fcoin],), daemon=True).start()
+        cooldown_key = f"{symbol}_{interval}"
+        coin = None
+        with self._lock:
+            if not self.is_in_cooldown(cooldown_key):
+                self.mark_alerted(cooldown_key)
+                coin = {
+                    'symbol': symbol, 'tf': interval,
+                    'price': price, 'ema60': ema60, 'ema223': ema223,
+                    'distance_pct': distance_pct,
+                    'volume': volume, 'change_pct': change,
+                }
+        if coin:
+            threading.Thread(target=self.send_alert, args=([coin],), daemon=True).start()
 
     # ── REST data fetching (polling fallback) ─────────────────────────────────
 
@@ -264,7 +223,8 @@ class ShimanoScanner:
             return []
         if self._ws_manager and self._ws_manager.ready.is_set():
             return []
-        print(f'🎣 Shimano Scanner — polling scan (tf={",".join(self.scan_tfs)})...')
+        threshold = self._threshold()
+        print(f'🎣 Shimano Scanner — polling scan (tf={",".join(self.scan_tfs)} soglia={threshold}%)...')
         found = []
         try:
             tickers = self._fetch_tickers()
@@ -273,7 +233,7 @@ class ShimanoScanner:
                 symbol = ticker['symbol']
                 for tf in self.scan_tfs:
                     klines = self._fetch_klines(symbol, tf)
-                    ok, ema60, ema223 = self._check_condition(klines)
+                    ok, ema60, ema223, distance_pct = self._check_distance(klines, threshold)
                     if ok:
                         cooldown_key = f"{symbol}_{tf}"
                         with self._lock:
@@ -283,26 +243,10 @@ class ShimanoScanner:
                                     'symbol': symbol, 'tf': tf,
                                     'price': ticker['price'],
                                     'ema60': ema60, 'ema223': ema223,
+                                    'distance_pct': distance_pct,
                                     'volume': ticker['volume'],
                                     'change_pct': ticker.get('change_pct', 0.0),
-                                    'signal_type': 'shimano',
                                 })
-                    fuori_on = (self._live_config or {}).get('shimano', {}).get('fuori_enabled', self.fuori_enabled)
-                    if fuori_on:
-                        direction, ema60_f, ema223_f = self._check_fuori_shimano(klines)
-                        if direction:
-                            fuori_key = f"{symbol}_{tf}_fuori"
-                            with self._lock:
-                                if not self.is_in_cooldown(fuori_key):
-                                    self.mark_alerted(fuori_key)
-                                    found.append({
-                                        'symbol': symbol, 'tf': tf,
-                                        'price': ticker['price'],
-                                        'ema60': ema60_f, 'ema223': ema223_f,
-                                        'volume': ticker['volume'],
-                                        'change_pct': ticker.get('change_pct', 0.0),
-                                        'signal_type': 'fuori', 'direction': direction,
-                                    })
                 if (i + 1) % 10 == 0:
                     time.sleep(0.5)
 
@@ -321,35 +265,24 @@ class ShimanoScanner:
         if not self.telegram_token or not self.telegram_chat_id:
             return
         try:
-            from alert_utils import send_photo, send_text, get_chart, log_alert
+            from alert_utils import send_photo, send_text, get_chart, log_alert, fmt_vol
         except ImportError:
             return
         TF_LABEL = {'D': '1D', '240': '4h', '60': '1h', '30': '30m', '15': '15m', '5': '5m', '1': '1m'}
         for coin in coins[:3]:
-            sym        = coin['symbol']
-            tf         = coin.get('tf', self.scan_tfs[0])
-            tf_label   = TF_LABEL.get(tf, tf)
-            change     = coin.get('change_pct', 0.0)
-            sig_type   = coin.get('signal_type', 'shimano')
-            direction  = coin.get('direction', '')
+            sym      = coin['symbol']
+            tf       = coin.get('tf', self.scan_tfs[0])
+            tf_label = TF_LABEL.get(tf, tf)
+            change   = coin.get('change_pct', 0.0)
+            distance = coin.get('distance_pct', 0.0)
             base = (self.base_url or 'https://cryptoscannerpro.com').rstrip('/')
 
-            if sig_type == 'fuori':
-                arrow = '↑' if direction == 'up' else '↓'
-                header = f'🔔 Fuori EMA223/60 {arrow} {tf_label}'
-                note   = f'EMA223 breakout {"↑" if direction == "up" else "↓"}'
-                log_name = 'Fuori EMA223/60'
-            else:
-                header = f'🔔 EMA223/60 {tf_label}'
-                note   = 'EMA60-EMA223'
-                log_name = 'EMA223/60'
-
-            from alert_utils import fmt_vol
             lines = [
-                header,
+                f'🔔 EMA223/60 {tf_label}',
                 '',
                 '------------------------------------------------',
                 f'- Coin: {sym}',
+                f'- Distanza EMA: {distance:.2f}%',
                 f'- Var: {change:+.2f}%',
                 f'- Volume: {fmt_vol(coin.get("volume", 0))}',
                 '------------------------------------------------',
@@ -364,8 +297,8 @@ class ShimanoScanner:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
-            log_alert(sym, log_name, emoji='🎣', note=note, tf=tf_label, screenshot=img)
-            print(f'🎣 {log_name} alert: {sym} {tf_label}')
+            log_alert(sym, 'EMA223/60', emoji='🎣', note=f'distanza {distance:.2f}%', tf=tf_label, screenshot=img)
+            print(f'🎣 EMA223/60 alert: {sym} {tf_label} dist={distance:.2f}%')
 
     # ── status ────────────────────────────────────────────────────────────────
 

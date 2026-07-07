@@ -52,6 +52,8 @@
         .td-sym { font-weight: 700; }
         .td-sym a { color: #e5e7eb; text-decoration: none; }
         .td-sym a:hover { color: #fb923c; }
+        .fav-star { cursor: pointer; font-size: 0.95rem; color: #4B5563; margin-right: 5px; user-select: none; }
+        .fav-star.active { color: #fbbf24; }
         .td-num { text-align: right; font-family: 'Monaco','Consolas',monospace; font-size: 0.78rem; color: #D1D5DB; }
         .td-center { text-align: center; }
         .positive { color: #10b981; }
@@ -72,9 +74,9 @@
         .legend { display: flex; gap: 14px; padding: 6px 16px; background: #0F0F0F; border-top: 1px solid #1E222D; flex-wrap: wrap; }
         .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: #6b7280; }
         .legend-line { width: 18px; height: 3px; border-radius: 2px; }
-        .in-band-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 0.63rem; font-weight: 700; background: rgba(249,115,22,0.18); color: #fb923c; letter-spacing: 0.03em; }
-        .fuori-up-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 0.63rem; font-weight: 700; background: rgba(16,185,129,0.18); color: #10b981; letter-spacing: 0.03em; }
-        .fuori-down-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 0.63rem; font-weight: 700; background: rgba(239,68,68,0.18); color: #ef4444; letter-spacing: 0.03em; }
+        .side-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.63rem; font-weight: 700; letter-spacing: 0.04em; }
+        .side-above { background: rgba(16,185,129,0.18); color: #34d399; }
+        .side-below { background: rgba(239,68,68,0.18); color: #f87171; }
     </style>
 <style>#tv-attr-logo{display:none!important}</style>
 </head>
@@ -113,16 +115,15 @@
     <!-- FILTER BAR -->
     <div class="filter-bar" v-if="initialDone || scanning">
         <template v-if="results.length > 0">
-            <span class="filter-label">Tipo:</span>
-            <button @click="typeFilter='all'"        :class="['filt-btn', typeFilter==='all'        ? 'active':'']">Tutti ({{ results.length }})</button>
-            <button @click="typeFilter='shimano'"    :class="['filt-btn', typeFilter==='shimano'    ? 'active':'']" v-if="countByType.shimano">IN BAND ({{ countByType.shimano }})</button>
-            <button @click="typeFilter='fuori_up'"   :class="['filt-btn', typeFilter==='fuori_up'   ? 'active':'']" v-if="countByType.fuori_up"   style="color:#10b981;border-color:#10b981;">FUORI ↑ ({{ countByType.fuori_up }})</button>
-            <button @click="typeFilter='fuori_down'" :class="['filt-btn', typeFilter==='fuori_down' ? 'active':'']" v-if="countByType.fuori_down" style="color:#ef4444;border-color:#ef4444;">FUORI ↓ ({{ countByType.fuori_down }})</button>
+            <span class="filter-label">Direzione:</span>
+            <button @click="sideFilter='all'"   :class="['filt-btn', sideFilter==='all'   ? 'active':'']">Tutti ({{ results.length }})</button>
+            <button @click="sideFilter='above'" :class="['filt-btn', sideFilter==='above' ? 'active':'']" style="color:#10b981;border-color:#10b981;">EMA60 sopra ({{ countAbove }})</button>
+            <button @click="sideFilter='below'" :class="['filt-btn', sideFilter==='below' ? 'active':'']" style="color:#ef4444;border-color:#ef4444;">EMA60 sotto ({{ countBelow }})</button>
             <div class="divider"></div>
             <span class="filter-label">Ordina:</span>
-            <button @click="setSortBy('bandW')"  :class="['filt-btn', sortBy==='bandW'  ? 'active':'']">Banda % <span class="sa">{{ sa('bandW') }}</span></button>
-            <button @click="setSortBy('volume')" :class="['filt-btn', sortBy==='volume' ? 'active':'']">Volume <span class="sa">{{ sa('volume') }}</span></button>
-            <button @click="setSortBy('change')" :class="['filt-btn', sortBy==='change' ? 'active':'']">Change <span class="sa">{{ sa('change') }}</span></button>
+            <button @click="setSortBy('distPct')" :class="['filt-btn', sortBy==='distPct' ? 'active':'']">Distanza % <span class="sa">{{ sa('distPct') }}</span></button>
+            <button @click="setSortBy('volume')"  :class="['filt-btn', sortBy==='volume'  ? 'active':'']">Volume <span class="sa">{{ sa('volume') }}</span></button>
+            <button @click="setSortBy('change')"  :class="['filt-btn', sortBy==='change'  ? 'active':'']">Change <span class="sa">{{ sa('change') }}</span></button>
             <div class="divider"></div>
         </template>
         <span class="filter-label">TF:</span>
@@ -133,7 +134,7 @@
     <!-- INITIAL STATE -->
     <div v-if="!scanning && !initialDone" class="loading-overlay">
         <p style="font-weight:600;color:#e5e7eb;">EMA223/60 Scanner</p>
-        <p style="font-size:0.78rem;color:#4b5563;max-width:460px;text-align:center;line-height:1.6">Individua le coin dove le ultime 3 candele chiuse hanno <strong style="color:#fb923c">open e close entrambi dentro la banda EMA60–EMA223</strong>. Richiede almeno 226 candele per TF.</p>
+        <p style="font-size:0.78rem;color:#4b5563;max-width:460px;text-align:center;line-height:1.6">Individua le coin dove la distanza tra <strong style="color:#fb923c">EMA60 ed EMA223</strong>, in % del prezzo, è sotto la soglia impostata (default 1%). Richiede almeno 226 candele per TF.</p>
         <button @click="startScan" class="btn primary" style="margin-top:8px;display:inline-flex;align-items:center;gap:6px">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             Avvia Scansione
@@ -179,28 +180,17 @@
                     <td class="td-num muted" style="text-align:center;font-size:0.7rem;">{{ idx+1 }}</td>
                     <td v-for="col in columns" :key="col.key" :class="col.tdClass(row)">
                         <template v-if="col.key==='symbol'">
+                            <span class="fav-star" :class="{active: isFav(row.symbol)}" @click.stop="toggleFav(row.symbol)" title="Preferiti">{{ isFav(row.symbol) ? '★' : '☆' }}</span>
                             <a :href="'mtf?symbol='+row.symbol" target="_blank">{{ row.symbol.replace('USDT','') }}</a>
                         </template>
                         <template v-else-if="col.key==='tf'">
                             <span style="font-size:0.72rem;font-weight:600;color:#60a5fa;">{{ TF_LABEL[row.tf] }}</span>
                         </template>
-                        <template v-else-if="col.key==='status'">
-                            <span v-if="row.type==='shimano'" class="in-band-badge">IN BAND</span>
-                            <span v-else-if="row.type==='fuori_up'" class="fuori-up-badge">FUORI ↑</span>
-                            <span v-else-if="row.type==='fuori_down'" class="fuori-down-badge">FUORI ↓</span>
+                        <template v-else-if="col.key==='side'">
+                            <span class="side-badge" :class="row.side==='above'?'side-above':'side-below'">{{ row.side==='above' ? 'EMA60 sopra' : 'EMA60 sotto' }}</span>
                         </template>
-                        <template v-else-if="col.key==='bandW'">
-                            <span v-if="row.bandW!=null" style="color:#fb923c;">{{ row.bandW.toFixed(2) }}%</span>
-                            <span v-else class="muted">—</span>
-                        </template>
-                        <template v-else-if="col.key==='pos'">
-                            <template v-if="row.posInBand!=null">
-                                <span class="band-bar-wrap">
-                                    <span class="band-bar-pos" :style="{left: Math.min(97, Math.max(0, row.posInBand * 97))+'%'}"></span>
-                                </span>
-                                <span style="font-size:0.7rem;color:#9ca3af;margin-left:4px;">{{ (row.posInBand*100).toFixed(0) }}%</span>
-                            </template>
-                            <span v-else class="muted">—</span>
+                        <template v-else-if="col.key==='distPct'">
+                            <span style="color:#fb923c;">{{ row.distPct.toFixed(3) }}%</span>
                         </template>
                         <template v-else-if="col.key==='ema60'">{{ formatPrice(row.ema60) }}</template>
                         <template v-else-if="col.key==='ema223'">{{ formatPrice(row.ema223) }}</template>
@@ -244,8 +234,7 @@
     <div class="legend" v-if="filteredResults.length > 0">
         <div class="legend-item"><span class="legend-line" style="background:#3b82f6"></span> EMA60</div>
         <div class="legend-item"><span class="legend-line" style="background:#a855f7"></span> EMA223</div>
-        <div class="legend-item"><span style="width:18px;height:6px;background:rgba(249,115,22,0.25);border:1px solid rgba(249,115,22,0.4);border-radius:2px;display:inline-block;"></span> Banda</div>
-        <div class="legend-item" style="margin-left:auto;color:#374151;">{{ filteredResults.length }} coin · Vol ≥ ${{ minVolM }}M</div>
+        <div class="legend-item" style="margin-left:auto;color:#374151;">{{ filteredResults.length }} coin · Vol ≥ ${{ minVolM }}M · Soglia {{ distanceThreshold }}%</div>
     </div>
 
     <!-- CONFIG MODAL -->
@@ -258,6 +247,13 @@
                     <label style="font-size:0.78rem;color:#9CA3AF;">Vol min ($M):</label>
                     <input type="number" v-model.number="minVolM" min="0" max="1000" step="1" style="width:80px;background:#1f2937;color:#f9fafb;border:1px solid #374151;border-radius:4px;padding:5px 8px;font-size:0.82rem;">
                 </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <div>
+                        <label style="font-size:0.78rem;color:#9CA3AF;">Soglia distanza EMA (%):</label>
+                        <div style="font-size:10px;color:#4B5563;margin-top:2px;">Alert se |EMA60-EMA223| / prezzo &lt; soglia</div>
+                    </div>
+                    <input type="number" v-model.number="distanceThreshold" min="0.05" max="20" step="0.05" style="width:80px;background:#1f2937;color:#f9fafb;border:1px solid #374151;border-radius:4px;padding:5px 8px;font-size:0.82rem;">
+                </div>
                 <div>
                     <div style="font-size:0.78rem;color:#9CA3AF;margin-bottom:8px;">Timeframe:</div>
                     <div style="display:flex;flex-wrap:wrap;gap:8px;">
@@ -267,18 +263,6 @@
                         </label>
                     </div>
                     <p style="font-size:0.7rem;color:#4b5563;margin-top:6px;">Richiede ≥226 candele per TF — suggerito D, 4h, 1h.</p>
-                </div>
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #2A2E39;">
-                    <div>
-                        <div style="font-size:0.78rem;color:#9CA3AF;font-weight:600;">Modalità Fuori EMA223/60</div>
-                        <div style="font-size:0.7rem;color:#4b5563;margin-top:2px;">ON = cerca taglio EMA223 · OFF = cerca IN BAND</div>
-                    </div>
-                    <label style="position:relative;display:inline-block;width:36px;height:20px;cursor:pointer;flex-shrink:0;">
-                        <input type="checkbox" v-model="fuoriEnabled" style="opacity:0;width:0;height:0;position:absolute;">
-                        <span :style="{display:'block',width:'36px',height:'20px',borderRadius:'10px',background:fuoriEnabled?'#10b981':'#374151',transition:'background 0.2s',position:'relative'}">
-                            <span :style="{position:'absolute',top:'2px',left:fuoriEnabled?'18px':'2px',width:'16px',height:'16px',borderRadius:'50%',background:'#fff',transition:'left 0.2s'}"></span>
-                        </span>
-                    </label>
                 </div>
             </div>
             <button @click="cfgOpen=false" class="btn primary" style="width:100%;margin-top:20px;justify-content:center;">OK</button>
@@ -302,7 +286,7 @@ createApp({
         const _cfgS = (() => { try { return JSON.parse(localStorage.getItem('shimano_cfg') || '{}'); } catch { return {}; } })();
         const minVolM     = ref(_cfgS.minVolM     ?? 10);
         const selectedTFs = ref(_cfgS.selectedTFs ?? ['D','240','60']);
-        const fuoriEnabled = ref(_cfgS.fuoriEnabled ?? true);
+        const distanceThreshold = ref(_cfgS.distanceThreshold ?? 1);
         const scanning    = ref(false);
         const stopFlag    = ref(false);
         const statusMsg   = ref('');
@@ -331,16 +315,15 @@ createApp({
         const STORAGE_KEY = 'shimano_columns_order';
         let _colKey = STORAGE_KEY;
         const columnsDef = [
-            { key:'symbol',  label:'Coin',      sortKey:null,     align:'left',   tdClass:()=>'td-sym' },
-            { key:'tf',      label:'TF',         sortKey:'tf',     align:'center', tdClass:()=>'td-center' },
-            { key:'status',  label:'Stato',      sortKey:null,     align:'center', tdClass:()=>'td-center' },
-            { key:'bandW',   label:'Banda %',    sortKey:'bandW',  align:'right',  tdClass:()=>'td-num' },
-            { key:'pos',     label:'Pos. Banda', sortKey:null,     align:'left',   tdClass:()=>'td-num' },
-            { key:'ema60',   label:'EMA60',      sortKey:null,     align:'right',  tdClass:()=>'td-num muted' },
-            { key:'ema223',  label:'EMA223',     sortKey:null,     align:'right',  tdClass:()=>'td-num muted' },
-            { key:'price',   label:'Prezzo',     sortKey:null,     align:'right',  tdClass:()=>'td-num' },
-            { key:'change',  label:'24h %',      sortKey:'change', align:'right',  tdClass:(r)=>r.change>=0?'td-num positive':'td-num negative' },
-            { key:'volume',  label:'Volume 24h', sortKey:'volume', align:'right',  tdClass:()=>'td-num muted' },
+            { key:'symbol',   label:'Coin',      sortKey:null,     align:'left',   tdClass:()=>'td-sym' },
+            { key:'tf',       label:'TF',         sortKey:'tf',     align:'center', tdClass:()=>'td-center' },
+            { key:'side',     label:'Direzione',  sortKey:null,     align:'center', tdClass:()=>'td-center' },
+            { key:'distPct',  label:'Distanza %', sortKey:'distPct',align:'right',  tdClass:()=>'td-num' },
+            { key:'ema60',    label:'EMA60',      sortKey:null,     align:'right',  tdClass:()=>'td-num muted' },
+            { key:'ema223',   label:'EMA223',     sortKey:null,     align:'right',  tdClass:()=>'td-num muted' },
+            { key:'price',    label:'Prezzo',     sortKey:null,     align:'right',  tdClass:()=>'td-num' },
+            { key:'change',   label:'24h %',      sortKey:'change', align:'right',  tdClass:(r)=>r.change>=0?'td-num positive':'td-num negative' },
+            { key:'volume',   label:'Volume 24h', sortKey:'volume', align:'right',  tdClass:()=>'td-num muted' },
         ];
         const columns = ref([...columnsDef]);
         let dragKey = null;
@@ -361,13 +344,13 @@ createApp({
 
         // ── FILTER & SORT ─────────────────────────────────────────────────────
         const tfFilter   = ref('all');
-        const typeFilter = ref('all');
-        const sortBy     = ref('volume');
-        const sortDir    = ref(-1);
+        const sideFilter = ref('all');
+        const sortBy     = ref('distPct');
+        const sortDir    = ref(1);
 
         const setSortBy = (key) => {
             if (sortBy.value === key) sortDir.value *= -1;
-            else { sortBy.value = key; sortDir.value = -1; }
+            else { sortBy.value = key; sortDir.value = key === 'distPct' ? 1 : -1; }
         };
         const sa = (key) => {
             if (sortBy.value !== key) return '↕';
@@ -379,24 +362,21 @@ createApp({
             return ALL_TFS.filter(tf => seen.has(tf));
         });
 
-        const countByType = computed(() => {
-            const c = { shimano: 0, fuori_up: 0, fuori_down: 0 };
-            for (const r of results.value) c[r.type] = (c[r.type] || 0) + 1;
-            return c;
-        });
+        const countAbove = computed(() => results.value.filter(r => r.side === 'above').length);
+        const countBelow = computed(() => results.value.filter(r => r.side === 'below').length);
 
         const filteredResults = computed(() => {
             let list = [...results.value];
-            if (typeFilter.value !== 'all') list = list.filter(r => r.type === typeFilter.value);
+            if (sideFilter.value !== 'all') list = list.filter(r => r.side === sideFilter.value);
             if (tfFilter.value !== 'all') list = list.filter(r => r.tf === tfFilter.value);
             list.sort((a, b) => {
                 let va, vb;
                 switch(sortBy.value) {
-                    case 'bandW':  va = a.bandW;  vb = b.bandW;  break;
-                    case 'volume': va = a.volume; vb = b.volume; break;
-                    case 'change': va = Math.abs(a.change); vb = Math.abs(b.change); break;
-                    case 'tf':     va = ALL_TFS.indexOf(a.tf); vb = ALL_TFS.indexOf(b.tf); break;
-                    default:       va = a.volume; vb = b.volume;
+                    case 'distPct': va = a.distPct; vb = b.distPct; break;
+                    case 'volume':  va = a.volume;  vb = b.volume;  break;
+                    case 'change':  va = Math.abs(a.change); vb = Math.abs(b.change); break;
+                    case 'tf':      va = ALL_TFS.indexOf(a.tf); vb = ALL_TFS.indexOf(b.tf); break;
+                    default:        va = a.distPct; vb = b.distPct;
                 }
                 if (va < vb) return -sortDir.value;
                 if (va > vb) return  sortDir.value;
@@ -427,46 +407,18 @@ createApp({
             return out;
         };
 
-        const checkFuoriShimano = (candles) => {
+        // Distanza % tra EMA60 ed EMA223 rispetto al prezzo corrente — ok se <= soglia.
+        const checkEmaDistance = (candles, thresholdPct) => {
             if (candles.length < 226) return { ok: false };
             const closes = candles.map(c => c.close);
             const ema60  = calcEMA(closes, 60);
             const ema223 = calcEMA(closes, 223);
             if (!ema60 || !ema223) return { ok: false };
-            const c1 = candles[candles.length - 3];
-            const c2 = candles[candles.length - 2];
-            const c3 = candles[candles.length - 1];
-            const bullish = c1.close < ema223 &&
-                            c2.open > ema223 && c2.close > ema223 &&
-                            c3.open > ema223 && c3.close > ema223;
-            const bearish = c1.close > ema223 &&
-                            c2.open < ema223 && c2.close < ema223 &&
-                            c3.open < ema223 && c3.close < ema223;
-            if (bullish) return { ok: true, type: 'fuori_up', ema60, ema223 };
-            if (bearish) return { ok: true, type: 'fuori_down', ema60, ema223 };
-            return { ok: false };
-        };
-
-        // Controlla se le ultime 3 candele hanno open+close dentro la banda EMA60–EMA223
-        const checkShimano = (candles) => {
-            if (candles.length < 226) return { ok: false };
-            const closes = candles.map(c => c.close);
-            const ema60  = calcEMA(closes, 60);
-            const ema223 = calcEMA(closes, 223);
-            if (!ema60 || !ema223) return { ok: false };
-            const bandLow  = Math.min(ema60, ema223);
-            const bandHigh = Math.max(ema60, ema223);
-            if (bandHigh <= bandLow) return { ok: false };
-            const last3 = candles.slice(-3);
-            for (const c of last3) {
-                if (!(bandLow <= c.open && c.open <= bandHigh && bandLow <= c.close && c.close <= bandHigh)) {
-                    return { ok: false };
-                }
-            }
-            const price     = closes[closes.length - 1];
-            const bandW     = (bandHigh - bandLow) / bandLow * 100;
-            const posInBand = (price - bandLow) / (bandHigh - bandLow);
-            return { ok: true, ema60, ema223, bandW, posInBand: Math.max(0, Math.min(1, posInBand)) };
+            const price = closes[closes.length - 1];
+            if (price <= 0) return { ok: false };
+            const distPct = Math.abs(ema60 - ema223) / price * 100;
+            if (distPct > thresholdPct) return { ok: false };
+            return { ok: true, ema60, ema223, distPct, side: ema60 >= ema223 ? 'above' : 'below' };
         };
 
         // ── SCAN ──────────────────────────────────────────────────────────────
@@ -525,28 +477,14 @@ createApp({
                                     close: parseFloat(c[4]),
                                 })).filter(c => isFinite(c.close) && c.close > 0);
 
-                                if (fuoriEnabled.value) {
-                                    const fuori = checkFuoriShimano(candles);
-                                    if (fuori.ok) {
-                                        results.value.push({
-                                            symbol: ticker.symbol, price: ticker.price,
-                                            ema60: fuori.ema60, ema223: fuori.ema223,
-                                            bandW: null, posInBand: null,
-                                            change: ticker.change, volume: ticker.volume, tf,
-                                            type: fuori.type,
-                                        });
-                                    }
-                                } else {
-                                    const shimano = checkShimano(candles);
-                                    if (shimano.ok) {
-                                        results.value.push({
-                                            symbol: ticker.symbol, price: ticker.price,
-                                            ema60: shimano.ema60, ema223: shimano.ema223,
-                                            bandW: shimano.bandW, posInBand: shimano.posInBand,
-                                            change: ticker.change, volume: ticker.volume, tf,
-                                            type: 'shimano',
-                                        });
-                                    }
+                                const dist = checkEmaDistance(candles, distanceThreshold.value);
+                                if (dist.ok) {
+                                    results.value.push({
+                                        symbol: ticker.symbol, price: ticker.price,
+                                        ema60: dist.ema60, ema223: dist.ema223,
+                                        distPct: dist.distPct, side: dist.side,
+                                        change: ticker.change, volume: ticker.volume, tf,
+                                    });
                                 }
                             } catch(e) { /* skip */ }
                             finally { progressDone.value++; }
@@ -733,8 +671,8 @@ createApp({
             document.documentElement.style.setProperty('--thead-top', (wh + fh) + 'px');
         };
         const { watch, nextTick } = Vue;
-        watch([minVolM, selectedTFs, fuoriEnabled], () => {
-            try { localStorage.setItem('shimano_cfg', JSON.stringify({ minVolM: minVolM.value, selectedTFs: selectedTFs.value, fuoriEnabled: fuoriEnabled.value })); } catch {}
+        watch([minVolM, selectedTFs, distanceThreshold], () => {
+            try { localStorage.setItem('shimano_cfg', JSON.stringify({ minVolM: minVolM.value, selectedTFs: selectedTFs.value, distanceThreshold: distanceThreshold.value })); } catch {}
         }, { deep: true });
         watch(filteredResults, () => nextTick(updateStickyOffsets));
         onMounted(() => { updateStickyOffsets(); window.addEventListener('resize', updateStickyOffsets); });
@@ -747,6 +685,30 @@ createApp({
                 if (saved) columns.value = saved.map(k => columnsDef.find(c => c.key === k)).filter(Boolean);
             } catch {}
         });
+
+        // ── favorites ─────────────────────────────────────────────────────────
+        const favoriteSymbols = ref(new Set());
+        async function loadFavorites() {
+            try {
+                const r = await fetch('/api/favorites');
+                const j = await r.json();
+                favoriteSymbols.value = new Set(j.symbols || []);
+            } catch {}
+        }
+        function isFav(sym) { return favoriteSymbols.value.has(sym); }
+        async function toggleFav(sym) {
+            const s = new Set(favoriteSymbols.value);
+            s.has(sym) ? s.delete(sym) : s.add(sym);
+            favoriteSymbols.value = s;
+            try {
+                await fetch('/api/favorites', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols: [...s] }),
+                });
+            } catch {}
+        }
+        onMounted(loadFavorites);
 
         // ── HELPERS ───────────────────────────────────────────────────────────
         const formatPrice = (p) => {
@@ -765,12 +727,13 @@ createApp({
         };
 
         return {
-            ALL_TFS, TF_LABEL, minVolM, selectedTFs, fuoriEnabled, cfgOpen,
+            ALL_TFS, TF_LABEL, minVolM, selectedTFs, distanceThreshold, cfgOpen,
+            favoriteSymbols, isFav, toggleFav,
             columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
             scanning, statusMsg, displayMsg, initialDone,
-            results, filteredResults, activeTFs, countByType,
+            results, filteredResults, activeTFs, countAbove, countBelow,
             progressDone, progressTotal, progressPct,
-            tfFilter, typeFilter, sortBy, sortDir,
+            tfFilter, sideFilter, sortBy, sortDir,
             setSortBy, sa,
             startScan, stopScan,
             showPopup, hidePopup,

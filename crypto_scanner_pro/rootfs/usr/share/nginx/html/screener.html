@@ -214,28 +214,13 @@
                         <a href="third-touch" class="mt-2 block text-xs text-cyan-500 hover:text-cyan-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
                     </div>
 
-                    <!-- Daily Flip Scanner -->
+                    <!-- EMA223 Cross Scanner (solo visuale, nessun polling backend) -->
                     <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-violet-500 transition-all">
                         <div class="flex items-center justify-between mb-2">
-                            <div class="text-violet-400 text-xs sm:text-sm font-medium">Daily Flip</div>
-                            <div class="flex items-center gap-1.5">
-                                <button onclick="openScannerModal('flip')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura" data-i18n-title="scr_configure">⚙</button>
-                                <span class="text-gray-700 text-xs">|</span>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="flip-toggle" class="sr-only peer" checked onchange="toggleScanner('daily_flip')">
-                                    <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-violet-600"></div>
-                                </label>
-                                <div id="flip-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
-                            </div>
+                            <div class="text-violet-400 text-xs sm:text-sm font-medium">EMA223 Cross</div>
                         </div>
-                        <div class="text-xl sm:text-2xl font-bold" id="flip-count">-</div>
-                        <div class="text-xs text-gray-500 mt-1" data-i18n="scr_alert_today">Alert oggi</div>
-                        <div class="flex items-center justify-between mt-2">
-                            <span class="text-xs text-gray-500" data-i18n="scr_monitored">Monitorate:</span>
-                            <span class="text-xs font-medium text-violet-400" id="flip-monitored">-</span>
-                        </div>
-                        <div class="text-xs text-gray-600 mt-1 leading-tight hidden sm:block" data-i18n="scr_flip_desc">Coin che invertono il segno 24h (verde↔rosso)</div>
-                        <a href="flip" class="mt-2 block text-xs text-violet-500 hover:text-violet-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
+                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_e223f_desc">Prima candela che apre/chiude dall'altro lato della EMA223, con tolleranza</div>
+                        <a href="ema223-flip" class="mt-2 block text-xs text-violet-500 hover:text-violet-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
                     </div>
 
                     <!-- EMA Touch Scanner -->
@@ -285,27 +270,22 @@
                         <a href="ema223-60" class="mt-2 block text-xs text-orange-500 hover:text-orange-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
                     </div>
 
-                    <!-- Pattern Scanner -->
-                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-violet-500 transition-all">
+                    <!-- Breakout Pattern Scanner (solo visuale, nessun polling backend) -->
+                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-yellow-500 transition-all">
                         <div class="flex items-center justify-between mb-2">
-                            <div class="text-violet-400 text-xs sm:text-sm font-medium">Pattern</div>
-                            <div class="flex items-center gap-1.5">
-                                <button onclick="openScannerModal('pattern')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura" data-i18n-title="scr_configure">⚙</button>
-                                <span class="text-gray-700 text-xs">|</span>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="pattern-toggle" class="sr-only peer" checked onchange="toggleScanner('pattern')">
-                                    <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-violet-600"></div>
-                                </label>
-                                <div id="pattern-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
-                            </div>
+                            <div class="text-yellow-400 text-xs sm:text-sm font-medium">Breakout</div>
                         </div>
-                        <div class="text-xl sm:text-2xl font-bold" id="pattern-count">-</div>
-                        <div class="text-xs text-gray-500 mt-1" data-i18n="scr_alert_today">Alert oggi</div>
-                        <div class="flex items-center justify-between mt-2">
-                            <span class="text-xs text-gray-500" data-i18n="scr_monitored">Monitorate:</span>
-                            <span class="text-xs font-medium text-violet-400" id="pattern-monitored">-</span>
+                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_bops_desc">Canali convergenti da pivot, breakout con SL/TP</div>
+                        <a href="breakout" class="mt-2 block text-xs text-yellow-500 hover:text-yellow-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
+                    </div>
+
+                    <!-- EMA Cross 60/223 Scanner (solo visuale, nessun polling backend) -->
+                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-cyan-500 transition-all">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-cyan-400 text-xs sm:text-sm font-medium">EMA Cross 60/223</div>
                         </div>
-                        <a href="pattern" class="mt-2 block text-xs text-violet-500 hover:text-violet-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
+                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_emax_desc">Incrocio EMA60/EMA223 confermato, con tolleranza anti-rumore</div>
+                        <a href="ema-cross" class="mt-2 block text-xs text-cyan-500 hover:text-cyan-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
                     </div>
                 </div>
 
@@ -344,7 +324,6 @@
                     <button id="hvf-ico"    data-color="#ec4899" onclick="setHvFilter('ico')"    style="font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid transparent;background:#1E2329;color:#ec4899;cursor:pointer;opacity:0.45;" >ICO</button>
                     <button id="hvf-dt"      data-color="#06b6d4" onclick="setHvFilter('dt')"      style="font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid transparent;background:#1E2329;color:#06b6d4;cursor:pointer;opacity:0.45;" ><span data-i18n="scr_dt_name">Terzo Tocco</span></button>
                     <button id="hvf-shimano"  data-color="#f97316" onclick="setHvFilter('shimano')"  style="font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid transparent;background:#1E2329;color:#f97316;cursor:pointer;opacity:0.45;" >EMA223/60</button>
-                    <button id="hvf-pattern"  data-color="#a78bfa" onclick="setHvFilter('pattern')"  style="font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid transparent;background:#1E2329;color:#a78bfa;cursor:pointer;opacity:0.45;" >🕯 Pattern</button>
                 </div>
                 <span id="hv-updated" class="text-xs text-gray-500"></span>
             </div>
@@ -538,51 +517,6 @@
         </div>
     </div>
 
-    <!-- Daily Flip Modal -->
-    <div id="scanner-modal-flip" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('flip',event)">
-        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
-                <span style="font-size:13px;font-weight:700;color:#C4B5FD;" data-i18n="scr_flip_modal">🔄 Daily Flip Scanner</span>
-                <button onclick="closeScannerModal('flip')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
-            </div>
-            <div class="p-4 space-y-3">
-                <div>
-                    <label class="text-xs text-gray-500 block mb-1" data-i18n="scr_flip_thr">Soglia flip (%):</label>
-                    <input type="number" step="0.1" min="0.1" id="flip-cfg-threshold" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-violet-500 focus:outline-none">
-                    <p class="text-xs text-gray-600 mt-1" data-i18n="scr_flip_thr_note">Allerta quando la variazione 24h è entro questa soglia dallo 0%.</p>
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500 block mb-1" data-i18n="scr_flip_type">Direzione:</label>
-                    <select id="flip-cfg-type" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-violet-500 focus:outline-none">
-                        <option value="both" data-i18n="scr_flip_both">Entrambe (verde↔rosso)</option>
-                        <option value="green_to_red" data-i18n="scr_flip_g2r">Solo verde → rosso</option>
-                        <option value="red_to_green" data-i18n="scr_flip_r2g">Solo rosso → verde</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500 block mb-1" data-i18n="scr_cooldown_h">Cooldown (ore):</label>
-                    <input type="number" step="1" min="1" id="flip-cfg-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-violet-500 focus:outline-none">
-                </div>
-                <div class="flex items-center gap-2 pt-1">
-                    <input type="checkbox" id="flip-cfg-no-indicators" class="rounded accent-violet-500">
-                    <label for="flip-cfg-no-indicators" class="text-xs text-gray-400 cursor-pointer" data-i18n="scr_flip_no_indicators">Nascondi indicatori nello screenshot</label>
-                </div>
-                <div class="flex items-center gap-2">
-                    <input type="checkbox" id="flip-cfg-show-level" class="rounded accent-violet-500">
-                    <label for="flip-cfg-show-level" class="text-xs text-gray-400 cursor-pointer" data-i18n="scr_flip_show_level">Mostra livello flip (0%) nello screenshot</label>
-                </div>
-                <div class="flex items-center gap-2">
-                    <input type="checkbox" id="flip-cfg-no-levels" class="rounded accent-violet-500">
-                    <label for="flip-cfg-no-levels" class="text-xs text-gray-400 cursor-pointer" data-i18n="scr_flip_no_levels">Nascondi livelli min/max nello screenshot</label>
-                </div>
-            </div>
-            <div class="px-4 pb-3 flex gap-2">
-                <button onclick="saveScannerConfig('flip')" class="flex-1 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors" data-i18n="cfg_save">💾 Save</button>
-                <button onclick="closeScannerModal('flip')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors" data-i18n="cfg_cancel">Annulla</button>
-            </div>
-            <div id="flip-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
-        </div>
-    </div>
 
     <!-- Shimano Scanner Modal -->
     <div id="scanner-modal-shimano" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('shimano',event)">
@@ -605,15 +539,12 @@
                     <p style="font-size:10px;color:#4B5563;margin-top:4px;" data-i18n="scr_screenshot_auto">Lo screenshot usa automaticamente il timeframe dell'alert.</p>
                 </div>
                 <div><label class="text-xs text-gray-500 block mb-1" data-i18n="scr_cooldown_hours">Cooldown alert (ore):</label><input type="number" step="1" min="1" id="shimano-cfg-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-orange-500 focus:outline-none"></div>
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid #2B3139;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid #2B3139;">
                     <div>
-                        <div class="text-xs text-gray-400 font-medium">Alert Fuori EMA223/60</div>
-                        <div style="font-size:10px;color:#4B5563;margin-top:2px;">Taglio EMA223 con 2 candele di conferma</div>
+                        <div class="text-xs text-gray-400 font-medium">Soglia distanza EMA (%)</div>
+                        <div style="font-size:10px;color:#4B5563;margin-top:2px;">Alert se |EMA60-EMA223| / prezzo &lt; soglia</div>
                     </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="shimano-fuori-toggle" class="sr-only peer" checked>
-                        <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-orange-600"></div>
-                    </label>
+                    <input type="number" step="0.05" min="0.05" max="20" id="shimano-cfg-threshold" style="width:70px;" class="px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-orange-500 focus:outline-none">
                 </div>
             </div>
             <div class="px-4 pb-3 flex gap-2">
@@ -621,51 +552,6 @@
                 <button onclick="closeScannerModal('shimano')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors" data-i18n="cfg_cancel">Annulla</button>
             </div>
             <div id="shimano-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
-        </div>
-    </div>
-
-    <!-- Modal Pattern Scanner -->
-    <div id="scanner-modal-pattern" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('pattern',event)">
-        <div class="modal-scanner-inner" style="background:#161A1E;border:1px solid #2B3139;border-radius:10px;max-width:420px;margin:48px auto;position:relative;">
-            <div class="flex items-center justify-between px-4 py-3 border-b border-dark-border">
-                <h3 class="text-sm font-medium text-violet-400">Pattern — Configura</h3>
-                <button onclick="closeScannerModal('pattern')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
-            </div>
-            <div class="p-4 space-y-4">
-                <div>
-                    <label class="text-xs text-gray-500 block mb-1" data-i18n="scr_tf">Timeframe:</label>
-                    <div id="pattern-cfg-tf-group" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;background:#1E222D;border:1px solid #2B3139;border-radius:6px;">
-                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="pattern-tf-D"   value="D"   style="accent-color:#7c3aed;width:14px;height:14px;"> <span class="text-sm text-gray-300">D</span></label>
-                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="pattern-tf-240" value="240" style="accent-color:#7c3aed;width:14px;height:14px;"> <span class="text-sm text-gray-300">4h</span></label>
-                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="pattern-tf-60"  value="60"  style="accent-color:#7c3aed;width:14px;height:14px;"> <span class="text-sm text-gray-300">1h</span></label>
-                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="pattern-tf-30"  value="30"  style="accent-color:#7c3aed;width:14px;height:14px;"> <span class="text-sm text-gray-300">30m</span></label>
-                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="pattern-tf-5"   value="5"   style="accent-color:#7c3aed;width:14px;height:14px;"> <span class="text-sm text-gray-300">5m</span></label>
-                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="pattern-tf-1"   value="1"   style="accent-color:#7c3aed;width:14px;height:14px;"> <span class="text-sm text-gray-300">1m</span></label>
-                    </div>
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500 block mb-1">Pattern attivi:</label>
-                    <div style="display:flex;flex-wrap:wrap;gap:6px;">
-                        <button id="ptog-dragonfly"  onclick="togglePatternBtn(this)" style="font-size:0.72rem;padding:3px 12px;border-radius:10px;cursor:pointer;border:1px solid #374151;background:transparent;color:#6b7280;transition:all .15s;">Dragonfly</button>
-                        <button id="ptog-gravestone" onclick="togglePatternBtn(this)" style="font-size:0.72rem;padding:3px 12px;border-radius:10px;cursor:pointer;border:1px solid #374151;background:transparent;color:#6b7280;transition:all .15s;">Gravestone</button>
-                        <button id="ptog-standard"   onclick="togglePatternBtn(this)" style="font-size:0.72rem;padding:3px 12px;border-radius:10px;cursor:pointer;border:1px solid #374151;background:transparent;color:#6b7280;transition:all .15s;">Standard</button>
-                        <button id="ptog-hammer"     onclick="togglePatternBtn(this)" style="font-size:0.72rem;padding:3px 12px;border-radius:10px;cursor:pointer;border:1px solid #374151;background:transparent;color:#6b7280;transition:all .15s;">Hammer</button>
-                    </div>
-                </div>
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                    <div>
-                        <div class="text-xs text-gray-500 font-medium">Soglia Doji (%):</div>
-                        <div style="font-size:10px;color:#4B5563;margin-top:2px;">Body / Range &lt; soglia → Doji</div>
-                    </div>
-                    <input type="number" step="1" min="1" max="30" id="pattern-cfg-threshold" style="width:70px;" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-violet-500 focus:outline-none">
-                </div>
-                <div><label class="text-xs text-gray-500 block mb-1" data-i18n="scr_cooldown_hours">Cooldown alert (ore):</label><input type="number" step="1" min="1" id="pattern-cfg-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-violet-500 focus:outline-none"></div>
-            </div>
-            <div class="px-4 pb-3 flex gap-2">
-                <button onclick="saveScannerConfig('pattern')" class="flex-1 bg-violet-700 hover:bg-violet-800 text-white px-4 py-2 rounded text-sm font-medium transition-colors" data-i18n="cfg_save">💾 Save</button>
-                <button onclick="closeScannerModal('pattern')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors" data-i18n="cfg_cancel">Annulla</button>
-            </div>
-            <div id="pattern-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
         </div>
     </div>
 
@@ -857,17 +743,13 @@
             loadAthStatus();
             loadIcoStatus();
             loadDtStatus();
-            loadFlipStatus();
             loadShimanoStatus();
-            loadPatternStatus();
             setInterval(loadHighVolume, 2000);
             setInterval(loadEmaTouchStatus, 30000);
             setInterval(loadAthStatus, 30000);
             setInterval(loadIcoStatus, 30000);
             setInterval(loadDtStatus, 30000);
-            setInterval(loadFlipStatus, 30000);
             setInterval(loadShimanoStatus, 30000);
-            setInterval(loadPatternStatus, 30000);
             setInterval(loadAlerts, 60000);
         }
 
@@ -928,16 +810,6 @@
             } catch (e) { /* ignore */ }
         }
 
-        async function loadFlipStatus() {
-            try {
-                const res = await fetch(`${API_URL}/scanner-api/daily-flip/status`);
-                const data = await res.json();
-                document.getElementById('flip-count').textContent = data.count ?? 0;
-                const monEl = document.getElementById('flip-monitored');
-                if (monEl) monEl.textContent = data.monitored ?? '-';
-            } catch (e) { /* ignore */ }
-        }
-
         async function loadShimanoStatus() {
             try {
                 const res = await fetch(`${API_URL}/scanner-api/shimano/status`);
@@ -952,19 +824,6 @@
             } catch (e) { /* ignore */ }
         }
 
-        async function loadPatternStatus() {
-            try {
-                const res = await fetch(`${API_URL}/scanner-api/pattern/status`);
-                const data = await res.json();
-                document.getElementById('pattern-count').textContent = data.count ?? 0;
-                const monEl = document.getElementById('pattern-monitored');
-                if (monEl) monEl.textContent = data.monitored ?? '-';
-                const syms = (data.alerts || []).map(s => s.replace(/_.*$/, ''));
-                _scannerSets.pattern = new Set(syms);
-                _scannerExtraSymbols.pattern = syms;
-                if (_hvFilter === 'pattern') rebuildHvTable();
-            } catch (e) { /* ignore */ }
-        }
 
         function fmtPrice(p) {
             if (p >= 10000) return p.toLocaleString('en-US', {maximumFractionDigits: 0});
@@ -982,8 +841,8 @@
         let _hvKey  = null;
         let _hvSort = { col: null, dir: -1 };
         let _hvFilter = 'all';
-        let _scannerSets = { ema_touch: new Set(), ath: new Set(), ico: new Set(), dt: new Set(), flip: new Set(), shimano: new Set(), pattern: new Set() };
-        let _scannerExtraSymbols = { ema_touch: [], ath: [], ico: [], dt: [], flip: [], shimano: [], pattern: [] };
+        let _scannerSets = { ema_touch: new Set(), ath: new Set(), ico: new Set(), dt: new Set(), shimano: new Set() };
+        let _scannerExtraSymbols = { ema_touch: [], ath: [], ico: [], dt: [], shimano: [] };
 
         function sortHvData(data) {
             if (!_hvSort.col) return data;
@@ -1073,7 +932,7 @@
         function setHvFilter(f) {
             _hvFilter = f;
             _hvKey = null;
-            ['all','ema_touch','ath','ico','dt','shimano','pattern'].forEach(k => {
+            ['all','ema_touch','ath','ico','dt','shimano'].forEach(k => {
                 const el = document.getElementById('hvf-' + k);
                 if (!el) return;
                 el.dataset.active = k === f ? '1' : '0';
@@ -1178,10 +1037,8 @@
                 if (currentConfig.ico_levels)    document.getElementById('ico-toggle').checked     = currentConfig.ico_levels.enabled;
                 if (currentConfig.double_touch)  document.getElementById('dt-toggle').checked      = currentConfig.double_touch.enabled;
                 if (currentConfig.ema_touch)     document.getElementById('ema-touch-toggle').checked = currentConfig.ema_touch.enabled;
-                if (currentConfig.daily_flip)    document.getElementById('flip-toggle').checked    = currentConfig.daily_flip.enabled;
                 if (currentConfig.shimano) {
                     document.getElementById('shimano-toggle').checked = currentConfig.shimano.enabled;
-                    document.getElementById('shimano-fuori-toggle').checked = currentConfig.shimano.fuori_enabled ?? true;
                 }
                 updateDashboardInfo();
                 updateBotStatus();
@@ -1287,15 +1144,6 @@
 
         // ── Per-scanner modals ──────────────────────────────────────────────
 
-        function setPatternBtn(btn, on) {
-            if (!btn) return;
-            btn.dataset.on = on ? '1' : '0';
-            btn.style.background   = on ? 'rgba(124,58,237,0.2)' : 'transparent';
-            btn.style.borderColor  = on ? '#7c3aed' : '#374151';
-            btn.style.color        = on ? '#a78bfa'  : '#6b7280';
-        }
-        function togglePatternBtn(btn) { setPatternBtn(btn, btn.dataset.on !== '1'); }
-
         function openScannerModal(name) {
             const cfg = currentConfig;
             if (name === 'ath') {
@@ -1323,33 +1171,14 @@
                 document.querySelectorAll('.ema-touch-tf-cb').forEach(cb => {
                     cb.checked = selTfs.includes(cb.value);
                 });
-            } else if (name === 'flip') {
-                document.getElementById('flip-cfg-threshold').value        = cfg.daily_flip?.flip_threshold ?? 2.0;
-                document.getElementById('flip-cfg-type').value             = cfg.daily_flip?.flip_type ?? 'both';
-                document.getElementById('flip-cfg-cooldown').value         = cfg.daily_flip?.cooldown_hours ?? 2;
-                document.getElementById('flip-cfg-no-indicators').checked  = cfg.daily_flip?.screenshot_no_indicators ?? false;
-                document.getElementById('flip-cfg-show-level').checked     = cfg.daily_flip?.show_flip_level ?? false;
-                document.getElementById('flip-cfg-no-levels').checked      = cfg.daily_flip?.screenshot_no_levels ?? false;
             } else if (name === 'shimano') {
-                document.getElementById('shimano-cfg-cooldown').value = cfg.shimano?.cooldown_hours ?? 24;
+                document.getElementById('shimano-cfg-cooldown').value  = cfg.shimano?.cooldown_hours ?? 24;
+                document.getElementById('shimano-cfg-threshold').value = cfg.shimano?.distance_threshold_pct ?? 1.0;
                 const rawShTf = cfg.shimano?.scan_tf ?? ['D'];
                 const selShTfs = Array.isArray(rawShTf) ? rawShTf : [rawShTf];
                 ['D','240','60','30','5','1'].forEach(v => {
                     const cb = document.getElementById(`shimano-tf-${v}`);
                     if (cb) cb.checked = selShTfs.includes(v);
-                });
-            } else if (name === 'pattern') {
-                document.getElementById('pattern-cfg-cooldown').value  = cfg.pattern?.cooldown_hours  ?? 24;
-                document.getElementById('pattern-cfg-threshold').value = ((cfg.pattern?.doji_threshold ?? 0.1) * 100).toFixed(0);
-                const rawPTf = cfg.pattern?.scan_tf ?? ['D','240','60','30','5','1'];
-                const selPTfs = Array.isArray(rawPTf) ? rawPTf : [rawPTf];
-                ['D','240','60','30','15','5','1'].forEach(v => {
-                    const cb = document.getElementById(`pattern-tf-${v}`);
-                    if (cb) cb.checked = selPTfs.includes(v);
-                });
-                const enabledPtypes = cfg.pattern?.enabled_patterns ?? ['dragonfly','gravestone','standard','hammer'];
-                ['dragonfly','gravestone','standard','hammer'].forEach(t => {
-                    setPatternBtn(document.getElementById(`ptog-${t}`), enabledPtypes.includes(t));
                 });
             }
             const statusEl = document.getElementById(`${name}-cfg-status`);
@@ -1406,33 +1235,13 @@
                         touch_tolerance:     parseFloat(document.getElementById('ema-touch-cfg-tolerance').value) || 0.05,
                         scan_tfs:            scanTfs.length ? scanTfs : ['30'],
                     };
-                } else if (name === 'flip') {
-                    updates.daily_flip = {
-                        ...currentConfig.daily_flip,
-                        flip_threshold:             parseFloat(document.getElementById('flip-cfg-threshold').value) || 2.0,
-                        flip_type:                  document.getElementById('flip-cfg-type').value || 'both',
-                        cooldown_hours:             parseInt(document.getElementById('flip-cfg-cooldown').value) || 2,
-                        screenshot_no_indicators:   document.getElementById('flip-cfg-no-indicators').checked,
-                        show_flip_level:            document.getElementById('flip-cfg-show-level').checked,
-                        screenshot_no_levels:       document.getElementById('flip-cfg-no-levels').checked,
-                    };
                 } else if (name === 'shimano') {
                     const chosenShTfs = ['D','240','60','30','5','1'].filter(v => document.getElementById(`shimano-tf-${v}`)?.checked);
                     updates.shimano = {
                         ...currentConfig.shimano,
-                        scan_tf:        chosenShTfs.length > 0 ? chosenShTfs : ['D'],
-                        cooldown_hours: parseInt(document.getElementById('shimano-cfg-cooldown').value) || 24,
-                        fuori_enabled:  document.getElementById('shimano-fuori-toggle').checked,
-                    };
-                } else if (name === 'pattern') {
-                    const chosenPTfs = ['D','240','60','30','5','1'].filter(v => document.getElementById(`pattern-tf-${v}`)?.checked);
-                    const enabledPat = ['dragonfly','gravestone','standard','hammer'].filter(t => document.getElementById(`ptog-${t}`)?.dataset.on === '1');
-                    updates.pattern = {
-                        ...currentConfig.pattern,
-                        scan_tf:          chosenPTfs.length > 0 ? chosenPTfs : ['D','240','60'],
-                        doji_threshold:   parseFloat(document.getElementById('pattern-cfg-threshold').value) / 100 || 0.1,
-                        cooldown_hours:   parseInt(document.getElementById('pattern-cfg-cooldown').value) || 24,
-                        enabled_patterns: enabledPat.length > 0 ? enabledPat : ['dragonfly','gravestone','standard','hammer'],
+                        scan_tf:                chosenShTfs.length > 0 ? chosenShTfs : ['D'],
+                        cooldown_hours:         parseInt(document.getElementById('shimano-cfg-cooldown').value) || 24,
+                        distance_threshold_pct: parseFloat(document.getElementById('shimano-cfg-threshold').value) || 1.0,
                     };
                 }
                 const newConfig = { ...currentConfig, ...updates };
@@ -1468,9 +1277,7 @@
             'ico_levels':    'ico-toggle',
             'double_touch':  'dt-toggle',
             'ema_touch':     'ema-touch-toggle',
-            'daily_flip':    'flip-toggle',
             'shimano':       'shimano-toggle',
-            'pattern':       'pattern-toggle',
         };
 
         async function toggleScanner(scannerName) {
@@ -1505,7 +1312,6 @@
                 'ico-status':     currentConfig.ico_levels?.enabled,
                 'dt-status':      currentConfig.double_touch?.enabled,
                 'ema-touch-status': currentConfig.ema_touch?.enabled,
-                'flip-status':    currentConfig.daily_flip?.enabled,
                 'shimano-status': currentConfig.shimano?.enabled,
             };
             Object.entries(scanners).forEach(([id, enabled]) => {
