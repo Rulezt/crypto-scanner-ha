@@ -24,6 +24,7 @@ class ICOLevelsScanner:
                  ico_levels_threshold=2.0, ico_levels_tf='D',
                  new_listing_days=30, cooldown_hours=2,
                  scan_interval_minutes=60, screenshot_tf=None,
+                 min_var_pct_24h=5.0,
                  ws_manager=None, live_config=None,
                  schedule_start='', schedule_end='', utc_offset=2, **kwargs):
         self.telegram_token   = telegram_config['token']
@@ -35,6 +36,7 @@ class ICOLevelsScanner:
         self.screenshot_tf    = screenshot_tf if screenshot_tf else ico_levels_tf
         self.new_listing_days = new_listing_days
         self.cooldown_hours   = cooldown_hours
+        self.min_var_pct_24h  = min_var_pct_24h
         self._live_config     = live_config
 
         # In-memory ICO levels cache: {symbol: {first_high, first_low}}
@@ -178,6 +180,8 @@ class ICOLevelsScanner:
         change_pct = data.get('change_24h', 0.0)
         volume     = data.get('volume_24h', 0)
         if price <= 0:
+            return
+        if self.min_var_pct_24h and change_pct < self.min_var_pct_24h:
             return
         first_high = levels['first_high']
         first_low  = levels['first_low']

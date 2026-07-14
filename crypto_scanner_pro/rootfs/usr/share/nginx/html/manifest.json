@@ -1,0 +1,12 @@
+{
+  "name": "CryptoScanner Pro",
+  "short_name": "CryptoScanner",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#101014",
+  "theme_color": "#101014",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

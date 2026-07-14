@@ -135,7 +135,7 @@
                     </div>
                     <div class="stat-card" v-if="status.position">
                         <div class="lbl">Forza</div>
-                        <div class="val" :class="status.position.strength==='Strong'?'positive':status.position.strength==='Weak'?'negative':''" style="font-size:0.9rem">
+                        <div class="val" :class="status.position.strength==='Strong'?'positive':''" style="font-size:0.9rem">
                             {{ status.position.strength }}
                         </div>
                     </div>
@@ -148,12 +148,6 @@
                             <span class="positive">{{ fmtPrice(status.position.tp3) }}</span>
                         </div>
                     </div>
-                    <div class="stat-card" v-if="!status.position && status.channel">
-                        <div class="lbl">Pattern in formazione</div>
-                        <div class="val" style="font-size:0.85rem">
-                            {{ status.channel.dir_score }}% 🐂 — {{ status.channel.touches_h }}H/{{ status.channel.touches_l }}L — conv {{ status.channel.conv }}%
-                        </div>
-                    </div>
                     <div class="stat-card" v-if="status.exchange_position">
                         <div class="lbl">PnL non realizzato</div>
                         <div class="val" :class="(status.exchange_position.unrealizedPnl||0)>=0 ? 'positive':'negative'">
@@ -162,7 +156,23 @@
                     </div>
                 </div>
 
-                <h3 style="font-size:0.8rem;color:#9ca3af;margin:14px 0 8px;">Feed segnali</h3>
+                <h3 style="font-size:0.8rem;color:#9ca3af;margin:14px 0 8px;display:flex;align-items:center;gap:8px;">
+                    Alert Bybit
+                    <span class="muted" style="font-size:0.65rem;font-weight:400;">(fill reali sull'account, non i segnali calcolati dal motore)</span>
+                </h3>
+                <div v-if="exchangeAlerts.length===0" class="muted" style="font-size:0.8rem;">Nessun fill reale ancora.</div>
+                <div v-for="a in [...exchangeAlerts].reverse()" :key="a.time+a.side+a.price" class="signal-item">
+                    <div class="t">{{ fmtTime(a.time) }}</div>
+                    <b :class="a.side==='Buy'?'positive':'negative'">{{ a.side==='Buy'?'BUY':'SELL' }}</b>
+                    {{ a.qty }} @ {{ fmtPrice(parseFloat(a.price)) }}
+                    <span v-if="a.stopOrderType && a.stopOrderType!=='UNKNOWN'" class="muted"> — {{ a.stopOrderType }}</span>
+                    <span v-if="a.closedPnl" :class="parseFloat(a.closedPnl)>=0?'positive':'negative'"> PnL {{ a.closedPnl }}</span>
+                </div>
+
+                <h3 style="font-size:0.8rem;color:#9ca3af;margin:14px 0 8px;display:flex;align-items:center;gap:10px;">
+                    Feed segnali
+                    <button v-if="signals.length" class="btn" style="font-size:0.68rem;padding:2px 8px;" @click="clearSignals">Pulisci</button>
+                </h3>
                 <div v-if="signals.length===0" class="muted" style="font-size:0.8rem;">Nessun segnale ancora.</div>
                 <div v-for="s in [...signals].reverse()" :key="s.time+s.type" class="signal-item">
                     <div class="t">{{ fmtTime(s.time) }} — {{ s.mode==='execution' ? 'Esecuzione' : 'Segnale' }}</div>
@@ -277,19 +287,22 @@
                         <table class="trade-table">
                             <thead><tr>
                                 <th>#</th><th>Lato</th><th>Forza</th><th>Entrata</th><th>Prezzo</th>
-                                <th>Uscita</th><th>Prezzo</th><th>Motivo</th><th>PnL %</th>
+                                <th>Uscita</th><th>Prezzo</th><th>Motivo</th><th>PnL %</th><th>Fee</th><th>Risultato</th><th>Saldo</th>
                             </tr></thead>
                             <tbody>
-                                <tr v-for="(tr,i) in btResult.trades" :key="i">
-                                    <td>{{ i+1 }}</td>
-                                    <td :class="tr.side==='long'?'positive':'negative'" style="cursor:pointer;text-decoration:underline dotted;" title="Vai all'operazione sul grafico" @click="focusTrade(tr)">{{ tr.side==='long'?'LONG':'SHORT' }}</td>
-                                    <td class="muted" :class="tr.strength==='Strong'?'positive':tr.strength==='Weak'?'negative':'muted'">{{ tr.strength }}</td>
-                                    <td class="muted">{{ fmtTime(tr.entry_time) }}</td>
-                                    <td>{{ fmtPrice(tr.entry_price) }}</td>
-                                    <td class="muted">{{ fmtTime(tr.exit_time) }}</td>
-                                    <td>{{ fmtPrice(tr.exit_price) }}</td>
-                                    <td class="muted">{{ REASON_LABEL[tr.exit_reason] || tr.exit_reason }}</td>
-                                    <td :class="tr.pnl_pct>=0?'positive':'negative'">{{ tr.pnl_pct>=0?'+':'' }}{{ tr.pnl_pct }}%</td>
+                                <tr v-for="row in btTradesSorted" :key="row.n">
+                                    <td>{{ row.n }}</td>
+                                    <td :class="row.tr.side==='long'?'positive':'negative'" style="cursor:pointer;text-decoration:underline dotted;" title="Vai all'operazione sul grafico" @click="focusTrade(row.tr)">{{ row.tr.side==='long'?'LONG':'SHORT' }}</td>
+                                    <td class="muted" :class="row.tr.strength==='Strong'?'positive':'muted'">{{ row.tr.strength }}</td>
+                                    <td class="muted">{{ fmtTime(row.tr.entry_time) }}</td>
+                                    <td>{{ fmtPrice(row.tr.entry_price) }}</td>
+                                    <td class="muted">{{ fmtTime(row.tr.exit_time) }}</td>
+                                    <td>{{ fmtPrice(row.tr.exit_price) }}</td>
+                                    <td class="muted">{{ REASON_LABEL[row.tr.exit_reason] || row.tr.exit_reason }}</td>
+                                    <td :class="row.tr.pnl_pct>=0?'positive':'negative'">{{ row.tr.pnl_pct>=0?'+':'' }}{{ row.tr.pnl_pct }}%</td>
+                                    <td class="muted negative">-{{ row.tr.fee_usdt.toFixed(2) }}</td>
+                                    <td :class="row.tr.pnl_usdt>=0?'positive':'negative'">{{ row.tr.pnl_usdt>=0?'+':'' }}{{ row.tr.pnl_usdt.toFixed(2) }}</td>
+                                    <td>{{ row.balance.toFixed(2) }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -310,24 +323,9 @@
                 </button>
             </div>
             <div class="group">
-                <div class="group-title">Canale</div>
-                <div class="row"><label>Lunghezza Pivot</label><input type="number" v-model.number="cfg.pivot_len" min="2" max="30" :disabled="status.running"></div>
-                <div class="row"><label>Tocchi min. per lato</label><input type="number" v-model.number="cfg.min_touches" min="2" max="6" :disabled="status.running"></div>
-                <div class="row"><label>Larghezza max canale (candele)</label><input type="number" v-model.number="cfg.max_channel_bars" min="20" max="500" step="10" :disabled="status.running"></div>
-                <div class="row"><label>Convergenza minima</label><input type="number" v-model.number="cfg.convergence_min" min="0" max="0.5" step="0.01" :disabled="status.running"></div>
+                <div class="group-title">Canale (SMA20 close/high/low)</div>
+                <div class="row"><label>Periodo SMA</label><input type="number" v-model.number="cfg.period" min="5" max="500" :disabled="status.running"></div>
                 <div class="row"><label>Mostra canale su grafico</label><input type="checkbox" v-model="showChannel"></div>
-            </div>
-            <div class="group">
-                <div class="group-title">Tolleranze (ATR)</div>
-                <div class="row"><label>Tolleranza tocco</label><input type="number" v-model.number="cfg.touch_tolerance" min="0.01" max="0.5" step="0.01" :disabled="status.running"></div>
-                <div class="row"><label>Deviazione max</label><input type="number" v-model.number="cfg.deviation_max" min="0.05" max="1" step="0.05" :disabled="status.running"></div>
-                <div class="row"><label>Larghezza min canale</label><input type="number" v-model.number="cfg.min_channel_width_atr" min="0.1" max="3" step="0.1" :disabled="status.running"></div>
-            </div>
-            <div class="group">
-                <div class="group-title">Filtri</div>
-                <div class="row"><label>Spike volume (mult.)</label><input type="number" v-model.number="cfg.vol_confirm" min="0.5" max="3" step="0.1" :disabled="status.running"></div>
-                <div class="row"><label>Filtro contrazione volume</label><input type="checkbox" v-model="cfg.vol_contraction" :disabled="status.running"></div>
-                <div class="row"><label>Conferma momentum (RSI)</label><input type="checkbox" v-model="cfg.momentum_filter" :disabled="status.running"></div>
             </div>
             <div class="group">
                 <div class="group-title">Modalità</div>
@@ -518,16 +516,14 @@ createApp({
         const DEFAULT_CFG = {
             symbol: '', tf: '60', mode: 'signal',
             sizing: { type: 'fixed', value: 50 }, leverage: 1,
-            pivot_len: 5, min_touches: 2, max_channel_bars: 120,
-            convergence_min: 0.02, touch_tolerance: 0.15, deviation_max: 0.3,
-            min_channel_width_atr: 0.5, vol_confirm: 1.2,
-            vol_contraction: true, momentum_filter: true,
+            period: 20,
         };
 
         const cfg = reactive(JSON.parse(JSON.stringify(DEFAULT_CFG)));
         const modeChoice = ref(cfg.mode);
-        const status = reactive({ running: false, mode: 'signal', symbol: '', tf: '60', position: null, channel: null, exchange_position: null });
+        const status = reactive({ running: false, mode: 'signal', symbol: '', tf: '60', position: null, exchange_position: null });
         const signals = ref([]);
+        const exchangeAlerts = ref([]);
         const tab = ref('live');
         const btCapital = ref(1000);
         const btLookbackDays = ref(365);
@@ -597,6 +593,16 @@ createApp({
         const fmtTime = (t) => t ? new Date(t * 1000).toLocaleString('it-IT') : '—';
         const fmtDateShort = (t) => t ? new Date(t * 1000).toLocaleDateString('it-IT') : '—';
 
+        const btTradesSorted = computed(() => {
+            if (!btResult.value?.trades?.length) return [];
+            let balance = btResult.value.equity_curve?.[0]?.equity ?? btCapital.value;
+            const rows = btResult.value.trades.map((tr, i) => {
+                balance += tr.pnl_usdt;
+                return { tr, n: i + 1, balance };
+            });
+            return rows.sort((a, b) => b.tr.entry_time - a.tr.entry_time);
+        });
+
         const MONTH_LABELS = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
         const monthLabel = (m) => `${MONTH_LABELS[m.month]} ${m.year}`;
         const monthlyStats = computed(() => {
@@ -653,6 +659,20 @@ createApp({
                 if (!r.ok) return;
                 const d = await r.json();
                 signals.value = d.signals || [];
+            } catch(e) {}
+        };
+        const clearSignals = async () => {
+            try {
+                await fetch('/api/bot/signals/clear', { method: 'POST' });
+                await fetchSignals();
+            } catch(e) {}
+        };
+        const fetchExchangeAlerts = async () => {
+            try {
+                const r = await fetch('/api/bot/exchange-alerts');
+                if (!r.ok) return;
+                const d = await r.json();
+                exchangeAlerts.value = d.alerts || [];
             } catch(e) {}
         };
         const startBot = async () => {
@@ -741,6 +761,7 @@ createApp({
         };
         let mainChart = null, candleSeries = null, slLine = null, tp1Line = null, tp2Line = null, tp3Line = null, entryLine = null, liveMarkers = null;
         let mainKlines = null;
+        let liveWS = null, liveWSTimer = null, TZ_OFFSET_S = 0;
         let chHiLineSeries = null, chLoLineSeries = null;
         let btChHiLineSeries = null, btChLoLineSeries = null;
         let equityChart = null;
@@ -793,30 +814,11 @@ createApp({
         let btRangeP1 = null, btRangeMD = null, btRangeMM = null, btRangeMU = null, btRangeCM = null;
         let btRangeHoverLine = null, btRangeHoverMM = null, btRangeHoverML = null;
 
-        // ── Motore Breakout Pattern (porting client-side, solo per disegnare il
-        // canale sul grafico — lo stato reale del bot live è quello autoritativo
-        // restituito da /api/bot/status; stessa logica di scanners/bot_engine.py
-        // e del sccanner visuale breakout.html) ──────────────────────────────
-        const _calcTR = (candles) => {
-            const n = candles.length, tr = new Array(n);
-            for (let i = 0; i < n; i++) {
-                if (i === 0) { tr[i] = candles[i].high - candles[i].low; continue; }
-                const pc = candles[i-1].close;
-                tr[i] = Math.max(candles[i].high - candles[i].low, Math.abs(candles[i].high - pc), Math.abs(candles[i].low - pc));
-            }
-            return tr;
-        };
-        const _calcRMA = (values, period) => {
-            const n = values.length, out = new Array(n).fill(null);
-            let rma = null;
-            for (let i = 0; i < n; i++) {
-                if (i < period - 1) continue;
-                if (rma === null) { let sum = 0; for (let k = i-period+1; k <= i; k++) sum += values[k]; rma = sum / period; }
-                else rma = (values[i] - rma) / period + rma;
-                out[i] = rma;
-            }
-            return out;
-        };
+        // ── Canale SMA(period) su high/low — porting client-side di
+        // scanners/bot_engine.py, usato SOLO per disegnare le bande sul
+        // grafico (stesso calcolo dello screener channel-breakout.html);
+        // lo stato reale del bot live/backtest è quello autoritativo
+        // restituito dal backend (posizione, trade, marker) ─────────────────
         const _calcSMASeries = (values, period) => {
             const n = values.length, out = new Array(n).fill(null);
             let sum = 0;
@@ -827,235 +829,10 @@ createApp({
             }
             return out;
         };
-        const _calcRSISeries = (candles, period) => {
-            const n = candles.length, gains = new Array(n), losses = new Array(n);
-            for (let i = 0; i < n; i++) {
-                if (i === 0) { gains[i] = 0; losses[i] = 0; continue; }
-                const diff = candles[i].close - candles[i-1].close;
-                gains[i] = Math.max(diff, 0); losses[i] = Math.max(-diff, 0);
-            }
-            const avgG = _calcRMA(gains, period), avgL = _calcRMA(losses, period);
-            const out = new Array(n).fill(null);
-            for (let i = 0; i < n; i++) {
-                if (avgG[i] == null || avgL[i] == null) continue;
-                if (avgL[i] === 0) { out[i] = 100; continue; }
-                out[i] = 100 - 100 / (1 + avgG[i]/avgL[i]);
-            }
-            return out;
-        };
-        const _detectPivots = (candles, len) => {
-            const n = candles.length;
-            const pivHigh = new Array(n).fill(null), pivLow = new Array(n).fill(null);
-            for (let p = len; p < n - len; p++) {
-                const hp = candles[p].high, lp = candles[p].low;
-                let isHigh = true, isLow = true;
-                for (let k = p - len; k <= p + len; k++) {
-                    if (k === p) continue;
-                    if (candles[k].high >= hp) isHigh = false;
-                    if (candles[k].low  <= lp) isLow  = false;
-                    if (!isHigh && !isLow) break;
-                }
-                if (isHigh) pivHigh[p] = hp;
-                if (isLow)  pivLow[p]  = lp;
-            }
-            return { pivHigh, pivLow };
-        };
-        const _lineAt  = (x1, y1, x2, y2, x) => { const dx = x2 - x1; return Math.abs(dx) > 1e-10 ? y1 + (y2 - y1) * (x - x1) / dx : y1; };
-        const _safeDiv = (num, den, fb = 0) => (den !== 0 && isFinite(num) && isFinite(den)) ? num / den : fb;
-
-        const BOPS_MAX_PIVOTS = 60, BOPS_MAX_PIVOT_SCAN = 15, BOPS_RESCAN_INTERVAL = 10, BOPS_VOL_CONTR_THRESH = 0.85, BOPS_MAX_WIDTH_MULT = 10.0;
-
-        const runBreakoutEngineJS = (candles, cfgP) => {
-            const n = candles.length;
-            const { pivHigh, pivLow } = _detectPivots(candles, cfgP.pivot_len);
-            const atrArr = _calcRMA(_calcTR(candles), 20);
-            const rsiArr = _calcRSISeries(candles, 14);
-            const volArr = candles.map(c => c.volume || 0);
-            const volSmaArr = _calcSMASeries(volArr, 20);
-            const cumVol = new Array(n);
-            { let run = 0; for (let i = 0; i < n; i++) { run += volArr[i]; cumVol[i] = run; } }
-            const cumVolAt = (i) => i < 0 ? 0 : cumVol[i];
-
-            const hiPrices = [], hiBars = [], loPrices = [], loBars = [];
-            const warmup = Math.max(cfgP.pivot_len * 2 + cfgP.max_channel_bars, 50);
-
-            const st = {
-                channel_active: false, hi_x1:0,hi_y1:0,hi_x2:0,hi_y2:0, lo_x1:0,lo_y1:0,lo_x2:0,lo_y2:0,
-                ch_hi_touches: 0, ch_lo_touches: 0, ch_convergence: 0, ch_max_width: 0, ch_detect_bar: 0,
-                breakout_dir: 0, breakout_bar: 0, break_strength: '—',
-                entry_price: 0, sl_price: 0, sl_price_orig: 0, tp1_price: 0, tp2_price: 0, tp3_price: 0,
-                tp1_hit: false, tp2_hit: false, tp3_hit: false, sl_hit: false, trade_open: false,
-            };
-
-            for (let i = 0; i < n; i++) {
-                const isWarmedUp = i >= warmup;
-                const pIdx = i - cfgP.pivot_len;
-                let newPivot = false;
-                if (pIdx >= 0) {
-                    if (pivHigh[pIdx] != null) { hiPrices.unshift(pivHigh[pIdx]); hiBars.unshift(pIdx); newPivot = true; if (hiPrices.length > BOPS_MAX_PIVOTS) { hiPrices.pop(); hiBars.pop(); } }
-                    if (pivLow[pIdx]  != null) { loPrices.unshift(pivLow[pIdx]);  loBars.unshift(pIdx);  newPivot = true; if (loPrices.length > BOPS_MAX_PIVOTS) { loPrices.pop(); loBars.pop(); } }
-                }
-                const atr = atrArr[i] ?? (candles[i].close * 0.0001);
-                const rsi = rsiArr[i] ?? 50;
-                const volSma = volSmaArr[i] ?? 0;
-                const hasVolume = volArr[i] > 0;
-
-                const rescanDue = i % BOPS_RESCAN_INTERVAL === 0;
-                const shouldScan = (newPivot || rescanDue) && !st.channel_active && !st.trade_open && isWarmedUp && hiPrices.length >= cfgP.min_touches && loPrices.length >= cfgP.min_touches;
-
-                if (shouldScan) {
-                    const hX=[], hY=[], lX=[], lY=[];
-                    for (let k = 0; k < Math.min(hiPrices.length, BOPS_MAX_PIVOT_SCAN + 1); k++)
-                        if (i - hiBars[k] <= cfgP.max_channel_bars) { hX.push(hiBars[k]); hY.push(hiPrices[k]); }
-                    for (let k = 0; k < Math.min(loPrices.length, BOPS_MAX_PIVOT_SCAN + 1); k++)
-                        if (i - loBars[k] <= cfgP.max_channel_bars) { lX.push(loBars[k]); lY.push(loPrices[k]); }
-                    const hCnt = hX.length, lCnt = lX.length;
-                    const devTol = atr * cfgP.deviation_max, touchTol = atr * cfgP.touch_tolerance;
-
-                    let bestHiTouches = 0, foundHi = false, bHiX1=0,bHiY1=0,bHiX2=0,bHiY2=0;
-                    if (hCnt >= cfgP.min_touches) {
-                        for (let a = 0; a < hCnt - 1; a++) for (let b = a + 1; b < hCnt; b++) {
-                            const ax=hX[a], ay=hY[a], bx=hX[b], bpy=hY[b];
-                            if (Math.abs(bx - ax) < 1.0) continue;
-                            let allBelow = true, touches = 0;
-                            for (let k = 0; k < hCnt; k++) {
-                                const diff = hY[k] - _lineAt(ax, ay, bx, bpy, hX[k]);
-                                if (diff > devTol) { allBelow = false; break; }
-                                if (Math.abs(diff) <= touchTol) touches++;
-                            }
-                            if (allBelow && touches >= cfgP.min_touches && touches > bestHiTouches) { bestHiTouches = touches; bHiX1=ax; bHiY1=ay; bHiX2=bx; bHiY2=bpy; foundHi = true; }
-                        }
-                    }
-                    let bestLoTouches = 0, foundLo = false, bLoX1=0,bLoY1=0,bLoX2=0,bLoY2=0;
-                    if (lCnt >= cfgP.min_touches) {
-                        for (let a = 0; a < lCnt - 1; a++) for (let b = a + 1; b < lCnt; b++) {
-                            const ax=lX[a], ay=lY[a], bx=lX[b], bpy=lY[b];
-                            if (Math.abs(bx - ax) < 1.0) continue;
-                            let allAbove = true, touches = 0;
-                            for (let k = 0; k < lCnt; k++) {
-                                const diff = lY[k] - _lineAt(ax, ay, bx, bpy, lX[k]);
-                                if (diff < -devTol) { allAbove = false; break; }
-                                if (Math.abs(diff) <= touchTol) touches++;
-                            }
-                            if (allAbove && touches >= cfgP.min_touches && touches > bestLoTouches) { bestLoTouches = touches; bLoX1=ax; bLoY1=ay; bLoX2=bx; bLoY2=bpy; foundLo = true; }
-                        }
-                    }
-                    if (foundHi && foundLo) {
-                        const hiMinX = Math.min(bHiX1,bHiX2), hiMaxX = Math.max(bHiX1,bHiX2);
-                        const loMinX = Math.min(bLoX1,bLoX2), loMaxX = Math.max(bLoX1,bLoX2);
-                        const overlapStart = Math.max(hiMinX, loMinX), overlapEnd = Math.min(hiMaxX, loMaxX);
-                        let maxH = 0;
-                        if (overlapEnd > overlapStart) {
-                            const samples = Math.max(Math.trunc((overlapEnd - overlapStart) / 5.0), 2);
-                            for (let s = 0; s <= samples; s++) {
-                                const sx = overlapStart + (overlapEnd - overlapStart) * s / samples;
-                                const hu = _lineAt(bHiX1,bHiY1,bHiX2,bHiY2,sx), lo = _lineAt(bLoX1,bLoY1,bLoX2,bLoY2,sx);
-                                if (hu - lo > maxH) maxH = hu - lo;
-                            }
-                        } else {
-                            const midX = (hiMinX + hiMaxX + loMinX + loMaxX) / 4.0;
-                            maxH = Math.abs(_lineAt(bHiX1,bHiY1,bHiX2,bHiY2,midX) - _lineAt(bLoX1,bLoY1,bLoX2,bLoY2,midX));
-                        }
-                        const startX = Math.min(hiMinX, loMinX);
-                        const endX = i;
-                        const upperNow = _lineAt(bHiX1,bHiY1,bHiX2,bHiY2,endX), lowerNow = _lineAt(bLoX1,bLoY1,bLoX2,bLoY2,endX);
-                        const widthNow = upperNow - lowerNow;
-                        const upperStart = _lineAt(bHiX1,bHiY1,bHiX2,bHiY2,startX), lowerStart = _lineAt(bLoX1,bLoY1,bLoX2,bLoY2,startX);
-                        const widthStart = upperStart - lowerStart;
-                        const convRate = widthStart > 0 ? 1.0 - _safeDiv(widthNow, widthStart, 1.0) : 0.0;
-                        const notInv = widthNow > 0;
-                        const isConv = convRate >= cfgP.convergence_min;
-                        const widthOk = widthNow >= atr * cfgP.min_channel_width_atr && widthNow < atr * BOPS_MAX_WIDTH_MULT;
-                        const prevClose = i > 0 ? candles[i-1].close : candles[i].close;
-                        const isInside = notInv && prevClose <= upperNow && prevClose >= lowerNow;
-
-                        const patStartIdx = Math.trunc(startX);
-                        const patBars = Math.max(i - patStartIdx, 1);
-                        const safPatBars = Math.min(patBars, i);
-                        const preBars = Math.min(safPatBars, patStartIdx);
-                        const volInPat  = (hasVolume && safPatBars > 0) ? _safeDiv(cumVolAt(i) - cumVolAt(i - safPatBars), safPatBars, volSma) : volSma;
-                        const volPrePat = (hasVolume && preBars > 0) ? _safeDiv(cumVolAt(i - safPatBars) - cumVolAt(i - safPatBars - preBars), preBars, volSma) : volSma;
-                        const volContRatio = _safeDiv(volInPat, volPrePat, 1.0);
-                        const volContOk = cfgP.vol_contraction ? (!hasVolume || volContRatio < BOPS_VOL_CONTR_THRESH) : true;
-
-                        if (notInv && isConv && widthOk && isInside && volContOk) {
-                            st.channel_active = true;
-                            st.hi_x1=bHiX1; st.hi_y1=bHiY1; st.hi_x2=bHiX2; st.hi_y2=bHiY2;
-                            st.lo_x1=bLoX1; st.lo_y1=bLoY1; st.lo_x2=bLoX2; st.lo_y2=bLoY2;
-                            st.ch_hi_touches = bestHiTouches; st.ch_lo_touches = bestLoTouches;
-                            st.ch_convergence = convRate; st.ch_max_width = maxH; st.ch_detect_bar = i;
-                            st.breakout_dir = 0; st.break_strength = '—';
-                        }
-                    }
-                }
-
-                let rawBull = false, rawBear = false, strengthScore = 0, breakBoundary = 0, oppBoundary = 0;
-                const channelMature = st.channel_active && st.breakout_dir === 0;
-                if (channelMature && isWarmedUp) {
-                    const upper = _lineAt(st.hi_x1,st.hi_y1,st.hi_x2,st.hi_y2,i), lower = _lineAt(st.lo_x1,st.lo_y1,st.lo_x2,st.lo_y2,i);
-                    const c = candles[i];
-                    const bodyLen = Math.abs(c.close - c.open), candleLen = c.high - c.low;
-                    const bodyRatio = candleLen > 0 ? bodyLen / candleLen : 0;
-                    const bodyMid = (c.open + c.close) / 2;
-                    const volOk = hasVolume ? volArr[i] > volSma * cfgP.vol_confirm : true;
-                    const momOk = cfgP.momentum_filter ? (c.close > upper ? rsi > 50 : rsi < 50) : true;
-                    if (c.close > upper) {
-                        rawBull = true; breakBoundary = upper; oppBoundary = lower;
-                        const penetration = atr > 0 ? Math.min((c.close - upper) / atr, 2) / 2 : 0.5;
-                        const bodyCommit = bodyMid > upper ? 1.0 : 0.3;
-                        const volBonus = volOk ? 1.0 : 0.4, momBonus = momOk ? 1.0 : 0.4;
-                        strengthScore = (penetration*0.25 + bodyRatio*0.15 + bodyCommit*0.15 + volBonus*0.25 + momBonus*0.20) * 100;
-                    }
-                    if (c.close < lower) {
-                        rawBear = true; breakBoundary = lower; oppBoundary = upper;
-                        const penetration = atr > 0 ? Math.min((lower - c.close) / atr, 2) / 2 : 0.5;
-                        const bodyCommit = bodyMid < lower ? 1.0 : 0.3;
-                        const volBonus = volOk ? 1.0 : 0.4, momBonus = momOk ? 1.0 : 0.4;
-                        strengthScore = (penetration*0.25 + bodyRatio*0.15 + bodyCommit*0.15 + volBonus*0.25 + momBonus*0.20) * 100;
-                    }
-                }
-
-                if (rawBull) {
-                    st.breakout_dir = 1; st.breakout_bar = i; st.entry_price = candles[i].close;
-                    st.sl_price = oppBoundary; st.sl_price_orig = st.sl_price;
-                    const targetPrice = breakBoundary + st.ch_max_width;
-                    const fullMove = Math.abs(targetPrice - st.entry_price);
-                    st.tp1_price = st.entry_price + fullMove/3.0; st.tp2_price = st.entry_price + fullMove*2.0/3.0; st.tp3_price = st.entry_price + fullMove;
-                    st.tp1_hit=false; st.tp2_hit=false; st.tp3_hit=false; st.sl_hit=false; st.trade_open=true;
-                    st.break_strength = strengthScore>=65 ? 'Strong' : strengthScore>=35 ? 'Medium' : 'Weak';
-                }
-                if (rawBear) {
-                    st.breakout_dir = -1; st.breakout_bar = i; st.entry_price = candles[i].close;
-                    st.sl_price = oppBoundary; st.sl_price_orig = st.sl_price;
-                    const targetPrice = breakBoundary - st.ch_max_width;
-                    const fullMove = Math.abs(st.entry_price - targetPrice);
-                    st.tp1_price = st.entry_price - fullMove/3.0; st.tp2_price = st.entry_price - fullMove*2.0/3.0; st.tp3_price = st.entry_price - fullMove;
-                    st.tp1_hit=false; st.tp2_hit=false; st.tp3_hit=false; st.sl_hit=false; st.trade_open=true;
-                    st.break_strength = strengthScore>=65 ? 'Strong' : strengthScore>=35 ? 'Medium' : 'Weak';
-                }
-
-                if (st.channel_active && st.breakout_dir === 0 && (i - st.ch_detect_bar) > cfgP.max_channel_bars) st.channel_active = false;
-
-                if (st.trade_open && st.breakout_dir !== 0 && !st.sl_hit && i > st.breakout_bar) {
-                    const hi = candles[i].high, lo = candles[i].low;
-                    const tpSide  = st.breakout_dir === 1 ? hi >= st.tp1_price : lo <= st.tp1_price;
-                    const tp2Side = st.breakout_dir === 1 ? hi >= st.tp2_price : lo <= st.tp2_price;
-                    const tp3Side = st.breakout_dir === 1 ? hi >= st.tp3_price : lo <= st.tp3_price;
-                    const slSide  = st.breakout_dir === 1 ? lo <= st.sl_price  : hi >= st.sl_price;
-                    if (slSide) { st.sl_hit = true; }
-                    else {
-                        if (tpSide && !st.tp1_hit) { st.tp1_hit = true; st.sl_price = st.entry_price; }
-                        if (tp2Side && !st.tp2_hit) st.tp2_hit = true;
-                        if (tp3Side && !st.tp3_hit) st.tp3_hit = true;
-                    }
-                }
-
-                if (st.trade_open && (st.tp3_hit || st.sl_hit)) {
-                    st.trade_open = false; st.channel_active = false; st.breakout_dir = 0;
-                }
-            }
-            return st;
-        };
+        const calcChannelArrJS = (candles, period) => ({
+            upper: _calcSMASeries(candles.map(c => c.high), period),
+            lower: _calcSMASeries(candles.map(c => c.low),  period),
+        });
 
         const computeBollinger = (candles, period = 20, mult = 2) => {
             if (candles.length < period) return { upper: [], middle: [], lower: [] };
@@ -1098,7 +875,44 @@ createApp({
             if (btShowBB.value) addBB(); else removeBB();
         };
 
+        // WebSocket pubblico Bybit per aggiornare la candela in tempo reale sul
+        // grafico Live — prima il grafico veniva caricato una sola volta e non si
+        // aggiornava più (stesso pattern già usato in chart.html/mtf.html).
+        const closeLiveWS = () => {
+            clearTimeout(liveWSTimer); liveWSTimer = null;
+            if (liveWS) { try { liveWS.close(); } catch(e) {} liveWS = null; }
+        };
+        const openLiveWS = () => {
+            closeLiveWS();
+            if (!cfg.symbol) return;
+            const symbol = cfg.symbol, tf = cfg.tf;
+            liveWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+            liveWS.onopen = () => {
+                if (liveWS) liveWS.send(JSON.stringify({ op: 'subscribe', args: [`kline.${tf}.${symbol}`] }));
+            };
+            liveWS.onmessage = (ev) => {
+                if (cfg.symbol !== symbol || cfg.tf !== tf || !candleSeries) return;
+                let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
+                if (!msg.topic || !msg.topic.startsWith('kline.') || !msg.data?.length) return;
+                const b = msg.data[0];
+                const candle = {
+                    time: Math.floor(parseInt(b.start) / 1000) + TZ_OFFSET_S,
+                    open: parseFloat(b.open), high: parseFloat(b.high),
+                    low: parseFloat(b.low), close: parseFloat(b.close),
+                };
+                try { candleSeries.update(candle); } catch(e) {}
+                if (mainKlines?.length) {
+                    const last = mainKlines[mainKlines.length - 1];
+                    if (last.time === candle.time) mainKlines[mainKlines.length - 1] = candle;
+                    else mainKlines.push(candle);
+                }
+            };
+            liveWS.onerror = () => {};
+            liveWS.onclose = () => { liveWSTimer = setTimeout(openLiveWS, 5000); };
+        };
+
         const destroyMainChart = () => {
+            closeLiveWS();
             if (mainChart) { try { mainChart.remove(); } catch(e) {} mainChart = null; }
             candleSeries = null; slLine = null; tp1Line = null; tp2Line = null; tp3Line = null; entryLine = null; liveMarkers = null;
             chHiLineSeries = null; chLoLineSeries = null; mainKlines = null;
@@ -1106,25 +920,23 @@ createApp({
             if (el) el.innerHTML = '';
         };
 
-        // Disegna le due rette di canale (hi/lo) sul grafico indicato, ricalcolandole
-        // client-side dalle klines fornite — solo visuale, vedi nota sopra runBreakoutEngineJS.
+        // Disegna le bande upper/lower del canale SMA(period) sul grafico indicato,
+        // ricalcolandole client-side dalle klines fornite — solo visuale (il
+        // trigger/trade reali usano lo stato autoritativo del backend).
         const drawChannelLines = (chart, klines, cfgP, which) => {
-            const st = runBreakoutEngineJS(klines, cfgP);
-            if (!st.channel_active) return null;
-            const lastIdx = klines.length - 1;
-            const drawStart = Math.max(Math.trunc(Math.min(st.hi_x1, st.hi_x2, st.lo_x1, st.lo_x2)), 0);
-            const hiStartY = _lineAt(st.hi_x1, st.hi_y1, st.hi_x2, st.hi_y2, drawStart);
-            const loStartY = _lineAt(st.lo_x1, st.lo_y1, st.lo_x2, st.lo_y2, drawStart);
-            const hiEndY = _lineAt(st.hi_x1, st.hi_y1, st.hi_x2, st.hi_y2, lastIdx);
-            const loEndY = _lineAt(st.lo_x1, st.lo_y1, st.lo_x2, st.lo_y2, lastIdx);
-            const opts = { color: '#FFEB3B', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: showChannel.value, autoscaleInfoProvider: btExcludeFromAutoscale };
+            const { upper, lower } = calcChannelArrJS(klines, cfgP.period);
+            const opts = { color: '#FFEB3B', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: showChannel.value, autoscaleInfoProvider: btExcludeFromAutoscale };
             const hiSeries = addS(chart, 'LineSeries', opts);
             const loSeries = addS(chart, 'LineSeries', opts);
-            hiSeries.setData([{ time: klines[drawStart].time, value: hiStartY }, { time: klines[lastIdx].time, value: hiEndY }]);
-            loSeries.setData([{ time: klines[drawStart].time, value: loStartY }, { time: klines[lastIdx].time, value: loEndY }]);
+            const hiData = [], loData = [];
+            for (let i = 0; i < klines.length; i++) {
+                if (upper[i] != null) hiData.push({ time: klines[i].time, value: upper[i] });
+                if (lower[i] != null) loData.push({ time: klines[i].time, value: lower[i] });
+            }
+            hiSeries.setData(hiData);
+            loSeries.setData(loData);
             if (which === 'live') { chHiLineSeries = hiSeries; chLoLineSeries = loSeries; }
             else { btChHiLineSeries = hiSeries; btChLoLineSeries = loSeries; }
-            return st;
         };
 
         let chartLoadSeq = 0;
@@ -1143,6 +955,7 @@ createApp({
                 if (seq !== chartLoadSeq) return;
                 if (!data.success || !data.data?.length) return;
                 const klines = data.data.filter(c => isFinite(c.open) && isFinite(c.close) && c.high >= c.low);
+                TZ_OFFSET_S = data.utc_offset_s || 0;
 
                 mainChart = LC.createChart(container, {
                     width: container.clientWidth, height: 420,
@@ -1163,6 +976,7 @@ createApp({
                 drawPositionLines();
                 drawLiveSignalMarkers();
                 mainChart.timeScale().setVisibleLogicalRange({ from: klines.length - 100, to: klines.length + 5 });
+                openLiveWS();
             } catch(e) { console.error('bot chart error', e); }
         };
 
@@ -1501,25 +1315,27 @@ createApp({
             await fetchConfig();
             await fetchStatus();
             await fetchSignals();
+            await fetchExchangeAlerts();
             modeChoice.value = cfg.mode;
             if (cfg.symbol) await loadChart();
             pollTimer = setInterval(async () => {
                 await fetchStatus();
                 await fetchSignals();
+                await fetchExchangeAlerts();
                 if (tab.value === 'live') { drawPositionLines(); drawLiveSignalMarkers(); }
             }, 5000);
         });
-        onUnmounted(() => { if (pollTimer) clearInterval(pollTimer); });
+        onUnmounted(() => { if (pollTimer) clearInterval(pollTimer); closeLiveWS(); });
 
         return {
             TF_LIST, TF_LABEL, REASON_LABEL,
-            cfg, modeChoice, status, signals, tab, btCapital, btLookbackDays, btRunning, btResult, btShowBB, btRangeActive,
+            cfg, modeChoice, status, signals, exchangeAlerts, tab, btCapital, btLookbackDays, btRunning, btResult, btShowBB, btRangeActive,
             scanTfFrom, scanTfTo, scanRunning, scanProgress, scanTotal, scanResults,
             showExecConfirm, execConfirmChecked, showConfigModal, showChannel,
-            showMonthlyModal, monthlyStats, monthLabel, showEquityCurve,
+            showMonthlyModal, monthlyStats, monthLabel, showEquityCurve, btTradesSorted,
             onModeChoice, confirmExecMode, cancelExecConfirm,
             openSymbolSearch, saveConfig, startBot, stopBot, runBacktest, toggleBB, toggleBtRange, focusTrade,
-            runTfScan, loadScanResult,
+            runTfScan, loadScanResult, clearSignals,
             fmtPrice, fmtTime, fmtDateShort,
         };
     }

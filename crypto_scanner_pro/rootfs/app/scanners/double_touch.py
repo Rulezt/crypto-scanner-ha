@@ -25,6 +25,7 @@ class DoubleTouchScanner:
     def __init__(self, telegram_config, enabled=True,
                  tolerance=0.5, proximity=2.0,
                  scan_tf=None, min_volume_24h=10_000_000,
+                 min_var_pct_24h=5.0,
                  scan_interval_minutes=240, cooldown_hours=12,
                  max_coins_per_alert=5,
                  max_freshness=30, min_gap=3, max_gap=60,
@@ -40,6 +41,7 @@ class DoubleTouchScanner:
         raw_tf                   = scan_tf if scan_tf is not None else 'D'
         self.scan_tfs            = raw_tf if isinstance(raw_tf, list) else [raw_tf]
         self.min_volume_24h      = min_volume_24h
+        self.min_var_pct_24h     = min_var_pct_24h
         self.max_coins_per_alert = max_coins_per_alert
         self.cooldown_hours      = cooldown_hours
         self.max_freshness       = int(max_freshness)
@@ -155,7 +157,8 @@ class DoubleTouchScanner:
             return
         ranked = sorted(tickers.items(), key=lambda x: x[1].get('volume_24h', 0), reverse=True)
         top = [s for s, d in ranked
-               if d.get('volume_24h', 0) >= self.min_volume_24h][:TOP_KLINE_SYMBOLS]
+               if d.get('volume_24h', 0) >= self.min_volume_24h
+               and (not self.min_var_pct_24h or d.get('change_24h', 0) >= self.min_var_pct_24h)][:TOP_KLINE_SYMBOLS]
         self._ws_manager.subscribe_klines(top, intervals=self.scan_tfs)
         self._last_scan_count = len(top)
         logger.info('🔁 Terzo Tocco: subscribed klines %d symbols × %d TF', len(top), len(self.scan_tfs))
@@ -176,6 +179,8 @@ class DoubleTouchScanner:
 
         ticker = self._ws_manager.get_all_tickers().get(symbol, {})
         if ticker.get('volume_24h', 0) < self.min_volume_24h:
+            return
+        if self.min_var_pct_24h and ticker.get('change_24h', 0.0) < self.min_var_pct_24h:
             return
 
         current_price = ticker.get('price') or candle['close']
@@ -215,10 +220,13 @@ class DoubleTouchScanner:
                     continue
                 price = float(item.get('lastPrice', 0) or 0)
                 vol   = float(item.get('turnover24h', 0) or 0)
+                change_pct = float(item.get('price24hPcnt', 0) or 0) * 100
                 if price <= 0 or vol < self.min_volume_24h:
                     continue
+                if self.min_var_pct_24h and change_pct < self.min_var_pct_24h:
+                    continue
                 result.append({'symbol': item['symbol'], 'price': price, 'volume': vol,
-                               'change_pct': float(item.get('price24hPcnt', 0) or 0) * 100})
+                               'change_pct': change_pct})
             result.sort(key=lambda x: x['volume'], reverse=True)
             return result[:MAX_COINS]
         except Exception as e:

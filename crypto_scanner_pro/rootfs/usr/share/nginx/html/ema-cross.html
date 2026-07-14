@@ -103,11 +103,6 @@
                 <span v-else style="display:inline-flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> {{ t('emax_scan') }}</span>
             </button>
             <button v-if="scanning" @click="stopScan" class="btn danger">{{ t('emax_stop') }}</button>
-            <button @click="autoRefresh = !autoRefresh" class="btn" :style="`display:inline-flex;align-items:center;gap:5px;padding:6px 10px;${autoRefresh ? 'color:#06b6d4;border-color:#06b6d4;' : ''}`"
-                    :title="autoRefresh ? (t('emax_auto_next') + ' ' + autoNextLabel) : t('emax_auto_refresh')">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
-                <span v-if="autoRefresh" style="font-size:0.72rem;">{{ autoNextLabel }}</span>
-            </button>
             <button @click="cfgOpen=true" class="btn" style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;" :title="t('emax_cfg_title')">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
@@ -182,15 +177,22 @@
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="(row, idx) in filteredResults" :key="row.symbol+row.tf"
-                    @mouseenter="showPopup($event, row)"
-                    @mouseleave="hidePopup"
-                    style="cursor:pointer">
+                <template v-for="(row, idx) in filteredResults" :key="row.symbol+row.tf">
+                <tr>
                     <td class="td-num muted" style="text-align:center;font-size:0.7rem;">{{ idx+1 }}</td>
                     <td v-for="col in columns" :key="col.key" :class="col.tdClass(row)">
                         <template v-if="col.key==='symbol'">
                             <span class="fav-star" :class="{active: isFav(row.symbol)}" @click.stop="toggleFav(row.symbol)" :title="t('fav_title')">{{ isFav(row.symbol) ? '★' : '☆' }}</span>
                             <a :href="'mtf?symbol='+row.symbol" target="_blank">{{ row.symbol.replace('USDT','') }}</a>
+                        </template>
+                        <template v-else-if="col.key==='mtf'">
+                            <a :href="'mtf?symbol='+row.symbol" target="_blank" :title="t('col_mtf')" style="display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1.5"/><rect x="15" y="3" width="10" height="10" rx="1.5"/><rect x="3" y="15" width="10" height="10" rx="1.5"/><rect x="15" y="15" width="10" height="10" rx="1.5"/></svg></a>
+                        </template>
+                        <template v-else-if="col.key==='trade'">
+                            <a :href="'trade?symbol='+row.symbol" target="_blank" :title="t('col_trade')" style="display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3v4"/><rect x="4" y="7" width="4" height="7" rx="1" fill="currentColor" stroke="none"/><path d="M6 14v7"/><path d="M14 3v2"/><rect x="12" y="5" width="4" height="10" rx="1" fill="currentColor" stroke="none"/><path d="M14 15v6"/></svg></a>
+                        </template>
+                        <template v-else-if="col.key==='preview'">
+                            <span @mouseenter="showPopup($event, row)" @mouseleave="hidePopup" @click="toggleMobilePreview(row)" :title="t('col_preview')" style="cursor:pointer;display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
                         </template>
                         <template v-else-if="col.key==='tf'">
                             <span style="font-size:0.72rem;font-weight:600;color:#60a5fa;">{{ TF_LABEL[row.tf] }}</span>
@@ -207,6 +209,12 @@
                         <template v-else-if="col.key==='volume'">{{ formatVolume(row.volume) }}</template>
                     </td>
                 </tr>
+                <tr v-if="mobilePreviewSymbol===row.symbol+row.tf" class="mobile-preview-row">
+                    <td :colspan="columns.length+1" style="padding:8px 12px;background:#0B0E11;">
+                        <div :id="'mp-chart-'+row.symbol+row.tf" style="width:100%;aspect-ratio:2/1;min-height:150px;max-height:280px;"></div>
+                    </td>
+                </tr>
+                </template>
             </tbody>
         </table>
     </div>
@@ -248,8 +256,7 @@
                 <div class="cfg-row"><label>{{ t('emax_lookback') }}</label><input type="number" v-model.number="lookbackBars" min="1" max="50" step="1"></div>
                 <div class="cfg-row"><label>{{ t('emax_history') }}</label><input type="number" v-model.number="historyBars" min="500" max="1000" step="50"></div>
                 <div class="cfg-row"><label>{{ t('emax_vol') }}</label><input type="number" v-model.number="minVolM" min="0" max="1000" step="1"></div>
-                <div class="cfg-row"><label>{{ t('emax_auto_refresh') }}</label><input type="checkbox" v-model="autoRefresh" style="width:16px;height:16px;"></div>
-                <div class="cfg-row"><label>{{ t('emax_auto_refresh_min') }}</label><input type="number" v-model.number="autoRefreshMin" min="1" max="60" step="1"></div>
+                <div class="cfg-row"><label>{{ t('scr_min_var') }}</label><input type="number" v-model.number="minVarPct" min="0" max="1000" step="0.5"></div>
             </div>
             <button @click="cfgOpen=false" class="btn primary" style="width:100%;margin-top:18px;justify-content:center;">OK</button>
         </div>
@@ -278,8 +285,7 @@ createApp({
         const lookbackBars    = ref(_cfgB.lookbackBars    ?? 10);
         const historyBars     = ref(_cfgB.historyBars     ?? 600);
         const minVolM         = ref(_cfgB.minVolM         ?? 10);
-        const autoRefresh     = ref(_cfgB.autoRefresh     ?? true);
-        const autoRefreshMin  = ref(_cfgB.autoRefreshMin  ?? 5);
+        const minVarPct       = ref(_cfgB.minVarPct       ?? 5);
 
         const scanning    = ref(false);
         const stopFlag    = ref(false);
@@ -311,6 +317,9 @@ createApp({
         let _colKey_emax = STORAGE_KEY_EMAX;
         const columnsDef = [
             { key:'symbol',   labelKey:'emax_col_symbol',   sortKey:null,     align:'left',   tdClass:()=>'td-sym' },
+            { key:'mtf',      labelKey:'col_mtf',           sortKey:null,     align:'center', tdClass:()=>'td-center' },
+            { key:'trade',    labelKey:'col_trade',         sortKey:null,     align:'center', tdClass:()=>'td-center' },
+            { key:'preview', labelKey:'col_preview', sortKey:null, align:'center', tdClass:()=>'td-center' },
             { key:'tf',       labelKey:'TF',                sortKey:'tf',     align:'center', tdClass:()=>'td-center' },
             { key:'dir',      labelKey:'emax_col_dir',      sortKey:null,     align:'center', tdClass:()=>'td-center' },
             { key:'age',      labelKey:'emax_col_age',      sortKey:'age',    align:'right',  tdClass:()=>'td-num muted' },
@@ -475,7 +484,7 @@ createApp({
                         volume: parseFloat(t.turnover24h) || 0,
                         change: parseFloat(t.price24hPcnt || 0) * 100,
                     }))
-                    .filter(t => t.price > 0 && (minVol === 0 || t.volume >= minVol))
+                    .filter(t => t.price > 0 && (minVol === 0 || t.volume >= minVol) && (minVarPct.value === 0 || t.change >= minVarPct.value))
                     .sort((a, b) => b.volume - a.volume);
 
                 progressTotal.value = tickers.length;
@@ -533,29 +542,9 @@ createApp({
                 console.error(err);
             } finally {
                 scanning.value = false;
-                scheduleAutoRefresh();
             }
         };
 
-        // ── AUTO-REFRESH (rilancia lo scan a intervalli, evita righe stantie) ──
-        let autoRefreshTimer = null, autoCountdownTimer = null;
-        const autoNextSec = ref(0);
-        const clearAutoTimers = () => {
-            if (autoRefreshTimer)   { clearInterval(autoRefreshTimer);   autoRefreshTimer = null; }
-            if (autoCountdownTimer) { clearInterval(autoCountdownTimer); autoCountdownTimer = null; }
-        };
-        const scheduleAutoRefresh = () => {
-            clearAutoTimers();
-            if (!autoRefresh.value) return;
-            const periodMs = Math.max(1, autoRefreshMin.value) * 60000;
-            autoNextSec.value = Math.round(periodMs / 1000);
-            autoRefreshTimer = setInterval(() => { if (!scanning.value) startScan({ silent: true }); }, periodMs);
-            autoCountdownTimer = setInterval(() => { autoNextSec.value = Math.max(0, autoNextSec.value - 1); }, 1000);
-        };
-        const autoNextLabel = computed(() => {
-            const s = autoNextSec.value, m = Math.floor(s / 60), r = s % 60;
-            return `${m}:${String(r).padStart(2,'0')}`;
-        });
 
         // ── POPUP CHART ────────────────────────────────────────────────────────
         // Set standard sempre visibile in ogni popup (vedi reference_visual_scanner).
@@ -683,7 +672,89 @@ createApp({
             popup.style.top  = Math.max(M, y) + 'px';
         };
 
+        const isMobilePreview = () => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 640;
+
+        const mobilePreviewSymbol = ref(null);
+        let mobilePreviewChart = null;
+        const destroyMobilePreviewChart = () => {
+            if (mobilePreviewChart) { try { mobilePreviewChart.remove(); } catch(e) {} mobilePreviewChart = null; }
+        };
+        const toggleMobilePreview = async (row) => {
+            if (!isMobilePreview()) return;
+            const key = row.symbol + row.tf;
+            if (mobilePreviewSymbol.value === key) {
+                mobilePreviewSymbol.value = null;
+                destroyMobilePreviewChart();
+                return;
+            }
+            destroyMobilePreviewChart();
+            mobilePreviewSymbol.value = key;
+            await Vue.nextTick();
+            const container = document.getElementById('mp-chart-' + key);
+            if (!container) return;
+            try {
+                const res  = await fetch(`api/klines?symbol=${row.symbol}&interval=${row.tf}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!data.success || !data.data?.length || mobilePreviewSymbol.value !== key) return;
+
+                const seen = new Set();
+                const klines = data.data.filter(c => {
+                    if (seen.has(c.time)) return false;
+                    seen.add(c.time);
+                    return isFinite(c.open) && isFinite(c.close) && c.high >= c.low;
+                });
+                if (!klines.length || mobilePreviewSymbol.value !== key) return;
+
+                const chart = LC.createChart(container, {
+                    autoSize: true,
+                    layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
+                    grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
+                    rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },
+                    timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 6 },
+                    handleScroll: false, handleScale: false,
+                });
+                if (mobilePreviewSymbol.value !== key) { try { chart.remove(); } catch(e) {} return; }
+                mobilePreviewChart = chart;
+
+                const candleSeries = addS(chart, 'CandlestickSeries', {
+                    upColor: '#089981', downColor: '#F23645',
+                    borderVisible: false, wickUpColor: '#089981', wickDownColor: '#F23645',
+                });
+                candleSeries.setData(klines);
+
+                for (const cfg of EMA_CONFIG) {
+                    const line = calcEMASeriesTV(klines, cfg.period);
+                    if (line.length) addS(chart, 'LineSeries', { color: cfg.color, lineWidth: cfg.width, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }).setData(line);
+                }
+                if (!STD_EMA_PERIODS.has(ema1Period.value)) {
+                    const ema1Line = calcEMASeriesTV(klines, ema1Period.value);
+                    if (ema1Line.length) addS(chart, 'LineSeries', { color: '#f59e0b', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }).setData(ema1Line);
+                }
+                if (!STD_EMA_PERIODS.has(ema2Period.value)) {
+                    const ema2Line = calcEMASeriesTV(klines, ema2Period.value);
+                    if (ema2Line.length) addS(chart, 'LineSeries', { color: '#06b6d4', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }).setData(ema2Line);
+                }
+
+                if (row.crossTime && LC.createSeriesMarkers) {
+                    try {
+                        LC.createSeriesMarkers(candleSeries, [{
+                            time: row.crossTime,
+                            position: row.dir === 'bull' ? 'belowBar' : 'aboveBar',
+                            color: row.dir === 'bull' ? '#10b981' : '#ef4444',
+                            shape: row.dir === 'bull' ? 'arrowUp' : 'arrowDown',
+                            text: 'Cross',
+                        }]);
+                    } catch(e) { /* marker best-effort */ }
+                }
+
+                const visibleBars = row.tf === 'D' ? 40 : row.tf === '240' ? 50 : 80;
+                chart.timeScale().setVisibleLogicalRange({ from: klines.length - visibleBars, to: klines.length + 5 });
+            } catch(e) { console.error('mobile preview chart error:', e); }
+        };
+
         const showPopup = async (event, row) => {
+            if (isMobilePreview()) return;
             clearTimeout(hideTimer);
             const popup = document.getElementById('lwc-popup');
             if (!popup) return;
@@ -730,25 +801,39 @@ createApp({
             document.documentElement.style.setProperty('--thead-top', (wh + fh) + 'px');
         };
         const { watch, nextTick } = Vue;
-        watch([ema1Period, ema2Period, crossTolerance, lookbackBars, historyBars, minVolM, autoRefresh, autoRefreshMin], () => {
+        watch([ema1Period, ema2Period, crossTolerance, lookbackBars, historyBars, minVolM, minVarPct], () => {
             try { localStorage.setItem('emax_cfg', JSON.stringify({
                 ema1Period: ema1Period.value, ema2Period: ema2Period.value,
                 crossTolerance: crossTolerance.value, lookbackBars: lookbackBars.value,
-                historyBars: historyBars.value, minVolM: minVolM.value,
-                autoRefresh: autoRefresh.value, autoRefreshMin: autoRefreshMin.value,
+                historyBars: historyBars.value, minVolM: minVolM.value, minVarPct: minVarPct.value,
             })); } catch {}
         });
-        watch([autoRefresh, autoRefreshMin], scheduleAutoRefresh);
         watch(filteredResults, () => nextTick(updateStickyOffsets));
         onMounted(() => { updateStickyOffsets(); window.addEventListener('resize', updateStickyOffsets); });
-        onMounted(scheduleAutoRefresh);
         onMounted(async () => {
             try {
                 const d = await fetch('/api/auth/status').then(r => r.json());
                 const prefix = d.logged_in ? (d.username || 'guest') : 'guest';
                 _colKey_emax = prefix + '_' + STORAGE_KEY_EMAX;
                 const saved = JSON.parse(localStorage.getItem(_colKey_emax) || 'null');
-                if (saved) columns.value = saved.map(k => columnsDef.find(c => c.key === k)).filter(Boolean);
+                if (saved) {
+                    // preserva l'ordine personalizzato salvato ma inserisce eventuali nuove colonne
+                    // (aggiunte in un aggiornamento successivo, es. Preview) nella loro posizione di default
+                    // invece di scartarle — altrimenti una colonna nuova sparirebbe per chi ha già un ordine salvato.
+                    const merged = [...saved];
+                    for (const col of columnsDef) {
+                        if (!merged.includes(col.key)) {
+                            const origIdx = columnsDef.findIndex(c => c.key === col.key);
+                            let insertAt = merged.length;
+                            for (let mi = 0; mi < merged.length; mi++) {
+                                const mIdx = columnsDef.findIndex(c => c.key === merged[mi]);
+                                if (mIdx > origIdx) { insertAt = mi; break; }
+                            }
+                            merged.splice(insertAt, 0, col.key);
+                        }
+                    }
+                    columns.value = merged.map(k => columnsDef.find(c => c.key === k)).filter(Boolean);
+                }
             } catch {}
         });
 
@@ -795,8 +880,7 @@ createApp({
         return {
             ALL_TFS, TF_LABEL, t,
             favoriteSymbols, isFav, toggleFav,
-            ema1Period, ema2Period, crossTolerance, lookbackBars, historyBars, minVolM,
-            autoRefresh, autoRefreshMin, autoNextLabel,
+            ema1Period, ema2Period, crossTolerance, lookbackBars, historyBars, minVolM, minVarPct,
             columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
             scanning, statusMsg, displayMsg, initialDone,
             results, filteredResults, progressDone, progressTotal, progressPct,
@@ -805,6 +889,7 @@ createApp({
             cfgOpen, setSortBy, sa,
             startScan, stopScan,
             showPopup, hidePopup,
+            mobilePreviewSymbol, toggleMobilePreview,
             formatPrice, formatVolume,
         };
     }

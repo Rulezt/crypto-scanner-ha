@@ -166,15 +166,22 @@
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="(row, idx) in filteredResults" :key="row.symbol"
-                    @mouseenter="showPopup($event, row)"
-                    @mouseleave="hidePopup"
-                    style="cursor:pointer">
+                <template v-for="(row, idx) in filteredResults" :key="row.symbol">
+                <tr>
                     <td class="td-num muted" style="text-align:center;font-size:0.7rem;">{{ idx+1 }}</td>
                     <td v-for="col in columns" :key="col.key" :class="col.tdClass(row)">
                         <template v-if="col.key==='symbol'">
                             <span class="fav-star" :class="{active: isFav(row.symbol)}" @click.stop="toggleFav(row.symbol)" :title="t('fav_title')">{{ isFav(row.symbol) ? '★' : '☆' }}</span>
                             <a :href="'mtf?symbol='+row.symbol" target="_blank">{{ row.symbol.replace('USDT','') }}</a>
+                        </template>
+                        <template v-else-if="col.key==='mtf'">
+                            <a :href="'mtf?symbol='+row.symbol" target="_blank" :title="t('col_mtf')" style="display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1.5"/><rect x="15" y="3" width="10" height="10" rx="1.5"/><rect x="3" y="15" width="10" height="10" rx="1.5"/><rect x="15" y="15" width="10" height="10" rx="1.5"/></svg></a>
+                        </template>
+                        <template v-else-if="col.key==='trade'">
+                            <a :href="'trade?symbol='+row.symbol" target="_blank" :title="t('col_trade')" style="display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3v4"/><rect x="4" y="7" width="4" height="7" rx="1" fill="currentColor" stroke="none"/><path d="M6 14v7"/><path d="M14 3v2"/><rect x="12" y="5" width="4" height="10" rx="1" fill="currentColor" stroke="none"/><path d="M14 15v6"/></svg></a>
+                        </template>
+                        <template v-else-if="col.key==='preview'">
+                            <span @mouseenter="showPopup($event, row)" @mouseleave="hidePopup" @click="toggleMobilePreview(row)" :title="t('col_preview')" style="cursor:pointer;display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
                         </template>
                         <template v-else-if="col.key==='level'">
                             <span v-if="row.dist_ath <= thrAth" class="badge badge-ath">ATH</span>
@@ -196,6 +203,12 @@
                         <template v-else-if="col.key==='volume'">{{ formatVolume(row.volume) }}</template>
                     </td>
                 </tr>
+                <tr v-if="mobilePreviewSymbol===row.symbol" class="mobile-preview-row">
+                    <td :colspan="columns.length+1" style="padding:8px 12px;background:#0B0E11;">
+                        <div :id="'mp-chart-'+row.symbol" style="width:100%;aspect-ratio:2/1;min-height:150px;max-height:280px;"></div>
+                    </td>
+                </tr>
+                </template>
             </tbody>
         </table>
     </div>
@@ -254,6 +267,10 @@
                     <input type="number" v-model.number="minVolM" min="0" max="1000" step="1" style="width:80px;background:#1f2937;color:#f9fafb;border:1px solid #374151;border-radius:4px;padding:5px 8px;font-size:0.82rem;">
                 </div>
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <label style="font-size:0.78rem;color:#9CA3AF;">{{ t('scr_min_var') }}</label>
+                    <input type="number" v-model.number="minVarPct" min="0" max="1000" step="0.5" style="width:80px;background:#1f2937;color:#f9fafb;border:1px solid #374151;border-radius:4px;padding:5px 8px;font-size:0.82rem;">
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                     <label style="font-size:0.78rem;color:#9CA3AF;">{{ t('ath_v_screenshot_tf') }}</label>
                     <select v-model="screenshotTf" style="width:80px;background:#1f2937;color:#f9fafb;border:1px solid #374151;border-radius:4px;padding:5px 8px;font-size:0.82rem;">
                         <option value="60">1h</option>
@@ -286,6 +303,7 @@ createApp({
         const thrAth       = ref(_cfgA.thrAth       ?? 5.0);
         const thrAtl       = ref(_cfgA.thrAtl       ?? 20.0);
         const minVolM      = ref(_cfgA.minVolM      ?? 0);
+        const minVarPct    = ref(_cfgA.minVarPct    ?? 5);
         const screenshotTf = ref(_cfgA.screenshotTf ?? 'W');
         const scanning     = ref(false);
         const allResults   = ref([]);
@@ -311,6 +329,9 @@ createApp({
         let _colKey_ath = STORAGE_KEY_ATH;
         const columnsDef = [
             { key:'symbol',   labelKey:'ath_v_col_symbol',   sortKey:null,       align:'left',   tdClass:()=>'td-sym' },
+            { key:'mtf',      labelKey:'col_mtf',            sortKey:null,       align:'center', tdClass:()=>'td-center' },
+            { key:'trade',    labelKey:'col_trade',          sortKey:null,       align:'center', tdClass:()=>'td-center' },
+            { key:'preview', labelKey:'col_preview', sortKey:null, align:'center', tdClass:()=>'td-center' },
             { key:'level',    labelKey:'ath_v_col_level',    sortKey:null,       align:'center', tdClass:()=>'td-center' },
             { key:'dist_ath', labelKey:'ath_v_col_dist_ath', sortKey:'dist_ath', align:'right',  tdClass:()=>'td-num' },
             { key:'dist_atl', labelKey:'ath_v_col_dist_atl', sortKey:'dist_atl', align:'right',  tdClass:()=>'td-num' },
@@ -359,6 +380,8 @@ createApp({
             let list = allResults.value.filter(r => {
                 const volOk = minVolM.value === 0 || r.volume >= minVolM.value * 1e6;
                 if (!volOk) return false;
+                const varOk = minVarPct.value === 0 || r.change >= minVarPct.value;
+                if (!varOk) return false;
                 if (levelFilter.value === 'near_ath') return r.dist_ath <= thrAth.value;
                 if (levelFilter.value === 'near_atl') return r.dist_atl <= thrAtl.value;
                 return r.dist_ath <= thrAth.value || r.dist_atl <= thrAtl.value;
@@ -504,7 +527,75 @@ createApp({
             popup.style.top  = Math.max(M, y) + 'px';
         };
 
+        const isMobilePreview = () => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 640;
+
+        const mobilePreviewSymbol = ref(null);
+        let mobilePreviewChart = null;
+        const destroyMobilePreviewChart = () => {
+            if (mobilePreviewChart) { try { mobilePreviewChart.remove(); } catch(e) {} mobilePreviewChart = null; }
+        };
+        const toggleMobilePreview = async (row) => {
+            if (!isMobilePreview()) return;
+            const key = row.symbol;
+            if (mobilePreviewSymbol.value === key) {
+                mobilePreviewSymbol.value = null;
+                destroyMobilePreviewChart();
+                return;
+            }
+            destroyMobilePreviewChart();
+            mobilePreviewSymbol.value = key;
+            await Vue.nextTick();
+            const container = document.getElementById('mp-chart-' + key);
+            if (!container) return;
+            try {
+                const tf = screenshotTf.value;
+                const res = await fetch(`api/klines?symbol=${row.symbol}&interval=${tf}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!data.success || !data.data?.length || mobilePreviewSymbol.value !== key) return;
+                const seen = new Set();
+                const klines = data.data.filter(c => {
+                    if (seen.has(c.time)) return false;
+                    seen.add(c.time);
+                    return isFinite(c.open) && isFinite(c.close) && c.high >= c.low;
+                });
+                if (!klines.length || mobilePreviewSymbol.value !== key) return;
+                const chart = LC.createChart(container, {
+                    autoSize: true,
+                    layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
+                    grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
+                    rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },
+                    timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 6 },
+                    handleScroll: false, handleScale: false,
+                });
+                if (mobilePreviewSymbol.value !== key) { try { chart.remove(); } catch(e) {} return; }
+                mobilePreviewChart = chart;
+
+                const dashed = LC.LineStyle ? LC.LineStyle.Dashed : 2;
+                const candleSeries = addS(chart, 'CandlestickSeries', {
+                    upColor: '#089981', downColor: '#F23645', borderVisible: false,
+                    wickUpColor: '#089981', wickDownColor: '#F23645',
+                });
+                candleSeries.setData(klines);
+                candleSeries.createPriceLine({ price: row.ath, color: '#fbbf24', lineWidth: 1, lineStyle: dashed, axisLabelVisible: true, title: '' });
+                candleSeries.createPriceLine({ price: row.atl, color: '#60a5fa', lineWidth: 1, lineStyle: dashed, axisLabelVisible: true, title: '' });
+
+                for (const cfg of EMA_CONFIG) {
+                    const line = calcEMASeries(klines, cfg.period);
+                    if (!line.length) continue;
+                    addS(chart, 'LineSeries', {
+                        color: cfg.color, lineWidth: cfg.width,
+                        priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+                    }).setData(line);
+                }
+
+                const visibleBars = (tf === 'W' || tf === 'D') ? 60 : 80;
+                chart.timeScale().setVisibleLogicalRange({ from: klines.length - visibleBars, to: klines.length + 5 });
+            } catch(e) { console.error('mobile preview chart error:', e); }
+        };
+
         const showPopup = async (event, row) => {
+            if (isMobilePreview()) return;
             clearTimeout(hideTimer);
             const popup = document.getElementById('lwc-popup');
             if (!popup) return;
@@ -558,8 +649,8 @@ createApp({
             document.documentElement.style.setProperty('--thead-top', (wh + fh) + 'px');
         };
         const { watch, nextTick } = Vue;
-        watch([thrAth, thrAtl, minVolM, screenshotTf], () => {
-            try { localStorage.setItem('ath_atl_cfg', JSON.stringify({ thrAth: thrAth.value, thrAtl: thrAtl.value, minVolM: minVolM.value, screenshotTf: screenshotTf.value })); } catch {}
+        watch([thrAth, thrAtl, minVolM, minVarPct, screenshotTf], () => {
+            try { localStorage.setItem('ath_atl_cfg', JSON.stringify({ thrAth: thrAth.value, thrAtl: thrAtl.value, minVolM: minVolM.value, minVarPct: minVarPct.value, screenshotTf: screenshotTf.value })); } catch {}
         });
         watch(filteredResults, () => nextTick(updateStickyOffsets));
         onMounted(() => { updateStickyOffsets(); window.addEventListener('resize', updateStickyOffsets); });
@@ -569,7 +660,24 @@ createApp({
                 const prefix = d.logged_in ? (d.username || 'guest') : 'guest';
                 _colKey_ath = prefix + '_' + STORAGE_KEY_ATH;
                 const saved = JSON.parse(localStorage.getItem(_colKey_ath) || 'null');
-                if (saved) columns.value = saved.map(k => columnsDef.find(c => c.key === k)).filter(Boolean);
+                if (saved) {
+                    // preserva l'ordine personalizzato salvato ma inserisce eventuali nuove colonne
+                    // (aggiunte in un aggiornamento successivo, es. Preview) nella loro posizione di default
+                    // invece di scartarle — altrimenti una colonna nuova sparirebbe per chi ha già un ordine salvato.
+                    const merged = [...saved];
+                    for (const col of columnsDef) {
+                        if (!merged.includes(col.key)) {
+                            const origIdx = columnsDef.findIndex(c => c.key === col.key);
+                            let insertAt = merged.length;
+                            for (let mi = 0; mi < merged.length; mi++) {
+                                const mIdx = columnsDef.findIndex(c => c.key === merged[mi]);
+                                if (mIdx > origIdx) { insertAt = mi; break; }
+                            }
+                            merged.splice(insertAt, 0, col.key);
+                        }
+                    }
+                    columns.value = merged.map(k => columnsDef.find(c => c.key === k)).filter(Boolean);
+                }
             } catch {}
         });
 
@@ -614,7 +722,7 @@ createApp({
         };
 
         return {
-            TF_LABEL, thrAth, thrAtl, minVolM, screenshotTf, t,
+            TF_LABEL, thrAth, thrAtl, minVolM, minVarPct, screenshotTf, t,
             favoriteSymbols, isFav, toggleFav,
             columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
             scanning, statusMsg, displayMsg, initialDone,
@@ -622,6 +730,7 @@ createApp({
             levelFilter, sortBy, sortDir, countNearAth, countNearAtl, countNearBoth,
             cfgOpen, setSortBy, sa,
             startScan, showPopup, hidePopup,
+            mobilePreviewSymbol, toggleMobilePreview,
             formatPrice, formatVolume,
         };
     }

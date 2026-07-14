@@ -226,13 +226,11 @@ DEFAULT_CONFIG = {
         'mode': 'signal',
         'sizing': {'type': 'fixed', 'value': 50.0},
         'leverage': 1,
-        'pivot_len': 5, 'min_touches': 2, 'max_channel_bars': 120,
-        'convergence_min': 0.02, 'touch_tolerance': 0.15, 'deviation_max': 0.3,
-        'min_channel_width_atr': 0.5, 'vol_confirm': 1.2,
-        'vol_contraction': True, 'momentum_filter': True,
+        'period': 20,
     },
     'general': {
         'min_volume_24h': 10000000,
+        'min_var_pct_24h': 5.0,
         'new_listing_days': 30,
         'cooldown_hours': 2,
         'send_screenshots': True,
@@ -307,6 +305,10 @@ def load_config():
             with open(CONFIG_FILE, 'r') as f:
                 saved = json.load(f)
                 config.update(saved)
+                # config.update() è shallow: una config salvata PRIMA dell'introduzione di
+                # min_var_pct_24h manca la chiave dentro 'general' e la sovrascrive col vecchio
+                # dict — backfill esplicito per non perdere il nuovo default.
+                config['general'].setdefault('min_var_pct_24h', DEFAULT_CONFIG['general']['min_var_pct_24h'])
                 logger.info(f"✅ Config loaded from {CONFIG_FILE}")
         else:
             save_config()
@@ -382,7 +384,7 @@ def init_scanners():
             ws_manager=ws_manager,
             live_config=config,
             **config['double_touch'],
-            **{k: v for k, v in config['general'].items() if k in ('min_volume_24h', 'max_coins_per_alert')}
+            **{k: v for k, v in config['general'].items() if k in ('min_volume_24h', 'max_coins_per_alert', 'min_var_pct_24h')}
         )
 
         scanners['ema_touch'] = EMAScanner(
@@ -391,7 +393,7 @@ def init_scanners():
             live_config=config,
             **config['ema_touch'],
             **{k: v for k, v in config['general'].items()
-               if k in ('min_volume_24h', 'max_coins_per_alert') and k not in config['ema_touch']}
+               if k in ('min_volume_24h', 'max_coins_per_alert', 'min_var_pct_24h') and k not in config['ema_touch']}
         )
 
         scanners['shimano'] = ShimanoScanner(
@@ -400,7 +402,7 @@ def init_scanners():
             live_config=config,
             **config['shimano'],
             **{k: v for k, v in config['general'].items()
-               if k in ('min_volume_24h', 'max_coins_per_alert') and k not in config['shimano']}
+               if k in ('min_volume_24h', 'max_coins_per_alert', 'min_var_pct_24h') and k not in config['shimano']}
         )
 
         scanners['bot'] = BotEngine(
@@ -1611,6 +1613,28 @@ def trade_position():
         'markPrice': float(p.get('markPrice', 0)), 'liqPrice': _fv(p.get('liqPrice')),
     }})
 
+_DEFAULT_TAKER_FEE = 0.00055  # fallback standard Bybit derivati (VIP0) se manca API key
+
+def _bybit_taker_fee_rate(username, symbol):
+    """Fee taker reale dell'account (tiene conto di VIP tier/sconti) via
+    GET /v5/account/fee-rate. Richiede una API key configurata — altrimenti
+    ricade sul valore standard Bybit."""
+    import requests as rq
+    k, s, en = _tcfg_user(username)
+    if not en:
+        return _DEFAULT_TAKER_FEE
+    try:
+        qs = f'category=linear&symbol={symbol}'
+        d = rq.get(f'{_BYB}/v5/account/fee-rate?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+        if d.get('retCode') != 0:
+            return _DEFAULT_TAKER_FEE
+        lst = d['result']['list']
+        if not lst:
+            return _DEFAULT_TAKER_FEE
+        return float(lst[0]['takerFeeRate'])
+    except Exception:
+        return _DEFAULT_TAKER_FEE
+
 @app.route('/api/trade/instrument')
 @login_required
 def trade_instrument():
@@ -1777,6 +1801,37 @@ def trade_set_sltp():
 class _BotTradeClient:
     """Adapter sottile che riusa _tcfg()/_bsign()/_BYB per il motore BOT —
     nessuna duplicazione della logica di firma/decrypt già usata da /api/trade/*."""
+
+    def get_recent_executions(self, symbol, limit=20):
+        """Fill reali dell'exchange (non i segnali calcolati dal motore) — mostrati
+        nella UI come "Alert Bybit" per confrontare cosa dice il motore con cosa è
+        realmente successo sull'account (entrata/chiusura eseguita, SL/TP scattato)."""
+        import requests as rq
+        k, s, en = _tcfg()
+        if not en:
+            return []
+        qs = f'category=linear&symbol={symbol}&limit={limit}'
+        try:
+            d = rq.get(f'{_BYB}/v5/execution/list?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+        except Exception:
+            return []
+        if d.get('retCode') != 0:
+            return []
+        out = []
+        for e in d['result']['list']:
+            try:
+                out.append({
+                    'time': int(e['execTime']) // 1000,
+                    'side': e.get('side', ''),
+                    'qty': e.get('execQty', ''),
+                    'price': e.get('execPrice', ''),
+                    'orderType': e.get('orderType', ''),
+                    'stopOrderType': e.get('stopOrderType', ''),
+                    'closedPnl': e.get('closedPnl', ''),
+                })
+            except (KeyError, ValueError):
+                continue
+        return out
 
     def get_position(self, symbol):
         import requests as rq
@@ -1974,6 +2029,29 @@ def bot_signals():
     return jsonify({'signals': bot.get_signals()})
 
 
+@app.route('/api/bot/signals/clear', methods=['POST'])
+@login_required
+def bot_clear_signals():
+    err = _bot_admin_gate()
+    if err: return err
+    bot = scanners.get('bot')
+    if not bot:
+        return jsonify({'error': 'Bot non inizializzato'}), 500
+    bot.clear_signals()
+    return jsonify({'success': True})
+
+
+@app.route('/api/bot/exchange-alerts', methods=['GET'])
+@login_required
+def bot_exchange_alerts():
+    err = _bot_admin_gate()
+    if err: return err
+    bot = scanners.get('bot')
+    if not bot:
+        return jsonify({'alerts': []})
+    return jsonify({'alerts': bot.get_exchange_alerts()})
+
+
 @app.route('/api/bot/backtest', methods=['POST'])
 @login_required
 def bot_backtest():
@@ -2022,11 +2100,13 @@ def bot_backtest():
     params = normalize_params(data)
     initial_capital = float(data.get('initial_capital', 1000.0))
     sizing = data.get('sizing') or {'type': 'fixed', 'value': 50.0}
+    taker_fee_rate = _bybit_taker_fee_rate(session.get('username', ''), symbol)
 
     try:
-        result = run_backtest(candles, params, initial_capital, sizing)
+        result = run_backtest(candles, params, initial_capital, sizing, taker_fee_rate)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    result['taker_fee_rate'] = taker_fee_rate
 
     # Le candele usate per il backtest vengono restituite (senza volume, non
     # serve per il grafico) così il frontend può disegnare i marker di
@@ -2313,6 +2393,24 @@ def ema_cross_page():
 def ema223_flip_page():
     return send_file('/usr/share/nginx/html/ema223-flip.html')
 
+
+@app.route('/channel-breakout', methods=['GET'])
+@app.route('/channel-breakout.html', methods=['GET'])
+def channel_breakout_page():
+    return send_file('/usr/share/nginx/html/channel-breakout.html')
+
+
+@app.route('/vol-inefficiency', methods=['GET'])
+@app.route('/vol-inefficiency.html', methods=['GET'])
+def vol_inefficiency_page():
+    return send_file('/usr/share/nginx/html/vol-inefficiency.html')
+
+
+@app.route('/confluence', methods=['GET'])
+@app.route('/confluence.html', methods=['GET'])
+def confluence_page():
+    return send_file('/usr/share/nginx/html/confluence.html')
+
 @app.route('/ico', methods=['GET'])
 @app.route('/ico.html', methods=['GET'])
 def ico_page():
@@ -2370,6 +2468,11 @@ def trade_css():
 @app.route('/favicon.svg', methods=['GET'])
 def favicon():
     return send_file('/usr/share/nginx/html/favicon.svg', mimetype='image/svg+xml')
+
+
+@app.route('/manifest.json', methods=['GET'])
+def manifest():
+    return send_file('/usr/share/nginx/html/manifest.json', mimetype='application/manifest+json')
 
 
 @app.route('/', methods=['GET'])

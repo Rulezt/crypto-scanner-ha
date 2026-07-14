@@ -75,7 +75,7 @@ class BybitWSManager:
                     self._pending_topics.add(topic)
                     new_topics.append(topic)
                     # 1m: seed 1000 candles (~16h) to cover most of the daily session
-                    limit = 1000 if iv == '1' else 300
+                    limit = 1000 if iv == '1' else 600
                     threading.Thread(
                         target=self._seed_klines, args=(sym, iv, limit), daemon=True).start()
         if new_topics and self._ws and self._running:
@@ -253,7 +253,7 @@ class BybitWSManager:
                     buf[-1] = candle
                 else:
                     buf.append(candle)
-                    max_buf = 1500 if interval == '1' else 500
+                    max_buf = 1500 if interval == '1' else 600
                     if len(buf) > max_buf:
                         buf = buf[-max_buf:]
                 self._klines[key] = buf

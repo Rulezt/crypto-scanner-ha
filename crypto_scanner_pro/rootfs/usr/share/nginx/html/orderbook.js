@@ -15,8 +15,8 @@ const DEFAULT_LEVELS_CFG = {
     dayLow:   { color: '#ef4444', style: 0, width: 2, vis:{chart:true, mtf:true, ob:true} },
     prevHigh: { color: '#22c55e', style: 2, width: 2, vis:{chart:true, mtf:true, ob:true} },
     prevLow:  { color: '#ef4444', style: 2, width: 2, vis:{chart:true, mtf:true, ob:true} },
-    obBid:    { color: '#10b981', style: 0, width: 1, vis:{chart:true, mtf:true, ob:true} },
-    obAsk:    { color: '#ef4444', style: 0, width: 1, vis:{chart:true, mtf:true, ob:true} },
+    obBid:    { color: '#3b82f6', style: 0, width: 1, vis:{chart:true, mtf:true, ob:true} },
+    obAsk:    { color: '#3b82f6', style: 0, width: 1, vis:{chart:true, mtf:true, ob:true} },
     ath:      { color: '#f59e0b', style: 2, width: 1, vis:{chart:true, mtf:true, ob:false} },
     atl:      { color: '#a855f7', style: 2, width: 1, vis:{chart:true, mtf:true, ob:false} },
 };
@@ -25,6 +25,12 @@ function getLvCfg() {
     try {
         const s = JSON.parse(localStorage.getItem('chart_levels_cfg'));
         if (s) {
+            if (!s._obBlueMigrated) {
+                if (s.obBid) s.obBid.color = DEFAULT_LEVELS_CFG.obBid.color;
+                if (s.obAsk) s.obAsk.color = DEFAULT_LEVELS_CFG.obAsk.color;
+                s._obBlueMigrated = true;
+                try { localStorage.setItem('chart_levels_cfg', JSON.stringify(s)); } catch(e) {}
+            }
             const out = {};
             for (const k of Object.keys(DEFAULT_LEVELS_CFG)) {
                 out[k] = s[k]
@@ -116,6 +122,37 @@ class _OBCountdownPrimitive {
         const rem = _obCdRemain(s.curTF);
         return [{ coordinate: () => y + 17, text: () => _obCdFmt(rem), textColor: () => '#FFFFFF', backColor: () => bull ? '#20B26C' : '#EF454A' }];
     }
+}
+
+// ── OB Levels band fill (riempimento tra le linee bid/ask) ────────────────────
+function _hexToRgba(hex, alpha) {
+    const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || '');
+    if (!m) return `rgba(59,130,246,${alpha})`;
+    return `rgba(${parseInt(m[1],16)},${parseInt(m[2],16)},${parseInt(m[3],16)},${alpha})`;
+}
+class _ObBandFillPrimitive {
+    constructor(slot) {
+        this._slot = slot;
+        this._series = null;
+        const renderer = {
+            draw: target => target.useBitmapCoordinateSpace(({ context: ctx, bitmapSize, verticalPixelRatio }) => {
+                const s = this._slot, series = this._series;
+                if (!series || !s.obActive || s.obBidVal == null || s.obAskVal == null) return;
+                const y1 = series.priceToCoordinate(s.obBidVal), y2 = series.priceToCoordinate(s.obAskVal);
+                if (y1 == null || y2 == null) return;
+                const top = Math.min(y1, y2) * verticalPixelRatio, bot = Math.max(y1, y2) * verticalPixelRatio;
+                ctx.save();
+                ctx.fillStyle = _hexToRgba(getLvCfg().obBid.color, 0.12);
+                ctx.fillRect(0, top, bitmapSize.width, Math.max(1, bot - top));
+                ctx.restore();
+            })
+        };
+        this._view = { renderer: () => renderer, zOrder: () => 'bottom' };
+    }
+    attached({ series }) { this._series = series; }
+    detached() { this._series = null; }
+    updateAllViews() {}
+    paneViews() { return [this._view]; }
 }
 
 function fmtVol(v) {
@@ -1727,7 +1764,7 @@ function _showAgreementError(symbol) {
 let _obRangeActive = false, _obRangeP1 = null, _obRangeMD = null, _obRangeMM = null, _obRangeMU = null, _obRangeCM = null;
 let _obHlineActive = false, _obHlines = [], _obHlineMD = null, _obHlineMM = null, _obHlineMU = null, _obHlineCM = null, _obHlineDragging = null;
 let _obTrendActive = false, _obTrendlines = [], _obTrendP1 = null, _obTrendPrev = null;
-let _obTrendMD = null, _obTrendMM = null, _obTrendMU = null, _obTrendCM = null, _obTrendDrag = null, _obTrendSub = null;
+let _obTrendMD = null, _obTrendMM = null, _obTrendMU = null, _obTrendCM = null, _obTrendDrag = null, _obTrendRAF = null;
 
 function _drawRangeCanvas(canvas, series, p1, p2) {
     canvas.width  = canvas.clientWidth  || canvas.parentElement?.clientWidth  || 100;
@@ -1928,6 +1965,19 @@ function _obTrendNearest(cx, cy) {
     return best ? { tl: best, part: bestPart } : null;
 }
 
+// Ridisegna a ogni frame invece che sul solo evento visibleTimeRangeChange:
+// il drag della price-scale e il pan non generano quell'evento in modo
+// continuo, quindi le linee restavano ferme o disallineate dalle candele.
+function _obTrendEnsureRAF() {
+    if (_obTrendRAF) return;
+    const tick = () => {
+        if (!_obChart || !_obCandleS || (!_obTrendlines.length && !_obTrendActive)) { _obTrendRAF = null; return; }
+        _obTrendDrawAll();
+        _obTrendRAF = requestAnimationFrame(tick);
+    };
+    _obTrendRAF = requestAnimationFrame(tick);
+}
+
 function toggleObTrend() {
     if (!_obTrendActive) { if (_obRangeActive) toggleObRange(); if (_obHlineActive) toggleObHline(); }
     _obTrendActive = !_obTrendActive;
@@ -1942,7 +1992,7 @@ function toggleObTrend() {
     _obTrendP1 = null; _obTrendPrev = null; _obTrendDrag = null;
     canvas.style.pointerEvents = _obTrendActive ? 'auto' : 'none';
     canvas.style.cursor = _obTrendActive ? 'crosshair' : '';
-    if (!_obTrendSub) { _obTrendSub = () => _obTrendDrawAll(); try { _obChart?.timeScale().subscribeVisibleTimeRangeChange(_obTrendSub); } catch(ex) {} }
+    _obTrendEnsureRAF();
     _obTrendDrawAll();
     if (!_obTrendActive) return;
     _obTrendMD = e => {
@@ -2109,6 +2159,8 @@ createApp({
             try {
                 const _cdSlot = { get curTF() { return chartTF.value; }, get lastPrice() { return _cdLastPrice; }, get lastOpen() { return _cdLastOpen; } };
                 candleS.attachPrimitive(new _OBCountdownPrimitive(_cdSlot));
+                const _obLvlSlot = { get obActive() { return showObLines.value; }, get obBidVal() { return maxLevelDistance.value.bidPrice; }, get obAskVal() { return maxLevelDistance.value.askPrice; } };
+                candleS.attachPrimitive(new _ObBandFillPrimitive(_obLvlSlot));
             } catch(e) {}
             const lineBase = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
             for (const { p, color, width, style } of EMA_CFG)
@@ -2140,7 +2192,7 @@ createApp({
             _obCandleS = candleS;
             _obChart   = obChart;
             _obSymbol  = symbol.value;
-            if (_obTrendSub) { try { obChart.timeScale().subscribeVisibleTimeRangeChange(_obTrendSub); } catch(ex) {} }
+            if (_obTrendlines.length || _obTrendActive) _obTrendEnsureRAF();
             initSlTpDrag();
         };
 

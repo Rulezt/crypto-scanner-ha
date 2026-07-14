@@ -18,6 +18,7 @@ MIN_KLINES        = 226  # margine oltre 223 per una EMA223 stabile
 class ShimanoScanner:
     def __init__(self, telegram_config, enabled=True,
                  scan_tf=None, min_volume_24h=10_000_000,
+                 min_var_pct_24h=5.0,
                  scan_interval_minutes=240, cooldown_hours=24,
                  max_coins_per_alert=5, distance_threshold_pct=1.0,
                  ws_manager=None, live_config=None, **kwargs):
@@ -30,6 +31,7 @@ class ShimanoScanner:
         raw_tf                     = scan_tf if scan_tf is not None else 'D'
         self.scan_tfs              = raw_tf if isinstance(raw_tf, list) else [raw_tf]
         self.min_volume_24h        = min_volume_24h
+        self.min_var_pct_24h       = min_var_pct_24h
         self.max_coins_per_alert   = max_coins_per_alert
         self.cooldown_hours        = cooldown_hours
         self._live_config          = live_config
@@ -103,7 +105,8 @@ class ShimanoScanner:
             return
         ranked = sorted(tickers.items(), key=lambda x: x[1].get('volume_24h', 0), reverse=True)
         top = [s for s, d in ranked
-               if d.get('volume_24h', 0) >= self.min_volume_24h][:TOP_KLINE_SYMBOLS]
+               if d.get('volume_24h', 0) >= self.min_volume_24h
+               and (not self.min_var_pct_24h or d.get('change_24h', 0) >= self.min_var_pct_24h)][:TOP_KLINE_SYMBOLS]
         self._ws_manager.subscribe_klines(top, intervals=self.scan_tfs)
         self._last_count = len(top)
         print(f'🎣 Shimano: subscribed klines {len(top)} symbols × {len(self.scan_tfs)} TF')
@@ -155,6 +158,8 @@ class ShimanoScanner:
         price  = ticker.get('price') or candle['close']
         volume = ticker.get('volume_24h', 0)
         change = ticker.get('change_24h', 0.0)
+        if self.min_var_pct_24h and change < self.min_var_pct_24h:
+            return
 
         ok, ema60, ema223, distance_pct = self._check_distance(klines, self._threshold())
         if not ok:
@@ -189,10 +194,13 @@ class ShimanoScanner:
                     continue
                 price = float(item.get('lastPrice', 0) or 0)
                 vol   = float(item.get('turnover24h', 0) or 0)
+                change_pct = float(item.get('price24hPcnt', 0) or 0) * 100
                 if price <= 0 or vol < self.min_volume_24h:
                     continue
+                if self.min_var_pct_24h and change_pct < self.min_var_pct_24h:
+                    continue
                 result.append({'symbol': item['symbol'], 'price': price, 'volume': vol,
-                               'change_pct': float(item.get('price24hPcnt', 0) or 0) * 100})
+                               'change_pct': change_pct})
             result.sort(key=lambda x: x['volume'], reverse=True)
             return result[:500]
         except Exception as e:

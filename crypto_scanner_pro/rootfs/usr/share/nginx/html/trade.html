@@ -6,6 +6,8 @@
     <title>Trade - Crypto Scanner Pro v4.4.7</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxsaW5lIHgxPSIxIiB5MT0iOSIgeDI9IjMxIiB5Mj0iOSIgc3Ryb2tlPSIjMWEzYTRhIiBzdHJva2Utd2lkdGg9IjAuNCIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMTciIHgyPSIzMSIgeTI9IjE3IiBzdHJva2U9IiMxYTNhNGEiIHN0cm9rZS13aWR0aD0iMC40Ii8+CiAgPGxpbmUgeDE9IjEiIHkxPSIyNSIgeDI9IjMxIiB5Mj0iMjUiIHN0cm9rZT0iIzFhM2E0YSIgc3Ryb2tlLXdpZHRoPSIwLjQiLz4KICA8bGluZSB4MT0iNCIgeTE9IjciIHgyPSI0IiB5Mj0iMjkiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyLjUiIHk9IjE0IiB3aWR0aD0iMyIgaGVpZ2h0PSI5IiBmaWxsPSIjMDBDOEZGIi8+CiAgPGxpbmUgeDE9IjEyIiB5MT0iMyIgeDI9IjEyIiB5Mj0iMjYiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIxMC41IiB5PSI3IiB3aWR0aD0iMyIgaGVpZ2h0PSIxMyIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIyMCIgeTE9IjYiIHgyPSIyMCIgeTI9IjI4IiBzdHJva2U9IiMwMEM4RkYiIHN0cm9rZS13aWR0aD0iMC44Ii8+CiAgPHJlY3QgeD0iMTguNSIgeT0iMTMiIHdpZHRoPSIzIiBoZWlnaHQ9IjkiIGZpbGw9IiMwMEM4RkYiLz4KICA8bGluZSB4MT0iMjgiIHkxPSIxMCIgeDI9IjI4IiB5Mj0iMzAiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyNi41IiB5PSIxNiIgd2lkdGg9IjMiIGhlaWdodD0iOCIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMzAiIHgyPSIzMCIgeTI9IjIiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIxLjIiLz4KICA8cG9seWdvbiBwb2ludHM9IjMwLDIgMjQsNS41IDI2LjUsOC41IiBmaWxsPSIjMDBDOEZGIi8+Cjwvc3ZnPgo=">
     <link rel="stylesheet" href="trade-styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#101014">
     <script src="/i18n.js"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
@@ -104,7 +106,7 @@
                         <span class="max-ask-dist">🔴 -{{ maxLevelDistance.askPercent }}%</span>
                         <span class="max-bid-dist">🟢 -{{ maxLevelDistance.bidPercent }}%</span>
                     </div>
-                    <div v-if="showBook" class="control-item">
+                    <div v-if="showBook" id="fs-hdr-levels" class="control-item">
                         <label data-i18n="ob_levels_lbl">Livelli</label>
                         <select v-model="displayLevels" @change="updateDisplay">
                             <option value="10">10</option>
@@ -113,7 +115,7 @@
                             <option value="100">100</option>
                         </select>
                     </div>
-                    <div v-if="showBook" class="control-item">
+                    <div v-if="showBook" id="fs-hdr-groupby" class="control-item">
                         <label data-i18n="ob_groupby_lbl">Raggruppa</label>
                         <select v-model="grouping" @change="updateDisplay">
                             <option v-for="opt in groupingOptions" :key="opt" :value="opt">{{ opt }}</option>
@@ -142,7 +144,7 @@
             </div>
 
             <!-- ===== STANDALONE: split grafico 2/3 + book 1/3 ===== -->
-            <div v-if="isStandalone" class="ob-main ob-split">
+            <div v-if="isStandalone" class="ob-main ob-split" :class="{ 'book-hidden': !showBook }">
 
                 <!-- Chart panel (2/3) -->
                 <div class="ob-chart-panel">
@@ -167,6 +169,17 @@
                             <span :style="{color: ohlc.color}" style="font-weight:700;margin-left:4px;">{{ ohlc.pct }}</span>
                         </div>
                         <div style="display:flex;align-items:center;gap:2px;margin-left:auto;">
+                            <button id="ob-bb-btn" onclick="toggleObBB()"
+                                style="padding:4px 8px;font-size:12px;font-weight:700;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
+                                title="Bollinger Bands (20,2)">BB</button>
+                            <span style="color:#374151;margin:0 2px;">|</span>
+                            <button id="ob-clear-draw-btn" onclick="clearObDrawings()"
+                                style="display:none;padding:4px 8px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
+                                title="Clear drawings">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" style="vertical-align:middle" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+                            </button>
                             <button id="ob-range-btn" onclick="toggleObRange()"
                                 style="padding:4px 8px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
                                 onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
@@ -332,6 +345,39 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Livelli/Raggruppa sotto al book (solo portrait) -->
+                        <div v-if="showBook" id="fs-book-levels-group" style="display:none;gap:10px;">
+                            <button class="fs-dd-btn" @click="levelsDdOpen = true">
+                                <span>{{ displayLevels }}</span>
+                                <span class="fs-dd-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 1024 1024"><path fill="currentColor" d="m561.707 657.75 194.389-262.23a60.416 60.416 0 0 0-13.312-85.077 62.165 62.165 0 0 0-36.437-11.776H317.653c-34.048 0-61.653 27.264-61.653 60.885 0 12.928 4.181 25.515 11.904 35.968l194.347 262.23a62.123 62.123 0 0 0 99.498 0z"></path></svg></span>
+                            </button>
+                            <button class="fs-dd-btn" @click="groupingDdOpen = true">
+                                <span>{{ grouping }}</span>
+                                <span class="fs-dd-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 1024 1024"><path fill="currentColor" d="m561.707 657.75 194.389-262.23a60.416 60.416 0 0 0-13.312-85.077 62.165 62.165 0 0 0-36.437-11.776H317.653c-34.048 0-61.653 27.264-61.653 60.885 0 12.928 4.181 25.515 11.904 35.968l194.347 262.23a62.123 62.123 0 0 0 99.498 0z"></path></svg></span>
+                            </button>
+                        </div>
+
+                        <!-- Bottom sheet Livelli -->
+                        <div v-if="levelsDdOpen" class="fs-sheet-backdrop" @click="levelsDdOpen = false"></div>
+                        <div v-if="levelsDdOpen" class="fs-sheet-panel">
+                            <div class="fs-sheet-title" data-i18n="ob_levels_lbl">Livelli</div>
+                            <div class="fs-sheet-opt" v-for="lv in [10,20,50,100]" :key="lv"
+                                 :class="{active: displayLevels == lv}" @click="selectLevels(lv)">
+                                <span>{{ lv }}</span>
+                            </div>
+                            <div class="fs-sheet-opt fs-sheet-close" @click="levelsDdOpen = false" data-i18n="sheet_close">Chiudi</div>
+                        </div>
+
+                        <!-- Bottom sheet Raggruppa -->
+                        <div v-if="groupingDdOpen" class="fs-sheet-backdrop" @click="groupingDdOpen = false"></div>
+                        <div v-if="groupingDdOpen" class="fs-sheet-panel">
+                            <div class="fs-sheet-title" data-i18n="ob_groupby_lbl">Raggruppa</div>
+                            <div class="fs-sheet-opt" v-for="opt in groupingOptions" :key="opt"
+                                 :class="{active: grouping == opt}" @click="selectGrouping(opt)">
+                                <span>{{ opt }}</span>
+                            </div>
+                            <div class="fs-sheet-opt fs-sheet-close" @click="groupingDdOpen = false" data-i18n="sheet_close">Chiudi</div>
+                        </div>
                     </template>
                 </div>
 
@@ -343,40 +389,63 @@
                     </div>
                     <!-- Order form -->
                     <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
-                        <!-- Leverage -->
-                        <div style="display:flex;flex-direction:column;gap:3px;">
-                            <span style="font-size:12px;color:#ADB1B8;" data-i18n="leva_label">Leva</span>
-                            <input type="hidden" id="fs-order-lev" value="10">
-                            <div id="fs-lev-wrap" style="position:relative;">
-                                <button id="fs-lev-btn" onclick="toggleLevDropdown(event)" data-i18n-title="tip_lev_btn" title="Select leverage"
-                                    style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:12px;font-weight:600;background:#1E222D;color:#E5E7EB;border:1px solid #374151;border-radius:4px;cursor:pointer;box-sizing:border-box;">
-                                    <span id="fs-lev-label" style="color:#FF9C2E;">10x</span>
-                                    <span id="fs-lev-arrow" style="color:#6B7280;transition:transform .15s;display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 1024 1024"><path fill="currentColor" d="m561.707 657.75 194.389-262.23a60.416 60.416 0 0 0-13.312-85.077 62.165 62.165 0 0 0-36.437-11.776H317.653c-34.048 0-61.653 27.264-61.653 60.885 0 12.928 4.181 25.515 11.904 35.968l194.347 262.23a62.123 62.123 0 0 0 99.498 0z"></path></svg></span>
-                                </button>
-                                <div id="fs-lev-panel" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;background:#161A1E;border:1px solid #2A2E39;border-radius:6px;z-index:200;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.7);">
-                                    <div id="fs-lev-options" style="max-height:200px;overflow-y:auto;"></div>
-                                    <div style="border-top:1px solid #2A2E39;">
-                                        <div id="fs-lev-customize-row" onclick="toggleLevCustomize()"
-                                             style="padding:7px 12px;font-size:12px;color:#9CA3AF;cursor:pointer;user-select:none;"
-                                             onmouseover="this.style.background='#1E222D';this.style.color='#E5E7EB'"
-                                             onmouseout="this.style.background='';this.style.color='#9CA3AF'">
-                                            Customize
-                                        </div>
-                                        <div id="fs-lev-custom-row" style="display:none;padding:4px 8px 8px;">
-                                            <div style="display:flex;gap:4px;">
-                                                <input id="fs-lev-custom-val" type="number" min="1" max="100" placeholder="e.g. 12"
-                                                    onkeydown="if(event.key==='Enter')confirmLevCustomize()"
-                                                    style="flex:1;padding:4px 6px;font-size:12px;background:#0d1117;color:#E5E7EB;border:1px solid #374151;border-radius:4px;outline:none;">
-                                                <button onclick="confirmLevCustomize()"
-                                                    style="padding:4px 10px;font-size:12px;font-weight:700;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;">OK</button>
+                        <!-- Leva + Tipo Ordine (stessa riga in portrait) -->
+                        <div id="fs-lev-ot-row" style="display:flex;gap:8px;">
+                            <!-- Leverage -->
+                            <div id="fs-lev-block" style="flex:1;display:flex;flex-direction:column;gap:3px;">
+                                <span id="fs-lev-label-txt" style="font-size:12px;color:#ADB1B8;" data-i18n="leva_label">Leva</span>
+                                <input type="hidden" id="fs-order-lev" value="10">
+                                <div id="fs-lev-wrap" style="position:relative;">
+                                    <button id="fs-lev-btn" onclick="toggleLevDropdown(event)" data-i18n-title="tip_lev_btn" title="Select leverage"
+                                        style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:12px;font-weight:600;background:#1E222D;color:#E5E7EB;border:1px solid #374151;border-radius:4px;cursor:pointer;box-sizing:border-box;">
+                                        <span id="fs-lev-label" style="color:#FF9C2E;">10x</span>
+                                        <span id="fs-lev-arrow" style="color:#6B7280;transition:transform .15s;display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 1024 1024"><path fill="currentColor" d="m561.707 657.75 194.389-262.23a60.416 60.416 0 0 0-13.312-85.077 62.165 62.165 0 0 0-36.437-11.776H317.653c-34.048 0-61.653 27.264-61.653 60.885 0 12.928 4.181 25.515 11.904 35.968l194.347 262.23a62.123 62.123 0 0 0 99.498 0z"></path></svg></span>
+                                    </button>
+                                    <div id="fs-lev-backdrop" onclick="toggleLevDropdown()" style="display:none;"></div>
+                                    <div id="fs-lev-panel" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;background:#161A1E;border:1px solid #2A2E39;border-radius:6px;z-index:200;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.7);">
+                                        <div id="fs-lev-title" style="display:none;" data-i18n="leva_label">Leva</div>
+                                        <div id="fs-lev-options" style="max-height:200px;overflow-y:auto;"></div>
+                                        <div style="border-top:1px solid #2A2E39;">
+                                            <div id="fs-lev-customize-row" onclick="toggleLevCustomize()"
+                                                 style="padding:7px 12px;font-size:12px;color:#9CA3AF;cursor:pointer;user-select:none;"
+                                                 onmouseover="this.style.background='#1E222D';this.style.color='#E5E7EB'"
+                                                 onmouseout="this.style.background='';this.style.color='#9CA3AF'">
+                                                Customize
+                                            </div>
+                                            <div id="fs-lev-custom-row" style="display:none;padding:4px 8px 8px;">
+                                                <div style="display:flex;gap:4px;">
+                                                    <input id="fs-lev-custom-val" type="number" min="1" max="100" placeholder="e.g. 12"
+                                                        onkeydown="if(event.key==='Enter')confirmLevCustomize()"
+                                                        style="flex:1;padding:4px 6px;font-size:12px;background:#0d1117;color:#E5E7EB;border:1px solid #374151;border-radius:4px;outline:none;">
+                                                    <button onclick="confirmLevCustomize()"
+                                                        style="padding:4px 10px;font-size:12px;font-weight:700;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;">OK</button>
+                                                </div>
                                             </div>
                                         </div>
+                                        <div id="fs-lev-close" onclick="toggleLevDropdown()" style="display:none;" data-i18n="sheet_close">Chiudi</div>
                                     </div>
                                 </div>
                             </div>
+                            <!-- Order type dropdown (solo portrait) -->
+                            <div id="fs-ot-dd-wrap" style="display:none;position:relative;">
+                                <button id="fs-ot-dd-btn" onclick="toggleOtDropdown(event)" title="Order type"
+                                    style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:12px;font-weight:600;background:#1E222D;color:#E5E7EB;border:1px solid #374151;border-radius:4px;cursor:pointer;box-sizing:border-box;">
+                                    <span id="fs-ot-dd-label" style="color:#FF9C2E;">Market</span>
+                                    <span id="fs-ot-dd-arrow" style="color:#6B7280;transition:transform .15s;display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 1024 1024"><path fill="currentColor" d="m561.707 657.75 194.389-262.23a60.416 60.416 0 0 0-13.312-85.077 62.165 62.165 0 0 0-36.437-11.776H317.653c-34.048 0-61.653 27.264-61.653 60.885 0 12.928 4.181 25.515 11.904 35.968l194.347 262.23a62.123 62.123 0 0 0 99.498 0z"></path></svg></span>
+                                </button>
+                                <div id="fs-ot-dd-backdrop" onclick="closeOtDropdown()" style="display:none;"></div>
+                                <div id="fs-ot-dd-panel" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;background:#161A1E;border:1px solid #2A2E39;border-radius:6px;z-index:200;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.7);">
+                                    <div id="fs-ot-dd-title" style="display:none;" data-i18n="ot_dd_title">Tipo Ordine</div>
+                                    <div class="fs-ot-opt" data-ot="Limit"   onclick="setOrderType('Limit'); closeOtDropdown();"       style="padding:7px 12px;font-size:12px;color:#6B7280;cursor:pointer;user-select:none;" data-i18n="ot_limit">Limit</div>
+                                    <div class="fs-ot-opt" data-ot="Market"  onclick="setOrderType('Market'); closeOtDropdown();"      style="padding:7px 12px;font-size:12px;color:#FF9C2E;font-weight:700;cursor:pointer;user-select:none;" data-i18n="ot_market">Market</div>
+                                    <div class="fs-ot-opt" data-ot="CondMkt" onclick="setCondTypeFromDD('Market'); closeOtDropdown();" style="padding:7px 12px;font-size:12px;color:#6B7280;cursor:pointer;user-select:none;" data-i18n="ot_cond_mkt">Cond.Mkt</div>
+                                    <div class="fs-ot-opt" data-ot="CondLim" onclick="setCondTypeFromDD('Limit'); closeOtDropdown();"  style="padding:7px 12px;font-size:12px;color:#6B7280;cursor:pointer;user-select:none;" data-i18n="ot_cond_lim">Cond.Lim</div>
+                                    <div id="fs-ot-dd-close" onclick="closeOtDropdown()" style="display:none;" data-i18n="sheet_close">Chiudi</div>
+                                </div>
+                            </div>
                         </div>
-                        <!-- Order type tabs -->
-                        <div style="display:flex;align-items:center;border-bottom:1px solid #2A2E39;padding-bottom:2px;gap:0;">
+                        <!-- Order type tabs (desktop) -->
+                        <div id="fs-ot-tabs-wrap" style="display:flex;align-items:center;border-bottom:1px solid #2A2E39;padding-bottom:2px;gap:0;">
                             <button id="fs-ot-limit"    onclick="setOrderType('Limit')"           title="Limit order"        style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#6B7280;white-space:nowrap;" data-i18n="ot_limit">Limit</button>
                             <button id="fs-ot-market"   onclick="setOrderType('Market')"          title="Market order"       style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#FF9C2E;white-space:nowrap;" data-i18n="ot_market">Market</button>
                             <button id="fs-ot-cond-mkt" onclick="setCondTypeFromDD('Market')"     title="Conditional Market" style="padding:5px 8px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:#6B7280;white-space:nowrap;" data-i18n="ot_cond_mkt">Cond.Mkt</button>
@@ -441,9 +510,9 @@
                         </div>
                         <!-- Label display mode -->
                         <div style="display:flex;gap:4px;">
-                            <button id="fs-lbl-pct"  onclick="_setLabelDisplayMode('pct')"  data-i18n-title="tip_lbl_pct"  title="Show SL/TP distance in %"           style="flex:1;padding:4px 0;font-size:11px;background:#2A2E39;color:#E5E7EB;border:1px solid #10b981;border-radius:3px;cursor:pointer;">%</button>
+                            <button id="fs-lbl-pct"  onclick="_setLabelDisplayMode('pct')"  data-i18n-title="tip_lbl_pct"  title="Show SL/TP distance in %"           style="flex:1;padding:4px 0;font-size:11px;background:#1E222D;color:#6B7280;border:1px solid #374151;border-radius:3px;cursor:pointer;">%</button>
                             <button id="fs-lbl-usdt" onclick="_setLabelDisplayMode('usdt')" data-i18n-title="tip_lbl_usdt" title="Show SL/TP distance in USDT"          style="flex:1;padding:4px 0;font-size:11px;background:#1E222D;color:#6B7280;border:1px solid #374151;border-radius:3px;cursor:pointer;">$</button>
-                            <button id="fs-lbl-both" onclick="_setLabelDisplayMode('both')" data-i18n-title="tip_lbl_both" title="Show SL/TP distance in % and USDT"    style="flex:1;padding:4px 0;font-size:11px;background:#1E222D;color:#6B7280;border:1px solid #374151;border-radius:3px;cursor:pointer;">$+%</button>
+                            <button id="fs-lbl-both" onclick="_setLabelDisplayMode('both')" data-i18n-title="tip_lbl_both" title="Show SL/TP distance in % and USDT"    style="flex:1;padding:4px 0;font-size:11px;background:#2A2E39;color:#E5E7EB;border:1px solid #10b981;border-radius:3px;cursor:pointer;">$+%</button>
                         </div>
                         <!-- Size USDT -->
                         <div style="display:flex;flex-direction:column;gap:3px;">

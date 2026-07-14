@@ -297,9 +297,8 @@
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="(r, i) in filteredResults" :key="r.symbol + r.tf + r.type + r.level"
-                    @mouseenter="showPopup($event, r)"
-                    @mouseleave="hidePopup">
+                <template v-for="(r, i) in filteredResults" :key="r.symbol + r.tf + r.type + r.level">
+                <tr>
                     <td class="td-rank">{{ i + 1 }}</td>
                     <td v-for="col in columns" :key="col.key"
                         :class="col.tdClass ? col.tdClass(r) : 'td-num'">
@@ -308,6 +307,15 @@
                             <a :href="(baseUrl || '') + '/mtf?symbol=' + r.symbol" target="_blank">
                                 {{ r.symbol.replace('USDT','') }}
                             </a>
+                        </template>
+                        <template v-else-if="col.key === 'mtf'">
+                            <a :href="(baseUrl || '') + '/mtf?symbol=' + r.symbol" target="_blank" :title="t('col_mtf')" style="display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1.5"/><rect x="15" y="3" width="10" height="10" rx="1.5"/><rect x="3" y="15" width="10" height="10" rx="1.5"/><rect x="15" y="15" width="10" height="10" rx="1.5"/></svg></a>
+                        </template>
+                        <template v-else-if="col.key === 'trade'">
+                            <a :href="(baseUrl || '') + '/trade?symbol=' + r.symbol" target="_blank" :title="t('col_trade')" style="display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3v4"/><rect x="4" y="7" width="4" height="7" rx="1" fill="currentColor" stroke="none"/><path d="M6 14v7"/><path d="M14 3v2"/><rect x="12" y="5" width="4" height="10" rx="1" fill="currentColor" stroke="none"/><path d="M14 15v6"/></svg></a>
+                        </template>
+                        <template v-else-if="col.key === 'preview'">
+                            <span @mouseenter="showPopup($event, r)" @mouseleave="hidePopup" @click="toggleMobilePreview(r)" :title="t('col_preview')" style="cursor:pointer;display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
                         </template>
                         <template v-else-if="col.key === 'segnale'">
                             <span :class="['type-badge', r.type === 'resistance' ? 'type-res' : 'type-sup']">
@@ -344,6 +352,12 @@
                         </template>
                     </td>
                 </tr>
+                <tr v-if="mobilePreviewSymbol===(r.symbol + r.tf + r.type + r.level)" class="mobile-preview-row">
+                    <td :colspan="columns.length+1" style="padding:8px 12px;background:#0B0E11;">
+                        <div :id="'mp-chart-'+(r.symbol + r.tf + r.type + r.level)" style="width:100%;aspect-ratio:2/1;min-height:150px;max-height:280px;"></div>
+                    </td>
+                </tr>
+                </template>
             </tbody>
         </table>
     </div>
@@ -395,6 +409,10 @@
                     <label style="font-size:0.78rem;color:#9CA3AF;">{{ t('dt_proximity') }}</label>
                     <input type="number" v-model.number="proximity" min="0.1" max="10" step="0.1" style="width:80px;background:#1f2937;color:#f9fafb;border:1px solid #374151;border-radius:4px;padding:5px 8px;font-size:0.82rem;">
                 </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <label style="font-size:0.78rem;color:#9CA3AF;">{{ t('scr_min_var') }}</label>
+                    <input type="number" v-model.number="minVarPct" min="0" max="1000" step="0.5" style="width:80px;background:#1f2937;color:#f9fafb;border:1px solid #374151;border-radius:4px;padding:5px 8px;font-size:0.82rem;">
+                </div>
             </div>
             <button @click="cfgOpen=false" class="btn primary" style="width:100%;margin-top:20px;justify-content:center;">OK</button>
         </div>
@@ -414,6 +432,7 @@ createApp({
         const baseUrl       = ref('');
         const _cfgT = (() => { try { return JSON.parse(localStorage.getItem('third_touch_cfg') || '{}'); } catch { return {}; } })();
         const minVolume   = ref(_cfgT.minVolume  ?? 10e6);
+        const minVarPct   = ref(_cfgT.minVarPct  ?? 5);
         const topN        = ref(9999);
         const cfgOpen     = ref(false);
         const tolerance   = ref(_cfgT.tolerance  ?? 0.5);
@@ -454,6 +473,9 @@ createApp({
 
         const columnsDef = [
             { key: 'symbol',         labelKey: 'Symbol',          sortKey: 'symbol',       align: 'left',   tdClass: () => 'td-sym' },
+            { key: 'mtf',            labelKey: 'col_mtf',         sortKey: null,           align: 'center', tdClass: () => 'td-center' },
+            { key: 'trade',          labelKey: 'col_trade',       sortKey: null,           align: 'center', tdClass: () => 'td-center' },
+            { key: 'preview',        labelKey: 'col_preview',     sortKey: null,           align: 'center', tdClass: () => 'td-center' },
             { key: 'segnale',        labelKey: 'dt_col_signal',   sortKey: null,           align: 'center', tdClass: () => 'td-center' },
             { key: 'tf',             labelKey: 'TF',              sortKey: 'tf',           align: 'center', tdClass: () => 'td-center' },
             { key: 'volume',         labelKey: 'Vol 24h',         sortKey: 'volume',       align: 'right',  tdClass: () => 'td-num muted' },
@@ -698,6 +720,7 @@ createApp({
                         change:  parseFloat(t.price24hPcnt || 0) * 100,
                     }))
                     .filter(t => minVolume.value === 0 || t.volume >= minVolume.value)
+                    .filter(t => minVarPct.value === 0 || t.change >= minVarPct.value)
                     .filter(t => t.price > 0)
                     .sort((a, b) => b.volume - a.volume)
                     .slice(0, topN.value);
@@ -946,7 +969,94 @@ createApp({
             popup.style.top  = Math.max(M, y) + 'px';
         };
 
+        const isMobilePreview = () => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 640;
+
+        const mobilePreviewSymbol = ref(null);
+        let mobilePreviewChart = null;
+        const destroyMobilePreviewChart = () => {
+            if (mobilePreviewChart) { try { mobilePreviewChart.remove(); } catch(e) {} mobilePreviewChart = null; }
+        };
+        const toggleMobilePreview = async (r) => {
+            if (!isMobilePreview()) return;
+            const key = r.symbol + r.tf + r.type + r.level;
+            if (mobilePreviewSymbol.value === key) {
+                mobilePreviewSymbol.value = null;
+                destroyMobilePreviewChart();
+                return;
+            }
+            destroyMobilePreviewChart();
+            mobilePreviewSymbol.value = key;
+            await Vue.nextTick();
+            const container = document.getElementById('mp-chart-' + key);
+            if (!container) return;
+            try {
+                const tf = r.tf || 'D';
+                const url = `api/klines?symbol=${r.symbol}&interval=${tf}`;
+                const res  = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!data.success || !data.data?.length || mobilePreviewSymbol.value !== key) return;
+
+                const seen = new Set();
+                const klines = data.data.filter(c => {
+                    if (seen.has(c.time)) return false;
+                    seen.add(c.time);
+                    return isFinite(c.open) && isFinite(c.close) && c.high >= c.low;
+                });
+                if (!klines.length || mobilePreviewSymbol.value !== key) return;
+
+                const chart = LC.createChart(container, {
+                    autoSize: true,
+                    layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
+                    grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
+                    rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },
+                    timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: tf === 'D' ? 12 : 8 },
+                    handleScroll: false, handleScale: false,
+                });
+                if (mobilePreviewSymbol.value !== key) { try { chart.remove(); } catch(e) {} return; }
+                mobilePreviewChart = chart;
+
+                const cs = addS(chart, 'CandlestickSeries', {
+                    upColor: '#089981', downColor: '#F23645',
+                    borderVisible: false, wickUpColor: '#089981', wickDownColor: '#F23645',
+                });
+                cs.setData(klines);
+
+                if (r.level && r.touchATime && klines.length > 0) {
+                    const timeStep = klines.length > 1
+                        ? klines[klines.length - 1].time - klines[klines.length - 2].time
+                        : 86400;
+                    const hasA     = klines.some(k => k.time === r.touchATime);
+                    const lastTime = klines[klines.length - 1].time;
+                    const lvlS = addS(chart, 'LineSeries', {
+                        color: r.type === 'resistance' ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)',
+                        lineWidth: 2, lineStyle: 0,
+                        priceLineVisible: false, lastValueVisible: false,
+                        crosshairMarkerVisible: false, title: '',
+                    });
+                    lvlS.setData([
+                        { time: hasA ? r.touchATime : klines[0].time, value: r.level },
+                        { time: lastTime + timeStep * 20,             value: r.level },
+                    ]);
+                }
+
+                for (const cfg of EMA_CONFIG) {
+                    const line = calcEMALine(klines, cfg.period);
+                    if (!line.length) continue;
+                    addS(chart, 'LineSeries', {
+                        color: cfg.color, lineWidth: cfg.width,
+                        priceLineVisible: false, lastValueVisible: false,
+                        crosshairMarkerVisible: false,
+                    }).setData(line);
+                }
+
+                const visibleBars = tf === 'D' ? 40 : tf === '240' ? 50 : 60;
+                chart.timeScale().setVisibleLogicalRange({ from: klines.length - visibleBars, to: klines.length + 5 });
+            } catch(e) { console.error('mobile preview chart error:', e); }
+        };
+
         const showPopup = async (event, result) => {
+            if (isMobilePreview()) return;
             clearTimeout(hideTimer);
             const popup = document.getElementById('lwc-popup');
             if (!popup) return;
@@ -1015,8 +1125,8 @@ createApp({
             document.documentElement.style.setProperty('--sticky-top', wh + 'px');
             document.documentElement.style.setProperty('--thead-top', (wh + fh) + 'px');
         };
-        watch([minVolume, tolerance, proximity], () => {
-            try { localStorage.setItem('third_touch_cfg', JSON.stringify({ minVolume: minVolume.value, tolerance: tolerance.value, proximity: proximity.value })); } catch {}
+        watch([minVolume, minVarPct, tolerance, proximity], () => {
+            try { localStorage.setItem('third_touch_cfg', JSON.stringify({ minVolume: minVolume.value, minVarPct: minVarPct.value, tolerance: tolerance.value, proximity: proximity.value })); } catch {}
         });
         watch(filteredResults, () => nextTick(updateStickyOffsets));
         onMounted(() => { updateStickyOffsets(); window.addEventListener('resize', updateStickyOffsets); });
@@ -1032,7 +1142,24 @@ createApp({
                 const prefix = d.logged_in ? (d.username || 'guest') : 'guest';
                 _colKey_dt = prefix + '_' + STORAGE_KEY_DT;
                 const saved = JSON.parse(localStorage.getItem(_colKey_dt) || 'null');
-                if (saved) columns.value = saved.map(k => columnsDef.find(c => c.key === k)).filter(Boolean);
+                if (saved) {
+                    // preserva l'ordine personalizzato salvato ma inserisce eventuali nuove colonne
+                    // (aggiunte in un aggiornamento successivo, es. Preview) nella loro posizione di default
+                    // invece di scartarle — altrimenti una colonna nuova sparirebbe per chi ha già un ordine salvato.
+                    const merged = [...saved];
+                    for (const col of columnsDef) {
+                        if (!merged.includes(col.key)) {
+                            const origIdx = columnsDef.findIndex(c => c.key === col.key);
+                            let insertAt = merged.length;
+                            for (let mi = 0; mi < merged.length; mi++) {
+                                const mIdx = columnsDef.findIndex(c => c.key === merged[mi]);
+                                if (mIdx > origIdx) { insertAt = mi; break; }
+                            }
+                            merged.splice(insertAt, 0, col.key);
+                        }
+                    }
+                    columns.value = merged.map(k => columnsDef.find(c => c.key === k)).filter(Boolean);
+                }
             } catch {}
         });
 
@@ -1079,7 +1206,7 @@ createApp({
         };
 
         return {
-            cfgOpen, baseUrl, tolerance, proximity,
+            cfgOpen, baseUrl, tolerance, proximity, minVarPct,
             favoriteSymbols, isFav, toggleFav,
             columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
             scanning, stopFlag, statusMsg, displayMsg, initialDone,
@@ -1088,6 +1215,7 @@ createApp({
             setSortBy, sa, t,
             startScan, stopScan,
             showPopup, hidePopup,
+            mobilePreviewSymbol, toggleMobilePreview,
             formatPrice, formatVolume,
         };
     }

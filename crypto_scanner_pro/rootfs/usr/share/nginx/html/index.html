@@ -18,6 +18,8 @@
     <meta name="language" content="Italian">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxsaW5lIHgxPSIxIiB5MT0iOSIgeDI9IjMxIiB5Mj0iOSIgc3Ryb2tlPSIjMWEzYTRhIiBzdHJva2Utd2lkdGg9IjAuNCIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMTciIHgyPSIzMSIgeTI9IjE3IiBzdHJva2U9IiMxYTNhNGEiIHN0cm9rZS13aWR0aD0iMC40Ii8+CiAgPGxpbmUgeDE9IjEiIHkxPSIyNSIgeDI9IjMxIiB5Mj0iMjUiIHN0cm9rZT0iIzFhM2E0YSIgc3Ryb2tlLXdpZHRoPSIwLjQiLz4KICA8bGluZSB4MT0iNCIgeTE9IjciIHgyPSI0IiB5Mj0iMjkiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyLjUiIHk9IjE0IiB3aWR0aD0iMyIgaGVpZ2h0PSI5IiBmaWxsPSIjMDBDOEZGIi8+CiAgPGxpbmUgeDE9IjEyIiB5MT0iMyIgeDI9IjEyIiB5Mj0iMjYiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIxMC41IiB5PSI3IiB3aWR0aD0iMyIgaGVpZ2h0PSIxMyIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIyMCIgeTE9IjYiIHgyPSIyMCIgeTI9IjI4IiBzdHJva2U9IiMwMEM4RkYiIHN0cm9rZS13aWR0aD0iMC44Ii8+CiAgPHJlY3QgeD0iMTguNSIgeT0iMTMiIHdpZHRoPSIzIiBoZWlnaHQ9IjkiIGZpbGw9IiMwMEM4RkYiLz4KICA8bGluZSB4MT0iMjgiIHkxPSIxMCIgeDI9IjI4IiB5Mj0iMzAiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyNi41IiB5PSIxNiIgd2lkdGg9IjMiIGhlaWdodD0iOCIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMzAiIHgyPSIzMCIgeTI9IjIiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIxLjIiLz4KICA8cG9seWdvbiBwb2ludHM9IjMwLDIgMjQsNS41IDI2LjUsOC41IiBmaWxsPSIjMDBDOEZGIi8+Cjwvc3ZnPgo=">
     <link rel="canonical" href="https://cryptoscannerpro.com">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#101014">
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
@@ -92,6 +94,10 @@
         @media (max-width: 639px) {
             .modal-inner         { width: calc(100% - 24px) !important; margin: 12px auto !important; }
             .modal-scanner-inner { width: calc(100% - 24px) !important; margin: 48px auto !important; }
+            .preview-icon        { cursor: pointer !important; }
+        }
+        @media (orientation: landscape) and (pointer: coarse) and (max-height: 700px) {
+            .preview-icon        { cursor: pointer !important; }
         }
     </style>
 <style>@keyframes mail-pulse{0%,100%{box-shadow:0 0 0 0 rgba(96,165,250,0.7)}50%{box-shadow:0 0 0 6px rgba(96,165,250,0)}}#user-btn-alert{animation:mail-pulse 1.2s ease-in-out infinite!important;border:1px solid #3b82f6!important;color:#60a5fa!important;}</style><style>#tv-attr-logo{display:none!important}</style>
@@ -304,14 +310,15 @@
                                 <tr>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left cursor-pointer select-none hover:text-gray-300" onclick="sortTable('gainers-tbody','coin')">Coin<span id="sa-gainers-tbody-coin" class="text-gray-700"> ↕</span></th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('gainers-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-gainers-tbody-price" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center" data-i18n="col_preview">Anteprima</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden sm:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('gainers-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-gainers-tbody-price" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('gainers-tbody','change')" data-i18n="col_change_24h">Var. 24h<span id="sa-gainers-tbody-change" class="text-gray-400"> ↓</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('gainers-tbody','volume')" data-i18n="col_volume">Volume<span id="sa-gainers-tbody-volume" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
                             <tbody id="gainers-tbody" class="text-sm">
-                                <tr><td colspan="6" class="text-center py-8 text-gray-500" data-i18n="market_loading">Caricamento dati mercato...</td></tr>
+                                <tr><td colspan="7" class="text-center py-8 text-gray-500" data-i18n="market_loading">Caricamento dati mercato...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -323,14 +330,15 @@
                                 <tr>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left cursor-pointer select-none hover:text-gray-300" onclick="sortTable('losers-tbody','coin')">Coin<span id="sa-losers-tbody-coin" class="text-gray-700"> ↕</span></th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('losers-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-losers-tbody-price" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center" data-i18n="col_preview">Anteprima</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden sm:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('losers-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-losers-tbody-price" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('losers-tbody','change')" data-i18n="col_change_24h">Var. 24h<span id="sa-losers-tbody-change" class="text-gray-400"> ↑</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('losers-tbody','volume')" data-i18n="col_volume">Volume<span id="sa-losers-tbody-volume" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
                             <tbody id="losers-tbody" class="text-sm">
-                                <tr><td colspan="6" class="text-center py-8 text-gray-500" data-i18n="market_loading">Caricamento dati mercato...</td></tr>
+                                <tr><td colspan="7" class="text-center py-8 text-gray-500" data-i18n="market_loading">Caricamento dati mercato...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -344,14 +352,15 @@
                                     <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                         <tr>
                                             <th class="px-3 py-2 text-left" data-i18n="col_asset">Strumento</th>
-                                            <th class="px-3 py-2 text-right" data-i18n="col_price">Prezzo</th>
+                                            <th class="px-3 py-2 text-center" data-i18n="col_preview">Anteprima</th>
+                                            <th class="px-3 py-2 text-right hidden sm:table-cell" data-i18n="col_price">Prezzo</th>
                                             <th class="px-3 py-2 text-right" data-i18n="col_change_24h">Var. 24h</th>
                                             <th class="px-3 py-2 text-right hidden md:table-cell" data-i18n="col_volume">Volume</th>
                                             <th class="px-3 py-2 text-center">Chart</th>
                                         </tr>
                                     </thead>
                                     <tbody id="stock-tbody-pos" class="text-sm">
-                                        <tr><td colspan="5" class="text-center py-8 text-gray-500" data-i18n="loading">Caricamento...</td></tr>
+                                        <tr><td colspan="6" class="text-center py-8 text-gray-500" data-i18n="loading">Caricamento...</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -361,14 +370,15 @@
                                     <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                         <tr>
                                             <th class="px-3 py-2 text-left" data-i18n="col_asset">Strumento</th>
-                                            <th class="px-3 py-2 text-right" data-i18n="col_price">Prezzo</th>
+                                            <th class="px-3 py-2 text-center" data-i18n="col_preview">Anteprima</th>
+                                            <th class="px-3 py-2 text-right hidden sm:table-cell" data-i18n="col_price">Prezzo</th>
                                             <th class="px-3 py-2 text-right" data-i18n="col_change_24h">Var. 24h</th>
                                             <th class="px-3 py-2 text-right hidden md:table-cell" data-i18n="col_volume">Volume</th>
                                             <th class="px-3 py-2 text-center">Chart</th>
                                         </tr>
                                     </thead>
                                     <tbody id="stock-tbody-neg" class="text-sm">
-                                        <tr><td colspan="5" class="text-center py-8 text-gray-500" data-i18n="loading">Caricamento...</td></tr>
+                                        <tr><td colspan="6" class="text-center py-8 text-gray-500" data-i18n="loading">Caricamento...</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -382,14 +392,15 @@
                                 <tr>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left cursor-pointer select-none hover:text-gray-300" onclick="sortTable('commodity-tbody','coin')" data-i18n="col_asset">Strumento<span id="sa-commodity-tbody-coin" class="text-gray-700"> ↕</span></th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('commodity-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-commodity-tbody-price" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center" data-i18n="col_preview">Anteprima</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden sm:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('commodity-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-commodity-tbody-price" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('commodity-tbody','change')" data-i18n="col_change_24h">Var. 24h<span id="sa-commodity-tbody-change" class="text-gray-400"> ↓</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('commodity-tbody','volume')" data-i18n="col_volume">Volume<span id="sa-commodity-tbody-volume" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-center">Chart</th>
                                 </tr>
                             </thead>
                             <tbody id="commodity-tbody" class="text-sm">
-                                <tr><td colspan="6" class="text-center py-8 text-gray-500" data-i18n="loading">Caricamento...</td></tr>
+                                <tr><td colspan="7" class="text-center py-8 text-gray-500" data-i18n="loading">Caricamento...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -401,7 +412,8 @@
                                 <tr>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','coin')">Coin<span id="sa-ico-tbody-coin" class="text-gray-700"> ↕</span></th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-ico-tbody-price" class="text-gray-700"> ↕</span></th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center" data-i18n="col_preview">Anteprima</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden sm:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-ico-tbody-price" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','change')" data-i18n="col_change_24h">Var. 24h<span id="sa-ico-tbody-change" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','volume')" data-i18n="col_volume">Volume<span id="sa-ico-tbody-volume" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','listed')" data-i18n="col_listed">Listata<span id="sa-ico-tbody-listed" class="text-gray-400"> ↓</span></th>
@@ -409,7 +421,7 @@
                                 </tr>
                             </thead>
                             <tbody id="ico-tbody" class="text-sm">
-                                <tr><td colspan="7" class="text-center py-8 text-gray-500" data-i18n="loading">Caricamento...</td></tr>
+                                <tr><td colspan="8" class="text-center py-8 text-gray-500" data-i18n="loading">Caricamento...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1088,8 +1100,9 @@
             coins = _sortedCoins(coins, tbodyId);
             _updateSortArrows(tbodyId);
             const tbody = document.getElementById(tbodyId);
+            if (_inlinePreviewRow && tbody.contains(_inlinePreviewRow)) closeInlinePreview();
             if (!coins || coins.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">'+window.t('no_ico')+'</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500">'+window.t('no_ico')+'</td></tr>';
                 return;
             }
             const now = Date.now();
@@ -1107,8 +1120,11 @@
                 return `
                     <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-gray-500 hidden sm:table-cell">${index + 1}</td>
-                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium cursor-default" onmouseenter="showChartTooltip('${coin.symbol}',event)" onmouseleave="hideChartTooltip()">${coin.symbol.replace('USDT', '')}</td>
-                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-300 text-sm">$${formatPrice(coin.price)}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium">${coin.symbol.replace('USDT', '')}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-center">
+                            <span class="preview-icon" onmouseenter="showChartTooltip('${coin.symbol}',event)" onmouseleave="hideChartTooltip()" onclick="toggleInlinePreview('${coin.symbol}',this,event)" style="cursor:default;display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
+                        </td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-300 text-sm hidden sm:table-cell">$${formatPrice(coin.price)}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right">
                             <span class="${changeColor} ${bgColor} px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs sm:text-sm font-medium">
                                 ${isPositive ? '+' : ''}${coin.change_24h.toFixed(2)}%
@@ -1129,8 +1145,9 @@
             coins = _sortedCoins(coins, tbodyId);
             _updateSortArrows(tbodyId);
             const tbody = document.getElementById(tbodyId);
+            if (_inlinePreviewRow && tbody.contains(_inlinePreviewRow)) closeInlinePreview();
             if (!coins || coins.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">'+window.t('no_data')+'</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">'+window.t('no_data')+'</td></tr>';
                 return;
             }
             tbody.innerHTML = coins.map((coin, index) => {
@@ -1142,8 +1159,11 @@
                 return `
                     <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-gray-500 hidden sm:table-cell">${index + 1}</td>
-                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium cursor-default" onmouseenter="showChartTooltip('${coin.symbol}',event)" onmouseleave="hideChartTooltip()">${coin.name || coin.symbol.replace('USDT', '')}</td>
-                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-300 text-sm">$${formatPrice(coin.price)}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium">${coin.name || coin.symbol.replace('USDT', '')}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-center">
+                            <span class="preview-icon" onmouseenter="showChartTooltip('${coin.symbol}',event)" onmouseleave="hideChartTooltip()" onclick="toggleInlinePreview('${coin.symbol}',this,event)" style="cursor:default;display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
+                        </td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-300 text-sm hidden sm:table-cell">$${formatPrice(coin.price)}</td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right">
                             <span class="${changeColor} ${bgColor} px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs sm:text-sm font-medium">
                                 ${isPositive ? '+' : ''}${coin.change_24h.toFixed(2)}%
@@ -1166,9 +1186,11 @@
                 const cls = isPos ? 'text-emerald-400 bg-emerald-400/5' : 'text-red-400 bg-red-400/5';
                 const url = urlFn ? urlFn(coin) : chartUrl(coin.symbol);
                 const volColor = coin.volume_24h >= 10e6 ? 'text-emerald-400' : coin.volume_24h >= 5e6 ? 'text-orange-400' : 'text-red-400';
+                const previewIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>`;
                 return `<tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
-                    <td class="px-3 py-2 font-medium cursor-default" onmouseenter="showChartTooltip('${coin.symbol}',event)" onmouseleave="hideChartTooltip()">${coin.name || coin.symbol.replace('USDT','')}</td>
-                    <td class="px-3 py-2 text-right text-gray-300 text-sm">$${formatPrice(coin.price)}</td>
+                    <td class="px-3 py-2 font-medium">${coin.name || coin.symbol.replace('USDT','')}</td>
+                    <td class="px-3 py-2 text-center"><span class="preview-icon" onmouseenter="showChartTooltip('${coin.symbol}',event)" onmouseleave="hideChartTooltip()" onclick="toggleInlinePreview('${coin.symbol}',this,event)" style="cursor:default;display:inline-flex;color:#6b7280;">${previewIcon}</span></td>
+                    <td class="px-3 py-2 text-right text-gray-300 text-sm hidden sm:table-cell">$${formatPrice(coin.price)}</td>
                     <td class="px-3 py-2 text-right"><span class="${cls} px-1.5 py-0.5 rounded text-xs font-medium">${isPos?'+':''}${coin.change_24h.toFixed(2)}%</span></td>
                     <td class="px-3 py-2 text-right ${volColor} text-sm hidden md:table-cell">$${formatVolume(coin.volume_24h)}</td>
                     <td class="px-3 py-2 text-center"><a href="${url}" target="_blank" rel="noopener" class="inline-flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-dark-hover p-1 rounded transition-colors">${chartIcon}</a></td>
@@ -1176,9 +1198,12 @@
             };
             const pos = [...coins].filter(c => c.change_24h >= 0).sort((a,b) => b.change_24h - a.change_24h);
             const neg = [...coins].filter(c => c.change_24h <  0).sort((a,b) => a.change_24h - b.change_24h);
-            const empty = '<tr><td colspan="3" class="text-center py-6 text-gray-600">—</td></tr>';
-            document.getElementById('stock-tbody-pos').innerHTML = pos.length ? pos.map(rowHtml).join('') : empty;
-            document.getElementById('stock-tbody-neg').innerHTML = neg.length ? neg.map(rowHtml).join('') : empty;
+            const empty = '<tr><td colspan="4" class="text-center py-6 text-gray-600">—</td></tr>';
+            const posTbody = document.getElementById('stock-tbody-pos');
+            const negTbody = document.getElementById('stock-tbody-neg');
+            if (_inlinePreviewRow && (posTbody.contains(_inlinePreviewRow) || negTbody.contains(_inlinePreviewRow))) closeInlinePreview();
+            posTbody.innerHTML = pos.length ? pos.map(rowHtml).join('') : empty;
+            negTbody.innerHTML = neg.length ? neg.map(rowHtml).join('') : empty;
         }
 
         function switchMarketTab(tab) {
@@ -1592,7 +1617,70 @@
           tt.style.top  = y + 'px';
         }
 
+        function _isMobilePreview() {
+          return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 640;
+        }
+
+        let _inlinePreviewRow = null, _inlinePreviewChart = null;
+        function closeInlinePreview() {
+          if (_inlinePreviewChart) { try { _inlinePreviewChart.remove(); } catch(e) {} _inlinePreviewChart = null; }
+          if (_inlinePreviewRow && _inlinePreviewRow.parentNode) _inlinePreviewRow.remove();
+          _inlinePreviewRow = null;
+        }
+
+        async function toggleInlinePreview(symbol, iconEl, evt) {
+          if (!_isMobilePreview()) return;
+          if (evt) evt.stopPropagation();
+          const row = iconEl.closest('tr');
+          if (!row) return;
+          const wasOpenForThisRow = row.nextElementSibling === _inlinePreviewRow;
+          closeInlinePreview();
+          if (wasOpenForThisRow) return;
+          const colspan = row.children.length;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td colspan="${colspan}" style="padding:8px 12px;background:#0B0E11;"><div style="width:100%;aspect-ratio:2/1;min-height:150px;max-height:280px;" id="inline-chart-${symbol}"></div></td>`;
+          row.insertAdjacentElement('afterend', tr);
+          _inlinePreviewRow = tr;
+          const container = tr.querySelector(`#inline-chart-${symbol}`);
+          const LC = window.LightweightCharts;
+          if (!LC) return;
+          const chart = LC.createChart(container, {
+            autoSize: true,
+            layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE', fontSize: 10 },
+            grid: { vertLines: { color: '#FFFFFF08' }, horzLines: { color: '#FFFFFF08' } },
+            rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.05, bottom: 0.04 } },
+            timeScale: { borderVisible: false, timeVisible: false, rightOffset: 2 },
+            handleScroll: false, handleScale: false,
+          });
+          _inlinePreviewChart = chart;
+          const addS = (type, opts) => {
+            if (typeof chart.addSeries === 'function' && LC[type]) return chart.addSeries(LC[type], opts);
+            return chart[type === 'CandlestickSeries' ? 'addCandlestickSeries' : 'addLineSeries'](opts);
+          };
+          const series = addS('CandlestickSeries', {
+            upColor: '#089981', downColor: '#F23645',
+            borderVisible: false, wickUpColor: '#089981', wickDownColor: '#F23645',
+          });
+          const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+          const emaS = {};
+          for (const { p, color, width } of _TT_EMA) emaS[p] = addS('LineSeries', { ...lb, color, lineWidth: width });
+          try {
+            let klines = _ttCache[symbol];
+            if (!klines) {
+              const r = await fetch(`api/klines?symbol=${symbol}&interval=D`);
+              const j = await r.json();
+              if (!j.success) return;
+              klines = j.data; _ttCache[symbol] = klines;
+            }
+            if (_inlinePreviewChart !== chart) return;
+            series.setData(klines);
+            for (const { p } of _TT_EMA) emaS[p].setData(_calcEmaT(klines, p));
+            chart.timeScale().setVisibleLogicalRange({ from: klines.length - 60, to: klines.length + 1 });
+          } catch (e) {}
+        }
+
         async function showChartTooltip(symbol, e) {
+          if (_isMobilePreview()) return;
           clearTimeout(_ttHideTimer);
           clearTimeout(_ttShowTimer);
           _ttCurrentSym = symbol;

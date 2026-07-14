@@ -275,7 +275,7 @@
                         <div class="flex items-center justify-between mb-2">
                             <div class="text-yellow-400 text-xs sm:text-sm font-medium">Breakout</div>
                         </div>
-                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_bops_desc">Canali convergenti da pivot, breakout con SL/TP</div>
+                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_bops_desc">Canali convergenti individuati dai pivot</div>
                         <a href="breakout" class="mt-2 block text-xs text-yellow-500 hover:text-yellow-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
                     </div>
 
@@ -286,6 +286,33 @@
                         </div>
                         <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_emax_desc">Incrocio EMA60/EMA223 confermato, con tolleranza anti-rumore</div>
                         <a href="ema-cross" class="mt-2 block text-xs text-cyan-500 hover:text-cyan-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
+                    </div>
+
+                    <!-- Confluence Scanner (solo visuale, aggrega tutti gli altri screener) -->
+                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-indigo-500 transition-all">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-indigo-400 text-xs sm:text-sm font-medium">Confluence</div>
+                        </div>
+                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_confl_desc">Coin segnalate da 2+ screener diversi contemporaneamente</div>
+                        <a href="confluence" class="mt-2 block text-xs text-indigo-500 hover:text-indigo-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
+                    </div>
+
+                    <!-- Channel Breakout Scanner (solo visuale, nessun polling backend) -->
+                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-sky-500 transition-all">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-sky-400 text-xs sm:text-sm font-medium">Channel Breakout</div>
+                        </div>
+                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_chb_desc">Breakout del canale SMA20 (close/high/low): apertura dentro/fuori canale, chiusura oltre</div>
+                        <a href="channel-breakout" class="mt-2 block text-xs text-sky-500 hover:text-sky-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
+                    </div>
+
+                    <!-- Volume Inefficiency Scanner (solo visuale, nessun polling backend) -->
+                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-rose-500 transition-all">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-rose-400 text-xs sm:text-sm font-medium">Volume Inefficiency</div>
+                        </div>
+                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_vinef_desc">Inefficienze nel volume (LVN, Climax, Divergenza, Squeeze) che anticipano un movimento di tendenza</div>
+                        <a href="vol-inefficiency" class="mt-2 block text-xs text-rose-500 hover:text-rose-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
                     </div>
                 </div>
 
@@ -367,6 +394,7 @@
                 <div class="bg-dark-hover/50 rounded p-3 space-y-2">
                     <div class="font-medium text-gray-400 mb-2" data-i18n="cfg_general">⚙️ Generali</div>
                     <div class="flex justify-between items-center"><span class="text-gray-500" data-i18n="cfg_vol_min">Volume Min:</span><span id="view-min-volume" class="text-gray-300">$10M</span></div>
+                    <div class="flex justify-between items-center"><span class="text-gray-500" data-i18n="cfg_var_min">Var % Min:</span><span id="view-min-var" class="text-gray-300">5%</span></div>
                     <div class="flex justify-between items-center"><span class="text-gray-500" data-i18n="cfg_cooldown">Cooldown:</span><span id="view-cooldown" class="text-gray-300">2h</span></div>
                     <div class="flex justify-between items-center"><span class="text-gray-500" data-i18n="cfg_max_coins">Max Coin/Alert:</span><span id="view-max-coins" class="text-gray-300">10</span></div>
                 </div>
@@ -384,6 +412,7 @@
                 <div class="space-y-3">
                     <div class="font-medium text-gray-400 text-sm" data-i18n="cfg_general_s">⚙️ Impostazioni Generali</div>
                     <div><label class="text-xs text-gray-500 block mb-1" data-i18n="lbl_vol_min">Volume Minimo 24h ($):</label><input type="number" id="input-min-volume" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none"></div>
+                    <div><label class="text-xs text-gray-500 block mb-1" data-i18n="lbl_var_min">Var % Min 24h (rialzo):</label><input type="number" step="0.5" min="0" id="input-min-var" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none"></div>
                     <div><label class="text-xs text-gray-500 block mb-1" data-i18n="lbl_cooldown">Cooldown (ore):</label><input type="number" id="input-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none"></div>
                     <div><label class="text-xs text-gray-500 block mb-1" data-i18n="lbl_max_coins">Max Coin per Alert:</label><input type="number" id="input-max-coins" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-gray-500 focus:outline-none"></div>
                 </div>
@@ -1051,6 +1080,7 @@
             if (currentConfig.general) {
                 const minVol = currentConfig.general.min_volume_24h || 10000000;
                 document.getElementById('view-min-volume').textContent = minVol >= 1e6 ? '$' + (minVol/1e6).toFixed(0) + 'M' : '$' + minVol;
+                document.getElementById('view-min-var').textContent = (currentConfig.general.min_var_pct_24h ?? 5) + '%';
                 document.getElementById('view-cooldown').textContent = (currentConfig.general.cooldown_hours || 2) + 'h';
                 document.getElementById('view-max-coins').textContent = currentConfig.general.max_coins_per_alert || 10;
                 const utcOff = currentConfig.general.utc_offset ?? 2;
@@ -1094,6 +1124,7 @@
         function populateForm() {
             if (currentConfig.general) {
                 document.getElementById('input-min-volume').value    = currentConfig.general.min_volume_24h || 10000000;
+                document.getElementById('input-min-var').value       = currentConfig.general.min_var_pct_24h ?? 5;
                 document.getElementById('input-cooldown').value      = currentConfig.general.cooldown_hours || 2;
                 document.getElementById('input-max-coins').value     = currentConfig.general.max_coins_per_alert || 10;
                 document.getElementById('input-utc-offset').value    = currentConfig.general.utc_offset ?? 2;
@@ -1113,6 +1144,7 @@
                     general: {
                         ...currentConfig.general,
                         min_volume_24h:      parseInt(document.getElementById('input-min-volume').value) || 10000000,
+                        min_var_pct_24h:     parseFloat(document.getElementById('input-min-var').value) || 0,
                         cooldown_hours:      parseInt(document.getElementById('input-cooldown').value) || 2,
                         max_coins_per_alert: parseInt(document.getElementById('input-max-coins').value) || 10,
                         utc_offset:          parseFloat(document.getElementById('input-utc-offset').value) || 2,

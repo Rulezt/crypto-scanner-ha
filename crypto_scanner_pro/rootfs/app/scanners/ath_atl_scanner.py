@@ -21,6 +21,7 @@ class ATHATLScanner:
                  ath_enabled=True, atl_enabled=True,
                  proximity_threshold=2.0, lookback_days=365,
                  scan_interval_minutes=30, min_volume_24h=10000000,
+                 min_var_pct_24h=5.0,
                  max_coins_per_alert=10, cooldown_hours=24,
                  screenshot_tf='D', ws_manager=None, live_config=None,
                  schedule_start='', schedule_end='', utc_offset=2, **kwargs):
@@ -35,6 +36,7 @@ class ATHATLScanner:
         self.lookback_days      = lookback_days
         self.screenshot_tf      = screenshot_tf
         self.min_volume_24h     = min_volume_24h
+        self.min_var_pct_24h    = min_var_pct_24h
         self.max_coins_per_alert = max_coins_per_alert
         self.cooldown_hours     = cooldown_hours
         self._live_config       = live_config
@@ -159,7 +161,10 @@ class ATHATLScanner:
             return
         price  = data.get('price', 0)
         volume = data.get('volume_24h', 0)
+        change = data.get('change_24h', 0)
         if price <= 0 or volume < self.min_volume_24h:
+            return
+        if self.min_var_pct_24h and change < self.min_var_pct_24h:
             return
 
         with self._ath_cache_lock:
@@ -315,6 +320,7 @@ class ATHATLScanner:
                      'volume_24h_usd': d.get('volume_24h', 0)}
                     for s, d in raw.items()
                     if d.get('price', 0) > 0 and d.get('volume_24h', 0) >= self.min_volume_24h
+                    and (not self.min_var_pct_24h or d.get('change_24h', 0) >= self.min_var_pct_24h)
                 ]
             else:
                 url = 'https://api.bybit.com/v5/market/tickers?category=linear'
@@ -330,6 +336,8 @@ class ATHATLScanner:
                     change_pct = float(item.get('price24hPcnt', 0)) * 100
                     vol_usd    = float(item.get('volume24h', 0)) * last_price
                     if vol_usd < self.min_volume_24h:
+                        continue
+                    if self.min_var_pct_24h and change_pct < self.min_var_pct_24h:
                         continue
                     all_pairs.append({'symbol': item['symbol'], 'price': last_price,
                                       'change_pct': change_pct, 'volume_24h_usd': vol_usd})

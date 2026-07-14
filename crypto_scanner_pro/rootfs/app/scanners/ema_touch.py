@@ -27,6 +27,7 @@ class EMAScanner:
     def __init__(self, telegram_config, enabled=True, ema_touch_threshold=2.0,
                  touch_tolerance=0.05,
                  scan_interval_minutes=30, min_volume_24h=10_000_000,
+                 min_var_pct_24h=5.0,
                  max_coins_per_alert=10, screenshot_tf='30',
                  scan_tfs=None,
                  ws_manager=None, live_config=None, **kwargs):
@@ -38,6 +39,7 @@ class EMAScanner:
         self.ema_touch_threshold = ema_touch_threshold
         self.touch_tolerance     = touch_tolerance
         self.min_volume_24h      = min_volume_24h
+        self.min_var_pct_24h     = min_var_pct_24h
         self.max_coins_per_alert = max_coins_per_alert
         self.screenshot_tf       = screenshot_tf
         self._live_config        = live_config
@@ -256,7 +258,10 @@ class EMAScanner:
                 if slope is not None and abs(slope) < 0.01:
                     return None
 
-            if in_zone and not tst['alerted']:
+            change_pct = ticker_data.get('change_24h', ticker_data.get('change_pct', 0.0))
+            var_ok = not self.min_var_pct_24h or change_pct >= self.min_var_pct_24h
+
+            if in_zone and not tst['alerted'] and var_ok:
                 tst['alerted']      = True
                 st['alerted_today'] = True
                 save_needed         = True
@@ -268,8 +273,7 @@ class EMAScanner:
                     'distance_pct': round(distance_pct, 4),
                     'approach':     'from_above' if candle['close'] > ema else 'from_below',
                     'volume_24h':   ticker_data.get('volume_24h', 0),
-                    'change_pct':   ticker_data.get('change_24h',
-                                     ticker_data.get('change_pct', 0.0)),
+                    'change_pct':   change_pct,
                 }
             elif re_armed and tst['alerted']:
                 tst['alerted'] = False
@@ -310,7 +314,8 @@ class EMAScanner:
             self._refresh_kline_subs()
             return
         ranked = sorted(tickers.items(), key=lambda x: x[1].get('volume_24h', 0), reverse=True)
-        top    = [s for s, d in ranked if d.get('volume_24h', 0) >= self.min_volume_24h][:TOP_KLINE_SYMBOLS]
+        top    = [s for s, d in ranked if d.get('volume_24h', 0) >= self.min_volume_24h
+                  and (not self.min_var_pct_24h or d.get('change_24h', 0) >= self.min_var_pct_24h)][:TOP_KLINE_SYMBOLS]
         self._ws_manager.subscribe_klines(top, intervals=self.scan_tfs)
         print(f'📡 EMA: subscribed {len(top)} symbols × {len(self.scan_tfs)} TF')
 
@@ -377,6 +382,7 @@ class EMAScanner:
                      'change_pct': d.get('change_24h', 0.0)}
                     for s, d in raw.items()
                     if d.get('volume_24h', 0) >= self.min_volume_24h
+                    and (not self.min_var_pct_24h or d.get('change_24h', 0.0) >= self.min_var_pct_24h)
                 ]
             else:
                 r = requests.get('https://api.bybit.com/v5/market/tickers',
@@ -391,10 +397,12 @@ class EMAScanner:
                         continue
                     price = float(item.get('lastPrice', 0))
                     vol   = float(item.get('volume24h', 0)) * price
+                    change_pct = float(item.get('price24hPcnt', 0)) * 100
                     if vol < self.min_volume_24h:
                         continue
-                    td = {'volume_24h': vol,
-                          'change_pct': float(item.get('price24hPcnt', 0)) * 100}
+                    if self.min_var_pct_24h and change_pct < self.min_var_pct_24h:
+                        continue
+                    td = {'volume_24h': vol, 'change_pct': change_pct}
                     all_pairs.append({'symbol': item['symbol'], **td})
                     ticker_map[item['symbol']] = td
 

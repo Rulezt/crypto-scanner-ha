@@ -59,6 +59,9 @@
     #mtf-label { display: none; }
     #bb-btn    { display: none; }
     #bb-sep    { display: none; }
+    #channel-btn { display: none; }
+    #sqz-btn     { display: none; }
+    #naked-btn   { display: none; }
     /* OB modal verticale */
     #ob-modal { flex-direction: column !important; }
     #ob-modal > div:first-child {
@@ -68,6 +71,8 @@
     }
     #ob-modal > div:last-child { flex: 0 0 50% !important; }
   }
+  @keyframes tfCdBlink { 50% { opacity: 0.25; } }
+  .tf-cd-blink { animation: tfCdBlink 1s step-start infinite; }
 </style>
 <style>#tv-attr-logo{display:none!important}</style>
 </head>
@@ -96,6 +101,22 @@
   <button id="bb-btn" onclick="toggleBB()" class="hdr-btn"
     style="font-size:14px;font-weight:700;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
     title="Bollinger Bands (20,2)" data-i18n="mtf_bb">BB</button>
+  <button id="channel-btn" onclick="toggleChannel()" class="hdr-btn"
+    style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    data-i18n-title="channel_tool" title="Canale SMA 20">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>
+  </button>
+  <button id="sqz-btn" onclick="toggleSqueeze()" class="hdr-btn"
+    style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    data-i18n-title="squeeze_osc_tool" title="Canale Squeeze">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h3l2-7 4 14 3-10 2 5h6"/></svg>
+  </button>
+  <button id="naked-btn" onclick="toggleNakedChart()" class="hdr-btn"
+    style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    data-i18n-title="ob_tt_hide_ind" title="Nascondi indicatori">
+    <svg id="naked-icon-on" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:block"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>
+    <svg id="naked-icon-off" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:none"><path d="M11.83,9L15,12.16C15,12.11 15,12.05 15,12A3,3 0 0,0 12,9C11.94,9 11.89,9 11.83,9M7.53,9.8L9.08,11.35C9.03,11.56 9,11.77 9,12A3,3 0 0,0 12,15C12.22,15 12.44,14.97 12.65,14.92L14.2,16.47C13.53,16.8 12.79,17 12,17A5,5 0 0,1 7,12C7,11.21 7.2,10.47 7.53,9.8M2,4.27L4.28,6.55L4.73,7C3.08,8.3 1.78,10 1,12C2.73,16.39 7,19.5 12,19.5C13.55,19.5 15.03,19.2 16.38,18.66L16.81,19.08L19.73,22L21,20.73L3.27,3M12,7A5,5 0 0,1 17,12C17,12.64 16.87,13.26 16.64,13.82L19.57,16.75C21.07,15.5 22.27,13.86 23,12C21.27,7.61 17,4.5 12,4.5C10.6,4.5 9.26,4.75 8,5.2L10.17,7.35C10.74,7.13 11.35,7 12,7Z"/></svg>
+  </button>
   <button id="btn-f11" onclick="toggleBrowserFullscreen()" class="hdr-btn"
     data-i18n-title="f11_title" title="F11"
     style="font-size:14px;font-weight:700;color:#9CA3AF;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;">F11</button>
@@ -164,8 +185,8 @@ const DEFAULT_LEVELS_CFG = {
   dayLow:   {color:'#ef4444', style:0, width:2, vis:{chart:true, mtf:true, ob:true}},
   prevHigh: {color:'#22c55e', style:2, width:2, vis:{chart:true, mtf:true, ob:true}},
   prevLow:  {color:'#ef4444', style:2, width:2, vis:{chart:true, mtf:true, ob:true}},
-  obBid:    {color:'#10b981', style:1, width:1, vis:{chart:true, mtf:true, ob:true}},
-  obAsk:    {color:'#ef4444', style:1, width:1, vis:{chart:true, mtf:true, ob:true}},
+  obBid:    {color:'#3b82f6', style:1, width:1, vis:{chart:true, mtf:true, ob:true}},
+  obAsk:    {color:'#3b82f6', style:1, width:1, vis:{chart:true, mtf:true, ob:true}},
   ath:      {color:'#f59e0b', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
   atl:      {color:'#a855f7', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
 };
@@ -174,6 +195,12 @@ function getLvCfg() {
   try {
     const s = JSON.parse(localStorage.getItem('chart_levels_cfg'));
     if (s) {
+      if (!s._obBlueMigrated) {
+        if (s.obBid) s.obBid.color = DEFAULT_LEVELS_CFG.obBid.color;
+        if (s.obAsk) s.obAsk.color = DEFAULT_LEVELS_CFG.obAsk.color;
+        s._obBlueMigrated = true;
+        try { localStorage.setItem('chart_levels_cfg', JSON.stringify(s)); } catch(e) {}
+      }
       const out = {};
       for (const k of Object.keys(DEFAULT_LEVELS_CFG)) {
         out[k] = s[k]
@@ -196,6 +223,9 @@ let _mtfAthVal = null, _mtfAtlVal = null;
 let wsTimer = null;
 let mobileSlotIdx = 0;
 let bbActive = false;
+let channelActive = false;
+let sqzActive = false;
+let nakedChart = false;
 
 // ── Price alerts ──────────────────────────────────────────────────────────────
 let pendingAlert = null;
@@ -218,6 +248,8 @@ let obTF = '30', obWS = null, obWsTimer = null;
 let obBidLine = null, obAskLine = null;
 let obDayHighLine = null, obDayLowLine = null;
 let obPrevHighLine = null, obPrevLowLine = null;
+let obModalBidVal = null, obModalAskVal = null;
+const _obModalSlot = { get obActive() { return true; }, get obBidVal() { return obModalBidVal; }, get obAskVal() { return obModalAskVal; } };
 
 // ── Day separator lines ────────────────────────────────────────────────────────
 function getDayTimestamps(klines) {
@@ -292,8 +324,7 @@ function calcBB(klines, period=20, mult=2) {
 function toggleBB() {
   bbActive = !bbActive;
   const btn = document.getElementById('bb-btn');
-  btn.style.color      = bbActive ? '#60a5fa' : '#B2B5BE';
-  btn.style.background = bbActive ? '#1a3a5c' : '#2A2E39';
+  btn.style.color = bbActive ? '#60a5fa' : '#B2B5BE';
   const _bbCfg = getBbCfg();
   const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
   slots.forEach(s => {
@@ -313,10 +344,203 @@ function toggleBB() {
       }
     }
   });
+  if (fsChart) applyFsBB();
 }
 
-function addS(chart, type, opts) {
-  if (typeof chart.addSeries==='function' && LC[type]) return chart.addSeries(LC[type], opts);
+// ── SMA Channel indicator (SMA20 close/high/low → canale a 3 linee) ────────────
+const _DEFAULT_CHANNEL_CFG = { period: 20, color: '#ffffff', width: 1, style: 0, bgColor: '#ffffff', bgOpacity: 10 };
+function getChannelCfg() {
+  try { const s = JSON.parse(localStorage.getItem('chart_channel_cfg')); if (s) return { ..._DEFAULT_CHANNEL_CFG, ...s }; } catch(e) {}
+  return { ..._DEFAULT_CHANNEL_CFG };
+}
+function _hexToRgba(hex, alpha) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || '');
+  if (!m) return `rgba(255,255,255,${alpha})`;
+  return `rgba(${parseInt(m[1],16)},${parseInt(m[2],16)},${parseInt(m[3],16)},${alpha})`;
+}
+function calcChannel(klines, period) {
+  const mid=[], upper=[], lower=[];
+  for (let i = period - 1; i < klines.length; i++) {
+    let sumC=0, sumH=0, sumL=0;
+    for (let j = i - period + 1; j <= i; j++) { sumC += klines[j].close; sumH += klines[j].high; sumL += klines[j].low; }
+    mid.push(  {time:klines[i].time, value:sumC/period});
+    upper.push({time:klines[i].time, value:sumH/period});
+    lower.push({time:klines[i].time, value:sumL/period});
+  }
+  return {mid, upper, lower};
+}
+function toggleChannel() {
+  channelActive = !channelActive;
+  const btn = document.getElementById('channel-btn');
+  btn.style.color = channelActive ? '#ffffff' : '#B2B5BE';
+  const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
+  const _chCfg = getChannelCfg();
+  slots.forEach(s => {
+    if (channelActive) {
+      s.channelSeries.upper = addS(s.chart,'LineSeries',{...lb,color:_chCfg.color,lineWidth:_chCfg.width,lineStyle:_chCfg.style});
+      s.channelSeries.mid   = addS(s.chart,'LineSeries',{...lb,color:_chCfg.color,lineWidth:_chCfg.width,lineStyle:2});
+      s.channelSeries.lower = addS(s.chart,'LineSeries',{...lb,color:_chCfg.color,lineWidth:_chCfg.width,lineStyle:_chCfg.style});
+      if (s.klines.length >= _chCfg.period) {
+        const c = calcChannel(s.klines, _chCfg.period);
+        s.channelSeries.upper.setData(c.upper);
+        s.channelSeries.mid.setData(c.mid);
+        s.channelSeries.lower.setData(c.lower);
+        s.channelData = {upper:c.upper, lower:c.lower};
+      }
+    } else {
+      for (const k of ['upper','mid','lower']) {
+        if (s.channelSeries[k]) { try { s.chart.removeSeries(s.channelSeries[k]); } catch(e) {} s.channelSeries[k]=null; }
+      }
+      s.channelData = null;
+    }
+  });
+  if (fsChart) applyFsChannel();
+}
+
+// ── Squeeze Channel — stessa logica "volume dry-up + range compresso" dello screener
+// Volume Inefficiency (detectSqueeze in vol-inefficiency.html), portata verbatim: quando
+// attivo disegna 2 linee tratteggiate (hiR/loR = range delle ultime SQZ_K candele) sul
+// grafico principale, invece di un pannello/oscillatore separato sotto al grafico.
+const SQZ_K = 6, SQZ_VOL_DRY_RATIO = 0.55, SQZ_RANGE_DRY_RATIO = 0.55;
+function _sqzCond(klines, i) {
+  const widerN = SQZ_K * 4;
+  if (i - SQZ_K - widerN + 1 < 0) return null;
+  let sumRecent = 0; for (let j = i - SQZ_K + 1; j <= i; j++) sumRecent += klines[j].volume;
+  const pf = i - SQZ_K - widerN + 1, pt = i - SQZ_K;
+  let sumPrior = 0; for (let j = pf; j <= pt; j++) sumPrior += klines[j].volume;
+  const avgRecent = sumRecent / SQZ_K, avgPrior = sumPrior / (pt - pf + 1);
+  if (avgPrior <= 0 || avgRecent / avgPrior > SQZ_VOL_DRY_RATIO) return null;
+  let hiR = -Infinity, loR = Infinity;
+  for (let j = i - SQZ_K + 1; j <= i; j++) { hiR = Math.max(hiR, klines[j].high); loR = Math.min(loR, klines[j].low); }
+  let hiP = -Infinity, loP = Infinity;
+  for (let j = Math.max(0, i - widerN + 1); j <= i; j++) { hiP = Math.max(hiP, klines[j].high); loP = Math.min(loP, klines[j].low); }
+  const rangeRecent = (hiR - loR) / klines[i].close, rangeWider = (hiP - loP) / klines[i].close;
+  if (rangeWider <= 0 || rangeRecent / rangeWider > SQZ_RANGE_DRY_RATIO) return null;
+  return { hiR, loR };
+}
+function checkSqueeze(klines) {
+  if (!klines || !klines.length) return null;
+  return _sqzCond(klines, klines.length - 1);
+}
+function _drawSqzChannel(candleS, klines, lineRefs) {
+  // lineRefs = { hi, lo } — oggetto mutabile con le price line correnti, aggiornato in place
+  const hit = checkSqueeze(klines);
+  if (hit) {
+    if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} }
+    if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} }
+    lineRefs.hi = candleS.createPriceLine({ price: hit.hiR, color:'#22d3ee', lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'Squeeze' });
+    lineRefs.lo = candleS.createPriceLine({ price: hit.loR, color:'#22d3ee', lineWidth:1, lineStyle:2, axisLabelVisible:false, title:'' });
+  } else {
+    if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} lineRefs.hi = null; }
+    if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} lineRefs.lo = null; }
+  }
+}
+function _clearSqzChannel(candleS, lineRefs) {
+  if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} lineRefs.hi = null; }
+  if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} lineRefs.lo = null; }
+}
+function toggleSqueeze() {
+  sqzActive = !sqzActive;
+  const btn = document.getElementById('sqz-btn');
+  btn.style.color = sqzActive ? '#22d3ee' : '#B2B5BE';
+  slots.forEach(s => {
+    if (sqzActive) _drawSqzChannel(s.candleS, s.klines, s.sqzLines);
+    else _clearSqzChannel(s.candleS, s.sqzLines);
+  });
+  if (fsChart) applyFsSqueeze();
+}
+
+// ── Nascondi indicatori (naked chart) — stesso bottone/logica della pagina Trade ──
+function toggleNakedChart() {
+  nakedChart = !nakedChart;
+  const btn = document.getElementById('naked-btn');
+  if (btn) {
+    btn.style.color = nakedChart ? '#38bdf8' : '#B2B5BE';
+    btn.title = nakedChart ? window.t('ob_tt_show_ind') : window.t('ob_tt_hide_ind');
+    const onIcon  = document.getElementById('naked-icon-on');
+    const offIcon = document.getElementById('naked-icon-off');
+    if (onIcon)  onIcon.style.display  = nakedChart ? 'none' : 'block';
+    if (offIcon) offIcon.style.display = nakedChart ? 'block' : 'none';
+  }
+  slots.forEach(s => {
+    for (const {p} of EMA_CFG) {
+      if (s.emaS[p]) try { s.emaS[p].applyOptions({ visible: !nakedChart }); } catch(e) {}
+    }
+    for (const key of ['dayHighLine','dayLowLine','prevHighLine','prevLowLine','athLine','atlLine']) {
+      if (s[key]) try { s[key].applyOptions({ lineVisible: !nakedChart, axisLabelVisible: !nakedChart }); } catch(e) {}
+    }
+  });
+  _applyNakedStateFS();
+}
+
+// ── Channel fill primitive (riempimento canale tra upper e lower) ──────────────
+class _ChannelFillPrimitive {
+  constructor(slot, chart) {
+    this._slot = slot;
+    this._series = null;
+    const renderer = {
+      draw: target => target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio, verticalPixelRatio }) => {
+        const s = this._slot, series = this._series;
+        if (!series || !channelActive || !s.channelData) return;
+        const { upper, lower } = s.channelData;
+        if (!upper.length || !lower.length) return;
+        const ts = chart.timeScale();
+        ctx.save();
+        ctx.beginPath();
+        let started = false;
+        for (let i = 0; i < upper.length; i++) {
+          const x = ts.timeToCoordinate(upper[i].time);
+          const y = series.priceToCoordinate(upper[i].value);
+          if (x == null || y == null) continue;
+          const xp = x * horizontalPixelRatio, yp = y * verticalPixelRatio;
+          if (!started) { ctx.moveTo(xp, yp); started = true; } else ctx.lineTo(xp, yp);
+        }
+        for (let i = lower.length - 1; i >= 0; i--) {
+          const x = ts.timeToCoordinate(lower[i].time);
+          const y = series.priceToCoordinate(lower[i].value);
+          if (x == null || y == null) continue;
+          ctx.lineTo(x * horizontalPixelRatio, y * verticalPixelRatio);
+        }
+        if (started) { const _cfg = getChannelCfg(); ctx.closePath(); ctx.fillStyle = _hexToRgba(_cfg.bgColor, (_cfg.bgOpacity ?? 10) / 100); ctx.fill(); }
+        ctx.restore();
+      })
+    };
+    this._view = { renderer: () => renderer, zOrder: () => 'bottom' };
+  }
+  attached({ series }) { this._series = series; }
+  detached() { this._series = null; }
+  updateAllViews() {}
+  paneViews() { return [this._view]; }
+}
+
+// ── OB Levels band fill (riempimento tra le linee bid/ask) ────────────────────
+class _ObBandFillPrimitive {
+  constructor(slot) {
+    this._slot = slot;
+    this._series = null;
+    const renderer = {
+      draw: target => target.useBitmapCoordinateSpace(({ context: ctx, bitmapSize, verticalPixelRatio }) => {
+        const s = this._slot, series = this._series;
+        if (!series || !s.obActive || s.obBidVal == null || s.obAskVal == null) return;
+        const y1 = series.priceToCoordinate(s.obBidVal), y2 = series.priceToCoordinate(s.obAskVal);
+        if (y1 == null || y2 == null) return;
+        const top = Math.min(y1, y2) * verticalPixelRatio, bot = Math.max(y1, y2) * verticalPixelRatio;
+        ctx.save();
+        ctx.fillStyle = _hexToRgba(getLvCfg().obBid.color, 0.12);
+        ctx.fillRect(0, top, bitmapSize.width, Math.max(1, bot - top));
+        ctx.restore();
+      })
+    };
+    this._view = { renderer: () => renderer, zOrder: () => 'bottom' };
+  }
+  attached({ series }) { this._series = series; }
+  detached() { this._series = null; }
+  updateAllViews() {}
+  paneViews() { return [this._view]; }
+}
+
+function addS(chart, type, opts, paneIndex) {
+  if (typeof chart.addSeries==='function' && LC[type]) return paneIndex != null ? chart.addSeries(LC[type], opts, paneIndex) : chart.addSeries(LC[type], opts);
   const m = {CandlestickSeries:'addCandlestickSeries',LineSeries:'addLineSeries'};
   return chart[m[type]](opts);
 }
@@ -325,11 +549,27 @@ function addS(chart, type, opts) {
 const _MTF_TF_SECS = {'1':60,'5':300,'30':1800,'60':3600,'240':14400,'D':86400,'W':604800};
 function _mtfCdRemain(tf) {
     const now = Math.floor(Date.now()/1000), sec = _MTF_TF_SECS[tf];
+    if (tf === 'M') { const d=new Date(now*1000); return Math.max(0, Math.ceil((Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+1, 1) - now*1000) / 1000)); }
     if (!sec) return 0;
     if (tf === 'W') { const d=new Date(now*1000),dow=d.getUTCDay(); return 604800-(((dow===0?6:dow-1)*86400+now%86400)%604800); }
     if (tf === 'D') return 86400-(now%86400);
     return sec-(now%sec);
 }
+const _MTF_CD_WARN_S  = {'1':30, '5':60, '30':300, '60':600, '240':300, 'D':3600, 'W':86400, 'M':86400};
+const _MTF_CD_BLINK_S = {'1':10, '5':10, '30':60,  '60':60};
+function updateFSCountdown() {
+    for (const {tf} of FS_TFS) {
+        const el = document.getElementById('fs-tf-cd-' + tf);
+        if (!el) continue;
+        const rem = _mtfCdRemain(tf);
+        const warn = rem <= _MTF_CD_WARN_S[tf];
+        const blink = _MTF_CD_BLINK_S[tf] != null && rem <= _MTF_CD_BLINK_S[tf];
+        el.textContent = _mtfCdFmt(rem);
+        el.style.color = warn ? '#FF9C2E' : '#F3F4F6';
+        el.classList.toggle('tf-cd-blink', blink);
+    }
+}
+setInterval(updateFSCountdown, 1000);
 function _mtfCdFmt(s) {
     if (s<=0) return '0:00';
     if (s>=3600) { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60; return `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; }
@@ -351,7 +591,7 @@ class _MtfCountdownPrimitive {
         return [{coordinate:()=>y+17,text:()=>_mtfCdFmt(rem),textColor:()=>'#FFFFFF',backColor:()=>bull?'#20B26C':'#EF454A'}];
     }
 }
-setInterval(()=>{ for(const s of slots){if(s.chart)try{s.chart.applyOptions({});}catch(e){}} },1000);
+setInterval(()=>{ for(const s of slots){if(s.chart)try{s.chart.applyOptions({});}catch(e){}} if(fsChart)try{fsChart.applyOptions({});}catch(e){} },1000);
 
 function makeChart(el, bigSlot) {
   const chart = LC.createChart(el, {
@@ -365,9 +605,6 @@ function makeChart(el, bigSlot) {
       barSpacing: bigSlot ? 8 : 6, rightOffset: bigSlot ? 20 : 15,
     },
   });
-  el.addEventListener('wheel', () => {
-    requestAnimationFrame(() => { chart.priceScale('right').applyOptions({ autoScale: true }); });
-  }, { passive: true });
   return chart;
 }
 
@@ -429,6 +666,13 @@ const fsBtn = document.createElement('button');
     fsBtn.onclick = () => openFSModal(i);
     if (isMobile) fsBtn.style.display = 'none';
 
+    const clearDrawBtn = document.createElement('button');
+    clearDrawBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" style="vertical-align:middle" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>';
+    clearDrawBtn.title = window.t('clear_drawings'); clearDrawBtn.dataset.i18nTitle = 'clear_drawings';
+    clearDrawBtn.style.cssText = 'display:none;font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
+    clearDrawBtn.onmouseenter = () => clearDrawBtn.style.color = '#B2B5BE';
+    clearDrawBtn.onmouseleave = () => clearDrawBtn.style.color = '#4B5563';
+    clearDrawBtn.onclick = () => clearSlotDrawings(i);
     const rangeBtn = document.createElement('button');
     rangeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="13" height="13" style="vertical-align:middle"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg>'; rangeBtn.title = window.t('price_range');
     rangeBtn.style.cssText = 'font-size:13px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s;';
@@ -449,7 +693,7 @@ const fsBtn = document.createElement('button');
     trendBtn.onmouseenter = () => { if (!slots[i]?.trendActive) trendBtn.style.color = '#B2B5BE'; };
     trendBtn.onmouseleave = () => { if (!slots[i]?.trendActive) trendBtn.style.color = '#4B5563'; };
     trendBtn.onclick = () => toggleSlotTrend(i);
-    hdr.append(tfLbl, spacer, pctEl, rangeBtn, hlineBtn, trendBtn, fsBtn);
+    hdr.append(tfLbl, spacer, pctEl, clearDrawBtn, rangeBtn, hlineBtn, trendBtn, fsBtn);
     cell.appendChild(hdr);
 
     // ── chart body ─────────────────────────────────────────────────────────
@@ -535,7 +779,7 @@ const fsBtn = document.createElement('button');
     });
 
     slots.push({
-      cfg, chart, candleS, emaS, cell, rangeCanvas, rangeBtn, hlineCanvas, hlineBtn, trendCanvas, trendBtn,
+      cfg, chart, candleS, emaS, cell, rangeCanvas, rangeBtn, hlineCanvas, hlineBtn, trendCanvas, trendBtn, clearDrawBtn,
       alertBtn: alertBtnEl,
       klineCount: 0,
       lastEMA: {5:null,10:null,60:null,223:null},
@@ -544,7 +788,7 @@ const fsBtn = document.createElement('button');
       athLine:null, atlLine:null,
       rangeActive: false, rangeP1: null, _rangeMD: null, _rangeMM: null, _rangeMU: null, _rangeCM: null, _rangeHoverLine: null, _rangeHoverMM: null, _rangeHoverML: null,
       hlineActive: false, hlines: [], _hlineMD: null, _hlineMM: null, _hlineMU: null, _hlineCM: null, _hlineDragging: null, _hlineHoverLine: null, _hlineHoverMM: null, _hlineHoverML: null,
-      trendActive: false, trendlines: [], _trendP1: null, _trendPrev: null, _trendMD: null, _trendMM: null, _trendMU: null, _trendCM: null, _trendDrag: null, _trendSub: null, _trendHoverLine: null,
+      trendActive: false, trendlines: [], _trendP1: null, _trendPrev: null, _trendMD: null, _trendMM: null, _trendMU: null, _trendCM: null, _trendDrag: null, _trendRAF: null, _trendHoverLine: null,
       dayPrimitive: null,
       lastCandleStartUtc: null,
       lastWsMs: 0,
@@ -553,10 +797,13 @@ const fsBtn = document.createElement('button');
       crosshairPrice: null,
       alertLines: new Map(),
       bbSeries: {upper:null, mid:null, lower:null},
+      channelSeries: {upper:null, mid:null, lower:null}, channelData: null,
+      sqzLines: {hi:null, lo:null},
       klines: [],
     });
     try { candleS.attachPrimitive(new _MtfCountdownPrimitive(slots[slots.length-1])); } catch(e) {}
-    chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.cfg.tf), to: s.klineCount + 3 }); });
+    try { candleS.attachPrimitive(new _ChannelFillPrimitive(slots[slots.length-1], chart)); } catch(e) {}
+    chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) { s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.cfg.tf), to: s.klineCount + 3 }); s.chart.priceScale('right').applyOptions({ autoScale: true }); } });
   });
 }
 
@@ -689,6 +936,7 @@ function openWS() {
       high:  parseFloat(b.high),
       low:   parseFloat(b.low),
       close: parseFloat(b.close),
+      volume: parseFloat(b.volume) || 0,
     };
     const s = slots[idx];
     s.lastCandleStartUtc = candleStart;
@@ -706,10 +954,13 @@ function openWS() {
     if (s.klines.length > 0) {
       const last = s.klines[s.klines.length-1];
       if (last.time === candle.time) {
-        s.klines[s.klines.length-1] = {time:candle.time,open:last.open,high:Math.max(last.high,candle.high),low:Math.min(last.low,candle.low),close:candle.close};
+        s.klines[s.klines.length-1] = {time:candle.time,open:last.open,high:Math.max(last.high,candle.high),low:Math.min(last.low,candle.low),close:candle.close,volume:candle.volume};
       } else {
         s.klines.push({...candle});
       }
+    }
+    if (sqzActive) {
+      _drawSqzChannel(s.candleS, s.klines, s.sqzLines);
     }
     if (bbActive && s.bbSeries.upper) {
       const _bb = getBbCfg();
@@ -720,6 +971,21 @@ function openWS() {
         s.bbSeries.upper.update({time:candle.time, value:mean+_bb.mult*std});
         s.bbSeries.mid.update(  {time:candle.time, value:mean});
         s.bbSeries.lower.update({time:candle.time, value:mean-_bb.mult*std});
+      }
+    }
+    if (channelActive && s.channelSeries.upper && s.klines.length >= getChannelCfg().period) {
+      const _cper = getChannelCfg().period;
+      const csl = s.klines.slice(-_cper);
+      let sumC=0, sumH=0, sumL=0;
+      for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
+      const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
+      s.channelSeries.mid.update(  {time:candle.time, value:liveC});
+      s.channelSeries.upper.update({time:candle.time, value:liveH});
+      s.channelSeries.lower.update({time:candle.time, value:liveL});
+      if (s.channelData) {
+        const _cdUpd = (arr, val) => { const last = arr[arr.length-1], pt = {time:candle.time, value:val}; if (last && last.time === candle.time) arr[arr.length-1] = pt; else arr.push(pt); };
+        _cdUpd(s.channelData.upper, liveH);
+        _cdUpd(s.channelData.lower, liveL);
       }
     }
   };
@@ -777,6 +1043,7 @@ function initOBChart() {
         upColor:'#20B26C', downColor:'#EF454A',
         borderVisible:false, wickUpColor:'#20B26C', wickDownColor:'#EF454A',
     });
+    try { obCandleS.attachPrimitive(new _ObBandFillPrimitive(_obModalSlot)); } catch(e) {}
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
     for (const {p, color, width, style} of EMA_CFG)
         obEmaS[p] = addS(obChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5, lineStyle:style??0});
@@ -806,6 +1073,7 @@ function _clearOBLines() {
     obBidLine = obAskLine = null;
     obDayHighLine = obDayLowLine = null;
     obPrevHighLine = obPrevLowLine = null;
+    obModalBidVal = null; obModalAskVal = null;
 }
 
 async function loadOBData() {
@@ -904,6 +1172,7 @@ window.addEventListener('message', e => {
     if (obBidLine) { try { obCandleS.removePriceLine(obBidLine); } catch(e) {} obBidLine = null; }
     if (obAskLine) { try { obCandleS.removePriceLine(obAskLine); } catch(e) {} obAskLine = null; }
     const _moblv = getLvCfg();
+    obModalBidVal = bid; obModalAskVal = ask;
     if (bid != null && _moblv.obBid.vis?.mtf !== false) obBidLine = obCandleS.createPriceLine({ price: bid, color:_moblv.obBid.color, lineWidth:_moblv.obBid.width, lineStyle:_moblv.obBid.style, axisLabelVisible:true, title:'Bid' });
     if (ask != null && _moblv.obAsk.vis?.mtf !== false) obAskLine = obCandleS.createPriceLine({ price: ask, color:_moblv.obAsk.color, lineWidth:_moblv.obAsk.width, lineStyle:_moblv.obAsk.style, axisLabelVisible:true, title:'Ask' });
 });
@@ -924,13 +1193,20 @@ let fsChart = null, fsCandleS = null, fsEmaS = {}, fsLastEMA = {};
 let fsTF = 'D', fsWS = null, fsWsTimer = null, fsKlineCount = 0;
 let fsDayHighLine = null, fsDayLowLine = null, fsPrevHighLine = null, fsPrevLowLine = null;
 let fsAthLine = null, fsAtlLine = null;
+let fsKlines = [];
+let fsBbSeries = { upper: null, mid: null, lower: null };
+let fsChannelSeries = { upper: null, mid: null, lower: null }, fsChannelData = null;
+let fsSqzLines = { hi: null, lo: null };
+const fsChannelSlot = { get channelData() { return fsChannelData; } };
 let fsDayPrimitive = null, obDayPrimitive = null;
+let fsLastPrice = null, fsLastOpen = null;
+const fsCdSlot = { cfg: { get tf() { return fsTF; } }, get lastPrice() { return fsLastPrice; }, get lastOpen() { return fsLastOpen; } };
 let fsRangeActive = false, fsRangeP1 = null, _fsRangeMD = null, _fsRangeMM = null, _fsRangeMU = null, _fsRangeCM = null;
 let _fsRangeHoverLine = null, _fsRangeHoverMM = null, _fsRangeHoverML = null;
 let fsHlineActive = false, fsHlines = [], _fsHlineMD = null, _fsHlineMM = null, _fsHlineMU = null, _fsHlineCM = null, _fsHlineDragging = null;
 let _fsHlineHoverLine = null, _fsHlineHoverMM = null, _fsHlineHoverML = null;
 let fsTrendActive = false, fsTrendlines = [], _fsTrendP1 = null, _fsTrendPrev = null;
-let _fsTrendMD = null, _fsTrendMM = null, _fsTrendMU = null, _fsTrendCM = null, _fsTrendDrag = null, _fsTrendSub = null;
+let _fsTrendMD = null, _fsTrendMM = null, _fsTrendMU = null, _fsTrendCM = null, _fsTrendDrag = null, _fsTrendRAF = null;
 let _fsTrendHoverLine = null;
 
 function initFSChart() {
@@ -943,7 +1219,9 @@ function initFSChart() {
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
     for (const {p, color, width, style} of EMA_CFG)
         fsEmaS[p] = addS(fsChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5, lineStyle:style??0});
-    fsChart.subscribeDblClick(() => { if (fsKlineCount) fsChart.timeScale().setVisibleLogicalRange({ from: fsKlineCount - getCandlesForTF(fsTF), to: fsKlineCount + 3 }); });
+    try { fsCandleS.attachPrimitive(new _ChannelFillPrimitive(fsChannelSlot, fsChart)); } catch(e) {}
+    try { fsCandleS.attachPrimitive(new _MtfCountdownPrimitive(fsCdSlot)); } catch(e) {}
+    fsChart.subscribeDblClick(() => { if (fsKlineCount) { fsChart.timeScale().setVisibleLogicalRange({ from: fsKlineCount - getCandlesForTF(fsTF), to: fsKlineCount + 3 }); fsChart.priceScale('right').applyOptions({ autoScale: true }); } });
     const fsPctEl = document.getElementById('fs-pct');
     fsChart.subscribeCrosshairMove(param => {
         if (!param || !param.seriesData) { fsPctEl.textContent = ''; return; }
@@ -961,8 +1239,12 @@ function initFSChart() {
 function renderFSTFBar() {
     document.getElementById('fs-tf-bar').innerHTML = FS_TFS.map(({tf, label}) => {
         const active = tf === fsTF;
-        return `<button onclick="switchFSTF('${tf}')" style="font-size:11px;padding:2px 8px;border-radius:3px;border:none;cursor:pointer;background:transparent;color:${active?'#FF9C2E':'#B2B5BE'};font-weight:${active?'700':'400'};">${label}</button>`;
+        return `<button onclick="switchFSTF('${tf}')" style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px 8px;border-radius:3px;border:none;cursor:pointer;background:transparent;color:${active?'#FF9C2E':'#B2B5BE'};font-weight:${active?'700':'400'};">
+            <span style="font-size:11px;line-height:1.3;">${label}</span>
+            <span id="fs-tf-cd-${tf}" style="font-size:10px;font-family:monospace;color:#F3F4F6;line-height:1;min-width:28px;text-align:center;"></span>
+        </button>`;
     }).join('');
+    updateFSCountdown();
 }
 
 async function switchFSTF(tf) {
@@ -973,6 +1255,12 @@ async function switchFSTF(tf) {
     fsCandleS.setData([]);
     for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
     fsLastEMA = {};
+    for (const k of ['upper','mid','lower']) {
+        if (fsBbSeries[k])      { try { fsChart.removeSeries(fsBbSeries[k]); } catch(e) {} fsBbSeries[k] = null; }
+        if (fsChannelSeries[k]) { try { fsChart.removeSeries(fsChannelSeries[k]); } catch(e) {} fsChannelSeries[k] = null; }
+    }
+    _clearSqzChannel(fsCandleS, fsSqzLines);
+    fsChannelData = null; fsKlines = [];
     await loadFSData(); connectFSWS();
 }
 
@@ -981,6 +1269,55 @@ function _clearFSLines() {
         if (ref) try { fsCandleS.removePriceLine(ref); } catch(e) {}
     fsDayHighLine = fsDayLowLine = fsPrevHighLine = fsPrevLowLine = null;
     fsAthLine = fsAtlLine = null;
+}
+
+// ── BB / Canale SMA / naked-chart nella modale fullscreen — stesso stato del grid ──
+function applyFsBB() {
+    for (const k of ['upper','mid','lower']) {
+        if (fsBbSeries[k]) { try { fsChart.removeSeries(fsBbSeries[k]); } catch(e) {} fsBbSeries[k] = null; }
+    }
+    if (!bbActive || !fsChart) return;
+    const _bbCfg = getBbCfg();
+    const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
+    fsBbSeries.upper = addS(fsChart,'LineSeries',{...lb,color:_bbCfg.color,lineWidth:_bbCfg.width,lineStyle:_bbCfg.style});
+    fsBbSeries.mid   = addS(fsChart,'LineSeries',{...lb,color:_bbCfg.color,lineWidth:_bbCfg.width,lineStyle:2});
+    fsBbSeries.lower = addS(fsChart,'LineSeries',{...lb,color:_bbCfg.color,lineWidth:_bbCfg.width,lineStyle:_bbCfg.style});
+    if (fsKlines.length >= _bbCfg.period) {
+        const bb = calcBB(fsKlines, _bbCfg.period, _bbCfg.mult);
+        fsBbSeries.upper.setData(bb.upper);
+        fsBbSeries.mid.setData(bb.mid);
+        fsBbSeries.lower.setData(bb.lower);
+    }
+}
+function applyFsChannel() {
+    for (const k of ['upper','mid','lower']) {
+        if (fsChannelSeries[k]) { try { fsChart.removeSeries(fsChannelSeries[k]); } catch(e) {} fsChannelSeries[k] = null; }
+    }
+    fsChannelData = null;
+    if (!channelActive || !fsChart) return;
+    const _chCfg = getChannelCfg();
+    const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
+    fsChannelSeries.upper = addS(fsChart,'LineSeries',{...lb,color:_chCfg.color,lineWidth:_chCfg.width,lineStyle:_chCfg.style});
+    fsChannelSeries.mid   = addS(fsChart,'LineSeries',{...lb,color:_chCfg.color,lineWidth:_chCfg.width,lineStyle:2});
+    fsChannelSeries.lower = addS(fsChart,'LineSeries',{...lb,color:_chCfg.color,lineWidth:_chCfg.width,lineStyle:_chCfg.style});
+    if (fsKlines.length >= _chCfg.period) {
+        const c = calcChannel(fsKlines, _chCfg.period);
+        fsChannelSeries.upper.setData(c.upper);
+        fsChannelSeries.mid.setData(c.mid);
+        fsChannelSeries.lower.setData(c.lower);
+        fsChannelData = {upper:c.upper, lower:c.lower};
+    }
+}
+function applyFsSqueeze() {
+    if (!fsChart || !fsCandleS) return;
+    if (!sqzActive) { _clearSqzChannel(fsCandleS, fsSqzLines); return; }
+    _drawSqzChannel(fsCandleS, fsKlines, fsSqzLines);
+}
+function _applyNakedStateFS() {
+    if (!fsCandleS) return;
+    for (const {p} of EMA_CFG) if (fsEmaS[p]) try { fsEmaS[p].applyOptions({ visible: !nakedChart }); } catch(e) {}
+    for (const ref of [fsDayHighLine, fsDayLowLine, fsPrevHighLine, fsPrevLowLine, fsAthLine, fsAtlLine])
+        if (ref) try { ref.applyOptions({ lineVisible: !nakedChart, axisLabelVisible: !nakedChart }); } catch(e) {}
 }
 
 async function loadFSData() {
@@ -992,7 +1329,8 @@ async function loadFSData() {
         const j = await r.json(); const jd = await rd.json();
         if (!j.success) return;
         const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
-        fsCandleS.setData(klines); fsKlineCount = klines.length; _clearFSLines();
+        fsCandleS.setData(klines); fsKlineCount = klines.length; fsKlines = klines.slice(); _clearFSLines();
+        if (klines.length) { fsLastPrice = klines[klines.length-1].close; fsLastOpen = klines[klines.length-1].open; }
         fsDayPrimitive = attachDayLines(fsCandleS, fsChart, klines, fsTF, fsDayPrimitive);
         fsCandleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
         for (const {p} of EMA_CFG) {
@@ -1000,7 +1338,11 @@ async function loadFSData() {
             fsEmaS[p].setData(ema);
             fsLastEMA[p] = ema[ema.length - 1].value;
         }
+        applyFsBB();
+        applyFsChannel();
+        applyFsSqueeze();
         fsChart.timeScale().setVisibleLogicalRange({ from: fsKlineCount - getCandlesForTF(fsTF), to: fsKlineCount + 3 });
+        fsChart.priceScale('right').applyOptions({ autoScale: true });
         if (jd.success && jd.data && jd.data.length) {
             const today = jd.data[jd.data.length - 1];
             const _fslvl = getLvCfg();
@@ -1023,14 +1365,52 @@ function connectFSWS() {
         let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
         if (!msg.topic || !msg.topic.startsWith('kline.')) return;
         const b = msg.data[0]; const confirmed = b.confirm === true || b.confirm === 'true';
-        const candle = { time: Math.floor(parseInt(b.start)/1000) + TZ_OFFSET_S, open: parseFloat(b.open), high: parseFloat(b.high), low: parseFloat(b.low), close: parseFloat(b.close) };
+        const candle = { time: Math.floor(parseInt(b.start)/1000) + TZ_OFFSET_S, open: parseFloat(b.open), high: parseFloat(b.high), low: parseFloat(b.low), close: parseFloat(b.close), volume: parseFloat(b.volume) || 0 };
         fsCandleS.update(candle);
+        fsLastPrice = candle.close; fsLastOpen = candle.open;
         for (const {p} of EMA_CFG) {
             if (fsLastEMA[p] == null) continue;
             const k = 2/(p+1);
             const live = candle.close * k + fsLastEMA[p] * (1-k);
             fsEmaS[p].update({ time: candle.time, value: live });
             if (confirmed) fsLastEMA[p] = live;
+        }
+        if (fsKlines.length > 0) {
+            const last = fsKlines[fsKlines.length-1];
+            if (last.time === candle.time) {
+                fsKlines[fsKlines.length-1] = {time:candle.time, open:last.open, high:Math.max(last.high,candle.high), low:Math.min(last.low,candle.low), close:candle.close, volume:candle.volume};
+            } else {
+                fsKlines.push({...candle});
+            }
+            if (sqzActive) {
+                _drawSqzChannel(fsCandleS, fsKlines, fsSqzLines);
+            }
+            if (bbActive && fsBbSeries.upper) {
+                const _bb = getBbCfg();
+                if (fsKlines.length >= _bb.period) {
+                    const sl = fsKlines.slice(-_bb.period);
+                    const mean = sl.reduce((a,c)=>a+c.close,0)/_bb.period;
+                    const std  = Math.sqrt(sl.reduce((a,c)=>a+(c.close-mean)**2,0)/_bb.period);
+                    fsBbSeries.upper.update({time:candle.time, value:mean+_bb.mult*std});
+                    fsBbSeries.mid.update(  {time:candle.time, value:mean});
+                    fsBbSeries.lower.update({time:candle.time, value:mean-_bb.mult*std});
+                }
+            }
+            if (channelActive && fsChannelSeries.upper && fsKlines.length >= getChannelCfg().period) {
+                const _cper = getChannelCfg().period;
+                const csl = fsKlines.slice(-_cper);
+                let sumC=0, sumH=0, sumL=0;
+                for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
+                const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
+                fsChannelSeries.mid.update(  {time:candle.time, value:liveC});
+                fsChannelSeries.upper.update({time:candle.time, value:liveH});
+                fsChannelSeries.lower.update({time:candle.time, value:liveL});
+                if (fsChannelData) {
+                    const _cdUpd = (arr, val) => { const last2 = arr[arr.length-1], pt = {time:candle.time, value:val}; if (last2 && last2.time === candle.time) arr[arr.length-1] = pt; else arr.push(pt); };
+                    _cdUpd(fsChannelData.upper, liveH);
+                    _cdUpd(fsChannelData.lower, liveL);
+                }
+            }
         }
     };
     fsWS.onerror = () => {};
@@ -1051,10 +1431,11 @@ function openFSModal(idx) {
     _clearFSLines();
     for (const hl of fsHlines) { try { fsCandleS.removePriceLine(hl.priceLine); } catch(ex) {} }
     fsHlines = [];
-    if (_fsTrendSub) { try { fsCandleS.chart?.timeScale().unsubscribeVisibleTimeRangeChange(_fsTrendSub); } catch(ex) {} }
+    if (_fsTrendRAF) { cancelAnimationFrame(_fsTrendRAF); _fsTrendRAF = null; }
     if (fsTrendActive) { fsTrendActive = false; const _fb = document.getElementById('fs-trend-btn'); if (_fb) _fb.style.color = '#B2B5BE'; }
-    fsTrendlines = []; _fsTrendP1 = null; _fsTrendPrev = null; _fsTrendDrag = null; _fsTrendSub = null;
+    fsTrendlines = []; _fsTrendP1 = null; _fsTrendPrev = null; _fsTrendDrag = null;
     try { const _ftc = document.getElementById('fs-trend-canvas'); if (_ftc) { const ctx = _ftc.getContext('2d'); ctx.clearRect(0,0,_ftc.width,_ftc.height); _ftc.style.pointerEvents = 'none'; _ftc.style.cursor = ''; } } catch(ex) {}
+    _syncFsClearBtn();
     if (fsDayPrimitive) { try { fsCandleS.detachPrimitive(fsDayPrimitive); } catch(e) {} fsDayPrimitive = null; }
     fsCandleS.setData([]);
     for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
@@ -1064,6 +1445,7 @@ function openFSModal(idx) {
         const _fslv2 = getLvCfg();
         if (_mtfAthVal != null && _fslv2.ath.vis?.mtf !== false) fsAthLine = fsCandleS.createPriceLine({price:_mtfAthVal, color:_fslv2.ath.color, lineWidth:_fslv2.ath.width, lineStyle:_fslv2.ath.style, axisLabelVisible:false, title:''});
         if (_mtfAtlVal != null && _fslv2.atl.vis?.mtf !== false) fsAtlLine = fsCandleS.createPriceLine({price:_mtfAtlVal, color:_fslv2.atl.color, lineWidth:_fslv2.atl.width, lineStyle:_fslv2.atl.style, axisLabelVisible:false, title:''});
+        _applyNakedStateFS();
     });
 }
 
@@ -1079,6 +1461,11 @@ function closeFSModal() {
         fsCandleS.setData([]);
         for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
         fsLastEMA = {};
+        for (const k of ['upper','mid','lower']) {
+            if (fsBbSeries[k])      { try { fsChart.removeSeries(fsBbSeries[k]); } catch(e) {} fsBbSeries[k] = null; }
+            if (fsChannelSeries[k]) { try { fsChart.removeSeries(fsChannelSeries[k]); } catch(e) {} fsChannelSeries[k] = null; }
+        }
+        fsChannelData = null; fsKlines = [];
     }
 }
 
@@ -1193,6 +1580,23 @@ function _drawRangeCanvas(canvas, series, p1, p2) {
   ctx.fillText(label, lx, ly);
 }
 
+function _syncClearBtn(s) {
+  if (s && s.clearDrawBtn) s.clearDrawBtn.style.display = (s.hlines.length || s.trendlines.length) ? '' : 'none';
+}
+
+function clearSlotDrawings(idx) {
+  const s = slots[idx];
+  if (!s) return;
+  for (const hl of s.hlines) { try { s.candleS.removePriceLine(hl.priceLine); } catch(e) {} }
+  s.hlines = [];
+  for (const tl of s.trendlines) {
+    if (tl.pl1) try { s.candleS.removePriceLine(tl.pl1); } catch(e) {}
+    if (tl.pl2) try { s.candleS.removePriceLine(tl.pl2); } catch(e) {}
+  }
+  s.trendlines = [];
+  try { _trendDrawAll(s); } catch(e) {}
+}
+
 function toggleSlotRange(idx) {
   const s = slots[idx];
   if (!s.rangeActive) { if (s.hlineActive) toggleSlotHline(idx); if (s.trendActive) toggleSlotTrend(idx); }
@@ -1249,6 +1653,23 @@ function toggleSlotRange(idx) {
     s.rangeCanvas.addEventListener('mousemove', s._rangeHoverMM);
     s.rangeCanvas.addEventListener('mouseleave', s._rangeHoverML);
   }
+}
+
+function _syncFsClearBtn() {
+  const b = document.getElementById('fs-clear-draw-btn');
+  if (b) b.style.display = (fsHlines.length || fsTrendlines.length) ? '' : 'none';
+}
+
+function clearFsDrawings() {
+  if (!fsCandleS) return;
+  for (const hl of fsHlines) { try { fsCandleS.removePriceLine(hl.priceLine); } catch(e) {} }
+  fsHlines = [];
+  for (const tl of fsTrendlines) {
+    if (tl.pl1) try { fsCandleS.removePriceLine(tl.pl1); } catch(e) {}
+    if (tl.pl2) try { fsCandleS.removePriceLine(tl.pl2); } catch(e) {}
+  }
+  fsTrendlines = [];
+  try { _fsTrendDrawAll(); } catch(e) {}
 }
 
 function toggleFsRange() {
@@ -1346,7 +1767,7 @@ function toggleSlotHline(idx) {
       else {
         const rect = s.hlineCanvas.getBoundingClientRect();
         const price = s.candleS.coordinateToPrice(e.clientY - rect.top);
-        if (price != null) { const pl = s.candleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' }); s.hlines.push({ priceLine: pl, price }); }
+        if (price != null) { const pl = s.candleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' }); s.hlines.push({ priceLine: pl, price }); _syncClearBtn(s); }
       }
     };
     s._hlineMM = e => {
@@ -1366,7 +1787,7 @@ function toggleSlotHline(idx) {
     s._hlineCM = e => {
       e.preventDefault();
       const nearest = _hlineNearest(s, e.clientY);
-      if (nearest) { try { s.candleS.removePriceLine(nearest.priceLine); } catch(ex) {} s.hlines = s.hlines.filter(h => h !== nearest); }
+      if (nearest) { try { s.candleS.removePriceLine(nearest.priceLine); } catch(ex) {} s.hlines = s.hlines.filter(h => h !== nearest); _syncClearBtn(s); }
       else toggleSlotHline(idx);
     };
     s.hlineCanvas.addEventListener('mousedown', s._hlineMD);
@@ -1425,7 +1846,7 @@ function toggleFsHline() {
       else {
         const rect = canvas.getBoundingClientRect();
         const price = fsCandleS.coordinateToPrice(e.clientY - rect.top);
-        if (price != null) { const pl = fsCandleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' }); fsHlines.push({ priceLine: pl, price }); }
+        if (price != null) { const pl = fsCandleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' }); fsHlines.push({ priceLine: pl, price }); _syncFsClearBtn(); }
       }
     };
     _fsHlineMM = e => {
@@ -1445,7 +1866,7 @@ function toggleFsHline() {
     _fsHlineCM = e => {
       e.preventDefault();
       const nearest = _fsHlineNearest(e.clientY);
-      if (nearest) { try { fsCandleS.removePriceLine(nearest.priceLine); } catch(ex) {} fsHlines = fsHlines.filter(h => h !== nearest); }
+      if (nearest) { try { fsCandleS.removePriceLine(nearest.priceLine); } catch(ex) {} fsHlines = fsHlines.filter(h => h !== nearest); _syncFsClearBtn(); }
       else toggleFsHline();
     };
     canvas.addEventListener('mousedown', _fsHlineMD);
@@ -1481,6 +1902,7 @@ function _trendDrawExt(ctx, x1, y1, x2, y2, W, H, color, lw) {
 }
 
 function _trendDrawAll(s) {
+  _syncClearBtn(s);
   const canvas = s.trendCanvas; _trendSync(canvas);
   const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
@@ -1506,6 +1928,19 @@ function _trendDrawAll(s) {
       }
     } catch(ex) {}
   }
+}
+
+// Ridisegna a ogni frame invece che sul solo evento visibleTimeRangeChange:
+// il drag della price-scale e il pan non generano quell'evento in modo
+// continuo, quindi le linee restavano ferme o disallineate dalle candele.
+function _trendEnsureRAF(s) {
+  if (s._trendRAF) return;
+  const tick = () => {
+    if (!s.chart || !s.candleS || (!s.trendlines.length && !s.trendActive)) { s._trendRAF = null; return; }
+    _trendDrawAll(s);
+    s._trendRAF = requestAnimationFrame(tick);
+  };
+  s._trendRAF = requestAnimationFrame(tick);
 }
 
 function _ptSegDist(px, py, x1, y1, x2, y2) {
@@ -1544,7 +1979,7 @@ function toggleSlotTrend(idx) {
   s._trendP1 = null; s._trendPrev = null; s._trendDrag = null;
   s.trendCanvas.style.pointerEvents = s.trendActive ? 'auto' : 'none';
   s.trendCanvas.style.cursor = s.trendActive ? 'crosshair' : '';
-  if (!s._trendSub) { s._trendSub = () => _trendDrawAll(s); try { s.chart.timeScale().subscribeVisibleTimeRangeChange(s._trendSub); } catch(ex) {} }
+  _trendEnsureRAF(s);
   _trendDrawAll(s);
   if (!s.trendActive) return;
   s._trendMD = e => {
@@ -1613,6 +2048,7 @@ function toggleSlotTrend(idx) {
 }
 
 function _fsTrendDrawAll() {
+  _syncFsClearBtn();
   const canvas = document.getElementById('fs-trend-canvas'); if (!canvas || !fsCandleS || !fsChart) return;
   _trendSync(canvas);
   const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
@@ -1639,6 +2075,16 @@ function _fsTrendDrawAll() {
       }
     } catch(ex) {}
   }
+}
+
+function _fsTrendEnsureRAF() {
+  if (_fsTrendRAF) return;
+  const tick = () => {
+    if (!fsChart || !fsCandleS || (!fsTrendlines.length && !fsTrendActive)) { _fsTrendRAF = null; return; }
+    _fsTrendDrawAll();
+    _fsTrendRAF = requestAnimationFrame(tick);
+  };
+  _fsTrendRAF = requestAnimationFrame(tick);
 }
 
 function _fsTrendNearest(cx, cy) {
@@ -1672,7 +2118,7 @@ function toggleFsTrend() {
   _fsTrendP1 = null; _fsTrendPrev = null; _fsTrendDrag = null;
   canvas.style.pointerEvents = fsTrendActive ? 'auto' : 'none';
   canvas.style.cursor = fsTrendActive ? 'crosshair' : '';
-  if (!_fsTrendSub) { _fsTrendSub = () => _fsTrendDrawAll(); try { fsChart.timeScale().subscribeVisibleTimeRangeChange(_fsTrendSub); } catch(ex) {} }
+  _fsTrendEnsureRAF();
   _fsTrendDrawAll();
   if (!fsTrendActive) return;
   _fsTrendMD = e => {
@@ -1988,6 +2434,10 @@ if (isMobile) {
         <div id="fs-tf-bar" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
         <span id="fs-pct" style="font-size:12px;font-weight:600;font-family:monospace;min-width:70px;"></span>
         <div style="flex:1;"></div>
+<button id="fs-clear-draw-btn" onclick="clearFsDrawings()"
+                style="display:none;background:none;border:none;color:#B2B5BE;font-size:11px;padding:3px 8px;border-radius:3px;cursor:pointer;margin-right:4px;transition:background .15s,color .15s;"
+                onmouseover="this.style.background='#2A2E39'" onmouseout="this.style.background='none'"
+                data-i18n-title="clear_drawings" title="Clear drawings"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align:middle" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg></button>
 <button id="fs-range-btn" onclick="toggleFsRange()"
                 style="background:none;border:none;color:#B2B5BE;font-size:11px;padding:3px 8px;border-radius:3px;cursor:pointer;margin-right:4px;transition:background .15s,color .15s;"
                 onmouseover="if(!fsRangeActive)this.style.background='#2A2E39'" onmouseout="this.style.background='none'"
