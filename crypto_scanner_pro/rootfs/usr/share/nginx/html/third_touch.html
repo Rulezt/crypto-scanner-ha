@@ -186,6 +186,9 @@
         .draggable-th { cursor: grab; user-select: none; }
         .draggable-th:active { cursor: grabbing; }
         .draggable-th.drag-over { background: rgba(6,182,212,0.15) !important; border-left: 2px solid #06b6d4; }
+        @media (max-width: 639px) and (orientation: portrait) {
+            [data-col="mtf"] { display: none !important; }
+        }
     </style>
 <style>#tv-attr-logo{display:none!important}</style>
 </head>
@@ -283,7 +286,7 @@
             <thead>
                 <tr>
                     <th class="td-rank">#</th>
-                    <th v-for="col in columns" :key="col.key"
+                    <th v-for="col in columns" :key="col.key" :data-col="col.key"
                         :class="['draggable-th', dragOver === col.key ? 'drag-over' : '', sortBy === col.key ? 'sorted' : '']"
                         :style="col.align ? `text-align:${col.align}` : ''"
                         draggable="true"
@@ -300,7 +303,7 @@
                 <template v-for="(r, i) in filteredResults" :key="r.symbol + r.tf + r.type + r.level">
                 <tr>
                     <td class="td-rank">{{ i + 1 }}</td>
-                    <td v-for="col in columns" :key="col.key"
+                    <td v-for="col in columns" :key="col.key" :data-col="col.key"
                         :class="col.tdClass ? col.tdClass(r) : 'td-num'">
                         <template v-if="col.key === 'symbol'">
                             <span class="fav-star" :class="{active: isFav(r.symbol)}" @click.stop="toggleFav(r.symbol)" :title="t('fav_title')">{{ isFav(r.symbol) ? '★' : '☆' }}</span>
@@ -581,8 +584,7 @@ createApp({
                     if (gap < 3 || gap > 60) continue;
 
                     let violated = false;
-                    for (let k = 0; k < j; k++) {
-                        if (k === i) continue;
+                    for (let k = i + 1; k < j; k++) {
                         const c = candles[k];
                         if (c.high  >= level) { violated = true; break; }
                         if (c.close >  level) { violated = true; break; }
@@ -590,6 +592,10 @@ createApp({
                     if (violated) continue;
 
                     if (currentPrice >= level) continue;
+
+                    // Price must be approaching the level, not receding from it
+                    const prevClose = candles[candles.length - 2].close;
+                    if (Math.abs(currentPrice - level) > Math.abs(prevClose - level)) continue;
 
                     let postViolated = false;
                     for (let k = j + 1; k < n; k++) {
@@ -641,8 +647,7 @@ createApp({
                     if (gap < 3 || gap > 60) continue;
 
                     let violated = false;
-                    for (let k = 0; k < j; k++) {
-                        if (k === i) continue;
+                    for (let k = i + 1; k < j; k++) {
                         const c = candles[k];
                         if (c.low   <= level) { violated = true; break; }
                         if (c.close <  level) { violated = true; break; }
@@ -650,6 +655,10 @@ createApp({
                     if (violated) continue;
 
                     if (currentPrice <= level) continue;
+
+                    // Price must be approaching the level, not receding from it
+                    const prevClose = candles[candles.length - 2].close;
+                    if (Math.abs(currentPrice - level) > Math.abs(prevClose - level)) continue;
 
                     let postViolated = false;
                     for (let k = j + 1; k < n; k++) {

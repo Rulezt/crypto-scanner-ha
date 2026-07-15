@@ -80,6 +80,9 @@
         .cfg-section-title { font-size: 0.7rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 6px; }
         .cfg-scr-row { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: #e5e7eb; }
         .cfg-scr-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+        @media (max-width: 639px) and (orientation: portrait) {
+            [data-col="mtf"] { display: none !important; }
+        }
     </style>
 <style>#tv-attr-logo{display:none!important}</style>
 </head>
@@ -161,7 +164,7 @@
             <thead>
                 <tr>
                     <th style="text-align:left">#</th>
-                    <th v-for="col in columns" :key="col.key"
+                    <th v-for="col in columns" :key="col.key" :data-col="col.key"
                         :class="['draggable-th', dragOver===col.key?'drag-over':'', sortBy===col.key?'sorted':'']"
                         :style="`text-align:${col.align}`"
                         draggable="true"
@@ -178,7 +181,7 @@
                 <template v-for="(row, idx) in filteredResults" :key="row.symbol+row.tf">
                 <tr>
                     <td class="td-num muted" style="text-align:center;font-size:0.7rem;">{{ idx+1 }}</td>
-                    <td v-for="col in columns" :key="col.key" :class="col.tdClass(row)">
+                    <td v-for="col in columns" :key="col.key" :data-col="col.key" :class="col.tdClass(row)">
                         <template v-if="col.key==='symbol'">
                             <span class="fav-star" :class="{active: isFav(row.symbol)}" @click.stop="toggleFav(row.symbol)" :title="t('fav_title')">{{ isFav(row.symbol) ? '★' : '☆' }}</span>
                             <a :href="'mtf?symbol='+row.symbol" target="_blank">{{ row.symbol.replace('USDT','') }}</a>
@@ -282,9 +285,7 @@ createApp({
         // ── SCREENER DEFINITIONS ────────────────────────────────────────────────
         const SCREENER_LIST = [
             { key:'ema_touch',    label:'EMA Touch',    short:'EMA-T',  color:'#10b981' },
-            { key:'ema22360',     label:'EMA223/60',    short:'223/60', color:'#f97316' },
             { key:'third_touch',  label:'Third Touch',  short:'3RD',    color:'#22d3ee' },
-            { key:'ema_cross',    label:'EMA Cross',    short:'EMA-X',  color:'#38bdf8' },
             { key:'ema223_cross', label:'EMA223 Cross', short:'223-X',  color:'#a78bfa' },
             { key:'breakout',     label:'Breakout',     short:'BRK',    color:'#facc15' },
             { key:'channel_breakout', label:'Channel Breakout', short:'CH-BRK', color:'#14b8a6' },
@@ -439,19 +440,6 @@ createApp({
             return { dir: price >= ema60 ? 'above' : 'below', metric: dist.toFixed(2) + '%' };
         };
 
-        // ── DETECTOR 2: EMA223/60 distance (ported from shimano.html) ──────────
-        const ema22360Hit = (candles, cfg) => {
-            if (candles.length < 226) return null;
-            const closes = candles.map(c => c.close);
-            const ema60 = emaLast(candles, 60), ema223 = emaLast(candles, 223);
-            if (!ema60 || !ema223) return null;
-            const price = closes[closes.length - 1];
-            if (price <= 0) return null;
-            const distPct = Math.abs(ema60 - ema223) / price * 100;
-            if (distPct > cfg.threshold) return null;
-            return { dir: ema60 >= ema223 ? 'above' : 'below', metric: distPct.toFixed(2) + '%' };
-        };
-
         // ── DETECTOR 3: Third Touch (ported from third_touch.html) ─────────────
         // resistance -> Long (bull), support -> Short (bear): vedi feedback_third_touch_logic.
         const findDoubleTouches = (candles, tol, freshN, currentPrice) => {
@@ -472,13 +460,15 @@ createApp({
                     const gap = j - i;
                     if (gap < 3 || gap > 60) continue;
                     let violated = false;
-                    for (let k = 0; k < j; k++) {
-                        if (k === i) continue;
+                    for (let k = i + 1; k < j; k++) {
                         const c = candles[k];
                         if (c.high >= level || c.close > level) { violated = true; break; }
                     }
                     if (violated) continue;
                     if (currentPrice >= level) continue;
+                    // Price must be approaching the level, not receding from it
+                    const prevClose = candles[candles.length - 2].close;
+                    if (Math.abs(currentPrice - level) > Math.abs(prevClose - level)) continue;
                     let postViolated = false;
                     for (let k = j + 1; k < n; k++) {
                         if (candles[k].close > level || candles[k].high > level) { postViolated = true; break; }
@@ -504,13 +494,15 @@ createApp({
                     const gap = j - i;
                     if (gap < 3 || gap > 60) continue;
                     let violated = false;
-                    for (let k = 0; k < j; k++) {
-                        if (k === i) continue;
+                    for (let k = i + 1; k < j; k++) {
                         const c = candles[k];
                         if (c.low <= level || c.close < level) { violated = true; break; }
                     }
                     if (violated) continue;
                     if (currentPrice <= level) continue;
+                    // Price must be approaching the level, not receding from it
+                    const prevClose = candles[candles.length - 2].close;
+                    if (Math.abs(currentPrice - level) > Math.abs(prevClose - level)) continue;
                     let postViolated = false;
                     for (let k = j + 1; k < n; k++) {
                         if (candles[k].close < level || candles[k].low < level) { postViolated = true; break; }
@@ -545,44 +537,6 @@ createApp({
             }
             if (!best) return null;
             return { dir: best.type === 'resistance' ? 'bull' : 'bear', metric: (best.distFromCurrent>=0?'+':'') + best.distFromCurrent.toFixed(2) + '%', level: best.level };
-        };
-
-        // ── DETECTOR 4: EMA Cross (ported from ema-cross.html) ──────────────────
-        const detectCross = (candles, ema1Arr, ema2Arr, cfg) => {
-            const n = candles.length;
-            let crossIdx = -1, crossDir = 0;
-            for (let i = 1; i < n; i++) {
-                const p1 = ema1Arr[i-1], p2 = ema2Arr[i-1], c1 = ema1Arr[i], c2 = ema2Arr[i];
-                if (p1 == null || p2 == null || c1 == null || c2 == null) continue;
-                const prevDiff = p1 - p2, curDiff = c1 - c2;
-                if (prevDiff === 0 || curDiff === 0) continue;
-                const up = prevDiff < 0 && curDiff > 0, down = prevDiff > 0 && curDiff < 0;
-                if (!up && !down) continue;
-                const prevGapPct = Math.abs(prevDiff) / candles[i-1].close * 100;
-                if (prevGapPct < cfg.crossTolerance) continue;
-                crossIdx = i; crossDir = up ? 1 : -1;
-            }
-            if (crossIdx === -1) return null;
-            const lastIdx = n - 1;
-            const lastDiff = ema1Arr[lastIdx] - ema2Arr[lastIdx];
-            const lastSign = lastDiff > 0 ? 1 : lastDiff < 0 ? -1 : 0;
-            if (lastSign !== crossDir) return null;
-            const age = lastIdx - crossIdx;
-            if (age > cfg.lookbackBars) return null;
-            return { crossIdx, dir: crossDir, age };
-        };
-        const emaCrossHit = (candles, cfg) => {
-            const WARMUP_MIN = cfg.ema2Period + cfg.lookbackBars + 5;
-            if (candles.length < WARMUP_MIN) return null;
-            const tail = candles.slice(-Math.min(candles.length, cfg.klimit));
-            const ema1Arr = calcEMAArr(tail, cfg.ema1Period);
-            const ema2Arr = calcEMAArr(tail, cfg.ema2Period);
-            const cross = detectCross(tail, ema1Arr, ema2Arr, cfg);
-            if (!cross) return null;
-            const lastIdx = tail.length - 1;
-            const price = tail[lastIdx].close;
-            const gapPct = (ema1Arr[lastIdx] - ema2Arr[lastIdx]) / price * 100;
-            return { dir: cross.dir === 1 ? 'bull' : 'bear', metric: (gapPct>=0?'+':'') + gapPct.toFixed(2) + '% (age ' + cross.age + ')', crossTime: tail[cross.crossIdx].time };
         };
 
         // ── DETECTOR 5: EMA223 Cross / flip (ported from ema223-flip.html) ──────
@@ -1164,9 +1118,7 @@ createApp({
 
             const cfg = {
                 touchProx: 1.5, touchTol: 0.05,
-                shimThreshold: 1.0,
                 ttTolerance: 0.5, ttProximity: 2,
-                ema1Period: 60, ema2Period: 223, crossTolerance: 0.15, lookbackBarsCross: 10, klimitCross: 630,
                 e223Period: 223, e223Tol: 0.5, e223Lookback: 10, klimitE223: 730,
                 brkPivotLen: 5, brkMinTouches: 2, brkMaxChannelBars: 120, brkConvergenceMin: 0.02,
                 brkTouchTolerance: 0.15, brkDeviationMax: 0.3, brkMinChannelWidthAtr: 0.5,
@@ -1231,7 +1183,7 @@ createApp({
                 progressTotal.value = tickers.length;
                 statusMsg.value = `${SVG_SEARCH}${t('emax_progress')} ${tickers.length} ${t('dt_coin')}…`;
 
-                const anyClientEnabled = en.ema_touch || en.ema22360 || en.third_touch || en.ema_cross || en.ema223_cross || en.breakout || en.channel_breakout || en.vol_inefficiency;
+                const anyClientEnabled = en.ema_touch || en.third_touch || en.ema223_cross || en.breakout || en.channel_breakout || en.vol_inefficiency;
                 if (anyClientEnabled) {
                     const BATCH = 5;
                     for (let i = 0; i < tickers.length; i += BATCH) {
@@ -1255,17 +1207,9 @@ createApp({
                                             const h = emaTouchHit(candles, { proximity: cfg.touchProx, touchTolerance: cfg.touchTol });
                                             if (h) addMatch(ticker.symbol, ticker, 'ema_touch', tf, h.dir, h.metric);
                                         }
-                                        if (en.ema22360) {
-                                            const h = ema22360Hit(candles, { threshold: cfg.shimThreshold });
-                                            if (h) addMatch(ticker.symbol, ticker, 'ema22360', tf, h.dir, h.metric);
-                                        }
                                         if (en.third_touch) {
                                             const h = thirdTouchHit(candles, { tolerance: cfg.ttTolerance, proximity: cfg.ttProximity }, ticker.price);
                                             if (h) addMatch(ticker.symbol, ticker, 'third_touch', tf, h.dir, h.metric, { level: h.level });
-                                        }
-                                        if (en.ema_cross) {
-                                            const h = emaCrossHit(candles, { ema1Period: cfg.ema1Period, ema2Period: cfg.ema2Period, crossTolerance: cfg.crossTolerance, lookbackBars: cfg.lookbackBarsCross, klimit: cfg.klimitCross });
-                                            if (h) addMatch(ticker.symbol, ticker, 'ema_cross', tf, h.dir, h.metric, { crossTime: h.crossTime });
                                         }
                                         if (en.ema223_cross) {
                                             const h = ema223CrossHit(candles, { emaPeriod: cfg.e223Period, tolerancePct: cfg.e223Tol, lookbackBars: cfg.e223Lookback, klimit: cfg.klimitE223 });
@@ -1416,8 +1360,6 @@ createApp({
                         if (!d) continue;
                         if (g.screener === 'third_touch' && d.level != null) {
                             candleSeries.createPriceLine({ price: d.level, color: g.dir === 'bull' ? '#22d3ee' : '#f472b6', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'Touch' });
-                        } else if (g.screener === 'ema_cross' && d.crossTime != null) {
-                            markers.push({ time: d.crossTime, position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#38bdf8', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'X-Cross' });
                         } else if (g.screener === 'ema223_cross' && d.flipTime != null) {
                             markers.push({ time: d.flipTime, position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#a78bfa', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Flip' });
                         } else if (g.screener === 'breakout' && d.chart) {
@@ -1545,8 +1487,6 @@ createApp({
                         if (!d) continue;
                         if (g.screener === 'third_touch' && d.level != null) {
                             candleSeries.createPriceLine({ price: d.level, color: g.dir === 'bull' ? '#22d3ee' : '#f472b6', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'Touch' });
-                        } else if (g.screener === 'ema_cross' && d.crossTime != null) {
-                            markers.push({ time: d.crossTime, position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#38bdf8', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'X-Cross' });
                         } else if (g.screener === 'ema223_cross' && d.flipTime != null) {
                             markers.push({ time: d.flipTime, position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#a78bfa', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Flip' });
                         } else if (g.screener === 'breakout' && d.chart) {

@@ -81,6 +81,9 @@
         .cfg-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .cfg-row label { font-size: 0.76rem; color: #9CA3AF; }
         .cfg-row input[type="number"] { width: 76px; background: #1f2937; color: #f9fafb; border: 1px solid #374151; border-radius: 4px; padding: 5px 8px; font-size: 0.8rem; }
+        @media (max-width: 639px) and (orientation: portrait) {
+            [data-col="mtf"] { display: none !important; }
+        }
     </style>
 <style>#tv-attr-logo{display:none!important}</style>
 </head>
@@ -161,7 +164,7 @@
             <thead>
                 <tr>
                     <th style="text-align:left">#</th>
-                    <th v-for="col in columns" :key="col.key"
+                    <th v-for="col in columns" :key="col.key" :data-col="col.key"
                         :class="['draggable-th', dragOver===col.key?'drag-over':'', sortBy===col.key?'sorted':'']"
                         :style="`text-align:${col.align}`"
                         draggable="true"
@@ -178,7 +181,7 @@
                 <template v-for="(row, idx) in filteredResults" :key="row.symbol+row.tf">
                 <tr>
                     <td class="td-num muted" style="text-align:center;font-size:0.7rem;">{{ idx+1 }}</td>
-                    <td v-for="col in columns" :key="col.key" :class="col.tdClass(row)">
+                    <td v-for="col in columns" :key="col.key" :data-col="col.key" :class="col.tdClass(row)">
                         <template v-if="col.key==='symbol'">
                             <span class="fav-star" :class="{active: isFav(row.symbol)}" @click.stop="toggleFav(row.symbol)" :title="t('fav_title')">{{ isFav(row.symbol) ? '★' : '☆' }}</span>
                             <a :href="'mtf?symbol='+row.symbol" target="_blank">{{ row.symbol.replace('USDT','') }}</a>

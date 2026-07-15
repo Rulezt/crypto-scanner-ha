@@ -305,11 +305,6 @@ class DoubleTouchScanner:
             k = LOG[r - l + 1]
             return op(sp[k][l], sp[k][r - (1 << k) + 1])
 
-        # Prefix: O(1) violation check [0, i)
-        pfx_ext = [sentinel] * (n + 1)
-        for k in range(n):
-            pfx_ext[k + 1] = op(pfx_ext[k], extreme[k])
-
         # Suffix: O(1) post-violation [j+1, n) and bounce check
         sfx_ext = [sentinel]                               * (n + 1)
         sfx_cls = [float('inf') if res else float('-inf')] * (n + 1)
@@ -355,13 +350,15 @@ class DoubleTouchScanner:
                 if abs(dist_pct) > self.proximity:
                     continue
 
+                # Price must be approaching the level, not receding from it
+                prev_close = closes[-2]
+                if abs(current_price - level) > abs(prev_close - level):
+                    continue
+
                 if res     and current_price >= level: continue
                 if not res and current_price <= level: continue
 
                 # All remaining checks are O(1) ─────────────────────────────
-                if res     and pfx_ext[i] >= level: continue    # [0, i)
-                if not res and pfx_ext[i] <= level: continue
-
                 if res     and sfx_ext[j1] > level: continue    # [j+1, n)
                 if not res and sfx_ext[j1] < level: continue
 

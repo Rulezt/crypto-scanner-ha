@@ -20,7 +20,6 @@ from scanners.ema_touch import EMAScanner
 from scanners.ath_atl_scanner import ATHATLScanner
 from scanners.ico_levels_scanner import ICOLevelsScanner
 from scanners.double_touch import DoubleTouchScanner
-from scanners.shimano_scanner import ShimanoScanner
 from scanners.bot_engine import BotEngine
 from ws_manager import BybitWSManager
 
@@ -213,13 +212,6 @@ DEFAULT_CONFIG = {
         'touch_tolerance': 0.05,
         'scan_tfs': ['240', '60', '30', '5', '1'],
     },
-    'shimano': {
-        'enabled': True,
-        'scan_tf': ['D'],
-        'cooldown_hours': 24,
-        'scan_interval_minutes': 240,
-        'distance_threshold_pct': 1.0,
-    },
     'bot': {
         'symbol': '',
         'tf': '60',
@@ -396,15 +388,6 @@ def init_scanners():
                if k in ('min_volume_24h', 'max_coins_per_alert', 'min_var_pct_24h') and k not in config['ema_touch']}
         )
 
-        scanners['shimano'] = ShimanoScanner(
-            telegram_config=telegram_config,
-            ws_manager=ws_manager,
-            live_config=config,
-            **config['shimano'],
-            **{k: v for k, v in config['general'].items()
-               if k in ('min_volume_24h', 'max_coins_per_alert', 'min_var_pct_24h') and k not in config['shimano']}
-        )
-
         scanners['bot'] = BotEngine(
             telegram_config=telegram_config,
             ws_manager=ws_manager,
@@ -464,7 +447,6 @@ def start_scanners():
         ('ath_atl',        'ath_atl',    config['ath_atl']['scan_interval_minutes']),
         ('ico_levels',     'ico_levels',    config['ico_levels']['scan_interval_minutes']),
         ('double_touch',   'double_touch',  config['double_touch']['scan_interval_minutes']),
-        ('shimano',        'shimano',        config['shimano']['scan_interval_minutes']),
     ]
 
     for config_name, scanner_key, interval in threads_config:
@@ -501,7 +483,6 @@ def health():
             'ico_levels': config['ico_levels']['enabled'],
             'double_touch': config['double_touch']['enabled'],
             'ema_touch': config['ema_touch']['enabled'],
-            'shimano': config['shimano']['enabled'],
         }
     })
 
@@ -640,14 +621,6 @@ def ico_levels_visual():
 @app.route('/scanner-api/double-touch/status', methods=['GET'])
 def double_touch_status():
     scanner = scanners.get('double_touch')
-    if not scanner:
-        return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
-    alerts = scanner.get_today_alerts()
-    return jsonify({'count': len(alerts), 'alerts': alerts, 'monitored': scanner.get_monitored_count()})
-
-@app.route('/scanner-api/shimano/status', methods=['GET'])
-def shimano_status():
-    scanner = scanners.get('shimano')
     if not scanner:
         return jsonify({'count': 0, 'alerts': [], 'monitored': 0})
     alerts = scanner.get_today_alerts()
@@ -2382,12 +2355,6 @@ def breakout_page():
     return send_file('/usr/share/nginx/html/breakout.html')
 
 
-@app.route('/ema-cross', methods=['GET'])
-@app.route('/ema-cross.html', methods=['GET'])
-def ema_cross_page():
-    return send_file('/usr/share/nginx/html/ema-cross.html')
-
-
 @app.route('/ema223-flip', methods=['GET'])
 @app.route('/ema223-flip.html', methods=['GET'])
 def ema223_flip_page():
@@ -2420,14 +2387,6 @@ def ico_page():
 @app.route('/ath-atl.html', methods=['GET'])
 def ath_atl_page():
     return send_file('/usr/share/nginx/html/ath_atl.html')
-
-
-@app.route('/ema223-60', methods=['GET'])
-@app.route('/ema223-60.html', methods=['GET'])
-@app.route('/shimano', methods=['GET'])
-@app.route('/shimano.html', methods=['GET'])
-def shimano_page():
-    return send_file('/usr/share/nginx/html/shimano.html')
 
 
 @app.route('/bot', methods=['GET'])

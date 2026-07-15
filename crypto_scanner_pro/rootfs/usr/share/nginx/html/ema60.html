@@ -84,6 +84,9 @@
         .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: #6b7280; }
         .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
         .legend-line { width: 18px; height: 3px; border-radius: 2px; }
+        @media (max-width: 639px) and (orientation: portrait) {
+            [data-col="mtf"] { display: none !important; }
+        }
     </style>
 <style>#tv-attr-logo{display:none!important}</style>
 </head>
@@ -168,7 +171,7 @@
             <thead>
                 <tr>
                     <th style="text-align:left">#</th>
-                    <th v-for="col in columns" :key="col.key"
+                    <th v-for="col in columns" :key="col.key" :data-col="col.key"
                         :class="['draggable-th', dragOver===col.key?'drag-over':'', sortBy===col.key?'sorted':'']"
                         :style="`text-align:${col.align}`"
                         draggable="true"
@@ -185,7 +188,7 @@
                 <template v-for="(row, idx) in filteredResults" :key="row.symbol+row.tf">
                 <tr>
                     <td class="td-num muted" style="text-align:center;font-size:0.7rem;">{{ idx+1 }}</td>
-                    <td v-for="col in columns" :key="col.key" :class="col.tdClass(row)">
+                    <td v-for="col in columns" :key="col.key" :data-col="col.key" :class="col.tdClass(row)">
                         <template v-if="col.key==='symbol'">
                             <span class="fav-star" :class="{active: isFav(row.symbol)}" @click.stop="toggleFav(row.symbol)" :title="t('fav_title')">{{ isFav(row.symbol) ? '★' : '☆' }}</span>
                             <a :href="'mtf?symbol='+row.symbol" target="_blank">{{ row.symbol.replace('USDT','') }}</a>

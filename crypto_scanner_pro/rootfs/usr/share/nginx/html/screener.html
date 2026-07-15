@@ -247,29 +247,6 @@
                         <a href="ema60" class="mt-2 block text-xs text-emerald-500 hover:text-emerald-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
                     </div>
 
-                    <!-- EMA223/60 Scanner -->
-                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-orange-500 transition-all">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-orange-400 text-xs sm:text-sm font-medium">EMA223/60</div>
-                            <div class="flex items-center gap-1.5">
-                                <button onclick="openScannerModal('shimano')" class="text-gray-500 hover:text-gray-300 text-base leading-none" title="Configura" data-i18n-title="scr_configure">⚙</button>
-                                <span class="text-gray-700 text-xs">|</span>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="shimano-toggle" class="sr-only peer" checked onchange="toggleScanner('shimano')">
-                                    <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-orange-600"></div>
-                                </label>
-                                <div id="shimano-status" class="w-2 h-2 bg-gray-500 rounded-full"></div>
-                            </div>
-                        </div>
-                        <div class="text-xl sm:text-2xl font-bold" id="shimano-count">-</div>
-                        <div class="text-xs text-gray-500 mt-1" data-i18n="scr_alert_today">Alert oggi</div>
-                        <div class="flex items-center justify-between mt-2">
-                            <span class="text-xs text-gray-500" data-i18n="scr_monitored">Monitorate:</span>
-                            <span class="text-xs font-medium text-orange-400" id="shimano-monitored">-</span>
-                        </div>
-                        <a href="ema223-60" class="mt-2 block text-xs text-orange-500 hover:text-orange-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
-                    </div>
-
                     <!-- Breakout Pattern Scanner (solo visuale, nessun polling backend) -->
                     <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-yellow-500 transition-all">
                         <div class="flex items-center justify-between mb-2">
@@ -277,15 +254,6 @@
                         </div>
                         <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_bops_desc">Canali convergenti individuati dai pivot</div>
                         <a href="breakout" class="mt-2 block text-xs text-yellow-500 hover:text-yellow-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
-                    </div>
-
-                    <!-- EMA Cross 60/223 Scanner (solo visuale, nessun polling backend) -->
-                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-cyan-500 transition-all">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-cyan-400 text-xs sm:text-sm font-medium">EMA Cross 60/223</div>
-                        </div>
-                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_emax_desc">Incrocio EMA60/EMA223 confermato, con tolleranza anti-rumore</div>
-                        <a href="ema-cross" class="mt-2 block text-xs text-cyan-500 hover:text-cyan-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
                     </div>
 
                     <!-- Confluence Scanner (solo visuale, aggrega tutti gli altri screener) -->
@@ -350,7 +318,6 @@
                     <button id="hvf-ath"    data-color="#f59e0b" onclick="setHvFilter('ath')"    style="font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid transparent;background:#1E2329;color:#f59e0b;cursor:pointer;opacity:0.45;" >ATH/ATL</button>
                     <button id="hvf-ico"    data-color="#ec4899" onclick="setHvFilter('ico')"    style="font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid transparent;background:#1E2329;color:#ec4899;cursor:pointer;opacity:0.45;" >ICO</button>
                     <button id="hvf-dt"      data-color="#06b6d4" onclick="setHvFilter('dt')"      style="font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid transparent;background:#1E2329;color:#06b6d4;cursor:pointer;opacity:0.45;" ><span data-i18n="scr_dt_name">Terzo Tocco</span></button>
-                    <button id="hvf-shimano"  data-color="#f97316" onclick="setHvFilter('shimano')"  style="font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid transparent;background:#1E2329;color:#f97316;cursor:pointer;opacity:0.45;" >EMA223/60</button>
                 </div>
                 <span id="hv-updated" class="text-xs text-gray-500"></span>
             </div>
@@ -547,43 +514,6 @@
     </div>
 
 
-    <!-- Shimano Scanner Modal -->
-    <div id="scanner-modal-shimano" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);overflow-y:auto;" onclick="closeScannerModal('shimano',event)">
-        <div class="modal-scanner-inner" style="max-width:360px;margin:80px auto;background:#161A1E;border:1px solid #2B3139;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.8);">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #2B3139;">
-                <span style="font-size:13px;font-weight:700;color:#FB923C;">EMA223/60 Scanner</span>
-                <button onclick="closeScannerModal('shimano')" style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;line-height:1;">✕</button>
-            </div>
-            <div class="p-4 space-y-3">
-                <div>
-                    <label class="text-xs text-gray-500 block mb-1" data-i18n="scr_tf_multi">Timeframe (multi-selezione):</label>
-                    <div id="shimano-cfg-tf-group" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;background:#1E222D;border:1px solid #2B3139;border-radius:6px;">
-                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="shimano-tf-D"   value="D"   style="accent-color:#FB923C;width:14px;height:14px;"> <span class="text-sm text-gray-300">D</span></label>
-                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="shimano-tf-240" value="240" style="accent-color:#FB923C;width:14px;height:14px;"> <span class="text-sm text-gray-300">4h</span></label>
-                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="shimano-tf-60"  value="60"  style="accent-color:#FB923C;width:14px;height:14px;"> <span class="text-sm text-gray-300">1h</span></label>
-                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="shimano-tf-30"  value="30"  style="accent-color:#FB923C;width:14px;height:14px;"> <span class="text-sm text-gray-300">30m</span></label>
-                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="shimano-tf-5"   value="5"   style="accent-color:#FB923C;width:14px;height:14px;"> <span class="text-sm text-gray-300">5m</span></label>
-                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="shimano-tf-1"   value="1"   style="accent-color:#FB923C;width:14px;height:14px;"> <span class="text-sm text-gray-300">1m</span></label>
-                    </div>
-                    <p style="font-size:10px;color:#4B5563;margin-top:4px;" data-i18n="scr_screenshot_auto">Lo screenshot usa automaticamente il timeframe dell'alert.</p>
-                </div>
-                <div><label class="text-xs text-gray-500 block mb-1" data-i18n="scr_cooldown_hours">Cooldown alert (ore):</label><input type="number" step="1" min="1" id="shimano-cfg-cooldown" class="w-full px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-orange-500 focus:outline-none"></div>
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid #2B3139;">
-                    <div>
-                        <div class="text-xs text-gray-400 font-medium">Soglia distanza EMA (%)</div>
-                        <div style="font-size:10px;color:#4B5563;margin-top:2px;">Alert se |EMA60-EMA223| / prezzo &lt; soglia</div>
-                    </div>
-                    <input type="number" step="0.05" min="0.05" max="20" id="shimano-cfg-threshold" style="width:70px;" class="px-3 py-2 bg-dark-hover border border-dark-border rounded text-sm text-gray-200 focus:border-orange-500 focus:outline-none">
-                </div>
-            </div>
-            <div class="px-4 pb-3 flex gap-2">
-                <button onclick="saveScannerConfig('shimano')" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors" data-i18n="cfg_save">💾 Save</button>
-                <button onclick="closeScannerModal('shimano')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors" data-i18n="cfg_cancel">Annulla</button>
-            </div>
-            <div id="shimano-cfg-status" class="hidden mx-4 mb-4 p-2 rounded text-xs"></div>
-        </div>
-    </div>
-
 
     <script>
         const API_URL = '.';
@@ -668,7 +598,6 @@
             'ATH':         { it: 'ATH',          en: 'ATH'         },
             'ATL':         { it: 'ATL',          en: 'ATL'         },
             'Daily Flip':  { it: 'Daily Flip',   en: 'Daily Flip'  },
-            'Shimano':     { it: 'EMA223/60',    en: 'EMA223/60'   },
         };
         function alertTypeLabel(raw) {
             const norm = _ALERT_TYPE_NORM[raw] || raw;
@@ -772,13 +701,11 @@
             loadAthStatus();
             loadIcoStatus();
             loadDtStatus();
-            loadShimanoStatus();
             setInterval(loadHighVolume, 2000);
             setInterval(loadEmaTouchStatus, 30000);
             setInterval(loadAthStatus, 30000);
             setInterval(loadIcoStatus, 30000);
             setInterval(loadDtStatus, 30000);
-            setInterval(loadShimanoStatus, 30000);
             setInterval(loadAlerts, 60000);
         }
 
@@ -839,21 +766,6 @@
             } catch (e) { /* ignore */ }
         }
 
-        async function loadShimanoStatus() {
-            try {
-                const res = await fetch(`${API_URL}/scanner-api/shimano/status`);
-                const data = await res.json();
-                document.getElementById('shimano-count').textContent = data.count ?? 0;
-                const monEl = document.getElementById('shimano-monitored');
-                if (monEl) monEl.textContent = data.monitored ?? '-';
-                const syms = (data.alerts || []).map(s => s.replace(/_.*$/, ''));
-                _scannerSets.shimano = new Set(syms);
-                _scannerExtraSymbols.shimano = syms;
-                if (_hvFilter === 'shimano') rebuildHvTable();
-            } catch (e) { /* ignore */ }
-        }
-
-
         function fmtPrice(p) {
             if (p >= 10000) return p.toLocaleString('en-US', {maximumFractionDigits: 0});
             if (p >= 1)     return p.toFixed(3);
@@ -870,8 +782,8 @@
         let _hvKey  = null;
         let _hvSort = { col: null, dir: -1 };
         let _hvFilter = 'all';
-        let _scannerSets = { ema_touch: new Set(), ath: new Set(), ico: new Set(), dt: new Set(), shimano: new Set() };
-        let _scannerExtraSymbols = { ema_touch: [], ath: [], ico: [], dt: [], shimano: [] };
+        let _scannerSets = { ema_touch: new Set(), ath: new Set(), ico: new Set(), dt: new Set() };
+        let _scannerExtraSymbols = { ema_touch: [], ath: [], ico: [], dt: [] };
 
         function sortHvData(data) {
             if (!_hvSort.col) return data;
@@ -961,7 +873,7 @@
         function setHvFilter(f) {
             _hvFilter = f;
             _hvKey = null;
-            ['all','ema_touch','ath','ico','dt','shimano'].forEach(k => {
+            ['all','ema_touch','ath','ico','dt'].forEach(k => {
                 const el = document.getElementById('hvf-' + k);
                 if (!el) return;
                 el.dataset.active = k === f ? '1' : '0';
@@ -1066,9 +978,6 @@
                 if (currentConfig.ico_levels)    document.getElementById('ico-toggle').checked     = currentConfig.ico_levels.enabled;
                 if (currentConfig.double_touch)  document.getElementById('dt-toggle').checked      = currentConfig.double_touch.enabled;
                 if (currentConfig.ema_touch)     document.getElementById('ema-touch-toggle').checked = currentConfig.ema_touch.enabled;
-                if (currentConfig.shimano) {
-                    document.getElementById('shimano-toggle').checked = currentConfig.shimano.enabled;
-                }
                 updateDashboardInfo();
                 updateBotStatus();
             } catch (e) {
@@ -1203,15 +1112,6 @@
                 document.querySelectorAll('.ema-touch-tf-cb').forEach(cb => {
                     cb.checked = selTfs.includes(cb.value);
                 });
-            } else if (name === 'shimano') {
-                document.getElementById('shimano-cfg-cooldown').value  = cfg.shimano?.cooldown_hours ?? 24;
-                document.getElementById('shimano-cfg-threshold').value = cfg.shimano?.distance_threshold_pct ?? 1.0;
-                const rawShTf = cfg.shimano?.scan_tf ?? ['D'];
-                const selShTfs = Array.isArray(rawShTf) ? rawShTf : [rawShTf];
-                ['D','240','60','30','5','1'].forEach(v => {
-                    const cb = document.getElementById(`shimano-tf-${v}`);
-                    if (cb) cb.checked = selShTfs.includes(v);
-                });
             }
             const statusEl = document.getElementById(`${name}-cfg-status`);
             if (statusEl) statusEl.className = 'hidden';
@@ -1267,14 +1167,6 @@
                         touch_tolerance:     parseFloat(document.getElementById('ema-touch-cfg-tolerance').value) || 0.05,
                         scan_tfs:            scanTfs.length ? scanTfs : ['30'],
                     };
-                } else if (name === 'shimano') {
-                    const chosenShTfs = ['D','240','60','30','5','1'].filter(v => document.getElementById(`shimano-tf-${v}`)?.checked);
-                    updates.shimano = {
-                        ...currentConfig.shimano,
-                        scan_tf:                chosenShTfs.length > 0 ? chosenShTfs : ['D'],
-                        cooldown_hours:         parseInt(document.getElementById('shimano-cfg-cooldown').value) || 24,
-                        distance_threshold_pct: parseFloat(document.getElementById('shimano-cfg-threshold').value) || 1.0,
-                    };
                 }
                 const newConfig = { ...currentConfig, ...updates };
                 const res = await fetch(`${API_URL}/scanner-api/config`, {
@@ -1309,7 +1201,6 @@
             'ico_levels':    'ico-toggle',
             'double_touch':  'dt-toggle',
             'ema_touch':     'ema-touch-toggle',
-            'shimano':       'shimano-toggle',
         };
 
         async function toggleScanner(scannerName) {
@@ -1344,7 +1235,6 @@
                 'ico-status':     currentConfig.ico_levels?.enabled,
                 'dt-status':      currentConfig.double_touch?.enabled,
                 'ema-touch-status': currentConfig.ema_touch?.enabled,
-                'shimano-status': currentConfig.shimano?.enabled,
             };
             Object.entries(scanners).forEach(([id, enabled]) => {
                 const el = document.getElementById(id);
