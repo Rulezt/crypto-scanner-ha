@@ -206,7 +206,7 @@ class ATHATLScanner:
             '',
             f'<a href="https://www.bybit.com/trade/usdt/{sym}">- View Bybit</a>',
             f'<a href="{base}/mtf?symbol={sym}">- View Desktop</a>',
-            f'<a href="{base}/chart?symbol={sym}&layout=1x1">- View Mobile</a>',
+            f'<a href="{base}/trade?symbol={sym}">- View Mobile</a>',
         ]
         return '\n'.join(lines)
 

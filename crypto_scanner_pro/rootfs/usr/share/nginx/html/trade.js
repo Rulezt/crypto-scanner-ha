@@ -216,6 +216,105 @@ function toggleObBB() {
     _obApplyBB();
 }
 
+// ── Volume Profile (visible range, POC) ─────────────────────────────────────────
+// Stima standard "OHLC volume profile": ogni candela distribuisce il suo volume
+// sui bin di prezzo proporzionalmente alla sovrapposizione col range [low, high].
+// Non serve storico tick (che Bybit non offre): funziona su qualunque candela storica.
+let _obVpActive = false;
+const _OB_VP_BINS = 24;
+
+function _obVpCompute(klines, fromIdx, toIdx) {
+    const lo = Math.max(0, fromIdx), hi = Math.min(klines.length - 1, toIdx);
+    if (hi < lo) return null;
+    let minLow = Infinity, maxHigh = -Infinity;
+    for (let i = lo; i <= hi; i++) {
+        const k = klines[i];
+        if (k.low  < minLow)  minLow  = k.low;
+        if (k.high > maxHigh) maxHigh = k.high;
+    }
+    if (!isFinite(minLow) || !isFinite(maxHigh) || maxHigh <= minLow) return null;
+    const binSize = (maxHigh - minLow) / _OB_VP_BINS;
+    const bins = new Array(_OB_VP_BINS).fill(0);
+    for (let i = lo; i <= hi; i++) {
+        const k = klines[i];
+        const vol = k.volume || 0;
+        if (!vol) continue;
+        const span = k.high - k.low;
+        if (span <= 0) {
+            const idx = Math.min(_OB_VP_BINS - 1, Math.max(0, Math.floor((k.close - minLow) / binSize)));
+            bins[idx] += vol;
+            continue;
+        }
+        const b0 = Math.max(0, Math.floor((k.low  - minLow) / binSize));
+        const b1 = Math.min(_OB_VP_BINS - 1, Math.floor((k.high - minLow) / binSize));
+        for (let b = b0; b <= b1; b++) {
+            const binLo = minLow + b * binSize, binHi = binLo + binSize;
+            const overlap = Math.min(k.high, binHi) - Math.max(k.low, binLo);
+            if (overlap > 0) bins[b] += vol * (overlap / span);
+        }
+    }
+    let pocIdx = 0, maxVol = -1;
+    for (let b = 0; b < _OB_VP_BINS; b++) if (bins[b] > maxVol) { maxVol = bins[b]; pocIdx = b; }
+    if (maxVol <= 0) return null;
+    return { minLow, binSize, bins, maxVol, pocIdx };
+}
+
+class _VolProfilePrimitive {
+    constructor(getKlines) {
+        this._getKlines = getKlines;
+        this._series = null;
+        const renderer = {
+            draw: target => target.useBitmapCoordinateSpace(({ context: ctx, bitmapSize, horizontalPixelRatio, verticalPixelRatio }) => {
+                if (!_obVpActive || !this._series || !_obChart) return;
+                const klines = this._getKlines();
+                if (!klines || klines.length < 2) return;
+                const range = _obChart.timeScale().getVisibleLogicalRange();
+                if (!range) return;
+                const profile = _obVpCompute(klines, Math.floor(range.from), Math.ceil(range.to));
+                if (!profile) return;
+                const { minLow, binSize, bins, maxVol, pocIdx } = profile;
+                const maxBarW = bitmapSize.width * 0.16;
+                ctx.save();
+                for (let b = 0; b < bins.length; b++) {
+                    if (bins[b] <= 0) continue;
+                    const priceLo = minLow + b * binSize, priceHi = priceLo + binSize;
+                    const yLo = this._series.priceToCoordinate(priceLo), yHi = this._series.priceToCoordinate(priceHi);
+                    if (yLo == null || yHi == null) continue;
+                    const top = Math.min(yLo, yHi) * verticalPixelRatio, bot = Math.max(yLo, yHi) * verticalPixelRatio;
+                    const w = Math.max(1 * horizontalPixelRatio, (bins[b] / maxVol) * maxBarW * horizontalPixelRatio);
+                    ctx.fillStyle = b === pocIdx ? 'rgba(251,191,36,0.55)' : 'rgba(96,165,250,0.26)';
+                    ctx.fillRect(bitmapSize.width - w, top, w, Math.max(1, bot - top));
+                }
+                const pocPrice = minLow + (pocIdx + 0.5) * binSize;
+                const yPoc = this._series.priceToCoordinate(pocPrice);
+                if (yPoc != null) {
+                    ctx.strokeStyle = 'rgba(251,191,36,0.85)';
+                    ctx.lineWidth = Math.max(1, horizontalPixelRatio);
+                    ctx.setLineDash([4 * horizontalPixelRatio, 3 * horizontalPixelRatio]);
+                    ctx.beginPath();
+                    ctx.moveTo(0, yPoc * verticalPixelRatio);
+                    ctx.lineTo(bitmapSize.width, yPoc * verticalPixelRatio);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+                ctx.restore();
+            })
+        };
+        this._view = { renderer: () => renderer, zOrder: () => 'bottom' };
+    }
+    attached({ series }) { this._series = series; }
+    detached() { this._series = null; }
+    updateAllViews() {}
+    paneViews() { return [this._view]; }
+}
+
+function toggleObVolProfile() {
+    _obVpActive = !_obVpActive;
+    const btn = document.getElementById('ob-vp-btn');
+    if (btn) btn.style.color = _obVpActive ? '#60a5fa' : '#B2B5BE';
+    try { _obChart.applyOptions({}); } catch(e) {}
+}
+
 let _tradeEnabled = false, _tradePos = null, _tradeSide = null, _hadPosition = false;
 let _tradeBalance = null, _instInfo = null, _tradePollT = null;
 let _fsOrderType = 'Market', _fsCondExec = 'Market';
@@ -2275,6 +2374,7 @@ createApp({
         let chartPollTimer     = null;
         let _cdLastPrice = null, _cdLastOpen = null;
         let _cdRepaintTimer = null;
+        let obKlineWS = null, obKlineWSTimer = null, _obTzOffset = 0, _obLiveCandle = null;
         const openMtf = () => window.open('mtf?symbol=' + symbol.value, '_blank');
 
         const tfCountdowns = ref({});
@@ -2372,6 +2472,7 @@ createApp({
                 candleS.attachPrimitive(new _OBCountdownPrimitive(_cdSlot));
                 const _obLvlSlot = { get obActive() { return showObLines.value; }, get obBidVal() { return maxLevelDistance.value.bidPrice; }, get obAskVal() { return maxLevelDistance.value.askPrice; } };
                 candleS.attachPrimitive(new _ObBandFillPrimitive(_obLvlSlot));
+                candleS.attachPrimitive(new _VolProfilePrimitive(() => _obKlines));
             } catch(e) {}
             const lineBase = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
             for (const { p, color, width, style } of EMA_CFG)
@@ -2415,9 +2516,10 @@ createApp({
                 const j = await r.json();
                 if (!j.success || !j.data || !j.data.length) return;
                 const klines = j.data;
+                if (j.utc_offset_s != null) _obTzOffset = j.utc_offset_s;
 
                 candleS.setData(klines);
-                if (klines.length) { _cdLastPrice = klines[klines.length-1].close; _cdLastOpen = klines[klines.length-1].open; }
+                if (klines.length) { _cdLastPrice = klines[klines.length-1].close; _cdLastOpen = klines[klines.length-1].open; _obLiveCandle = { ...klines[klines.length-1] }; }
                 obKlineCount = klines.length;
                 _obKlines = klines;
                 if (_obBbActive) _obApplyBB();
@@ -2468,7 +2570,42 @@ createApp({
                 } catch(e) {}
 
                 startChartPolling(tf);
+                startKlineWS(tf);
             } catch (e) { console.error('Chart load error:', e); }
+        };
+
+        // WS kline diretto (stesso topic di chart.html/mtf.html): la candela in
+        // formazione segue il prezzo tick-by-tick invece di aspettare il poll REST (3s).
+        const startKlineWS = (tf) => {
+            if (obKlineWS) { try { obKlineWS.close(); } catch(e) {} obKlineWS = null; }
+            clearTimeout(obKlineWSTimer);
+            obKlineWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+            obKlineWS.onopen = () => {
+                if (obKlineWS) obKlineWS.send(JSON.stringify({ op: 'subscribe', args: [`kline.${tf}.${symbol.value}`] }));
+            };
+            obKlineWS.onmessage = (event) => {
+                if (!candleS) return;
+                let msg; try { msg = JSON.parse(event.data); } catch(e) { return; }
+                if (!msg.topic || !msg.topic.startsWith('kline.')) return;
+                const b = msg.data && msg.data[0];
+                if (!b) return;
+                const candle = {
+                    time:   Math.floor(parseInt(b.start) / 1000) + _obTzOffset,
+                    open:   parseFloat(b.open), high: parseFloat(b.high),
+                    low:    parseFloat(b.low),  close: parseFloat(b.close),
+                    volume: parseFloat(b.volume),
+                };
+                try { candleS.update(candle); } catch(e) {}
+                _cdLastPrice = candle.close; _cdLastOpen = candle.open;
+                _obLiveCandle = { ...candle };
+            };
+            obKlineWS.onerror = () => {};
+            obKlineWS.onclose = () => { obKlineWSTimer = setTimeout(() => startKlineWS(chartTF.value), 4000); };
+        };
+
+        const stopKlineWS = () => {
+            clearTimeout(obKlineWSTimer);
+            if (obKlineWS) { try { obKlineWS.close(); } catch(e) {} obKlineWS = null; }
         };
 
         const startChartPolling = (tf) => {
@@ -2482,7 +2619,7 @@ createApp({
                         const candles = j.data;
                         const last    = candles[candles.length - 1];
                         const prev    = candles[candles.length - 2];
-                        _cdLastPrice = last.close; _cdLastOpen = last.open;
+                        _cdLastPrice = last.close; _cdLastOpen = last.open; _obLiveCandle = { ...last };
                         // Update the last two candles (current forming + previous if just confirmed)
                         for (const k of candles.slice(-2)) {
                             try { candleS.update(k); } catch(e) {}
@@ -2677,11 +2814,12 @@ createApp({
                 return {
                     price:        formatPrice(price),
                     rawPrice:     price,
-                    amount:       fmtQty(amount),
-                    total:        fmtTotal(price * amount),
-                    cumTotal:     fmtTotal(cumBid),
-                    depthPercent: (amount / maxBid) * 100,
-                    isMaxLevel:   amount === maxBid,
+                    amount:       amount > 0 ? fmtQty(amount) : '-',
+                    total:        amount > 0 ? fmtTotal(price * amount) : '-',
+                    cumTotal:     amount > 0 ? fmtTotal(cumBid) : '-',
+                    depthPercent: amount > 0 ? (amount / maxBid) * 100 : 0,
+                    isMaxLevel:   amount === maxBid && amount > 0,
+                    isEmpty:      amount === 0,
                 };
             });
 
@@ -2813,6 +2951,15 @@ createApp({
                 _obLivePrice        = midPrice;
                 spread.value        = `${formatPrice(spreadValue)} (${spreadPercent.toFixed(3)}%)`;
                 if (groupingOptions.value.length === 0) calculateGroupingOptions(midPrice);
+                // Bybit throttla lo stream kline a ~1/s: la candela in formazione segue
+                // anche il mid-price del book (molto più frequente) per restare allineata.
+                if (_obLiveCandle && candleS) {
+                    _obLiveCandle.close = midPrice;
+                    if (midPrice > _obLiveCandle.high) _obLiveCandle.high = midPrice;
+                    if (midPrice < _obLiveCandle.low)  _obLiveCandle.low  = midPrice;
+                    try { candleS.update({ ..._obLiveCandle }); } catch(e) {}
+                    _cdLastPrice = _obLiveCandle.close;
+                }
             }
 
             updateDisplay();
@@ -2888,7 +3035,8 @@ createApp({
                     const data = JSON.parse(event.data);
                     if (!data.data || !Array.isArray(data.data)) return;
                     for (const t of data.data) {
-                        const delta = t.S === 'Buy' ? parseFloat(t.v) : -parseFloat(t.v);
+                        const vol = parseFloat(t.v);
+                        const delta = t.S === 'Buy' ? vol : -vol;
                         cvdBuffer.push({ ts: t.T, delta });
                     }
                     cvdCalc();
@@ -3006,6 +3154,7 @@ createApp({
             if (reconnectTimer)    clearTimeout(reconnectTimer);
             if (tradeReconnTimer)  clearTimeout(tradeReconnTimer);
             stopChartPolling();
+            stopKlineWS();
             _clearDayLines();
             clearObLines();
             asksMap.clear();

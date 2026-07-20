@@ -187,7 +187,7 @@ class DoubleTouchScanner:
         patterns = self._find_double_touches(klines, current_price)
 
         for p in patterns:
-            cooldown_key = f"{symbol}_{interval}_{p['type']}"
+            cooldown_key = f"{symbol}_{interval}"
             coin = None
             with self._lock:
                 if not self.is_in_cooldown(cooldown_key):
@@ -398,7 +398,7 @@ class DoubleTouchScanner:
                         continue
                     patterns = self._find_double_touches(candles, ticker['price'])
                     for p in patterns:
-                        cooldown_key = f"{symbol}_{tf}_{p['type']}"
+                        cooldown_key = f"{symbol}_{tf}"
                         with self._lock:
                             if not self.is_in_cooldown(cooldown_key):
                                 self.mark_alerted(cooldown_key)
@@ -448,7 +448,7 @@ class DoubleTouchScanner:
             lines.append('')
             lines.append(f'<a href="https://www.bybit.com/trade/usdt/{sym}">- View Bybit</a>')
             lines.append(f'<a href="{base}/mtf?symbol={sym}">- View Desktop</a>')
-            lines.append(f'<a href="{base}/chart?symbol={sym}&layout=1x1">- View Mobile</a>')
+            lines.append(f'<a href="{base}/trade?symbol={sym}">- View Mobile</a>')
             caption = '\n'.join(lines)
             img = get_chart(sym, interval=tf, signal={
                 'type': 'price',
@@ -471,7 +471,7 @@ class DoubleTouchScanner:
         with self._lock:
             for key, dt in self.last_alerts.items():
                 if dt.date() == today:
-                    symbols.add(key.rsplit('_', 2)[0])
+                    symbols.add(key.rsplit('_', 1)[0])
         return list(symbols)
 
     def get_monitored_count(self):
