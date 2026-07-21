@@ -415,25 +415,25 @@ createApp({
             return null;
         };
 
-        // Trova la prima candela (più recente) che ha "flippato" lato rispetto alla EMA:
-        // candela trigger = open E close entrambi oltre tolleranza dal nuovo lato (candleSide).
-        // Regola aggiuntiva: la candela IMMEDIATAMENTE precedente al trigger deve aprire
-        // (open) dal lato opposto oltre la stessa tolleranza — scarta trigger preceduti da
-        // candele ambigue/a cavallo della EMA, che non rappresentano un vero ribaltamento.
+        // Trova la candela trigger: quella che attraversa la EMA in un solo colpo,
+        // apre da un lato oltre tolleranza e chiude dall'altro lato oltre tolleranza.
+        // Long: open sotto EMA*(1-tol%) e close sopra EMA*(1+tol%). Short: viceversa.
+        const isCrossCandle = (candle, emaVal, tolPct) => {
+            if (emaVal == null) return null;
+            const hiThresh = emaVal * (1 + tolPct / 100);
+            const loThresh = emaVal * (1 - tolPct / 100);
+            if (candle.open < loThresh && candle.close > hiThresh) return 'above';
+            if (candle.open > hiThresh && candle.close < loThresh) return 'below';
+            return null;
+        };
+
         const detectFlip = (candles, emaArr, cfg) => {
             const n = candles.length;
             let flipIdx = -1, flipDir = null;
-            for (let i = 1; i < n; i++) {
-                const side = candleSide(candles[i], emaArr[i], cfg.tolerancePct);
-                if (side == null) continue;
-                const prevEma = emaArr[i - 1];
-                if (prevEma == null) continue;
-                const prevOpen = candles[i - 1].open;
-                const prevOpenOpposite = side === 'above'
-                    ? prevOpen < prevEma * (1 - cfg.tolerancePct / 100)
-                    : prevOpen > prevEma * (1 + cfg.tolerancePct / 100);
-                if (!prevOpenOpposite) continue;
-                flipIdx = i; flipDir = side;
+            for (let i = 0; i < n; i++) {
+                const cross = isCrossCandle(candles[i], emaArr[i], cfg.tolerancePct);
+                if (cross == null) continue;
+                flipIdx = i; flipDir = cross;
             }
             if (flipIdx === -1) return null;
 

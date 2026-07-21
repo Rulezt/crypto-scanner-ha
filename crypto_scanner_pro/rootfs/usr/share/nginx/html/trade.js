@@ -322,8 +322,21 @@ let _fsPendingOrderId = null, _fsPendingOrderFilter = null, _orderSeenInList = f
 let _pricePickTarget = null;
 let _fsSlLine = null, _fsTpLine = null, _fsSlPrice = null, _fsTpPrice = null;
 let _fsSlLabel = null, _fsTpLabel = null, _fsExecLabel = null;
-let _fsEntryLine = null, _fsEntryPrice = null, _fsEntryLabel = null;
+let _fsEntryLine = null, _fsEntryPrice = null, _fsEntryLabel = null, _fsEntryIsPosition = false;
 let _fsExecLine = null, _fsExecPrice = null;
+let _fsChartSpacingLocked = false;
+// Distanza voluta in PIXEL (non barre): il numero di barre necessarie a coprirla varia
+// con barSpacing, che a sua volta cambia per TF (finestre di zoom diverse in _TF_N/DEFAULT_CANDLES
+// comprimono/allargano le barre nella stessa larghezza di canvas) — fissare un numero di barre
+// dava quindi una distanza in pixel diversa da TF a TF, mentre le label sono ancorate in pixel.
+const _FS_MIN_RIGHT_PX = 330;
+function _fsMinOffsetBars(chart) {
+    chart = chart || _obChart;
+    try {
+        const bs = chart?.timeScale()?.options()?.barSpacing || 6;
+        return Math.max(1, Math.round(_FS_MIN_RIGHT_PX / bs));
+    } catch(e) { return 22; }
+}
 let _dragMode = null, _slTpTimer = null, _entryDragMM = null, _dragOverlay = null, _labelDragMM = null;
 function _evY(ev) { return (ev.touches && ev.touches.length) ? ev.touches[0].clientY : ev.clientY; }
 let _labelDisplayMode = 'both';
@@ -618,7 +631,34 @@ function _renderPosition() {
     if (pnlEl) { pnlEl.textContent = `P&L: ${p.unrealizedPnl >= 0 ? '+' : ''}${p.unrealizedPnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`; pnlEl.style.color = p.unrealizedPnl >= 0 ? '#10b981' : '#ef4444'; }
     const liqEl = document.getElementById('fs-pos-liq');
     if (liqEl) liqEl.textContent = p.liqPrice ? `Liq: ${fmtPrice(p.liqPrice)}` : '';
+    _syncPositionEntryMarker(p);
     if (!_tradeSide) { _fsSlPrice = p.stopLoss || null; _fsTpPrice = p.takeProfit || null; _drawSlTpLines(); }
+}
+
+// Una volta eseguito l'ordine (posizione aperta), la label Entry deve mostrare e restare
+// fissa sul prezzo medio di ingresso REALE riportato da Bybit (p.entryPrice) — non sul
+// prezzo richiesto/stimato in fase di piazzamento, che può differire per slippage
+// (Market/Conditional-Market) o non avere avuto affatto una label (gli ordini Market non
+// disegnano la preview, vedi setFsSide). Idempotente: se il prezzo non cambia non ridisegna.
+function _syncPositionEntryMarker(p) {
+    if (!_obCandleS || !p || !p.entryPrice) return;
+    // Il lock scatta subito al primo poll che vede la posizione — non va dedotto da
+    // _fsPendingOrderId, che si azzera solo dopo 5 poll (~15s) di assenza dell'ordine
+    // dalla lista Bybit: per tutta quella finestra il drag restava permesso.
+    _fsEntryIsPosition = true;
+    const sideEl = document.getElementById('fs-el-side');
+    if (sideEl) sideEl.style.cursor = 'default';
+    if (_fsEntryLine && _fsEntryPrice === p.entryPrice) return;
+    const long = p.side === 'Buy';
+    _fsEntryPrice = p.entryPrice;
+    if (_fsEntryLine) { try { _obCandleS.removePriceLine(_fsEntryLine); } catch(e) {} }
+    _fsEntryLine = _obCandleS.createPriceLine({ price: _fsEntryPrice, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+    if (!_fsEntryLabel) {
+        if (!_tradeSide) _tradeSide = p.side;
+        _createEntryLabel(long);
+        _ensureChartRightSpace();
+    }
+    _updateEntryLabelPos();
 }
 
 function _calcLinePnl(price) {
@@ -1244,12 +1284,22 @@ function setFsSide(side) {
     if (_fsOrderType !== 'Market') {
         _createEntryLabel(long);
         _updateEntryLabelPos();
+        _ensureChartRightSpace();
     }
+}
+
+// Le label Entry/SL/TP sono ancorate a `right:180px` nel container del grafico:
+// spinge le candele a sinistra (rightOffset) così non finiscono coperte dalle label,
+// e blocca il pan (vedi subscribeVisibleLogicalRangeChange in initChart) sotto quella soglia.
+function _ensureChartRightSpace() {
+    _fsChartSpacingLocked = true;
+    if (!_obChart) return;
+    try { _obChart.timeScale().applyOptions({ rightOffset: _fsMinOffsetBars() }); } catch(e) {}
 }
 
 function _removeEntryLine() {
     if (_fsEntryLine && _obCandleS) { try { _obCandleS.removePriceLine(_fsEntryLine); } catch(e) {} }
-    _fsEntryLine = null; _fsEntryPrice = null;
+    _fsEntryLine = null; _fsEntryPrice = null; _fsEntryIsPosition = false;
     if (_fsExecLine && _obCandleS) { try { _obCandleS.removePriceLine(_fsExecLine); } catch(e) {} }
     _fsExecLine = null; _fsExecPrice = null;
     if (_fsExecLabel) { _fsExecLabel.remove(); _fsExecLabel = null; }
@@ -1282,11 +1332,12 @@ function _createEntryLabel(long) {
         ? `<div id="fs-el-tr" onmousedown="_startTriggerDrag(event)" ontouchstart="_startTriggerDrag(event)" title="${window.t('drag_trigger')}" style="${cell}${sep}color:#FF9C2E;cursor:grab;touch-action:none;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">TR</div>`
         : '';
     const isMarket = _fsOrderType === 'Market';
+    const isFilled = _fsEntryIsPosition;
     const slTpBtns = isMarket ? '' : `
         <div id="fs-el-tp" onmousedown="_startLabelDrag('tp',event)" ontouchstart="_startLabelDrag('tp',event)" title="${window.t('drag_tp')}" style="${cell}${sep}color:#10b981;cursor:grab;touch-action:none;${_fsTpPrice != null ? 'display:none;' : ''}" onmouseenter="this.style.background='#1a3028'" onmouseleave="this.style.background='#1E222D'">TP</div>
         <div id="fs-el-sl" onmousedown="_startLabelDrag('sl',event)" ontouchstart="_startLabelDrag('sl',event)" title="${window.t('drag_sl')}" style="${cell}${sep}color:#ef4444;cursor:grab;touch-action:none;${_fsSlPrice != null ? 'display:none;' : ''}" onmouseenter="this.style.background='#2d1717'" onmouseleave="this.style.background='#1E222D'">SL</div>`;
     label.innerHTML = `
-        <div id="fs-el-side" onmousedown="_startEntryDrag(event)" ontouchstart="_startEntryDrag(event)" style="padding:5px 9px;background:${sideBg};color:${sideColor};cursor:${isMarket ? 'default' : 'ns-resize'};touch-action:none;">${sideText}</div>
+        <div id="fs-el-side" onmousedown="_startEntryDrag(event)" ontouchstart="_startEntryDrag(event)" style="padding:5px 9px;background:${sideBg};color:${sideColor};cursor:${(isMarket || isFilled) ? 'default' : 'ns-resize'};touch-action:none;">${sideText}</div>
         <div id="fs-el-type" onclick="_openEntryTypeMenu(event)" title="${window.t('change_order_type')}" style="${cell}${sep}color:#9CA3AF;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">${typeText}</div>
         ${trBtn}
         ${slTpBtns}
@@ -1453,7 +1504,9 @@ function _addEntryTr() {
 
 function _startEntryDrag(e) {
     e.preventDefault(); e.stopPropagation();
-    if (!_obCandleS || !_tradeSide || _fsOrderType === 'Market') return;
+    // Ordine già eseguito (posizione live): il prezzo di ingresso è quello reale
+    // riportato da Bybit e non è più modificabile col drag.
+    if (!_obCandleS || !_tradeSide || _fsOrderType === 'Market' || _fsEntryIsPosition) return;
     _dragMode = 'entry';
     if (_dragOverlay) { _dragOverlay.style.pointerEvents = 'all'; _dragOverlay.style.cursor = 'ns-resize'; }
     _entryDragMM = function(ev) {
@@ -1526,6 +1579,7 @@ async function _cancelOrReset() {
 
 function resetTradeSide(reason) {
     _tradeSide = null;
+    _fsChartSpacingLocked = false;
     _fsPendingOrderId = null; _fsPendingOrderFilter = null;
     _hadPosition = false; _orderSeenInList = false; _pendingOrderSetAt = 0; _lastAmendAt = 0; _orderMissingCount = 0; _posMissingCount = 0;
     const l = document.getElementById('fs-btn-long'), s = document.getElementById('fs-btn-short');
@@ -2478,8 +2532,16 @@ createApp({
             for (const { p, color, width, style } of EMA_CFG)
                 emaS[p] = addSeries(obChart, 'LineSeries', { ...lineBase, color, lineWidth: width + 0.5, lineStyle: style ?? 0 });
 
-            const _resetChartView = () => { if (obKlineCount) { const n = DEFAULT_CANDLES[chartTF.value]||80; obChart.timeScale().setVisibleLogicalRange({ from: Math.max(0, obKlineCount-n), to: obKlineCount+3 }); obChart.priceScale('right').applyOptions({ autoScale: true }); } };
+            const _resetChartView = () => { if (obKlineCount) { const n = DEFAULT_CANDLES[chartTF.value]||80; const off = _fsChartSpacingLocked ? _fsMinOffsetBars(obChart) : 3; obChart.timeScale().setVisibleLogicalRange({ from: Math.max(0, obKlineCount-n), to: obKlineCount+off }); obChart.priceScale('right').applyOptions({ autoScale: true }); } };
             obChart.subscribeDblClick(_resetChartView);
+            // Con le label Entry/SL/TP attive (_fsChartSpacingLocked), impedisce col pan di
+            // avvicinare le candele all'area riservata alle label oltre la distanza minima (in pixel).
+            obChart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+                if (!_fsChartSpacingLocked) return;
+                const minBars = _fsMinOffsetBars(obChart);
+                const pos = obChart.timeScale().scrollPosition();
+                if (pos < minBars) obChart.timeScale().scrollToPosition(minBars, false);
+            });
             obChart.subscribeCrosshairMove(param => {
                 if (param && param.point && param.point.y > 0 && param.seriesData && candleS) {
                     const cd = param.seriesData.get(candleS);
@@ -2512,6 +2574,13 @@ createApp({
         const loadChartData = async (tf) => {
             if (!candleS) return;
             try {
+                // Le linee Day/Prev H/L usano solo le ultime 2 candele D: partite in parallelo
+                // al fetch principale, e su /api/klines/live (una sola chiamata Bybit, cache
+                // ws_manager) invece di /api/klines (pagina fino a 5 richieste Bybit in sequenza
+                // per l'intero storico daily) — prima girava DOPO il fetch principale sullo
+                // stesso endpoint pesante, raddoppiando l'attesa ad ogni cambio TF.
+                const dayPromise = fetch(`api/klines/live?symbol=${symbol.value}&interval=D`).then(r => r.json()).catch(() => null);
+
                 const r = await fetch(`api/klines?symbol=${symbol.value}&interval=${tf}`);
                 const j = await r.json();
                 if (!j.success || !j.data || !j.data.length) return;
@@ -2537,7 +2606,12 @@ createApp({
 
                 const _TF_N = {'1':120,'5':100,'15':80,'30':80,'60':80,'240':60,'D':50,'W':52,'M':24};
                 const _rn = _TF_N[tf] || 80;
-                const _applyRange = () => { if (obChart) obChart.timeScale().setVisibleLogicalRange({ from: Math.max(0, obKlineCount - _rn), to: obKlineCount + 3 }); };
+                const _applyRange = () => {
+                    if (obChart) { const off = _fsChartSpacingLocked ? _fsMinOffsetBars(obChart) : 3; obChart.timeScale().setVisibleLogicalRange({ from: Math.max(0, obKlineCount - _rn), to: obKlineCount + off }); }
+                    // Le label Entry/SL/TP/Exec sono div assoluti posizionati via priceToCoordinate:
+                    // il cambio TF sposta la price scale (nuovi dati + autoScale), vanno riallineate.
+                    _updateAllLabels();
+                };
                 _applyRange();
                 requestAnimationFrame(_applyRange);
                 if (obChart) obChart.priceScale('right').applyOptions({ autoScale: true });
@@ -2546,9 +2620,8 @@ createApp({
                 _clearDayLines();
                 _dayHighPrice = _dayLowPrice = _prevHighPrice = _prevLowPrice = null;
                 try {
-                    const rd = await fetch(`api/klines?symbol=${symbol.value}&interval=D`);
-                    const jd = await rd.json();
-                    if (jd.success && jd.data && jd.data.length) {
+                    const jd = await dayPromise;
+                    if (jd && jd.success && jd.data && jd.data.length) {
                         const lv = getLvCfg();
                         const today = jd.data[jd.data.length - 1];
                         _dayHighPrice = today.high;
@@ -2673,8 +2746,14 @@ createApp({
             if (tf === chartTF.value || !candleS) return;
             chartTF.value = tf;
             stopChartPolling();
+            stopKlineWS();
             _clearDayLines();
             candleS.setData([]);
+            // La candela in formazione del TF precedente resta valorizzata finché loadChartData
+            // non risponde: senza azzerarla, il patch mid-price del book (riga ~3052) la
+            // reinietta sulla serie appena svuotata — un'unica barra con l'H/L del vecchio TF,
+            // che sull'autoScale appare come una candela enorme finché il fetch non la sostituisce.
+            _obLiveCandle = null;
             for (const { p } of EMA_CFG) { emaS[p].setData([]); lastEMA[p] = null; }
             for (const k of ['upper', 'mid', 'lower']) if (_obBbSeries[k]) try { _obBbSeries[k].setData([]); } catch(e) {}
             ohlc.value = { o: '', h: '', l: '', c: '', pct: '', color: '#9ca3af' };

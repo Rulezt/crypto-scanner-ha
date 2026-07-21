@@ -2066,7 +2066,7 @@ async function loadSlotData(idx) {
         } else {
             const [r, rd] = await Promise.all([
                 fetch(`api/klines?symbol=${s.symbol}&interval=${s.curTF}`),
-                fetch(`api/klines?symbol=${s.symbol}&interval=D`),
+                fetch(`api/klines/live?symbol=${s.symbol}&interval=D`),
             ]);
             const j  = await r.json();
             const jdj = await rd.json();
@@ -2272,7 +2272,7 @@ async function loadFsData() {
     try {
         const [r, rd] = await Promise.all([
             fetch(`api/klines?symbol=${fsCoin.symbol}&interval=${fsTF}`),
-            fetch(`api/klines?symbol=${fsCoin.symbol}&interval=D`),
+            fetch(`api/klines/live?symbol=${fsCoin.symbol}&interval=D`),
         ]);
         const j  = await r.json();
         const jd = await rd.json();
@@ -2327,6 +2327,11 @@ function connectFsWS() {
     fsWs.onmessage = ev => {
         let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
         if (!msg.topic || !msg.topic.startsWith('kline.')) return;
+        // Un messaggio già in transito sul topic del vecchio TF/symbol può arrivare dopo
+        // che closeFsWS()+setData([]) hanno svuotato la serie ma prima della resubscribe:
+        // senza questo controllo finiva incollato sulla serie vuota come un'unica candela
+        // enorme (H/L del vecchio TF) finché il fetch non la sostituiva.
+        if (!fsCoin || msg.topic !== `kline.${fsTF}.${fsCoin.symbol}`) return;
         const b = msg.data[0];
         const confirmed = b.confirm === true || b.confirm === 'true';
         const candle = {
@@ -2842,7 +2847,7 @@ async function loadOBData() {
     try {
         const [r, rd] = await Promise.all([
             fetch(`api/klines?symbol=${obSymbolName}&interval=${obTF}`),
-            fetch(`api/klines?symbol=${obSymbolName}&interval=D`),
+            fetch(`api/klines/live?symbol=${obSymbolName}&interval=D`),
         ]);
         const j = await r.json(); const jd = await rd.json();
         if (!j.success) return;
@@ -2887,6 +2892,9 @@ function connectOBWS() {
     obWS.onmessage = ev => {
         let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
         if (!msg.topic || !msg.topic.startsWith('kline.')) return;
+        // Stesso guard di fsWs.onmessage: ignora messaggi del vecchio TF/symbol arrivati
+        // in ritardo dopo un cambio TF, prima che avvenga la resubscribe.
+        if (!obSymbolName || msg.topic !== `kline.${obTF}.${obSymbolName}`) return;
         const b = msg.data[0];
         const confirmed = b.confirm === true || b.confirm === 'true';
         const candle = { time: Math.floor(parseInt(b.start)/1000), open: parseFloat(b.open), high: parseFloat(b.high), low: parseFloat(b.low), close: parseFloat(b.close) };
