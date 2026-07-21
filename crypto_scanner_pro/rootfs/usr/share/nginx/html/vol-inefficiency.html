@@ -64,7 +64,6 @@
         .type-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.63rem; font-weight: 700; letter-spacing: 0.03em; }
         .type-lvn     { background: rgba(168,85,247,0.2); color: #c084fc; }
         .type-climax  { background: rgba(245,158,11,0.2); color: #fbbf24; }
-        .type-diverg  { background: rgba(236,72,153,0.2); color: #f472b6; }
         .type-squeeze { background: rgba(34,211,238,0.2); color: #67e8f9; }
         .loading-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; gap: 14px; color: #6b7280; }
         .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.08); border-top-color: #f43f5e; border-radius: 50%; animation: spin 0.8s linear infinite; }
@@ -144,7 +143,6 @@
             <button @click="typeFilter='all'"     :class="['filt-btn', typeFilter==='all'     ? 'active':'']">{{ t('vinef_all') }} ({{ results.length }})</button>
             <button @click="typeFilter='lvn'"     :class="['filt-btn', typeFilter==='lvn'     ? 'active':'']">{{ t('vinef_type_lvn') }} ({{ countType('lvn') }})</button>
             <button @click="typeFilter='climax'"  :class="['filt-btn', typeFilter==='climax'  ? 'active':'']">{{ t('vinef_type_climax') }} ({{ countType('climax') }})</button>
-            <button @click="typeFilter='diverg'"  :class="['filt-btn', typeFilter==='diverg'  ? 'active':'']">{{ t('vinef_type_diverg') }} ({{ countType('diverg') }})</button>
             <button @click="typeFilter='squeeze'" :class="['filt-btn', typeFilter==='squeeze' ? 'active':'']">{{ t('vinef_type_squeeze') }} ({{ countType('squeeze') }})</button>
             <div class="divider"></div>
             <span class="filter-label">{{ t('vinef_dir_lbl') }}</span>
@@ -272,7 +270,6 @@
         <div class="legend-item"><span class="legend-line" style="background:#a855f7"></span> EMA223</div>
         <div class="legend-item"><span class="legend-dot" style="background:#c084fc"></span> {{ t('vinef_type_lvn') }}</div>
         <div class="legend-item"><span class="legend-dot" style="background:#fbbf24"></span> {{ t('vinef_type_climax') }}</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#f472b6"></span> {{ t('vinef_type_diverg') }}</div>
         <div class="legend-item"><span class="legend-dot" style="background:#67e8f9"></span> {{ t('vinef_type_squeeze') }}</div>
         <div class="legend-item" style="margin-left:auto;color:#374151">{{ filteredResults.length }} segnali</div>
     </div>
@@ -285,7 +282,6 @@
             <div class="cfg-scroll" style="display:flex;flex-direction:column;gap:11px;">
                 <label class="cfg-toggle"><input type="checkbox" v-model="enableLVN"><span>{{ t('vinef_type_lvn') }}</span><span class="vinef-help" @mouseenter="showInfo($event,'lvn')" @mouseleave="hideInfo">i</span></label>
                 <label class="cfg-toggle"><input type="checkbox" v-model="enableClimax"><span>{{ t('vinef_type_climax') }}</span><span class="vinef-help" @mouseenter="showInfo($event,'climax')" @mouseleave="hideInfo">i</span></label>
-                <label class="cfg-toggle"><input type="checkbox" v-model="enableDivergence"><span>{{ t('vinef_type_diverg') }}</span><span class="vinef-help" @mouseenter="showInfo($event,'diverg')" @mouseleave="hideInfo">i</span></label>
                 <label class="cfg-toggle"><input type="checkbox" v-model="enableSqueeze"><span>{{ t('vinef_type_squeeze') }}</span><span class="vinef-help" @mouseenter="showInfo($event,'squeeze')" @mouseleave="hideInfo">i</span></label>
                 <div class="cfg-sep"></div>
                 <div class="cfg-row"><label>{{ t('vinef_history') }}</label><input type="number" v-model.number="historyBars" min="100" max="1000" step="50"></div>
@@ -338,7 +334,6 @@ createApp({
         const _cfgB = (() => { try { return JSON.parse(localStorage.getItem('vinef_cfg') || '{}'); } catch { return {}; } })();
         const enableLVN        = ref(_cfgB.enableLVN        ?? true);
         const enableClimax     = ref(_cfgB.enableClimax     ?? true);
-        const enableDivergence = ref(_cfgB.enableDivergence ?? true);
         const enableSqueeze    = ref(_cfgB.enableSqueeze    ?? true);
         const historyBars      = ref(_cfgB.historyBars      ?? 300);
         const minVolM          = ref(_cfgB.minVolM          ?? 10);
@@ -517,54 +512,7 @@ createApp({
             return null;
         };
 
-        // 3) Divergenza prezzo/volume: il prezzo fa un nuovo massimo/minimo pivot
-        // ma il delta stimato (proxy (close-open)/(high-low)*volume, cumulato tra
-        // i due pivot) non conferma — assorbimento silenzioso pre-inversione.
-        const PIVOT_LB = 5;
-        const deltaProxy = (c) => { const r = c.high - c.low; return r > 0 ? (c.close - c.open) / r * c.volume : 0; };
-        const findPivots = (candles, isHigh) => {
-            const n = candles.length, out = [];
-            for (let i = PIVOT_LB; i < n - PIVOT_LB; i++) {
-                const v = isHigh ? candles[i].high : candles[i].low;
-                let ok = true;
-                for (let j = i - PIVOT_LB; j <= i + PIVOT_LB; j++) {
-                    if (j === i) continue;
-                    if (isHigh ? candles[j].high > v : candles[j].low < v) { ok = false; break; }
-                }
-                if (ok) out.push(i);
-            }
-            return out;
-        };
-        // Un pivot può essere confermato solo dopo aver visto PIVOT_LB candele
-        // successive (altrimenti non si può sapere che è davvero un massimo/minimo
-        // locale) — questo ritardo è strutturale, non un margine di staleness
-        // aggiunto. Si accetta solo il pivot appena diventato confermabile
-        // (età ≈ PIVOT_LB), MAI un pivot più vecchio ancora in coda: quello
-        // significherebbe segnalare una divergenza il cui movimento è già iniziato.
-        const DIVERG_FRESH_TOL = 1;
-        const detectDivergence = (candles) => {
-            const n = candles.length;
-            if (n < PIVOT_LB * 2 + 20) return null;
-            const cum = new Array(n);
-            let s = 0;
-            for (let i = 0; i < n; i++) { s += deltaProxy(candles[i]); cum[i] = s; }
-            const freshFrom = n - 1 - (PIVOT_LB + DIVERG_FRESH_TOL);
-            const highs = findPivots(candles, true);
-            if (highs.length >= 2) {
-                const p2 = highs[highs.length - 1], p1 = highs[highs.length - 2];
-                if (p2 >= freshFrom && candles[p2].high > candles[p1].high && cum[p2] < cum[p1])
-                    return { idx: p2, age: n - 1 - p2, dir: 'bear', p1, p2 };
-            }
-            const lows = findPivots(candles, false);
-            if (lows.length >= 2) {
-                const p2 = lows[lows.length - 1], p1 = lows[lows.length - 2];
-                if (p2 >= freshFrom && candles[p2].low < candles[p1].low && cum[p2] > cum[p1])
-                    return { idx: p2, age: n - 1 - p2, dir: 'bull', p1, p2 };
-            }
-            return null;
-        };
-
-        // 4) Volume Squeeze: volume in prosciugamento + range compresso per K
+        // 3) Volume Squeeze: volume in prosciugamento + range compresso per K
         // candele consecutive rispetto a una finestra più ampia — la "molla"
         // prima di un'esplosione di volatilità.
         const SQ_K = 6, SQ_VOL_DRY_RATIO = 0.55, SQ_RANGE_DRY_RATIO = 0.55;
@@ -596,7 +544,7 @@ createApp({
             return { idx: i, age: dur, dir, hiR: cond.hiR, loR: cond.loR };
         };
 
-        const TYPE_LABEL = { lvn: 'LVN', climax: 'Climax', diverg: 'Divrg', squeeze: 'Squeeze' };
+        const TYPE_LABEL = { lvn: 'LVN', climax: 'Climax', squeeze: 'Squeeze' };
 
         const buildRow = (ticker, tf, candles, type, sig) => {
             const price = candles[candles.length - 1].close;
@@ -604,12 +552,7 @@ createApp({
             const row = { symbol: ticker.symbol, tf, type, dir: sig.dir, age: sig.age, price, change: ticker.change, volume: ticker.volume, sigTime };
             if (type === 'lvn') { row.zoneLo = sig.zoneLo; row.zoneHi = sig.zoneHi; row.metric = sig.dist.toFixed(2) + '%'; }
             else if (type === 'climax') { row.metric = sig.volMult.toFixed(1) + 'x'; }
-            else if (type === 'diverg') {
-                row.p1Time = candles[sig.p1].time; row.p2Time = candles[sig.p2].time;
-                row.p1Price = sig.dir === 'bear' ? candles[sig.p1].high : candles[sig.p1].low;
-                row.p2Price = sig.dir === 'bear' ? candles[sig.p2].high : candles[sig.p2].low;
-                row.metric = sig.dir === 'bear' ? 'HH/Delta↓' : 'LL/Delta↑';
-            } else if (type === 'squeeze') { row.hiR = sig.hiR; row.loR = sig.loR; row.metric = sig.age + 'b'; }
+            else if (type === 'squeeze') { row.hiR = sig.hiR; row.loR = sig.loR; row.metric = sig.age + 'b'; }
             return row;
         };
 
@@ -679,7 +622,6 @@ createApp({
                                     const detectors = [
                                         ['lvn',     enableLVN.value,        detectLVN],
                                         ['climax',  enableClimax.value,     detectClimax],
-                                        ['diverg',  enableDivergence.value, detectDivergence],
                                         ['squeeze', enableSqueeze.value,    detectSqueeze],
                                     ];
                                     for (const [type, enabled, fn] of detectors) {
@@ -816,12 +758,6 @@ createApp({
                         candleSeries.createPriceLine({ price: row.hiR, color: '#22d3ee', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Squeeze' });
                         candleSeries.createPriceLine({ price: row.loR, color: '#22d3ee', lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: '' });
                     } catch(e) {}
-                } else if (row.type === 'diverg') {
-                    try {
-                        const p1t = row.p1Time + tzOff, p2t = row.p2Time + tzOff;
-                        const trendS = addS(chart, 'LineSeries', { color: row.dir === 'bear' ? '#ef4444' : '#10b981', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-                        trendS.setData([{ time: p1t, value: row.p1Price }, { time: p2t, value: row.p2Price }]);
-                    } catch(e) {}
                 }
 
                 if (_sigTimeAdj && LC.createSeriesMarkers) {
@@ -920,12 +856,6 @@ createApp({
                         candleSeries.createPriceLine({ price: row.hiR, color: '#22d3ee', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Squeeze' });
                         candleSeries.createPriceLine({ price: row.loR, color: '#22d3ee', lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: '' });
                     } catch(e) {}
-                } else if (row.type === 'diverg') {
-                    try {
-                        const p1t = row.p1Time + tzOff, p2t = row.p2Time + tzOff;
-                        const trendS = addS(chart, 'LineSeries', { color: row.dir === 'bear' ? '#ef4444' : '#10b981', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-                        trendS.setData([{ time: p1t, value: row.p1Price }, { time: p2t, value: row.p2Price }]);
-                    } catch(e) {}
                 }
 
                 if (_sigTimeAdj && LC.createSeriesMarkers && mobilePreviewSymbol.value === key) {
@@ -993,10 +923,10 @@ createApp({
             document.documentElement.style.setProperty('--thead-top', (wh + fh) + 'px');
         };
         const { watch, nextTick } = Vue;
-        watch([enableLVN, enableClimax, enableDivergence, enableSqueeze, historyBars, minVolM, minVarPct], () => {
+        watch([enableLVN, enableClimax, enableSqueeze, historyBars, minVolM, minVarPct], () => {
             try { localStorage.setItem('vinef_cfg', JSON.stringify({
                 enableLVN: enableLVN.value, enableClimax: enableClimax.value,
-                enableDivergence: enableDivergence.value, enableSqueeze: enableSqueeze.value,
+                enableSqueeze: enableSqueeze.value,
                 historyBars: historyBars.value, minVolM: minVolM.value, minVarPct: minVarPct.value,
             })); } catch {}
         });
@@ -1069,7 +999,7 @@ createApp({
         return {
             ALL_TFS, TF_LABEL, t,
             favoriteSymbols, isFav, toggleFav,
-            enableLVN, enableClimax, enableDivergence, enableSqueeze,
+            enableLVN, enableClimax, enableSqueeze,
             historyBars, minVolM, minVarPct,
             columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
             scanning, statusMsg, displayMsg, initialDone,

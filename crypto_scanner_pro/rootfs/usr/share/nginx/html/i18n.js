@@ -294,7 +294,7 @@
       scr_bops_desc:      'Canali convergenti individuati dai pivot',
       scr_confl_desc:     'Coin segnalate da 2+ screener diversi contemporaneamente',
       scr_chb_desc:       'Breakout del canale SMA20 (close/high/low): apertura dentro/fuori canale, chiusura oltre',
-      scr_vinef_desc:     'Inefficienze nel volume (LVN, Climax, Divergenza, Squeeze) che anticipano un movimento di tendenza',
+      scr_vinef_desc:     'Inefficienze nel volume (LVN, Climax, Squeeze) che anticipano un movimento di tendenza',
       /* ema cross visual scanner */
       emax_title:         'EMA Cross 60/223 Scanner',
       emax_desc:          'Rileva le coin dove EMA60 ha appena incrociato EMA223 (sopra o sotto), con una tolleranza minima per filtrare incroci di rumore. Imposta i parametri e avvia la scansione.',
@@ -375,7 +375,7 @@
       chb_auto_next:      'Prossima scan tra',
       /* volume inefficiency visual scanner */
       vinef_title:        'Volume Inefficiency Scanner',
-      vinef_desc:         'Cerca 4 tipi di inefficienza nel volume che spesso anticipano un movimento di tendenza nel breve periodo: Low Volume Node (zona di prezzo poco scambiata tra due zone ad alto volume), Volume Climax (volume anomalo con range compresso), Divergenza prezzo/volume (nuovo massimo o minimo non confermato dal volume) e Volume Squeeze (volume e range in prosciugamento prima di un’esplosione di volatilità).',
+      vinef_desc:         'Cerca 3 tipi di inefficienza nel volume che spesso anticipano un movimento di tendenza nel breve periodo: Low Volume Node (zona di prezzo poco scambiata tra due zone ad alto volume), Volume Climax (volume anomalo con range compresso) e Volume Squeeze (volume e range in prosciugamento prima di un’esplosione di volatilità).',
       vinef_scan:         'Avvia Scansione',
       vinef_scanning:     'Scansione…',
       vinef_stop:         'Stop',
@@ -392,7 +392,6 @@
       vinef_sort_age:     'Età',
       vinef_type_lvn:     'LVN',
       vinef_type_climax:  'Climax',
-      vinef_type_diverg:  'Divergenza',
       vinef_type_squeeze: 'Squeeze',
       vinef_col_symbol:   'Coin',
       vinef_col_type:     'Tipo',
@@ -407,7 +406,6 @@
       vinef_vol:          'Vol min $M',
       vinef_info_lvn:     'Individua una zona di prezzo scambiata pochissimo tra due zone ad alto volume: il prezzo tende ad attraversarla rapidamente. Dopo il segnale: valuta un ingresso nella direzione indicata, stop oltre la zona opposta, target sulla prossima area ad alto volume.',
       vinef_info_climax:  'Rileva una candela con volume anomalo ma range compresso: tanto scambiato senza movimento, tipico di accumulo/distribuzione nascosta. Dopo il segnale: attendi la rottura del range di quella candela nella direzione indicata prima di entrare, stop dal lato opposto.',
-      vinef_info_diverg:  'Segnala un nuovo massimo/minimo di prezzo non confermato dal volume stimato: possibile assorbimento silenzioso. Dopo il segnale: valuta un’inversione contro il trend recente, stop oltre l’ultimo pivot, target sul pivot precedente.',
       vinef_info_squeeze: 'Rileva volume e range compressi per diverse candele consecutive: la "molla" prima di un’esplosione di volatilità. Dopo il segnale: prepara ordini sui due lati del range compresso oppure segui la direzione indicata, stop dall’altro lato del range.',
       /* login modal */
       login_submit:     'Accedi',
@@ -1014,7 +1012,7 @@
       scr_bops_desc:      'Converging channels detected from pivots',
       scr_confl_desc:     'Coins flagged by 2+ different screeners at the same time',
       scr_chb_desc:       'SMA20 channel (close/high/low) breakout: open inside/outside channel, close beyond it',
-      scr_vinef_desc:     'Volume inefficiencies (LVN, Climax, Divergence, Squeeze) that anticipate a trending move',
+      scr_vinef_desc:     'Volume inefficiencies (LVN, Climax, Squeeze) that anticipate a trending move',
       /* ema cross visual scanner */
       emax_title:         'EMA Cross 60/223 Scanner',
       emax_desc:          'Detects coins where EMA60 has just crossed EMA223 (above or below), with a minimum tolerance to filter out noisy crosses. Set the parameters and start the scan.',
@@ -1095,7 +1093,7 @@
       chb_auto_next:      'Next scan in',
       /* volume inefficiency visual scanner */
       vinef_title:        'Volume Inefficiency Scanner',
-      vinef_desc:         'Looks for 4 types of volume inefficiency that often anticipate a short-term trending move: Low Volume Node (thinly-traded price zone between two high-volume zones), Volume Climax (abnormal volume with compressed range), Price/Volume Divergence (a new high or low not confirmed by volume) and Volume Squeeze (volume and range drying up before a volatility expansion).',
+      vinef_desc:         'Looks for 3 types of volume inefficiency that often anticipate a short-term trending move: Low Volume Node (thinly-traded price zone between two high-volume zones), Volume Climax (abnormal volume with compressed range) and Volume Squeeze (volume and range drying up before a volatility expansion).',
       vinef_scan:         'Start Scan',
       vinef_scanning:     'Scanning…',
       vinef_stop:         'Stop',
@@ -1112,7 +1110,6 @@
       vinef_sort_age:     'Age',
       vinef_type_lvn:     'LVN',
       vinef_type_climax:  'Climax',
-      vinef_type_diverg:  'Divergence',
       vinef_type_squeeze: 'Squeeze',
       vinef_col_symbol:   'Coin',
       vinef_col_type:     'Type',
@@ -1127,7 +1124,6 @@
       vinef_vol:          'Min Vol ($M)',
       vinef_info_lvn:     'Finds a thinly-traded price zone between two high-volume zones: price tends to move through it quickly. After the signal: consider an entry in the indicated direction, stop beyond the opposite zone, target the next high-volume area.',
       vinef_info_climax:  'Detects a candle with abnormal volume but compressed range: a lot traded with little price movement, typical of hidden accumulation/distribution. After the signal: wait for that candle\'s range to break in the indicated direction before entering, stop on the opposite side.',
-      vinef_info_diverg:  'Flags a new price high/low not confirmed by the estimated volume: possible silent absorption. After the signal: consider a reversal against the recent trend, stop beyond the last pivot, target the previous pivot.',
       vinef_info_squeeze: 'Detects volume and range compressed for several consecutive bars: the "spring" before a volatility expansion. After the signal: prepare orders on both sides of the compressed range, or follow the indicated direction, stop on the other side of the range.',
       /* login modal */
       login_submit:     'Sign In',

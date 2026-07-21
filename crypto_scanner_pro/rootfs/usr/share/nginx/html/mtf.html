@@ -221,6 +221,7 @@ let _mouseOverSlot = -1;
 let ws      = null;
 let _mtfAthVal = null, _mtfAtlVal = null;
 let wsTimer = null;
+let mtfBookWS = null, mtfBookWsTimer = null;
 let mobileSlotIdx = 0;
 let bbActive = false;
 let channelActive = false;
@@ -861,6 +862,7 @@ async function loadAll() {
   await Promise.all(slots.map((_, i) => loadSlot(i, dailyData)));
   fetchMTFATHATL();
   openWS();
+  openMtfBookWS();
   syncAllAlertLines();
   initNotifications();
   setTimeout(pollTriggeredAlerts, 15000);
@@ -1029,6 +1031,185 @@ function setWSDot(state) {
 }
 
 window.addEventListener('beforeunload', closeWS);
+
+// ── Book WS (solo top-of-book, per il prezzo live) ────────────────────────────
+// Il kline WS di Bybit è trade-driven e throttlato a ~1/s: se il mercato è
+// fermo il prezzo della candela in formazione resta "vecchio" per secondi.
+// Il book (orderbook.1, aggiornato ad ogni variazione di best bid/ask) segue
+// il prezzo molto più da vicino, quindi lo usiamo per "spingere" la candela
+// live tra un kline update e l'altro — stesso pattern già in uso in trade.js.
+// Un'unica sottoscrizione condivisa alimenta tutti gli slot della griglia e,
+// se aperto, il grafico fullscreen.
+function openMtfBookWS() {
+  closeMtfBookWS();
+  mtfBookWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+  mtfBookWS.onopen = () => mtfBookWS.send(JSON.stringify({ op: 'subscribe', args: [`orderbook.1.${SYM}`] }));
+  mtfBookWS.onmessage = ev => {
+    let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
+    if (!msg.topic || !msg.topic.startsWith('orderbook.') || !msg.data) return;
+    const bidRow = msg.data.b && msg.data.b[0], askRow = msg.data.a && msg.data.a[0];
+    if (!bidRow || !askRow) return;
+    const bid = parseFloat(bidRow[0]), ask = parseFloat(askRow[0]);
+    if (!isFinite(bid) || !isFinite(ask)) return;
+    const midPrice = (bid + ask) / 2;
+    for (const s of slots) _mtfBookPatchSlot(s, midPrice);
+    if (fsCandleS) _mtfBookPatchFS(midPrice);
+  };
+  mtfBookWS.onerror = () => {};
+  mtfBookWS.onclose = () => { mtfBookWsTimer = setTimeout(openMtfBookWS, 5000); };
+}
+
+function closeMtfBookWS() {
+  clearTimeout(mtfBookWsTimer);
+  if (mtfBookWS) { try { mtfBookWS.close(); } catch(e) {} mtfBookWS = null; }
+}
+window.addEventListener('beforeunload', closeMtfBookWS);
+
+// Se il boundary del TF è stato superato, apre subito una nuova candela lato
+// client (invece di aspettare il prossimo kline confermato) usando il
+// mid-price del book. WS kline continua ad arrivare e corregge i valori
+// sintetici con quelli ufficiali non appena disponibili.
+function _mtfRollSlotIfNeeded(s, midPrice) {
+  const klines = s.klines;
+  if (!s.candleS || !klines.length) return false;
+  const barSecs = TF_SECONDS[s.cfg.tf];
+  if (!barSecs) return false;
+  const last = klines[klines.length - 1];
+  const nowAdj = Math.floor(Date.now() / 1000) + TZ_OFFSET_S;
+  const expectedOpen = Math.floor(nowAdj / barSecs) * barSecs;
+  if (expectedOpen <= last.time) return false;
+
+  const prevClose = last.close;
+  for (const { p } of EMA_CFG) {
+    if (s.lastEMA[p] == null) continue;
+    const k = 2 / (p + 1);
+    s.lastEMA[p] = prevClose * k + s.lastEMA[p] * (1 - k);
+  }
+
+  const newCandle = {
+    time: expectedOpen, open: prevClose,
+    high: Math.max(prevClose, midPrice), low: Math.min(prevClose, midPrice),
+    close: midPrice, volume: 0,
+  };
+  klines.push({ ...newCandle });
+  s.lastPrice = newCandle.close; s.lastOpen = newCandle.open;
+  try { s.candleS.update(newCandle); } catch(e) {}
+
+  for (const { p } of EMA_CFG) {
+    if (s.lastEMA[p] == null) continue;
+    const k    = 2 / (p + 1);
+    const live = newCandle.close * k + s.lastEMA[p] * (1 - k);
+    try { s.emaS[p].update({ time: newCandle.time, value: live }); } catch(e) {}
+  }
+  if (bbActive && s.bbSeries.upper && klines.length >= getBbCfg().period) {
+    const _bb = getBbCfg();
+    const sl = klines.slice(-_bb.period);
+    const mean = sl.reduce((a,c)=>a+c.close,0)/_bb.period;
+    const std  = Math.sqrt(sl.reduce((a,c)=>a+(c.close-mean)**2,0)/_bb.period);
+    s.bbSeries.upper.update({time:newCandle.time, value:mean+_bb.mult*std});
+    s.bbSeries.mid.update(  {time:newCandle.time, value:mean});
+    s.bbSeries.lower.update({time:newCandle.time, value:mean-_bb.mult*std});
+  }
+  if (channelActive && s.channelSeries.upper && klines.length >= getChannelCfg().period) {
+    const _cper = getChannelCfg().period;
+    const csl = klines.slice(-_cper);
+    let sumC=0, sumH=0, sumL=0;
+    for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
+    const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
+    s.channelSeries.mid.update(  {time:newCandle.time, value:liveC});
+    s.channelSeries.upper.update({time:newCandle.time, value:liveH});
+    s.channelSeries.lower.update({time:newCandle.time, value:liveL});
+    if (s.channelData) {
+      const _cdUpd = (arr, val) => { const last = arr[arr.length-1], pt = {time:newCandle.time, value:val}; if (last && last.time === newCandle.time) arr[arr.length-1] = pt; else arr.push(pt); };
+      _cdUpd(s.channelData.upper, liveH);
+      _cdUpd(s.channelData.lower, liveL);
+    }
+  }
+  if (sqzActive) { try { _drawSqzChannel(s.candleS, klines, s.sqzLines); } catch(e) {} }
+  return true;
+}
+
+function _mtfBookPatchSlot(s, midPrice) {
+  const klines = s.klines;
+  if (!s.candleS || !klines.length) return;
+  if (_mtfRollSlotIfNeeded(s, midPrice)) return;
+  const last = klines[klines.length - 1];
+  last.close = midPrice;
+  if (midPrice > last.high) last.high = midPrice;
+  if (midPrice < last.low)  last.low  = midPrice;
+  s.lastPrice = last.close;
+  try { s.candleS.update({ ...last }); } catch(e) {}
+}
+
+function _mtfRollFSIfNeeded(midPrice) {
+  if (!fsCandleS || !fsKlines.length) return false;
+  const barSecs = TF_SECONDS[fsTF];
+  if (!barSecs) return false;
+  const last = fsKlines[fsKlines.length - 1];
+  const nowAdj = Math.floor(Date.now() / 1000) + TZ_OFFSET_S;
+  const expectedOpen = Math.floor(nowAdj / barSecs) * barSecs;
+  if (expectedOpen <= last.time) return false;
+
+  const prevClose = last.close;
+  for (const { p } of EMA_CFG) {
+    if (fsLastEMA[p] == null) continue;
+    const k = 2 / (p + 1);
+    fsLastEMA[p] = prevClose * k + fsLastEMA[p] * (1 - k);
+  }
+
+  const newCandle = {
+    time: expectedOpen, open: prevClose,
+    high: Math.max(prevClose, midPrice), low: Math.min(prevClose, midPrice),
+    close: midPrice, volume: 0,
+  };
+  fsKlines.push({ ...newCandle });
+  fsLastPrice = newCandle.close; fsLastOpen = newCandle.open;
+  try { fsCandleS.update(newCandle); } catch(e) {}
+
+  for (const { p } of EMA_CFG) {
+    if (fsLastEMA[p] == null) continue;
+    const k    = 2 / (p + 1);
+    const live = newCandle.close * k + fsLastEMA[p] * (1 - k);
+    try { fsEmaS[p].update({ time: newCandle.time, value: live }); } catch(e) {}
+  }
+  if (bbActive && fsBbSeries.upper && fsKlines.length >= getBbCfg().period) {
+    const _bb = getBbCfg();
+    const sl = fsKlines.slice(-_bb.period);
+    const mean = sl.reduce((a,c)=>a+c.close,0)/_bb.period;
+    const std  = Math.sqrt(sl.reduce((a,c)=>a+(c.close-mean)**2,0)/_bb.period);
+    fsBbSeries.upper.update({time:newCandle.time, value:mean+_bb.mult*std});
+    fsBbSeries.mid.update(  {time:newCandle.time, value:mean});
+    fsBbSeries.lower.update({time:newCandle.time, value:mean-_bb.mult*std});
+  }
+  if (channelActive && fsChannelSeries.upper && fsKlines.length >= getChannelCfg().period) {
+    const _cper = getChannelCfg().period;
+    const csl = fsKlines.slice(-_cper);
+    let sumC=0, sumH=0, sumL=0;
+    for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
+    const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
+    fsChannelSeries.mid.update(  {time:newCandle.time, value:liveC});
+    fsChannelSeries.upper.update({time:newCandle.time, value:liveH});
+    fsChannelSeries.lower.update({time:newCandle.time, value:liveL});
+    if (fsChannelData) {
+      const _cdUpd = (arr, val) => { const last = arr[arr.length-1], pt = {time:newCandle.time, value:val}; if (last && last.time === newCandle.time) arr[arr.length-1] = pt; else arr.push(pt); };
+      _cdUpd(fsChannelData.upper, liveH);
+      _cdUpd(fsChannelData.lower, liveL);
+    }
+  }
+  if (sqzActive) { try { _drawSqzChannel(fsCandleS, fsKlines, fsSqzLines); } catch(e) {} }
+  return true;
+}
+
+function _mtfBookPatchFS(midPrice) {
+  if (!fsCandleS || !fsKlines.length) return;
+  if (_mtfRollFSIfNeeded(midPrice)) return;
+  const last = fsKlines[fsKlines.length - 1];
+  last.close = midPrice;
+  if (midPrice > last.high) last.high = midPrice;
+  if (midPrice < last.low)  last.low  = midPrice;
+  fsLastPrice = last.close;
+  try { fsCandleS.update({ ...last }); } catch(e) {}
+}
 
 function closeMtfTab() {
   window.close();

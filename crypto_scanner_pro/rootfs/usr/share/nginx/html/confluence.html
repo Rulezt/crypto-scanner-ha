@@ -938,7 +938,7 @@ createApp({
             return { dir: sig.dir, metric: (sig.type === 'strong' ? 'Strong' : 'Normal') + ' age ' + sig.age, sigTime: candles[sig.idx].time, period: cfg.period };
         };
 
-        // ── Volume Inefficiency (LVN / Climax / Divergenza / Squeeze) — porting verbatim da vol-inefficiency.html ──
+        // ── Volume Inefficiency (LVN / Climax / Squeeze) — porting verbatim da vol-inefficiency.html ──
         const VI_LVN_BINS = 24, VI_LVN_RATIO = 0.3, VI_LVN_APPROACH_PCT = 1.5;
         const detectVI_LVN = (candles, cfg) => {
             const n = candles.length;
@@ -1000,43 +1000,6 @@ createApp({
             return null;
         };
 
-        const VI_PIVOT_LB = 5, VI_DIVERG_FRESH_TOL = 1;
-        const viDeltaProxy = (c) => { const r = c.high - c.low; return r > 0 ? (c.close - c.open) / r * c.volume : 0; };
-        const viFindPivots = (candles, isHigh) => {
-            const n = candles.length, out = [];
-            for (let i = VI_PIVOT_LB; i < n - VI_PIVOT_LB; i++) {
-                const v = isHigh ? candles[i].high : candles[i].low;
-                let ok = true;
-                for (let j = i - VI_PIVOT_LB; j <= i + VI_PIVOT_LB; j++) {
-                    if (j === i) continue;
-                    if (isHigh ? candles[j].high > v : candles[j].low < v) { ok = false; break; }
-                }
-                if (ok) out.push(i);
-            }
-            return out;
-        };
-        const detectVI_Divergence = (candles) => {
-            const n = candles.length;
-            if (n < VI_PIVOT_LB * 2 + 20) return null;
-            const cum = new Array(n);
-            let s = 0;
-            for (let i = 0; i < n; i++) { s += viDeltaProxy(candles[i]); cum[i] = s; }
-            const freshFrom = n - 1 - (VI_PIVOT_LB + VI_DIVERG_FRESH_TOL);
-            const highs = viFindPivots(candles, true);
-            if (highs.length >= 2) {
-                const p2 = highs[highs.length - 1], p1 = highs[highs.length - 2];
-                if (p2 >= freshFrom && candles[p2].high > candles[p1].high && cum[p2] < cum[p1])
-                    return { idx: p2, dir: 'bear', metric: 'Divrg HH/Delta↓', p1, p2 };
-            }
-            const lows = viFindPivots(candles, false);
-            if (lows.length >= 2) {
-                const p2 = lows[lows.length - 1], p1 = lows[lows.length - 2];
-                if (p2 >= freshFrom && candles[p2].low < candles[p1].low && cum[p2] > cum[p1])
-                    return { idx: p2, dir: 'bull', metric: 'Divrg LL/Delta↑', p1, p2 };
-            }
-            return null;
-        };
-
         const VI_SQ_K = 6, VI_SQ_VOL_DRY_RATIO = 0.55, VI_SQ_RANGE_DRY_RATIO = 0.55;
         const viSqCond = (candles, i) => {
             const widerN = VI_SQ_K * 4;
@@ -1066,7 +1029,7 @@ createApp({
             return { idx: i, dir, metric: 'Squeeze ' + dur + 'b', hiR: cond.hiR, loR: cond.loR };
         };
 
-        // Volume Inefficiency può generare fino a 4 match indipendenti sullo stesso (symbol,tf) —
+        // Volume Inefficiency può generare fino a 3 match indipendenti sullo stesso (symbol,tf) —
         // a differenza degli altri screener (1 hit max), qui si ritorna un array e si chiama
         // addMatch una volta per ciascun sotto-rilevatore che ha scattato.
         const volIneffHits = (candles, cfg) => {
@@ -1074,7 +1037,6 @@ createApp({
             const detectors = [
                 ['lvn',     cfg.viEnableLVN,        () => detectVI_LVN(candles, cfg)],
                 ['climax',  cfg.viEnableClimax,     () => detectVI_Climax(candles)],
-                ['diverg',  cfg.viEnableDivergence, () => detectVI_Divergence(candles)],
                 ['squeeze', cfg.viEnableSqueeze,    () => detectVI_Squeeze(candles)],
             ];
             for (const [type, en, fn] of detectors) {
@@ -1084,11 +1046,6 @@ createApp({
                 const draw = { type, sigTime: candles[sig.idx].time };
                 if (type === 'lvn') { draw.zoneLo = sig.zoneLo; draw.zoneHi = sig.zoneHi; }
                 else if (type === 'squeeze') { draw.hiR = sig.hiR; draw.loR = sig.loR; }
-                else if (type === 'diverg') {
-                    draw.p1Time = candles[sig.p1].time; draw.p2Time = candles[sig.p2].time;
-                    draw.p1Price = sig.dir === 'bear' ? candles[sig.p1].high : candles[sig.p1].low;
-                    draw.p2Price = sig.dir === 'bear' ? candles[sig.p2].high : candles[sig.p2].low;
-                }
                 out.push({ dir: sig.dir, metric: sig.metric, draw });
             }
             return out;
@@ -1126,7 +1083,7 @@ createApp({
                 brkProximity: 3, brkFreshBars: 5, brkKlimit: 430,
                 cbPeriod: 20, cbLookback: 3,
                 thrAth: 5, thrAtl: 20, icoThreshold: 5,
-                viHistoryBars: 300, viEnableLVN: true, viEnableClimax: true, viEnableDivergence: true, viEnableSqueeze: true,
+                viHistoryBars: 300, viEnableLVN: true, viEnableClimax: true, viEnableSqueeze: true,
             };
             // Riusa le soglie già configurate dall'utente sulle pagine originali, se presenti.
             try { const c = JSON.parse(localStorage.getItem('ath_atl_cfg') || '{}'); if (c.thrAth != null) cfg.thrAth = c.thrAth; if (c.thrAtl != null) cfg.thrAtl = c.thrAtl; } catch {}
@@ -1137,7 +1094,6 @@ createApp({
                 if (c.historyBars != null) cfg.viHistoryBars = c.historyBars;
                 if (c.enableLVN != null) cfg.viEnableLVN = c.enableLVN;
                 if (c.enableClimax != null) cfg.viEnableClimax = c.enableClimax;
-                if (c.enableDivergence != null) cfg.viEnableDivergence = c.enableDivergence;
                 if (c.enableSqueeze != null) cfg.viEnableSqueeze = c.enableSqueeze;
             } catch {}
 
@@ -1393,12 +1349,9 @@ createApp({
                             } else if (d.type === 'squeeze') {
                                 candleSeries.createPriceLine({ price: d.hiR, color: viColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Squeeze' });
                                 candleSeries.createPriceLine({ price: d.loR, color: viColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: '' });
-                            } else if (d.type === 'diverg' && d.p1Time != null) {
-                                const p1t = d.p1Time + (data.utc_offset_s || 0), p2t = d.p2Time + (data.utc_offset_s || 0);
-                                addS(chart, 'LineSeries', { ...lb, color: g.dir === 'bear' ? '#ef4444' : '#10b981', lineWidth: 2 }).setData([{ time: p1t, value: d.p1Price }, { time: p2t, value: d.p2Price }]);
                             }
                             if (d.sigTime != null) {
-                                const viLabel = { lvn: 'LVN', climax: 'Climax', diverg: 'Divrg', squeeze: 'Squeeze' }[d.type];
+                                const viLabel = { lvn: 'LVN', climax: 'Climax', squeeze: 'Squeeze' }[d.type];
                                 markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: viLabel });
                             }
                         } else if (g.screener === 'ath_atl') {
@@ -1514,12 +1467,9 @@ createApp({
                             } else if (d.type === 'squeeze') {
                                 candleSeries.createPriceLine({ price: d.hiR, color: viColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Squeeze' });
                                 candleSeries.createPriceLine({ price: d.loR, color: viColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: '' });
-                            } else if (d.type === 'diverg' && d.p1Time != null) {
-                                const p1t = d.p1Time + (data.utc_offset_s || 0), p2t = d.p2Time + (data.utc_offset_s || 0);
-                                addS(chart, 'LineSeries', { ...lb, color: g.dir === 'bear' ? '#ef4444' : '#10b981', lineWidth: 2 }).setData([{ time: p1t, value: d.p1Price }, { time: p2t, value: d.p2Price }]);
                             }
                             if (d.sigTime != null) {
-                                const viLabel = { lvn: 'LVN', climax: 'Climax', diverg: 'Divrg', squeeze: 'Squeeze' }[d.type];
+                                const viLabel = { lvn: 'LVN', climax: 'Climax', squeeze: 'Squeeze' }[d.type];
                                 markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: viLabel });
                             }
                         } else if (g.screener === 'ath_atl') {

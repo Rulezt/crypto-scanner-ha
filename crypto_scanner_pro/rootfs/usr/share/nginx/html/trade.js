@@ -2866,7 +2866,7 @@ createApp({
             else if (score <= 35) { label = 'SHORT';   color = '#ef4444'; }
             else                  { label = 'NEUTRO';  color = '#f59e0b'; }
 
-            const fmtK = v => v >= 1000 ? (v / 1000).toFixed(1) + 'K' : v.toFixed(0);
+            const fmtK = v => v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1000 ? (v / 1000).toFixed(1) + 'K' : v.toFixed(0);
             pressure.value = { score, label, color, long, short,
                 bidK: fmtK(bidUsdt), askK: fmtK(askUsdt) };
         };
@@ -2877,6 +2877,7 @@ createApp({
             return parseFloat(q.toFixed(4)).toString();
         };
         const fmtTotal = (t) => {
+            if (t >= 1e6)  return (t / 1e6).toFixed(1) + 'M';
             if (t >= 1000) return (t / 1000).toFixed(1) + 'K';
             if (t >= 1)    return parseFloat(t.toFixed(2)).toString();
             return parseFloat(t.toFixed(4)).toString();
@@ -2894,6 +2895,64 @@ createApp({
             if (price >= 0.00001)  return price.toFixed(9);
             if (price >= 0.000001) return price.toFixed(10);
             return price.toPrecision(6);
+        };
+
+        // Se l'orologio locale ha superato il boundary della candela in formazione,
+        // ne apre subito una nuova lato client invece di aspettare il WS kline
+        // (trade-driven: silenzioso se il mercato è calmo) o il poll REST (ogni 3s).
+        // WS kline / poll REST arrivano comunque poco dopo e "correggono" i valori
+        // sintetici con quelli ufficiali (stesso pattern del patch mid-price sotto).
+        const _obRollNewBarIfNeeded = (midPrice) => {
+            if (!_obLiveCandle || !candleS) return false;
+            const tf = chartTF.value;
+            const barSecs = _OB_TF_SECS[tf] || (tf === 'D' ? 86400 : 0);
+            if (!barSecs) return false;
+            const nowAdj = Math.floor(Date.now() / 1000) + _obTzOffset;
+            const expectedOpen = Math.floor(nowAdj / barSecs) * barSecs;
+            if (expectedOpen <= _obLiveCandle.time) return false;
+
+            const prevClose = _obLiveCandle.close;
+            if (_obLiveCandle.time > lastConfirmedTime) {
+                for (const { p } of EMA_CFG) {
+                    if (lastEMA[p] == null) continue;
+                    const ek = 2 / (p + 1);
+                    lastEMA[p] = prevClose * ek + lastEMA[p] * (1 - ek);
+                }
+                lastConfirmedTime = _obLiveCandle.time;
+            }
+            if (_obKlines.length) {
+                const lastK = _obKlines[_obKlines.length - 1];
+                if (lastK.time === _obLiveCandle.time) _obKlines[_obKlines.length - 1] = { ..._obLiveCandle };
+                else _obKlines.push({ ..._obLiveCandle });
+            }
+
+            const newCandle = {
+                time: expectedOpen, open: prevClose,
+                high: Math.max(prevClose, midPrice), low: Math.min(prevClose, midPrice),
+                close: midPrice, volume: 0,
+            };
+            _obLiveCandle = newCandle;
+            try { candleS.update({ ...newCandle }); } catch(e) {}
+            _cdLastPrice = newCandle.close; _cdLastOpen = newCandle.open;
+
+            for (const { p } of EMA_CFG) {
+                if (lastEMA[p] == null) continue;
+                const ek   = 2 / (p + 1);
+                const live = newCandle.close * ek + lastEMA[p] * (1 - ek);
+                try { emaS[p].update({ time: newCandle.time, value: live }); } catch(e) {}
+            }
+            if (_obBbActive && _obBbSeries.upper && _obKlines.length) {
+                const bbCfg = getBbCfg();
+                const sl = [..._obKlines.slice(-(bbCfg.period - 1)), newCandle];
+                if (sl.length >= bbCfg.period) {
+                    const mean = sl.reduce((a, c) => a + c.close, 0) / bbCfg.period;
+                    const std  = Math.sqrt(sl.reduce((a, c) => a + (c.close - mean) ** 2, 0) / bbCfg.period);
+                    _obBbSeries.upper.update({ time: newCandle.time, value: mean + bbCfg.mult * std });
+                    _obBbSeries.mid.update(  { time: newCandle.time, value: mean });
+                    _obBbSeries.lower.update({ time: newCandle.time, value: mean - bbCfg.mult * std });
+                }
+            }
+            return true;
         };
 
         // ============================
@@ -2953,7 +3012,7 @@ createApp({
                 if (groupingOptions.value.length === 0) calculateGroupingOptions(midPrice);
                 // Bybit throttla lo stream kline a ~1/s: la candela in formazione segue
                 // anche il mid-price del book (molto più frequente) per restare allineata.
-                if (_obLiveCandle && candleS) {
+                if (_obLiveCandle && candleS && !_obRollNewBarIfNeeded(midPrice)) {
                     _obLiveCandle.close = midPrice;
                     if (midPrice > _obLiveCandle.high) _obLiveCandle.high = midPrice;
                     if (midPrice < _obLiveCandle.low)  _obLiveCandle.low  = midPrice;
