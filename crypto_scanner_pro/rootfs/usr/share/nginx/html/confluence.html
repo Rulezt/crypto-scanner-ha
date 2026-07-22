@@ -65,8 +65,10 @@
         .loading-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; gap: 14px; color: #6b7280; }
         .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.08); border-top-color: #818cf8; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .lwc-popup { position: fixed; z-index: 9999; background: #0F0F0F; border: 1px solid #2a2a2a; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.85); overflow: hidden; pointer-events: none; opacity: 0; transform: scale(0.97); transition: opacity 0.13s ease, transform 0.13s ease; width: 620px; height: 350px; }
-        .lwc-popup.visible { opacity: 1; transform: scale(1); pointer-events: auto; }
+        .lwc-popup-overlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; pointer-events: none; opacity: 0; transition: opacity 0.13s ease; }
+        .lwc-popup-overlay.visible { opacity: 1; }
+        .lwc-popup { background: #0F0F0F; border: 1px solid #2a2a2a; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.85); overflow: hidden; pointer-events: none; transform: scale(0.97); transition: transform 0.13s ease; width: 1240px; height: 700px; max-width: 96vw; max-height: 92vh; }
+        .lwc-popup-overlay.visible .lwc-popup { transform: scale(1); pointer-events: auto; }
         .lwc-popup-header { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: #111; border-bottom: 1px solid #1e1e1e; }
         .lwc-popup-chart { width: 100%; height: calc(100% - 26px); }
         .legend { display: flex; gap: 14px; padding: 6px 16px; background: #0F0F0F; border-top: 1px solid #1E222D; flex-wrap: wrap; align-items: center; }
@@ -131,7 +133,7 @@
         <button @click="setSortBy('change')" :class="['filt-btn', sortBy==='change' ? 'active':'']">{{ t('confl_col_change') }} <span class="sa">{{ sa('change') }}</span></button>
         <div class="divider"></div>
         <span class="filter-label">TF:</span>
-        <button @click="tfFilter='all'" :class="['filt-btn', tfFilter==='all' ? 'active':'']">{{ t('bops_all') }}</button>
+        <button @click="tfFilter='all'" :class="['filt-btn', tfFilter==='all' ? 'active':'']">{{ t('confl_all') }}</button>
         <button v-for="tf in ALL_TFS" :key="tf" @click="tfFilter=tf" :class="['filt-btn', tfFilter===tf ? 'active':'']">{{ TF_LABEL[tf] }}</button>
         <span class="filter-label" style="margin-left:auto;color:#374151">{{ filteredResults.length }} / {{ results.length }}</span>
     </div>
@@ -173,7 +175,7 @@
                         @drop="onDrop(col.key)"
                         @dragend="onDragEnd"
                         @click="col.sortKey ? setSortBy(col.sortKey) : null">
-                        {{ t(col.labelKey) || col.labelKey }}<span v-if="col.sortKey" class="sa">{{ sa(col.sortKey) }}</span>
+                        {{ col.key==='preview' && !viewIsMobile ? t('col_chart_thumb') : (t(col.labelKey) || col.labelKey) }}<span v-if="col.sortKey" class="sa">{{ sa(col.sortKey) }}</span>
                     </th>
                 </tr>
             </thead>
@@ -193,7 +195,9 @@
                             <a :href="'trade?symbol='+row.symbol" target="_blank" :title="t('col_trade')" style="display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3v4"/><rect x="4" y="7" width="4" height="7" rx="1" fill="currentColor" stroke="none"/><path d="M6 14v7"/><path d="M14 3v2"/><rect x="12" y="5" width="4" height="10" rx="1" fill="currentColor" stroke="none"/><path d="M14 15v6"/></svg></a>
                         </template>
                         <template v-else-if="col.key==='preview'">
-                            <span @mouseenter="showPopup($event, row)" @mouseleave="hidePopup" @click="toggleMobilePreview(row)" :title="t('col_preview')" style="cursor:pointer;display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
+                            <span v-if="viewIsMobile" @click="toggleMobilePreview(row)" :title="t('col_preview')" style="cursor:pointer;display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
+                            <canvas v-else data-thumb-trigger width="96" height="38" style="width:96px;height:38px;display:block;margin:0 auto;cursor:zoom-in;border-radius:3px;background:#0b0e11;"
+                                :ref="el => registerThumb(el, row)" @click="openThumbPopup(row)" :title="t('col_preview')"></canvas>
                         </template>
                         <template v-else-if="col.key==='tf'">
                             <span style="font-size:0.72rem;font-weight:600;color:#a5b4fc;">{{ TF_LABEL[row.tf] || row.tf }}</span>
@@ -226,6 +230,7 @@
     </div>
 
     <!-- LWC POPUP -->
+    <div id="lwc-popup-overlay" class="lwc-popup-overlay">
     <div id="lwc-popup" class="lwc-popup">
         <div class="lwc-popup-header">
             <span id="lwc-popup-coin"   style="font-size:0.75rem;font-weight:700;color:#f9fafb;white-space:nowrap;">—</span>
@@ -236,9 +241,11 @@
                 <span id="lwc-popup-candle-pct" style="font-family:monospace;font-size:0.75rem;min-width:52px;text-align:right;white-space:nowrap;"></span>
                 <span style="color:#374151;font-size:0.72rem;">|</span>
                 <span id="lwc-popup-tf" style="font-size:0.72rem;color:#a5b4fc;font-weight:700;white-space:nowrap;"></span>
+                <span id="lwc-popup-close" @click="closeThumbPopup" style="cursor:pointer;color:#6b7280;font-size:16px;line-height:1;padding:0 2px;">×</span>
             </div>
         </div>
         <div class="lwc-popup-chart" id="lwc-popup-chart"></div>
+    </div>
     </div>
 
     <!-- LEGEND -->
@@ -287,7 +294,6 @@ createApp({
             { key:'ema_touch',    label:'EMA Touch',    short:'EMA-T',  color:'#10b981' },
             { key:'third_touch',  label:'Third Touch',  short:'3RD',    color:'#22d3ee' },
             { key:'ema223_cross', label:'EMA223 Cross', short:'223-X',  color:'#a78bfa' },
-            { key:'breakout',     label:'Breakout',     short:'BRK',    color:'#facc15' },
             { key:'channel_breakout', label:'Channel Breakout', short:'CH-BRK', color:'#14b8a6' },
             { key:'vol_inefficiency', label:'Volume Inefficiency', short:'V-INEF', color:'#f43f5e' },
             { key:'ath_atl',      label:'ATH/ATL',      short:'ATH',    color:'#fbbf24' },
@@ -589,305 +595,6 @@ createApp({
             return { dir: flip.dir === 'above' ? 'bull' : 'bear', metric: 'age ' + flip.age, flipTime: tail[flip.flipIdx].time };
         };
 
-        // ── DETECTOR 6: Breakout Pattern (ported from breakout.html) ───────────
-        const calcTR = (candles) => {
-            const n = candles.length, tr = new Array(n);
-            for (let i = 0; i < n; i++) {
-                if (i === 0) { tr[i] = candles[i].high - candles[i].low; continue; }
-                const pc = candles[i-1].close;
-                tr[i] = Math.max(candles[i].high - candles[i].low, Math.abs(candles[i].high - pc), Math.abs(candles[i].low - pc));
-            }
-            return tr;
-        };
-        const calcRMA = (values, period) => {
-            const n = values.length, out = new Array(n).fill(null);
-            let rma = null;
-            for (let i = 0; i < n; i++) {
-                if (i < period - 1) continue;
-                if (rma === null) { let sum = 0; for (let k = i-period+1; k <= i; k++) sum += values[k]; rma = sum / period; }
-                else rma = (values[i] - rma) / period + rma;
-                out[i] = rma;
-            }
-            return out;
-        };
-        const calcSMASeries = (values, period) => {
-            const n = values.length, out = new Array(n).fill(null);
-            let sum = 0;
-            for (let i = 0; i < n; i++) {
-                sum += (values[i] || 0);
-                if (i >= period) sum -= (values[i-period] || 0);
-                if (i >= period - 1) out[i] = sum / period;
-            }
-            return out;
-        };
-        const calcRSISeries = (candles, period) => {
-            const n = candles.length, gains = new Array(n), losses = new Array(n);
-            for (let i = 0; i < n; i++) {
-                if (i === 0) { gains[i] = 0; losses[i] = 0; continue; }
-                const diff = candles[i].close - candles[i-1].close;
-                gains[i] = Math.max(diff, 0); losses[i] = Math.max(-diff, 0);
-            }
-            const avgG = calcRMA(gains, period), avgL = calcRMA(losses, period);
-            const out = new Array(n).fill(null);
-            for (let i = 0; i < n; i++) {
-                if (avgG[i] == null || avgL[i] == null) continue;
-                if (avgL[i] === 0) { out[i] = 100; continue; }
-                out[i] = 100 - 100 / (1 + avgG[i]/avgL[i]);
-            }
-            return out;
-        };
-        const detectPivots = (candles, len) => {
-            const n = candles.length;
-            const pivHigh = new Array(n).fill(null), pivLow = new Array(n).fill(null);
-            for (let p = len; p < n - len; p++) {
-                const hp = candles[p].high, lp = candles[p].low;
-                let isHigh = true, isLow = true;
-                for (let k = p - len; k <= p + len; k++) {
-                    if (k === p) continue;
-                    if (candles[k].high >= hp) isHigh = false;
-                    if (candles[k].low  <= lp) isLow  = false;
-                    if (!isHigh && !isLow) break;
-                }
-                if (isHigh) pivHigh[p] = hp;
-                if (isLow)  pivLow[p]  = lp;
-            }
-            return { pivHigh, pivLow };
-        };
-        const lineAt  = (x1, y1, x2, y2, x) => { const dx = x2 - x1; return Math.abs(dx) > 1e-10 ? y1 + (y2 - y1) * (x - x1) / dx : y1; };
-        const safeDiv = (num, den, fb = 0) => (den !== 0 && isFinite(num) && isFinite(den)) ? num / den : fb;
-        const MAX_PIVOTS = 60, MAX_PIVOT_SCAN = 15, RESCAN_INTERVAL = 10, VOL_CONTR_THRESH = 0.85, MAX_WIDTH_MULT = 10.0;
-
-        const runBreakoutEngine = (candles, cfg) => {
-            const n = candles.length;
-            const { pivHigh, pivLow } = detectPivots(candles, cfg.pivotLen);
-            const atrArr    = calcRMA(calcTR(candles), 20);
-            const rsiArr    = calcRSISeries(candles, 14);
-            const volArr    = candles.map(c => c.volume || 0);
-            const volSmaArr = calcSMASeries(volArr, 20);
-            const cumVol = new Array(n);
-            { let run = 0; for (let i = 0; i < n; i++) { run += volArr[i]; cumVol[i] = run; } }
-            const cumVolAt = (i) => i < 0 ? 0 : cumVol[i];
-
-            const hiPrices = [], hiBars = [], loPrices = [], loBars = [];
-            const WARMUP_BARS = Math.max(cfg.pivotLen * 2 + cfg.maxChannelBars, 50);
-
-            const st = {
-                channelActive: false, hiX1:0,hiY1:0,hiX2:0,hiY2:0, loX1:0,loY1:0,loX2:0,loY2:0,
-                chHiTouches: 0, chLoTouches: 0, chConvergence: 0, chMaxWidth: 0, chDetectBar: 0,
-                breakoutDir: 0, breakoutBar: 0, breakStrength: '—', volContraction: 0,
-                entryPrice: 0, slPrice: 0, slPriceOrig: 0, tp1Price: 0, tp2Price: 0, tp3Price: 0,
-                tp1Hit: false, tp2Hit: false, tp3Hit: false, slHit: false, tradeOpen: false,
-                closedBar: null, closedReason: null, closedDir: 0,
-            };
-
-            for (let i = 0; i < n; i++) {
-                const isWarmedUp = i >= WARMUP_BARS;
-                const pIdx = i - cfg.pivotLen;
-                let newPivot = false;
-                if (pIdx >= 0) {
-                    if (pivHigh[pIdx] != null) { hiPrices.unshift(pivHigh[pIdx]); hiBars.unshift(pIdx); newPivot = true; if (hiPrices.length > MAX_PIVOTS) { hiPrices.pop(); hiBars.pop(); } }
-                    if (pivLow[pIdx]  != null) { loPrices.unshift(pivLow[pIdx]);  loBars.unshift(pIdx);  newPivot = true; if (loPrices.length > MAX_PIVOTS) { loPrices.pop(); loBars.pop(); } }
-                }
-
-                const atr = atrArr[i] ?? (candles[i].close * 0.0001);
-                const rsi = rsiArr[i] ?? 50;
-                const volSma = volSmaArr[i] ?? 0;
-                const hasVolume = volArr[i] > 0;
-
-                const rescanDue  = i % RESCAN_INTERVAL === 0;
-                const shouldScan = (newPivot || rescanDue) && !st.channelActive && !st.tradeOpen && isWarmedUp && hiPrices.length >= cfg.minTouches && loPrices.length >= cfg.minTouches;
-
-                if (shouldScan) {
-                    const hX=[], hY=[], lX=[], lY=[];
-                    for (let k = 0; k < Math.min(hiPrices.length, MAX_PIVOT_SCAN + 1); k++)
-                        if (i - hiBars[k] <= cfg.maxChannelBars) { hX.push(hiBars[k]); hY.push(hiPrices[k]); }
-                    for (let k = 0; k < Math.min(loPrices.length, MAX_PIVOT_SCAN + 1); k++)
-                        if (i - loBars[k] <= cfg.maxChannelBars) { lX.push(loBars[k]); lY.push(loPrices[k]); }
-                    const hCnt = hX.length, lCnt = lX.length;
-                    const devTol = atr * cfg.deviationMax, touchTol = atr * cfg.touchTolerance;
-
-                    let bestHiTouches = 0, foundHi = false, bHiX1=0,bHiY1=0,bHiX2=0,bHiY2=0;
-                    if (hCnt >= cfg.minTouches) {
-                        for (let a = 0; a < hCnt - 1; a++) {
-                            for (let b = a + 1; b < hCnt; b++) {
-                                const ax=hX[a], ay=hY[a], bx=hX[b], bpy=hY[b];
-                                if (Math.abs(bx - ax) < 1.0) continue;
-                                let allBelow = true, touches = 0;
-                                for (let k = 0; k < hCnt; k++) {
-                                    const diff = hY[k] - lineAt(ax, ay, bx, bpy, hX[k]);
-                                    if (diff > devTol) { allBelow = false; break; }
-                                    if (Math.abs(diff) <= touchTol) touches++;
-                                }
-                                if (allBelow && touches >= cfg.minTouches && touches > bestHiTouches) { bestHiTouches = touches; bHiX1=ax; bHiY1=ay; bHiX2=bx; bHiY2=bpy; foundHi = true; }
-                            }
-                        }
-                    }
-                    let bestLoTouches = 0, foundLo = false, bLoX1=0,bLoY1=0,bLoX2=0,bLoY2=0;
-                    if (lCnt >= cfg.minTouches) {
-                        for (let a = 0; a < lCnt - 1; a++) {
-                            for (let b = a + 1; b < lCnt; b++) {
-                                const ax=lX[a], ay=lY[a], bx=lX[b], bpy=lY[b];
-                                if (Math.abs(bx - ax) < 1.0) continue;
-                                let allAbove = true, touches = 0;
-                                for (let k = 0; k < lCnt; k++) {
-                                    const diff = lY[k] - lineAt(ax, ay, bx, bpy, lX[k]);
-                                    if (diff < -devTol) { allAbove = false; break; }
-                                    if (Math.abs(diff) <= touchTol) touches++;
-                                }
-                                if (allAbove && touches >= cfg.minTouches && touches > bestLoTouches) { bestLoTouches = touches; bLoX1=ax; bLoY1=ay; bLoX2=bx; bLoY2=bpy; foundLo = true; }
-                            }
-                        }
-                    }
-
-                    if (foundHi && foundLo) {
-                        const hiMinX = Math.min(bHiX1,bHiX2), hiMaxX = Math.max(bHiX1,bHiX2);
-                        const loMinX = Math.min(bLoX1,bLoX2), loMaxX = Math.max(bLoX1,bLoX2);
-                        const overlapStart = Math.max(hiMinX, loMinX), overlapEnd = Math.min(hiMaxX, loMaxX);
-                        let maxH = 0;
-                        if (overlapEnd > overlapStart) {
-                            const samples = Math.max(Math.trunc((overlapEnd - overlapStart) / 5.0), 2);
-                            for (let s = 0; s <= samples; s++) {
-                                const sx = overlapStart + (overlapEnd - overlapStart) * s / samples;
-                                const hu = lineAt(bHiX1,bHiY1,bHiX2,bHiY2,sx), lo = lineAt(bLoX1,bLoY1,bLoX2,bLoY2,sx);
-                                if (hu - lo > maxH) maxH = hu - lo;
-                            }
-                        } else {
-                            const midX = (hiMinX + hiMaxX + loMinX + loMaxX) / 4.0;
-                            maxH = Math.abs(lineAt(bHiX1,bHiY1,bHiX2,bHiY2,midX) - lineAt(bLoX1,bLoY1,bLoX2,bLoY2,midX));
-                        }
-                        const startX = Math.min(hiMinX, loMinX), endX = i;
-                        const upperNow = lineAt(bHiX1,bHiY1,bHiX2,bHiY2,endX), lowerNow = lineAt(bLoX1,bLoY1,bLoX2,bLoY2,endX);
-                        const widthNow = upperNow - lowerNow;
-                        const upperStart = lineAt(bHiX1,bHiY1,bHiX2,bHiY2,startX), lowerStart = lineAt(bLoX1,bLoY1,bLoX2,bLoY2,startX);
-                        const widthStart = upperStart - lowerStart;
-                        const convRate = widthStart > 0 ? 1.0 - safeDiv(widthNow, widthStart, 1.0) : 0.0;
-                        const notInv  = widthNow > 0;
-                        const isConv  = convRate >= cfg.convergenceMin;
-                        const widthOk = widthNow >= atr * cfg.minChannelWidthAtr && widthNow < atr * MAX_WIDTH_MULT;
-                        const prevClose = i > 0 ? candles[i-1].close : candles[i].close;
-                        const isInside = notInv && prevClose <= upperNow && prevClose >= lowerNow;
-                        const patStartIdx = Math.trunc(startX), patBars = Math.max(i - patStartIdx, 1), safPatBars = Math.min(patBars, i), preBars = Math.min(safPatBars, patStartIdx);
-                        const volInPat  = (hasVolume && safPatBars > 0) ? safeDiv(cumVolAt(i) - cumVolAt(i - safPatBars), safPatBars, volSma) : volSma;
-                        const volPrePat = (hasVolume && preBars > 0) ? safeDiv(cumVolAt(i - safPatBars) - cumVolAt(i - safPatBars - preBars), preBars, volSma) : volSma;
-                        const volContRatio = safeDiv(volInPat, volPrePat, 1.0);
-                        const volContOk = cfg.volContraction ? (!hasVolume || volContRatio < VOL_CONTR_THRESH) : true;
-                        const touchesOk = (bestHiTouches + bestLoTouches) > cfg.minTouches * 2;
-
-                        if (notInv && isConv && widthOk && isInside && volContOk && touchesOk) {
-                            st.channelActive = true;
-                            st.hiX1=bHiX1; st.hiY1=bHiY1; st.hiX2=bHiX2; st.hiY2=bHiY2;
-                            st.loX1=bLoX1; st.loY1=bLoY1; st.loX2=bLoX2; st.loY2=bLoY2;
-                            st.chHiTouches = bestHiTouches; st.chLoTouches = bestLoTouches;
-                            st.chConvergence = convRate; st.chMaxWidth = maxH; st.chDetectBar = i;
-                            st.breakoutDir = 0; st.breakStrength = '—'; st.volContraction = volContRatio;
-                        }
-                    }
-                }
-
-                let rawBull = false, rawBear = false, strengthScore = 0, breakBoundary = 0, oppBoundary = 0;
-                const channelMature = st.channelActive && st.breakoutDir === 0;
-                if (channelMature && isWarmedUp) {
-                    const upper = lineAt(st.hiX1,st.hiY1,st.hiX2,st.hiY2,i), lower = lineAt(st.loX1,st.loY1,st.loX2,st.loY2,i);
-                    const bodyLen = Math.abs(candles[i].close - candles[i].open), candleLen = candles[i].high - candles[i].low;
-                    const bodyRatio = candleLen > 0 ? bodyLen / candleLen : 0;
-                    const bodyMid = (candles[i].open + candles[i].close) / 2;
-                    const volOk = hasVolume ? volArr[i] > volSma * cfg.volConfirm : true;
-                    const momOk = cfg.momentumFilter ? (candles[i].close > upper ? rsi > 50 : rsi < 50) : true;
-
-                    if (candles[i].close > upper) {
-                        rawBull = true; breakBoundary = upper; oppBoundary = lower;
-                        const penetration = atr > 0 ? Math.min((candles[i].close - upper) / atr, 2) / 2 : 0.5;
-                        const bodyCommit = bodyMid > upper ? 1.0 : 0.3, volBonus = volOk ? 1.0 : 0.4, momBonus = momOk ? 1.0 : 0.4;
-                        strengthScore = (penetration*0.25 + bodyRatio*0.15 + bodyCommit*0.15 + volBonus*0.25 + momBonus*0.20) * 100;
-                    }
-                    if (candles[i].close < lower) {
-                        rawBear = true; breakBoundary = lower; oppBoundary = upper;
-                        const penetration = atr > 0 ? Math.min((lower - candles[i].close) / atr, 2) / 2 : 0.5;
-                        const bodyCommit = bodyMid < lower ? 1.0 : 0.3, volBonus = volOk ? 1.0 : 0.4, momBonus = momOk ? 1.0 : 0.4;
-                        strengthScore = (penetration*0.25 + bodyRatio*0.15 + bodyCommit*0.15 + volBonus*0.25 + momBonus*0.20) * 100;
-                    }
-                }
-
-                if (rawBull) {
-                    st.breakoutDir = 1; st.breakoutBar = i; st.entryPrice = candles[i].close;
-                    st.slPrice = oppBoundary - atr * 0; st.slPriceOrig = st.slPrice;
-                    const targetPrice = breakBoundary + st.chMaxWidth, fullMove = Math.abs(targetPrice - st.entryPrice);
-                    st.tp1Price = st.entryPrice + fullMove/3.0; st.tp2Price = st.entryPrice + fullMove*2.0/3.0; st.tp3Price = st.entryPrice + fullMove;
-                    st.tp1Hit=false; st.tp2Hit=false; st.tp3Hit=false; st.slHit=false; st.tradeOpen=true;
-                    st.breakStrength = strengthScore>=65 ? 'Strong' : strengthScore>=35 ? 'Medium' : 'Weak';
-                }
-                if (rawBear) {
-                    st.breakoutDir = -1; st.breakoutBar = i; st.entryPrice = candles[i].close;
-                    st.slPrice = oppBoundary + atr * 0; st.slPriceOrig = st.slPrice;
-                    const targetPrice = breakBoundary - st.chMaxWidth, fullMove = Math.abs(st.entryPrice - targetPrice);
-                    st.tp1Price = st.entryPrice - fullMove/3.0; st.tp2Price = st.entryPrice - fullMove*2.0/3.0; st.tp3Price = st.entryPrice - fullMove;
-                    st.tp1Hit=false; st.tp2Hit=false; st.tp3Hit=false; st.slHit=false; st.tradeOpen=true;
-                    st.breakStrength = strengthScore>=65 ? 'Strong' : strengthScore>=35 ? 'Medium' : 'Weak';
-                }
-
-                if (st.channelActive && st.breakoutDir === 0 && (i - st.chDetectBar) > cfg.maxChannelBars) st.channelActive = false;
-
-                if (st.tradeOpen && st.breakoutDir !== 0 && !st.slHit && i > st.breakoutBar) {
-                    const hi = candles[i].high, lo = candles[i].low;
-                    const tpSide  = st.breakoutDir === 1 ? hi >= st.tp1Price : lo <= st.tp1Price;
-                    const tp3Side = st.breakoutDir === 1 ? hi >= st.tp3Price : lo <= st.tp3Price;
-                    const slSide  = st.breakoutDir === 1 ? lo <= st.slPrice  : hi >= st.slPrice;
-                    if (slSide) { st.slHit = true; }
-                    else {
-                        if (tpSide  && !st.tp1Hit) { st.tp1Hit = true; st.slPrice = st.entryPrice; }
-                        if (tp3Side && !st.tp3Hit) st.tp3Hit = true;
-                    }
-                }
-
-                if (st.tradeOpen && (st.tp3Hit || st.slHit)) {
-                    st.closedDir = st.breakoutDir;
-                    st.closedReason = st.slHit ? (st.tp1Hit ? 'be' : 'sl') : 'tp3';
-                    st.closedBar = i;
-                    st.tradeOpen = false; st.channelActive = false; st.breakoutDir = 0;
-                }
-            }
-            return st;
-        };
-
-        const breakoutHit = (candles, cfg) => {
-            const st = runBreakoutEngine(candles, cfg);
-            const lastIdx = candles.length - 1;
-            // chart: 2 punti (tempo+prezzo) per linea hi/lo, dal punto di rilevazione del
-            // canale fino all'ultima candela — stessa forma usata dal popup di breakout.html,
-            // rifatta in TEMPO (non indice barra) così si può ridisegnare su un set di candele
-            // fetchato a parte (popup) senza disallineamenti.
-            const chartOf = (drawStart) => ({
-                hiT1: candles[drawStart].time, hiP1: lineAt(st.hiX1,st.hiY1,st.hiX2,st.hiY2,drawStart),
-                loT1: candles[drawStart].time, loP1: lineAt(st.loX1,st.loY1,st.loX2,st.loY2,drawStart),
-                t2: candles[lastIdx].time, hiP2: lineAt(st.hiX1,st.hiY1,st.hiX2,st.hiY2,lastIdx), loP2: lineAt(st.loX1,st.loY1,st.loX2,st.loY2,lastIdx),
-            });
-            if (st.channelActive && st.breakoutDir === 0) {
-                const upper = lineAt(st.hiX1,st.hiY1,st.hiX2,st.hiY2,lastIdx), lower = lineAt(st.loX1,st.loY1,st.loX2,st.loY2,lastIdx);
-                if (upper <= lower) return null;
-                const price = candles[lastIdx].close;
-                const distUp = (upper - price) / price * 100, distDn = (price - lower) / price * 100;
-                const nearestDist = Math.min(distUp, distDn);
-                if (nearestDist > cfg.proximity) return null;
-                const drawStart = Math.max(Math.trunc(Math.min(st.hiX1, st.hiX2, st.loX1, st.loX2)), 0);
-                return { dir: null, metric: 'canale ' + nearestDist.toFixed(2) + '%', status: 'channel', chart: chartOf(drawStart) };
-            }
-            if (st.tradeOpen) {
-                const drawStart = Math.max(Math.trunc(Math.min(st.hiX1, st.hiX2, st.loX1, st.loX2)), 0);
-                return { dir: st.breakoutDir > 0 ? 'bull' : 'bear', metric: st.breakStrength, status: 'trade', chart: chartOf(drawStart) };
-            }
-            if (st.closedBar !== null && (lastIdx - st.closedBar) <= cfg.freshBars) {
-                const drawStart = Math.max(Math.trunc(Math.min(st.hiX1, st.hiX2, st.loX1, st.loX2)), 0);
-                return { dir: st.closedDir > 0 ? 'bull' : 'bear', metric: st.closedReason, status: 'closed', chart: chartOf(drawStart) };
-            }
-            return null;
-        };
-        const breakoutHitWrap = (candles, cfg) => {
-            const WARMUP_MIN = Math.max(cfg.pivotLen * 2 + cfg.maxChannelBars, 50);
-            const tail = candles.slice(-Math.min(candles.length, cfg.klimit));
-            if (tail.length < WARMUP_MIN + 20) return null;
-            return breakoutHit(tail, cfg);
-        };
-
         // ── DETECTOR 7: Channel Breakout (ported from channel-breakout.html) ───
         // Canale SMA(period) su close/high/low; segnale sulla candela i confrontato
         // col canale della candela PRECEDENTE (i-1). Scarta candele "di continuazione"
@@ -1077,10 +784,6 @@ createApp({
                 touchProx: 1.5, touchTol: 0.05,
                 ttTolerance: 0.5, ttProximity: 2,
                 e223Period: 223, e223Tol: 0.5, e223Lookback: 10, klimitE223: 730,
-                brkPivotLen: 5, brkMinTouches: 2, brkMaxChannelBars: 120, brkConvergenceMin: 0.02,
-                brkTouchTolerance: 0.15, brkDeviationMax: 0.3, brkMinChannelWidthAtr: 0.5,
-                brkVolConfirm: 1.2, brkVolContraction: true, brkMomentumFilter: true,
-                brkProximity: 3, brkFreshBars: 5, brkKlimit: 430,
                 cbPeriod: 20, cbLookback: 3,
                 thrAth: 5, thrAtl: 20, icoThreshold: 5,
                 viHistoryBars: 300, viEnableLVN: true, viEnableClimax: true, viEnableSqueeze: true,
@@ -1139,7 +842,7 @@ createApp({
                 progressTotal.value = tickers.length;
                 statusMsg.value = `${SVG_SEARCH}${t('emax_progress')} ${tickers.length} ${t('dt_coin')}…`;
 
-                const anyClientEnabled = en.ema_touch || en.third_touch || en.ema223_cross || en.breakout || en.channel_breakout || en.vol_inefficiency;
+                const anyClientEnabled = en.ema_touch || en.third_touch || en.ema223_cross || en.channel_breakout || en.vol_inefficiency;
                 if (anyClientEnabled) {
                     const BATCH = 5;
                     for (let i = 0; i < tickers.length; i += BATCH) {
@@ -1170,15 +873,6 @@ createApp({
                                         if (en.ema223_cross) {
                                             const h = ema223CrossHit(candles, { emaPeriod: cfg.e223Period, tolerancePct: cfg.e223Tol, lookbackBars: cfg.e223Lookback, klimit: cfg.klimitE223 });
                                             if (h) addMatch(ticker.symbol, ticker, 'ema223_cross', tf, h.dir, h.metric, { flipTime: h.flipTime });
-                                        }
-                                        if (en.breakout) {
-                                            const h = breakoutHitWrap(candles, {
-                                                pivotLen: cfg.brkPivotLen, minTouches: cfg.brkMinTouches, maxChannelBars: cfg.brkMaxChannelBars,
-                                                convergenceMin: cfg.brkConvergenceMin, touchTolerance: cfg.brkTouchTolerance, deviationMax: cfg.brkDeviationMax,
-                                                minChannelWidthAtr: cfg.brkMinChannelWidthAtr, volConfirm: cfg.brkVolConfirm, volContraction: cfg.brkVolContraction,
-                                                momentumFilter: cfg.brkMomentumFilter, proximity: cfg.brkProximity, freshBars: cfg.brkFreshBars, klimit: cfg.brkKlimit,
-                                            });
-                                            if (h) addMatch(ticker.symbol, ticker, 'breakout', tf, h.dir, h.metric, { chart: h.chart, status: h.status });
                                         }
                                         if (en.channel_breakout) {
                                             const h = channelBreakoutHit(candles, { period: cfg.cbPeriod, lookbackBars: cfg.cbLookback });
@@ -1235,7 +929,7 @@ createApp({
             { period: 223, color: '#a855f7', width: 1.5 },
         ];
 
-        let popupChart = null, buildSession = 0, hideTimer = null, popupLocked = false;
+        let popupChart = null, buildSession = 0;
         let popupRow = null;
 
         const LC = LightweightCharts;
@@ -1276,7 +970,7 @@ createApp({
                 if (!klines.length || session !== buildSession) return;
 
                 const chart = LC.createChart(container, {
-                    width: 620, height: 324,
+                    autoSize: true,
                     layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
                     grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
                     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
@@ -1305,9 +999,9 @@ createApp({
                 }
 
                 // ── Disegni specifici per ciascuno screener che ha generato match su questa riga ──
-                // (livello Third Touch, marker Cross/Flip, canale Breakout Pattern, canale Channel
-                // Breakout, linee ATH/ATL/ICO) — le candele qui sono fetchate a parte da quelle
-                // dello scan, quindi tutto è disegnato per TEMPO, mai per indice barra.
+                // (livello Third Touch, marker Cross/Flip, canale Channel Breakout, linee ATH/ATL/ICO)
+                // — le candele qui sono fetchate a parte da quelle dello scan, quindi tutto è
+                // disegnato per TEMPO, mai per indice barra.
                 if (row.screenerGroups) {
                     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
                     const markers = [];
@@ -1318,13 +1012,6 @@ createApp({
                             candleSeries.createPriceLine({ price: d.level, color: g.dir === 'bull' ? '#22d3ee' : '#f472b6', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'Touch' });
                         } else if (g.screener === 'ema223_cross' && d.flipTime != null) {
                             markers.push({ time: d.flipTime, position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#a78bfa', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Flip' });
-                        } else if (g.screener === 'breakout' && d.chart) {
-                            const chColor = d.status === 'channel' ? '#facc15' : (g.dir === 'bull' ? '#10b981' : '#ef4444');
-                            const lastT = klines[klines.length - 1].time;
-                            const hiP2ext = lineAt(d.chart.hiT1, d.chart.hiP1, d.chart.t2, d.chart.hiP2, lastT);
-                            const loP2ext = lineAt(d.chart.loT1, d.chart.loP1, d.chart.t2, d.chart.loP2, lastT);
-                            addS(chart, 'LineSeries', { ...lb, color: chColor, lineWidth: 2 }).setData([{ time: d.chart.hiT1, value: d.chart.hiP1 }, { time: lastT, value: hiP2ext }]);
-                            addS(chart, 'LineSeries', { ...lb, color: chColor, lineWidth: 2 }).setData([{ time: d.chart.loT1, value: d.chart.loP1 }, { time: lastT, value: loP2ext }]);
                         } else if (g.screener === 'channel_breakout' && d.period) {
                             const chCandles = klines.map(k => ({ time: k.time, open: k.open, high: k.high, low: k.low, close: k.close }));
                             const { upper, lower } = calcChannelArrConfl(chCandles, d.period);
@@ -1368,17 +1055,6 @@ createApp({
                 const visibleBars = (tf === 'W' || tf === 'D') ? 60 : tf === '240' ? 50 : 80;
                 chart.timeScale().setVisibleLogicalRange({ from: klines.length - visibleBars, to: klines.length + 10 });
             } catch(e) { console.error('popup chart error:', e); }
-        };
-
-        const positionPopup = (event) => {
-            const popup = document.getElementById('lwc-popup');
-            if (!popup) return;
-            const M=14, PW=620, PH=350;
-            let x = event.clientX + M, y = event.clientY + M;
-            if (x + PW > window.innerWidth  - M) x = event.clientX - PW - M;
-            if (y + PH > window.innerHeight - M) y = event.clientY - PH - M;
-            popup.style.left = Math.max(M, x) + 'px';
-            popup.style.top  = Math.max(M, y) + 'px';
         };
 
         const isMobilePreview = () => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 640;
@@ -1442,13 +1118,6 @@ createApp({
                             candleSeries.createPriceLine({ price: d.level, color: g.dir === 'bull' ? '#22d3ee' : '#f472b6', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'Touch' });
                         } else if (g.screener === 'ema223_cross' && d.flipTime != null) {
                             markers.push({ time: d.flipTime, position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#a78bfa', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Flip' });
-                        } else if (g.screener === 'breakout' && d.chart) {
-                            const chColor = d.status === 'channel' ? '#facc15' : (g.dir === 'bull' ? '#10b981' : '#ef4444');
-                            const lastT = klines[klines.length - 1].time;
-                            const hiP2ext = lineAt(d.chart.hiT1, d.chart.hiP1, d.chart.t2, d.chart.hiP2, lastT);
-                            const loP2ext = lineAt(d.chart.loT1, d.chart.loP1, d.chart.t2, d.chart.loP2, lastT);
-                            addS(chart, 'LineSeries', { ...lb, color: chColor, lineWidth: 2 }).setData([{ time: d.chart.hiT1, value: d.chart.hiP1 }, { time: lastT, value: hiP2ext }]);
-                            addS(chart, 'LineSeries', { ...lb, color: chColor, lineWidth: 2 }).setData([{ time: d.chart.loT1, value: d.chart.loP1 }, { time: lastT, value: loP2ext }]);
                         } else if (g.screener === 'channel_breakout' && d.period) {
                             const chCandles = klines.map(k => ({ time: k.time, open: k.open, high: k.high, low: k.low, close: k.close }));
                             const { upper, lower } = calcChannelArrConfl(chCandles, d.period);
@@ -1488,10 +1157,10 @@ createApp({
             } catch(e) { console.error('mobile preview chart error:', e); }
         };
 
-        const showPopup = async (event, row) => {
-            if (isMobilePreview()) return;
-            clearTimeout(hideTimer);
-            const popup = document.getElementById('lwc-popup');
+        // Popup ingrandito: sempre centrato a schermo (CSS) e chiuso SOLO da click
+        // esplicito (× o click fuori) — niente hover-timer.
+        const showPopup = async (row) => {
+            const popup = document.getElementById('lwc-popup-overlay');
             if (!popup) return;
             const coinEl = document.getElementById('lwc-popup-coin');
             const chgEl  = document.getElementById('lwc-popup-change');
@@ -1503,7 +1172,6 @@ createApp({
             if (tfEl)   tfEl.textContent = TF_LABEL[row.tf] || row.tf;
             const pctEl = document.getElementById('lwc-popup-candle-pct');
             if (pctEl) pctEl.textContent = '';
-            positionPopup(event);
             popup.classList.add('visible');
             if (!popupRow || popupRow.symbol !== row.symbol || popupRow.tf !== row.tf) {
                 popupRow = row;
@@ -1511,22 +1179,156 @@ createApp({
             }
         };
 
-        const hidePopup = () => {
-            hideTimer = setTimeout(() => {
-                if (popupLocked) return;
-                const popup = document.getElementById('lwc-popup');
-                if (popup) popup.classList.remove('visible');
-                destroyPopupChart();
-            }, 120);
+        // ── GRAFICO thumbnail (desktop): "foto" statica del grafico al posto dell'icona ─
+        // Poche candele (THUMB_BARS) + EMA + disegno di OGNI screener che ha fatto match
+        // sulla riga (stessa logica di buildPopupChart, semplificata: niente marker freccia,
+        // solo linee/canale). Scala verticale basata SOLO sulle candele.
+        const viewIsMobile = ref(isMobilePreview());
+        window.addEventListener('resize', () => { viewIsMobile.value = isMobilePreview(); });
+
+        const THUMB_BARS = 20;
+        const thumbCache = new Map();
+        let thumbObserver = null;
+        function ensureThumbObserver() {
+            if (thumbObserver) return thumbObserver;
+            thumbObserver = new IntersectionObserver((entries) => {
+                for (const entry of entries) {
+                    if (!entry.isIntersecting) continue;
+                    const canvas = entry.target;
+                    thumbObserver.unobserve(canvas);
+                    loadThumb(canvas);
+                }
+            }, { rootMargin: '150px' });
+            return thumbObserver;
+        }
+        function prepThumbData(klines, row) {
+            const bars = klines.slice(-THUMB_BARS);
+            if (!bars.length) return null;
+            const offset = klines.length - bars.length;
+            const lines = EMA_CONFIG.map(c => {
+                const line = calcEMASeriesTV(klines, c.period);
+                const map = new Map(line.map(p => [p.time, p.value]));
+                return { color: c.color, values: bars.map(b => map.has(b.time) ? map.get(b.time) : null) };
+            });
+            let fill = null;
+            if (row.screenerGroups) {
+                for (const g of row.screenerGroups) {
+                    const d = g.draw;
+                    if (!d) continue;
+                    if (g.screener === 'third_touch' && d.level != null) {
+                        lines.push({ color: g.dir === 'bull' ? '#22d3ee' : '#f472b6', values: bars.map(() => d.level) });
+                    } else if (g.screener === 'channel_breakout' && d.period) {
+                        const { upper, lower } = calcChannelArrConfl(klines, d.period);
+                        fill = { upper: bars.map((_, i) => upper[offset + i]), lower: bars.map((_, i) => lower[offset + i]) };
+                    } else if (g.screener === 'vol_inefficiency' && d.type) {
+                        const viColor = '#f43f5e';
+                        if (d.type === 'lvn') {
+                            lines.push({ color: viColor, dashed: true, values: bars.map(() => d.zoneHi) });
+                            lines.push({ color: viColor, dashed: true, values: bars.map(() => d.zoneLo) });
+                        } else if (d.type === 'squeeze') {
+                            lines.push({ color: viColor, dashed: true, values: bars.map(() => d.hiR) });
+                            lines.push({ color: viColor, dashed: true, values: bars.map(() => d.loR) });
+                        }
+                    } else if (g.screener === 'ath_atl') {
+                        if (d.ath) lines.push({ color: '#fbbf24', dashed: true, values: bars.map(() => d.ath) });
+                        if (d.atl) lines.push({ color: '#60a5fa', dashed: true, values: bars.map(() => d.atl) });
+                    } else if (g.screener === 'ico') {
+                        if (d.first_high) lines.push({ color: '#fbbf24', dashed: true, values: bars.map(() => d.first_high) });
+                        if (d.first_low)  lines.push({ color: '#60a5fa', dashed: true, values: bars.map(() => d.first_low) });
+                    }
+                }
+            }
+            return { bars, lines, fill };
+        }
+        function drawThumb(canvas, bundle) {
+            const { bars, lines, fill } = bundle;
+            if (!bars.length) return;
+            const dpr = window.devicePixelRatio || 1;
+            const cssW = 96, cssH = 38;
+            canvas.width  = cssW * dpr;
+            canvas.height = cssH * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, cssW, cssH);
+            let min = Infinity, max = -Infinity;
+            for (const k of bars) { if (k.low < min) min = k.low; if (k.high > max) max = k.high; }
+            if (!(max > min)) return;
+            const rangePad = (max - min) * 0.08;
+            min -= rangePad; max += rangePad;
+            const pad = 2, innerH = cssH - pad * 2, bw = cssW / bars.length;
+            const y = v => pad + innerH - ((v - min) / (max - min)) * innerH;
+            const x = i => i * bw + bw / 2;
+            const strokeLine = (getVal, color, dashed) => {
+                ctx.strokeStyle = color; ctx.lineWidth = 1;
+                ctx.setLineDash(dashed ? [3, 2] : []);
+                ctx.beginPath();
+                let started = false;
+                bars.forEach((b, i) => {
+                    const v = getVal(i);
+                    if (v == null) return;
+                    const xp = x(i), yp = y(v);
+                    if (!started) { ctx.moveTo(xp, yp); started = true; } else ctx.lineTo(xp, yp);
+                });
+                if (started) ctx.stroke();
+                ctx.setLineDash([]);
+            };
+            if (fill) {
+                ctx.beginPath();
+                let started = false;
+                fill.upper.forEach((v, i) => { if (v == null) return; const xp = x(i), yp = y(v); if (!started) { ctx.moveTo(xp, yp); started = true; } else ctx.lineTo(xp, yp); });
+                for (let i = fill.lower.length - 1; i >= 0; i--) { if (fill.lower[i] == null) continue; ctx.lineTo(x(i), y(fill.lower[i])); }
+                if (started) { ctx.closePath(); ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fill(); }
+                strokeLine(i => fill.upper[i], 'rgba(255,255,255,0.6)');
+                strokeLine(i => fill.lower[i], 'rgba(255,255,255,0.6)');
+            }
+            for (const line of lines) strokeLine(i => line.values[i], line.color, line.dashed);
+            bars.forEach((k, i) => {
+                const xp = x(i);
+                const up = k.close >= k.open;
+                ctx.strokeStyle = ctx.fillStyle = up ? '#10b981' : '#ef4444';
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(xp, y(k.high)); ctx.lineTo(xp, y(k.low)); ctx.stroke();
+                const yO = y(k.open), yC = y(k.close);
+                const top = Math.min(yO, yC), h = Math.max(1, Math.abs(yO - yC));
+                const bodyW = Math.max(1, bw * 0.6);
+                ctx.fillRect(xp - bodyW / 2, top, bodyW, h);
+            });
+        }
+        async function loadThumb(canvas) {
+            const row = canvas.__thumbRow;
+            if (!row) return;
+            const key = row.symbol + row.tf;
+            try {
+                const res  = await fetch(`api/klines?symbol=${row.symbol}&interval=${row.tf}`);
+                const data = await res.json();
+                if (!data.success || !data.data?.length) return;
+                const bundle = prepThumbData(data.data, row);
+                if (!bundle) return;
+                thumbCache.set(key, bundle);
+                if (document.body.contains(canvas)) drawThumb(canvas, bundle);
+            } catch(e) {}
+        }
+        const registerThumb = (el, row) => {
+            if (!el) return;
+            el.__thumbRow = row;
+            const cached = thumbCache.get(row.symbol + row.tf);
+            if (cached) { drawThumb(el, cached); return; }
+            ensureThumbObserver().observe(el);
         };
 
-        const initPopup = () => {
-            const popup = document.getElementById('lwc-popup');
-            if (!popup) { setTimeout(initPopup, 100); return; }
-            popup.addEventListener('mouseenter', () => { popupLocked = true; clearTimeout(hideTimer); });
-            popup.addEventListener('mouseleave', () => { popupLocked = false; hidePopup(); });
+        const openThumbPopup = (row) => showPopup(row);
+        const closeThumbPopup = () => {
+            const popup = document.getElementById('lwc-popup-overlay');
+            if (popup) popup.classList.remove('visible');
+            destroyPopupChart();
         };
-        initPopup();
+        document.addEventListener('click', (e) => {
+            const popup = document.getElementById('lwc-popup-overlay');
+            if (!popup || !popup.classList.contains('visible')) return;
+            if (popup.contains(e.target)) return;
+            if (e.target.closest && e.target.closest('[data-thumb-trigger]')) return;
+            closeThumbPopup();
+        });
 
         // ── STICKY OFFSETS ────────────────────────────────────────────────────
         const updateStickyOffsets = () => {
@@ -1613,7 +1415,8 @@ createApp({
             tfFilter, sortBy, sortDir, setSortBy, sa,
             cfgOpen,
             startScan, stopScan,
-            showPopup, hidePopup,
+            showPopup,
+            viewIsMobile, registerThumb, openThumbPopup, closeThumbPopup,
             mobilePreviewSymbol, toggleMobilePreview,
             formatPrice, formatVolume,
         };

@@ -152,17 +152,24 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ===== LWC POPUP ===== */
+        .lwc-popup-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            pointer-events: none; opacity: 0;
+            transition: opacity 0.13s ease;
+        }
+        .lwc-popup-overlay.visible { opacity: 1; }
         .lwc-popup {
-            position: fixed; z-index: 9999; background: #0F0F0F;
+            background: #0F0F0F;
             border: 1px solid #2a2a2a; border-radius: 8px;
             box-shadow: 0 8px 40px rgba(0,0,0,0.85);
             overflow: hidden; pointer-events: none;
-            opacity: 0; transform: scale(0.97);
-            transition: opacity 0.13s ease, transform 0.13s ease;
-            width: 600px; height: 340px;
+            transform: scale(0.97);
+            transition: transform 0.13s ease;
+            width: 1200px; height: 680px; max-width: 96vw; max-height: 92vh;
         }
-        .lwc-popup.visible { opacity: 1; transform: scale(1); pointer-events: auto; }
-        .lwc-popup.visible .lwc-popup-chart { cursor: crosshair; }
+        .lwc-popup-overlay.visible .lwc-popup { transform: scale(1); pointer-events: auto; }
+        .lwc-popup-overlay.visible .lwc-popup-chart { cursor: crosshair; }
         .lwc-popup-header { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: #111; border-bottom: 1px solid #1e1e1e; }
         .lwc-popup-emas { display: flex; gap: 7px; font-size: 0.6rem; font-weight: 600; }
         .lwc-popup-tf { display: flex; gap: 3px; }
@@ -295,7 +302,7 @@
                         @drop="onDrop(col.key)"
                         @dragend="onDragEnd"
                         @click="col.sortKey ? setSortBy(col.sortKey) : null">
-                        {{ t(col.labelKey) || col.labelKey }} <span v-if="col.sortKey" class="sa">{{ sa(col.sortKey) }}</span>
+                        {{ col.key==='preview' && !viewIsMobile ? t('col_chart_thumb') : (t(col.labelKey) || col.labelKey) }} <span v-if="col.sortKey" class="sa">{{ sa(col.sortKey) }}</span>
                     </th>
                 </tr>
             </thead>
@@ -318,7 +325,9 @@
                             <a :href="(baseUrl || '') + '/trade?symbol=' + r.symbol" target="_blank" :title="t('col_trade')" style="display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3v4"/><rect x="4" y="7" width="4" height="7" rx="1" fill="currentColor" stroke="none"/><path d="M6 14v7"/><path d="M14 3v2"/><rect x="12" y="5" width="4" height="10" rx="1" fill="currentColor" stroke="none"/><path d="M14 15v6"/></svg></a>
                         </template>
                         <template v-else-if="col.key === 'preview'">
-                            <span @mouseenter="showPopup($event, r)" @mouseleave="hidePopup" @click="toggleMobilePreview(r)" :title="t('col_preview')" style="cursor:pointer;display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
+                            <span v-if="viewIsMobile" @click="toggleMobilePreview(r)" :title="t('col_preview')" style="cursor:pointer;display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
+                            <canvas v-else data-thumb-trigger width="96" height="38" style="width:96px;height:38px;display:block;margin:0 auto;cursor:zoom-in;border-radius:3px;background:#0b0e11;"
+                                :ref="el => registerThumb(el, r)" @click="openThumbPopup(r)" :title="t('col_preview')"></canvas>
                         </template>
                         <template v-else-if="col.key === 'segnale'">
                             <span :class="['type-badge', r.type === 'resistance' ? 'type-res' : 'type-sup']">
@@ -366,6 +375,7 @@
     </div>
 
     <!-- LWC POPUP -->
+    <div id="lwc-popup-overlay" class="lwc-popup-overlay">
     <div id="lwc-popup" class="lwc-popup">
         <div class="lwc-popup-header">
             <span id="lwc-popup-coin"   style="font-size:0.75rem;font-weight:700;color:#f9fafb;white-space:nowrap;">—</span>
@@ -385,9 +395,11 @@
                     <button data-tf="W"  >W</button>
                     <button data-tf="M"  >M</button>
                 </div>
+                <span id="lwc-popup-close" @click="closeThumbPopup" style="cursor:pointer;color:#6b7280;font-size:16px;line-height:1;padding:0 2px;">×</span>
             </div>
         </div>
         <div class="lwc-popup-chart" id="lwc-popup-chart"></div>
+    </div>
     </div>
 
     <!-- LEGEND -->
@@ -849,8 +861,6 @@ createApp({
         let popupSymbol  = null;
         let popupTf      = 'D';
         let popupResult  = null;
-        let hideTimer    = null;
-        let popupLocked  = false;
         let buildSession = 0;
 
         const destroyPopupChart = () => {
@@ -901,7 +911,7 @@ createApp({
                 if (!klines.length || session !== buildSession) return;
 
                 const chart = LC.createChart(container, {
-                    width: 600, height: 310,
+                    autoSize: true,
     layout: {background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
                     grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
                     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
@@ -966,17 +976,6 @@ createApp({
         };
 
         const TF_LABEL = { '1': '1m', '5': '5m', '30': '30m', '60': '1h', '240': '4h', 'D': 'Daily' };
-
-        const positionPopup = (event) => {
-            const popup = document.getElementById('lwc-popup');
-            if (!popup) return;
-            const M=14, PW=600, PH=340;
-            let x = event.clientX + M, y = event.clientY + M;
-            if (x + PW > window.innerWidth  - M) x = event.clientX - PW - M;
-            if (y + PH > window.innerHeight - M) y = event.clientY - PH - M;
-            popup.style.left = Math.max(M, x) + 'px';
-            popup.style.top  = Math.max(M, y) + 'px';
-        };
 
         const isMobilePreview = () => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 640;
 
@@ -1064,10 +1063,10 @@ createApp({
             } catch(e) { console.error('mobile preview chart error:', e); }
         };
 
-        const showPopup = async (event, result) => {
-            if (isMobilePreview()) return;
-            clearTimeout(hideTimer);
-            const popup = document.getElementById('lwc-popup');
+        // Popup ingrandito: sempre centrato a schermo (CSS) e chiuso SOLO da click
+        // esplicito (× o click fuori) — niente hover-timer. TF-switcher interno invariato.
+        const showPopup = async (result) => {
+            const popup = document.getElementById('lwc-popup-overlay');
             if (!popup) return;
 
             popupTf = result.tf || 'D';
@@ -1085,7 +1084,6 @@ createApp({
             if (volEl)  volEl.textContent = formatVolume(result.volume);
             const pctEl = document.getElementById('lwc-popup-candle-pct');
             if (pctEl) pctEl.textContent = '';
-            positionPopup(event);
             popup.classList.add('visible');
             if (popupSymbol !== result.symbol || popupResult?.type !== result.type) {
                 popupSymbol = result.symbol;
@@ -1094,18 +1092,9 @@ createApp({
             }
         };
 
-        const hidePopup = () => {
-            hideTimer = setTimeout(() => {
-                if (popupLocked) return;
-                document.getElementById('lwc-popup')?.classList.remove('visible');
-            }, 150);
-        };
-
         const initPopup = () => {
-            const popup = document.getElementById('lwc-popup');
+            const popup = document.getElementById('lwc-popup-overlay');
             if (!popup) { setTimeout(initPopup, 100); return; }
-            popup.addEventListener('mouseenter', () => { popupLocked = true; clearTimeout(hideTimer); });
-            popup.addEventListener('mouseleave', () => { popupLocked = false; hidePopup(); });
             const tfBar = document.getElementById('lwc-popup-tf');
             if (!tfBar) return;
             tfBar.addEventListener('click', async (e) => {
@@ -1122,6 +1111,135 @@ createApp({
             });
         };
         initPopup();
+
+        // ── GRAFICO thumbnail (desktop): "foto" statica del grafico al posto dell'icona ─
+        // Poche candele (THUMB_BARS) + linea livello support/resistance + EMA, scala
+        // verticale basata SOLO sulle candele (linee troppo lontane tagliate dal bordo canvas).
+        const viewIsMobile = ref(isMobilePreview());
+        window.addEventListener('resize', () => { viewIsMobile.value = isMobilePreview(); });
+
+        const THUMB_BARS = 20;
+        const thumbCache = new Map();
+        let thumbObserver = null;
+        function ensureThumbObserver() {
+            if (thumbObserver) return thumbObserver;
+            thumbObserver = new IntersectionObserver((entries) => {
+                for (const entry of entries) {
+                    if (!entry.isIntersecting) continue;
+                    const canvas = entry.target;
+                    thumbObserver.unobserve(canvas);
+                    loadThumb(canvas);
+                }
+            }, { rootMargin: '150px' });
+            return thumbObserver;
+        }
+        function prepThumbData(klines, result) {
+            const bars = klines.slice(-THUMB_BARS);
+            if (!bars.length) return null;
+            const lines = EMA_CONFIG.map(c => {
+                const line = calcEMALine(klines, c.period);
+                const map = new Map(line.map(p => [p.time, p.value]));
+                return { color: c.color, values: bars.map(b => map.has(b.time) ? map.get(b.time) : null) };
+            });
+            if (result.level != null) {
+                lines.push({
+                    color: result.type === 'resistance' ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)',
+                    values: bars.map(() => result.level),
+                });
+            }
+            return { bars, lines };
+        }
+        function drawThumb(canvas, bundle) {
+            const { bars, lines, fill } = bundle;
+            if (!bars.length) return;
+            const dpr = window.devicePixelRatio || 1;
+            const cssW = 96, cssH = 38;
+            canvas.width  = cssW * dpr;
+            canvas.height = cssH * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, cssW, cssH);
+            let min = Infinity, max = -Infinity;
+            for (const k of bars) { if (k.low < min) min = k.low; if (k.high > max) max = k.high; }
+            if (!(max > min)) return;
+            const rangePad = (max - min) * 0.08;
+            min -= rangePad; max += rangePad;
+            const pad = 2, innerH = cssH - pad * 2, bw = cssW / bars.length;
+            const y = v => pad + innerH - ((v - min) / (max - min)) * innerH;
+            const x = i => i * bw + bw / 2;
+            const strokeLine = (getVal, color, dashed) => {
+                ctx.strokeStyle = color; ctx.lineWidth = 1;
+                ctx.setLineDash(dashed ? [3, 2] : []);
+                ctx.beginPath();
+                let started = false;
+                bars.forEach((b, i) => {
+                    const v = getVal(i);
+                    if (v == null) return;
+                    const xp = x(i), yp = y(v);
+                    if (!started) { ctx.moveTo(xp, yp); started = true; } else ctx.lineTo(xp, yp);
+                });
+                if (started) ctx.stroke();
+                ctx.setLineDash([]);
+            };
+            if (fill) {
+                ctx.beginPath();
+                let started = false;
+                fill.upper.forEach((v, i) => { if (v == null) return; const xp = x(i), yp = y(v); if (!started) { ctx.moveTo(xp, yp); started = true; } else ctx.lineTo(xp, yp); });
+                for (let i = fill.lower.length - 1; i >= 0; i--) { if (fill.lower[i] == null) continue; ctx.lineTo(x(i), y(fill.lower[i])); }
+                if (started) { ctx.closePath(); ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fill(); }
+                strokeLine(i => fill.upper[i], 'rgba(255,255,255,0.6)');
+                strokeLine(i => fill.lower[i], 'rgba(255,255,255,0.6)');
+            }
+            for (const line of lines) strokeLine(i => line.values[i], line.color, line.dashed);
+            bars.forEach((k, i) => {
+                const xp = x(i);
+                const up = k.close >= k.open;
+                ctx.strokeStyle = ctx.fillStyle = up ? '#10b981' : '#ef4444';
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(xp, y(k.high)); ctx.lineTo(xp, y(k.low)); ctx.stroke();
+                const yO = y(k.open), yC = y(k.close);
+                const top = Math.min(yO, yC), h = Math.max(1, Math.abs(yO - yC));
+                const bodyW = Math.max(1, bw * 0.6);
+                ctx.fillRect(xp - bodyW / 2, top, bodyW, h);
+            });
+        }
+        async function loadThumb(canvas) {
+            const result = canvas.__thumbRow;
+            if (!result) return;
+            const tf  = result.tf || 'D';
+            const key = result.symbol + tf + result.type;
+            try {
+                const res  = await fetch(`api/klines?symbol=${result.symbol}&interval=${tf}`);
+                const data = await res.json();
+                if (!data.success || !data.data?.length) return;
+                const bundle = prepThumbData(data.data, result);
+                if (!bundle) return;
+                thumbCache.set(key, bundle);
+                if (document.body.contains(canvas)) drawThumb(canvas, bundle);
+            } catch(e) {}
+        }
+        const registerThumb = (el, result) => {
+            if (!el) return;
+            el.__thumbRow = result;
+            const tf = result.tf || 'D';
+            const cached = thumbCache.get(result.symbol + tf + result.type);
+            if (cached) { drawThumb(el, cached); return; }
+            ensureThumbObserver().observe(el);
+        };
+
+        const openThumbPopup = (result) => showPopup(result);
+        const closeThumbPopup = () => {
+            const popup = document.getElementById('lwc-popup-overlay');
+            if (popup) popup.classList.remove('visible');
+            destroyPopupChart();
+        };
+        document.addEventListener('click', (e) => {
+            const popup = document.getElementById('lwc-popup-overlay');
+            if (!popup || !popup.classList.contains('visible')) return;
+            if (popup.contains(e.target)) return;
+            if (e.target.closest && e.target.closest('[data-thumb-trigger]')) return;
+            closeThumbPopup();
+        });
 
         // ── STICKY OFFSETS ────────────────────────────────────────────────────
         const { watch, nextTick } = Vue;
@@ -1223,7 +1341,8 @@ createApp({
             typeFilter, tfFilter, sortBy, sortDir, countRes, countSup,
             setSortBy, sa, t,
             startScan, stopScan,
-            showPopup, hidePopup,
+            showPopup,
+            viewIsMobile, registerThumb, openThumbPopup, closeThumbPopup,
             mobilePreviewSymbol, toggleMobilePreview,
             formatPrice, formatVolume,
         };

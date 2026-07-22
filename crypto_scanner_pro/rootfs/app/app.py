@@ -2349,12 +2349,6 @@ def ema60_page():
     return send_file('/usr/share/nginx/html/ema60.html')
 
 
-@app.route('/breakout', methods=['GET'])
-@app.route('/breakout.html', methods=['GET'])
-def breakout_page():
-    return send_file('/usr/share/nginx/html/breakout.html')
-
-
 @app.route('/ema223-flip', methods=['GET'])
 @app.route('/ema223-flip.html', methods=['GET'])
 def ema223_flip_page():
@@ -2371,6 +2365,12 @@ def channel_breakout_page():
 @app.route('/vol-inefficiency.html', methods=['GET'])
 def vol_inefficiency_page():
     return send_file('/usr/share/nginx/html/vol-inefficiency.html')
+
+
+@app.route('/bb-squeeze', methods=['GET'])
+@app.route('/bb-squeeze.html', methods=['GET'])
+def bb_squeeze_page():
+    return send_file('/usr/share/nginx/html/bb-squeeze.html')
 
 
 @app.route('/confluence', methods=['GET'])

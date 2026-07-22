@@ -216,87 +216,81 @@ function toggleObBB() {
     _obApplyBB();
 }
 
-// ── Volume Profile (visible range, POC) ─────────────────────────────────────────
-// Stima standard "OHLC volume profile": ogni candela distribuisce il suo volume
-// sui bin di prezzo proporzionalmente alla sovrapposizione col range [low, high].
-// Non serve storico tick (che Bybit non offre): funziona su qualunque candela storica.
-let _obVpActive = false;
-const _OB_VP_BINS = 24;
+// ── Canale EMA20 (EMA di high/close/low → 3 linee + riempimento) ───────────────
+const OB_CH_PERIOD = 20, OB_CH_COLOR = '#22d3ee';
+let _obChActive = false, _obChSeries = { upper: null, mid: null, lower: null }, _obChData = null;
 
-function _obVpCompute(klines, fromIdx, toIdx) {
-    const lo = Math.max(0, fromIdx), hi = Math.min(klines.length - 1, toIdx);
-    if (hi < lo) return null;
-    let minLow = Infinity, maxHigh = -Infinity;
-    for (let i = lo; i <= hi; i++) {
-        const k = klines[i];
-        if (k.low  < minLow)  minLow  = k.low;
-        if (k.high > maxHigh) maxHigh = k.high;
+function calcEmaChannel(klines, period) {
+    const mid = [], upper = [], lower = [];
+    if (klines.length < period) return { mid, upper, lower };
+    const k = 2 / (period + 1);
+    let emaC = 0, emaH = 0, emaL = 0;
+    for (let i = 0; i < period; i++) { emaC += klines[i].close; emaH += klines[i].high; emaL += klines[i].low; }
+    emaC /= period; emaH /= period; emaL /= period;
+    mid.push({ time: klines[period - 1].time, value: emaC });
+    upper.push({ time: klines[period - 1].time, value: emaH });
+    lower.push({ time: klines[period - 1].time, value: emaL });
+    for (let i = period; i < klines.length; i++) {
+        emaC = klines[i].close * k + emaC * (1 - k);
+        emaH = klines[i].high  * k + emaH * (1 - k);
+        emaL = klines[i].low   * k + emaL * (1 - k);
+        mid.push({ time: klines[i].time, value: emaC });
+        upper.push({ time: klines[i].time, value: emaH });
+        lower.push({ time: klines[i].time, value: emaL });
     }
-    if (!isFinite(minLow) || !isFinite(maxHigh) || maxHigh <= minLow) return null;
-    const binSize = (maxHigh - minLow) / _OB_VP_BINS;
-    const bins = new Array(_OB_VP_BINS).fill(0);
-    for (let i = lo; i <= hi; i++) {
-        const k = klines[i];
-        const vol = k.volume || 0;
-        if (!vol) continue;
-        const span = k.high - k.low;
-        if (span <= 0) {
-            const idx = Math.min(_OB_VP_BINS - 1, Math.max(0, Math.floor((k.close - minLow) / binSize)));
-            bins[idx] += vol;
-            continue;
-        }
-        const b0 = Math.max(0, Math.floor((k.low  - minLow) / binSize));
-        const b1 = Math.min(_OB_VP_BINS - 1, Math.floor((k.high - minLow) / binSize));
-        for (let b = b0; b <= b1; b++) {
-            const binLo = minLow + b * binSize, binHi = binLo + binSize;
-            const overlap = Math.min(k.high, binHi) - Math.max(k.low, binLo);
-            if (overlap > 0) bins[b] += vol * (overlap / span);
-        }
-    }
-    let pocIdx = 0, maxVol = -1;
-    for (let b = 0; b < _OB_VP_BINS; b++) if (bins[b] > maxVol) { maxVol = bins[b]; pocIdx = b; }
-    if (maxVol <= 0) return null;
-    return { minLow, binSize, bins, maxVol, pocIdx };
+    return { mid, upper, lower };
 }
 
-class _VolProfilePrimitive {
-    constructor(getKlines) {
-        this._getKlines = getKlines;
+// Ricalcola l'intero canale e restituisce solo l'ultimo punto (per gli update live,
+// stesso approccio di ricalcolo-finestra già usato per BB — costo trascurabile su
+// _obKlines che è comunque limitato a poche decine/centinaia di candele).
+function _obChTail(klines) {
+    if (klines.length < OB_CH_PERIOD) return null;
+    const c = calcEmaChannel(klines, OB_CH_PERIOD);
+    return { upper: c.upper[c.upper.length - 1], mid: c.mid[c.mid.length - 1], lower: c.lower[c.lower.length - 1] };
+}
+
+function _obChUpdateTail(klines) {
+    if (!_obChActive || !_obChSeries.upper) return;
+    const t = _obChTail(klines);
+    if (!t) return;
+    _obChSeries.upper.update(t.upper);
+    _obChSeries.mid.update(t.mid);
+    _obChSeries.lower.update(t.lower);
+    if (_obChData) {
+        const upd = (arr, pt) => { if (arr.length && arr[arr.length - 1].time === pt.time) arr[arr.length - 1] = pt; else arr.push(pt); };
+        upd(_obChData.upper, t.upper);
+        upd(_obChData.lower, t.lower);
+    }
+}
+
+class _ObChannelFillPrimitive {
+    constructor() {
         this._series = null;
         const renderer = {
-            draw: target => target.useBitmapCoordinateSpace(({ context: ctx, bitmapSize, horizontalPixelRatio, verticalPixelRatio }) => {
-                if (!_obVpActive || !this._series || !_obChart) return;
-                const klines = this._getKlines();
-                if (!klines || klines.length < 2) return;
-                const range = _obChart.timeScale().getVisibleLogicalRange();
-                if (!range) return;
-                const profile = _obVpCompute(klines, Math.floor(range.from), Math.ceil(range.to));
-                if (!profile) return;
-                const { minLow, binSize, bins, maxVol, pocIdx } = profile;
-                const maxBarW = bitmapSize.width * 0.16;
+            draw: target => target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio, verticalPixelRatio }) => {
+                const series = this._series;
+                if (!series || !_obChActive || !_obChData || !_obChart) return;
+                const { upper, lower } = _obChData;
+                if (!upper.length || !lower.length) return;
+                const ts = _obChart.timeScale();
                 ctx.save();
-                for (let b = 0; b < bins.length; b++) {
-                    if (bins[b] <= 0) continue;
-                    const priceLo = minLow + b * binSize, priceHi = priceLo + binSize;
-                    const yLo = this._series.priceToCoordinate(priceLo), yHi = this._series.priceToCoordinate(priceHi);
-                    if (yLo == null || yHi == null) continue;
-                    const top = Math.min(yLo, yHi) * verticalPixelRatio, bot = Math.max(yLo, yHi) * verticalPixelRatio;
-                    const w = Math.max(1 * horizontalPixelRatio, (bins[b] / maxVol) * maxBarW * horizontalPixelRatio);
-                    ctx.fillStyle = b === pocIdx ? 'rgba(251,191,36,0.55)' : 'rgba(96,165,250,0.26)';
-                    ctx.fillRect(bitmapSize.width - w, top, w, Math.max(1, bot - top));
+                ctx.beginPath();
+                let started = false;
+                for (let i = 0; i < upper.length; i++) {
+                    const x = ts.timeToCoordinate(upper[i].time);
+                    const y = series.priceToCoordinate(upper[i].value);
+                    if (x == null || y == null) continue;
+                    const xp = x * horizontalPixelRatio, yp = y * verticalPixelRatio;
+                    if (!started) { ctx.moveTo(xp, yp); started = true; } else ctx.lineTo(xp, yp);
                 }
-                const pocPrice = minLow + (pocIdx + 0.5) * binSize;
-                const yPoc = this._series.priceToCoordinate(pocPrice);
-                if (yPoc != null) {
-                    ctx.strokeStyle = 'rgba(251,191,36,0.85)';
-                    ctx.lineWidth = Math.max(1, horizontalPixelRatio);
-                    ctx.setLineDash([4 * horizontalPixelRatio, 3 * horizontalPixelRatio]);
-                    ctx.beginPath();
-                    ctx.moveTo(0, yPoc * verticalPixelRatio);
-                    ctx.lineTo(bitmapSize.width, yPoc * verticalPixelRatio);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
+                for (let i = lower.length - 1; i >= 0; i--) {
+                    const x = ts.timeToCoordinate(lower[i].time);
+                    const y = series.priceToCoordinate(lower[i].value);
+                    if (x == null || y == null) continue;
+                    ctx.lineTo(x * horizontalPixelRatio, y * verticalPixelRatio);
                 }
+                if (started) { ctx.closePath(); ctx.fillStyle = 'rgba(34,211,238,0.08)'; ctx.fill(); }
                 ctx.restore();
             })
         };
@@ -308,11 +302,30 @@ class _VolProfilePrimitive {
     paneViews() { return [this._view]; }
 }
 
-function toggleObVolProfile() {
-    _obVpActive = !_obVpActive;
-    const btn = document.getElementById('ob-vp-btn');
-    if (btn) btn.style.color = _obVpActive ? '#60a5fa' : '#B2B5BE';
-    try { _obChart.applyOptions({}); } catch(e) {}
+function _obApplyChannel() {
+    for (const k of ['upper', 'mid', 'lower']) {
+        if (_obChSeries[k]) { try { _obChart.removeSeries(_obChSeries[k]); } catch(e) {} _obChSeries[k] = null; }
+    }
+    _obChData = null;
+    if (!_obChActive || !_obChart) return;
+    const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+    _obChSeries.upper = addSeries(_obChart, 'LineSeries', { ...lb, color: OB_CH_COLOR, lineWidth: 1 });
+    _obChSeries.mid   = addSeries(_obChart, 'LineSeries', { ...lb, color: OB_CH_COLOR, lineWidth: 1, lineStyle: 2 });
+    _obChSeries.lower = addSeries(_obChart, 'LineSeries', { ...lb, color: OB_CH_COLOR, lineWidth: 1 });
+    if (_obKlines.length >= OB_CH_PERIOD) {
+        const c = calcEmaChannel(_obKlines, OB_CH_PERIOD);
+        _obChSeries.upper.setData(c.upper);
+        _obChSeries.mid.setData(c.mid);
+        _obChSeries.lower.setData(c.lower);
+        _obChData = { upper: c.upper, lower: c.lower };
+    }
+}
+
+function toggleObChannel() {
+    _obChActive = !_obChActive;
+    const btn = document.getElementById('ob-ch-btn');
+    if (btn) btn.style.color = _obChActive ? OB_CH_COLOR : '#B2B5BE';
+    _obApplyChannel();
 }
 
 let _tradeEnabled = false, _tradePos = null, _tradeSide = null, _hadPosition = false;
@@ -1291,7 +1304,10 @@ function setFsSide(side) {
 // Le label Entry/SL/TP sono ancorate a `right:180px` nel container del grafico:
 // spinge le candele a sinistra (rightOffset) così non finiscono coperte dalle label,
 // e blocca il pan (vedi subscribeVisibleLogicalRangeChange in initChart) sotto quella soglia.
+// In portrait mobile lo schermo è troppo stretto per riservare 330px fissi (comprime le
+// candele in una fetta minuscola): la spaziatura fissa resta disattivata, vedi [[feedback_portrait_only_scope]].
 function _ensureChartRightSpace() {
+    if (window.matchMedia('(max-width: 640px), (pointer: coarse)').matches) return;
     _fsChartSpacingLocked = true;
     if (!_obChart) return;
     try { _obChart.timeScale().applyOptions({ rightOffset: _fsMinOffsetBars() }); } catch(e) {}
@@ -2526,7 +2542,7 @@ createApp({
                 candleS.attachPrimitive(new _OBCountdownPrimitive(_cdSlot));
                 const _obLvlSlot = { get obActive() { return showObLines.value; }, get obBidVal() { return maxLevelDistance.value.bidPrice; }, get obAskVal() { return maxLevelDistance.value.askPrice; } };
                 candleS.attachPrimitive(new _ObBandFillPrimitive(_obLvlSlot));
-                candleS.attachPrimitive(new _VolProfilePrimitive(() => _obKlines));
+                candleS.attachPrimitive(new _ObChannelFillPrimitive());
             } catch(e) {}
             const lineBase = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
             for (const { p, color, width, style } of EMA_CFG)
@@ -2592,6 +2608,7 @@ createApp({
                 obKlineCount = klines.length;
                 _obKlines = klines;
                 if (_obBbActive) _obApplyBB();
+                if (_obChActive) _obApplyChannel();
                 candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length - 1]?.close) });
 
                 for (const { p } of EMA_CFG) {
@@ -2730,6 +2747,7 @@ createApp({
                                 _obBbSeries.lower.update({ time: last.time, value: mean - bbCfg.mult * std });
                             }
                         }
+                        _obChUpdateTail(_obKlines);
                     }
                 } catch(e) {}
                 chartPollTimer = setTimeout(poll, 3000);
@@ -3031,6 +3049,7 @@ createApp({
                     _obBbSeries.lower.update({ time: newCandle.time, value: mean - bbCfg.mult * std });
                 }
             }
+            if (_obKlines.length) _obChUpdateTail([..._obKlines, newCandle]);
             return true;
         };
 
