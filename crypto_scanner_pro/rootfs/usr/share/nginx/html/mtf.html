@@ -541,6 +541,11 @@ class _ObBandFillPrimitive {
 }
 
 function addS(chart, type, opts, paneIndex) {
+  // Le LineSeries qui sono sempre indicatori overlay (EMA/canale/BB), mai la serie
+  // principale: escluderle dall'autoscale evita che un EMA223 lontano dal prezzo
+  // schiacci le candele in una riga piatta illeggibile — la scala verticale segue
+  // solo le candele.
+  if (type === 'LineSeries') opts = { ...opts, autoscaleInfoProvider: () => null };
   if (typeof chart.addSeries==='function' && LC[type]) return paneIndex != null ? chart.addSeries(LC[type], opts, paneIndex) : chart.addSeries(LC[type], opts);
   const m = {CandlestickSeries:'addCandlestickSeries',LineSeries:'addLineSeries'};
   return chart[m[type]](opts);
@@ -789,7 +794,7 @@ const fsBtn = document.createElement('button');
       athLine:null, atlLine:null,
       rangeActive: false, rangeP1: null, _rangeMD: null, _rangeMM: null, _rangeMU: null, _rangeCM: null, _rangeHoverLine: null, _rangeHoverMM: null, _rangeHoverML: null,
       hlineActive: false, hlines: [], _hlineMD: null, _hlineMM: null, _hlineMU: null, _hlineCM: null, _hlineDragging: null, _hlineHoverLine: null, _hlineHoverMM: null, _hlineHoverML: null,
-      trendActive: false, trendlines: [], _trendP1: null, _trendPrev: null, _trendMD: null, _trendMM: null, _trendMU: null, _trendCM: null, _trendDrag: null, _trendRAF: null, _trendHoverLine: null,
+      trendActive: false, trendlines: [], _trendP1: null, _trendPrev: null, _trendMD: null, _trendMM: null, _trendMU: null, _trendCM: null, _trendDrag: null, _trendRAF: null,
       dayPrimitive: null,
       lastCandleStartUtc: null,
       lastWsMs: 0,
@@ -911,19 +916,23 @@ let _wsPingTimer = null;
 function openWS() {
   closeWS();
   setWSDot('connecting');
-  ws = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-  ws.onopen = () => {
+  // const locale per i handler: se openWS() viene richiamata di nuovo prima che questa
+  // connessione finisca di aprirsi, la variabile globale `ws` punta già al socket nuovo —
+  // send() sul vecchio (via `ws` condivisa) fallirebbe con "Still in CONNECTING state".
+  const sock = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+  ws = sock;
+  sock.onopen = () => {
     setWSDot('live');
-    ws.send(JSON.stringify({
+    sock.send(JSON.stringify({
       op: 'subscribe',
       args: TF_SLOTS.map(s => `kline.${s.tf}.${SYM}`),
     }));
     // Bybit requires application-level ping every 20s to keep connection alive
     _wsPingTimer = setInterval(() => {
-      if (ws && ws.readyState === WebSocket.OPEN) ws.send('{"op":"ping"}');
+      if (sock.readyState === WebSocket.OPEN) sock.send('{"op":"ping"}');
     }, 20000);
   };
-  ws.onmessage = ev => {
+  sock.onmessage = ev => {
     let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
     if (!msg.topic || !msg.topic.startsWith('kline.')) return;
     const tf    = msg.topic.split('.')[1];
@@ -991,8 +1000,8 @@ function openWS() {
       }
     }
   };
-  ws.onerror = () => setWSDot('error');
-  ws.onclose = () => {
+  sock.onerror = () => setWSDot('error');
+  sock.onclose = () => {
     setWSDot('off');
     clearInterval(_wsPingTimer); _wsPingTimer = null;
     wsTimer = setTimeout(openWS, 5000);
@@ -1042,9 +1051,10 @@ window.addEventListener('beforeunload', closeWS);
 // se aperto, il grafico fullscreen.
 function openMtfBookWS() {
   closeMtfBookWS();
-  mtfBookWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-  mtfBookWS.onopen = () => mtfBookWS.send(JSON.stringify({ op: 'subscribe', args: [`orderbook.1.${SYM}`] }));
-  mtfBookWS.onmessage = ev => {
+  const sock = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+  mtfBookWS = sock;
+  sock.onopen = () => sock.send(JSON.stringify({ op: 'subscribe', args: [`orderbook.1.${SYM}`] }));
+  sock.onmessage = ev => {
     let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
     if (!msg.topic || !msg.topic.startsWith('orderbook.') || !msg.data) return;
     const bidRow = msg.data.b && msg.data.b[0], askRow = msg.data.a && msg.data.a[0];
@@ -1055,8 +1065,8 @@ function openMtfBookWS() {
     for (const s of slots) _mtfBookPatchSlot(s, midPrice);
     if (fsCandleS) _mtfBookPatchFS(midPrice);
   };
-  mtfBookWS.onerror = () => {};
-  mtfBookWS.onclose = () => { mtfBookWsTimer = setTimeout(openMtfBookWS, 5000); };
+  sock.onerror = () => {};
+  sock.onclose = () => { mtfBookWsTimer = setTimeout(openMtfBookWS, 5000); };
 }
 
 function closeMtfBookWS() {
@@ -1295,9 +1305,10 @@ async function loadOBData() {
 
 function connectOBWS() {
     closeOBWS();
-    obWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-    obWS.onopen = () => obWS.send(JSON.stringify({ op:'subscribe', args:[`kline.${obTF}.${SYM}`] }));
-    obWS.onmessage = ev => {
+    const sock = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+    obWS = sock;
+    sock.onopen = () => sock.send(JSON.stringify({ op:'subscribe', args:[`kline.${obTF}.${SYM}`] }));
+    sock.onmessage = ev => {
         let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
         if (!msg.topic || !msg.topic.startsWith('kline.')) return;
         const b = msg.data[0];
@@ -1312,8 +1323,8 @@ function connectOBWS() {
             if (confirmed) obLastEMA[p] = live;
         }
     };
-    obWS.onerror = () => {};
-    obWS.onclose = () => { obWsTimer = setTimeout(connectOBWS, 5000); };
+    sock.onerror = () => {};
+    sock.onclose = () => { obWsTimer = setTimeout(connectOBWS, 5000); };
 }
 
 function closeOBWS() {
@@ -1386,9 +1397,8 @@ let fsRangeActive = false, fsRangeP1 = null, _fsRangeMD = null, _fsRangeMM = nul
 let _fsRangeHoverLine = null, _fsRangeHoverMM = null, _fsRangeHoverML = null;
 let fsHlineActive = false, fsHlines = [], _fsHlineMD = null, _fsHlineMM = null, _fsHlineMU = null, _fsHlineCM = null, _fsHlineDragging = null;
 let _fsHlineHoverLine = null, _fsHlineHoverMM = null, _fsHlineHoverML = null;
-let fsTrendActive = false, fsTrendlines = [], _fsTrendP1 = null, _fsTrendPrev = null;
+let fsTrendActive = false, fsTrendlines = [], _fsTrendP1 = null, _fsTrendPrev = null, _fsTrendPending = null;
 let _fsTrendMD = null, _fsTrendMM = null, _fsTrendMU = null, _fsTrendCM = null, _fsTrendDrag = null, _fsTrendRAF = null;
-let _fsTrendHoverLine = null;
 
 function initFSChart() {
     if (fsChart) return;
@@ -1540,9 +1550,10 @@ async function loadFSData() {
 
 function connectFSWS() {
     closeFSWS();
-    fsWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-    fsWS.onopen = () => fsWS.send(JSON.stringify({ op:'subscribe', args:[`kline.${fsTF}.${SYM}`] }));
-    fsWS.onmessage = ev => {
+    const sock = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+    fsWS = sock;
+    sock.onopen = () => sock.send(JSON.stringify({ op:'subscribe', args:[`kline.${fsTF}.${SYM}`] }));
+    sock.onmessage = ev => {
         let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
         if (!msg.topic || !msg.topic.startsWith('kline.')) return;
         const b = msg.data[0]; const confirmed = b.confirm === true || b.confirm === 'true';
@@ -1594,8 +1605,8 @@ function connectFSWS() {
             }
         }
     };
-    fsWS.onerror = () => {};
-    fsWS.onclose = () => { fsWsTimer = setTimeout(connectFSWS, 5000); };
+    sock.onerror = () => {};
+    sock.onclose = () => { fsWsTimer = setTimeout(connectFSWS, 5000); };
 }
 
 function closeFSWS() {
@@ -2072,6 +2083,7 @@ function toggleFsHline() {
 
 // ── Trendline tool ────────────────────────────────────────────────────────────
 const _TREND_HIT = 8;
+const _TREND_CLICK_SLOP = 4;
 
 function _trendSync(canvas) { const w = canvas.clientWidth, h = canvas.clientHeight; if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; } }
 
@@ -2157,7 +2169,7 @@ function toggleSlotTrend(idx) {
   if (s._trendMM) { document.removeEventListener('mousemove', s._trendMM); s._trendMM = null; }
   if (s._trendMU) { document.removeEventListener('mouseup', s._trendMU); s._trendMU = null; }
   if (s._trendCM) { s.trendCanvas.removeEventListener('contextmenu', s._trendCM); s._trendCM = null; }
-  s._trendP1 = null; s._trendPrev = null; s._trendDrag = null;
+  s._trendP1 = null; s._trendPrev = null; s._trendDrag = null; s._trendPending = null;
   s.trendCanvas.style.pointerEvents = s.trendActive ? 'auto' : 'none';
   s.trendCanvas.style.cursor = s.trendActive ? 'crosshair' : '';
   _trendEnsureRAF(s);
@@ -2168,58 +2180,67 @@ function toggleSlotTrend(idx) {
     const rect = s.trendCanvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
     const hit = _trendNearest(s, e.clientX, e.clientY);
     if (hit && !s._trendP1) {
-      if (hit.part !== 'line') { s._trendDrag = { tl: hit.tl, part: hit.part }; s.trendCanvas.style.cursor = 'crosshair'; }
-      else {
-        const ox1 = s.chart.timeScale().timeToCoordinate(hit.tl.t1), oy1 = s.candleS.priceToCoordinate(hit.tl.p1);
-        const ox2 = s.chart.timeScale().timeToCoordinate(hit.tl.t2), oy2 = s.candleS.priceToCoordinate(hit.tl.p2);
-        s._trendDrag = { tl: hit.tl, part: 'line', sx: px, sy: py, ox1, oy1, ox2, oy2 };
-        s.trendCanvas.style.cursor = 'move';
-      }
+      // Non decidere subito se è drag o un click per iniziare una nuova linea:
+      // serve poter piazzare due trendline dallo stesso punto esatto (vedi mousemove/mouseup).
+      s._trendPending = { hit, px, py };
     } else if (!s._trendP1) {
       const t = s.chart.timeScale().coordinateToTime(px), p = s.candleS.coordinateToPrice(py);
       if (t != null && p != null) s._trendP1 = { t, p };
     } else {
       const t2 = s.chart.timeScale().coordinateToTime(px), p2 = s.candleS.coordinateToPrice(py);
       if (t2 != null && p2 != null) {
-        let pl1, pl2;
-        try { pl1 = s.candleS.createPriceLine({ price: s._trendP1.p, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {}
-        try { pl2 = s.candleS.createPriceLine({ price: p2,           color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {}
-        s.trendlines.push({ t1: s._trendP1.t, p1: s._trendP1.p, t2, p2, pl1, pl2 });
+        s.trendlines.push({ t1: s._trendP1.t, p1: s._trendP1.p, t2, p2 });
       }
       s._trendP1 = null; s._trendPrev = null;
-      if (s._trendHoverLine) { try { s.candleS?.removePriceLine(s._trendHoverLine); } catch(e) {} s._trendHoverLine = null; }
       _trendDrawAll(s);
     }
   };
   s._trendMM = e => {
     const rect = s.trendCanvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
+    if (s._trendPending) {
+      if (Math.hypot(px - s._trendPending.px, py - s._trendPending.py) <= _TREND_CLICK_SLOP) return;
+      const { hit, px: dpx0, py: dpy0 } = s._trendPending;
+      if (hit.part !== 'line') { s._trendDrag = { tl: hit.tl, part: hit.part }; s.trendCanvas.style.cursor = 'crosshair'; }
+      else {
+        const ox1 = s.chart.timeScale().timeToCoordinate(hit.tl.t1), oy1 = s.candleS.priceToCoordinate(hit.tl.p1);
+        const ox2 = s.chart.timeScale().timeToCoordinate(hit.tl.t2), oy2 = s.candleS.priceToCoordinate(hit.tl.p2);
+        s._trendDrag = { tl: hit.tl, part: 'line', sx: dpx0, sy: dpy0, ox1, oy1, ox2, oy2 };
+        s.trendCanvas.style.cursor = 'move';
+      }
+      s._trendPending = null;
+    }
     if (s._trendDrag) {
       if (!(e.buttons & 1)) { s._trendDrag = null; return; }
       const { tl, part } = s._trendDrag;
-      if (part === 'p1') { const t=s.chart.timeScale().coordinateToTime(px),p=s.candleS.coordinateToPrice(py); if(t&&p){tl.t1=t;tl.p1=p; if(tl.pl1) try{tl.pl1.applyOptions({price:p});}catch(ex){}} }
-      else if (part === 'p2') { const t=s.chart.timeScale().coordinateToTime(px),p=s.candleS.coordinateToPrice(py); if(t&&p){tl.t2=t;tl.p2=p; if(tl.pl2) try{tl.pl2.applyOptions({price:p});}catch(ex){}} }
-      else { const dpx=px-s._trendDrag.sx,dpy=py-s._trendDrag.sy; const nt1=s.chart.timeScale().coordinateToTime(s._trendDrag.ox1+dpx),np1=s.candleS.coordinateToPrice(s._trendDrag.oy1+dpy); const nt2=s.chart.timeScale().coordinateToTime(s._trendDrag.ox2+dpx),np2=s.candleS.coordinateToPrice(s._trendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2; if(tl.pl1) try{tl.pl1.applyOptions({price:np1});}catch(ex){} if(tl.pl2) try{tl.pl2.applyOptions({price:np2});}catch(ex){}} }
+      if (part === 'p1') { const t=s.chart.timeScale().coordinateToTime(px),p=s.candleS.coordinateToPrice(py); if(t&&p){tl.t1=t;tl.p1=p;} }
+      else if (part === 'p2') { const t=s.chart.timeScale().coordinateToTime(px),p=s.candleS.coordinateToPrice(py); if(t&&p){tl.t2=t;tl.p2=p;} }
+      else { const dpx=px-s._trendDrag.sx,dpy=py-s._trendDrag.sy; const nt1=s.chart.timeScale().coordinateToTime(s._trendDrag.ox1+dpx),np1=s.candleS.coordinateToPrice(s._trendDrag.oy1+dpy); const nt2=s.chart.timeScale().coordinateToTime(s._trendDrag.ox2+dpx),np2=s.candleS.coordinateToPrice(s._trendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2;} }
       _trendDrawAll(s);
     } else if (s._trendP1) {
       s._trendPrev = { x: px, y: py };
-      const hp = s.candleS?.coordinateToPrice(py);
-      if (hp != null) {
-        if (s._trendHoverLine) { try { s._trendHoverLine.applyOptions({ price: hp }); } catch(ex) {} }
-        else { try { s._trendHoverLine = s.candleS.createPriceLine({ price: hp, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
-      }
       _trendDrawAll(s);
     } else {
-      if (s._trendHoverLine) { try { s.candleS?.removePriceLine(s._trendHoverLine); } catch(e) {} s._trendHoverLine = null; }
       const hit = _trendNearest(s, e.clientX, e.clientY);
       s.trendCanvas.style.cursor = hit ? (hit.part === 'line' ? 'move' : 'crosshair') : 'crosshair';
     }
   };
-  s._trendMU = e => { if (e.button !== 0) return; s._trendDrag = null; s.trendCanvas.style.cursor = 'crosshair'; };
+  s._trendMU = e => {
+    if (e.button !== 0) return;
+    if (s._trendPending) {
+      // Click senza drag su un punto/linea esistente → inizia una nuova trendline da qui.
+      const { px: cpx, py: cpy } = s._trendPending;
+      const t = s.chart.timeScale().coordinateToTime(cpx), p = s.candleS.coordinateToPrice(cpy);
+      if (t != null && p != null) s._trendP1 = { t, p };
+      s._trendPending = null;
+      return;
+    }
+    s._trendDrag = null; s.trendCanvas.style.cursor = 'crosshair';
+  };
   s._trendCM = e => {
     e.preventDefault();
-    if (s._trendP1) { s._trendP1 = null; s._trendPrev = null; if (s._trendHoverLine) { try { s.candleS?.removePriceLine(s._trendHoverLine); } catch(e) {} s._trendHoverLine = null; } _trendDrawAll(s); return; }
+    if (s._trendP1) { s._trendP1 = null; s._trendPrev = null; _trendDrawAll(s); return; }
     const hit = _trendNearest(s, e.clientX, e.clientY);
-    if (hit) { if(hit.tl.pl1) try{s.candleS.removePriceLine(hit.tl.pl1);}catch(e){} if(hit.tl.pl2) try{s.candleS.removePriceLine(hit.tl.pl2);}catch(e){} s.trendlines = s.trendlines.filter(tl => tl !== hit.tl); _trendDrawAll(s); }
+    if (hit) { s.trendlines = s.trendlines.filter(tl => tl !== hit.tl); _trendDrawAll(s); }
     else toggleSlotTrend(idx);
   };
   s.trendCanvas.addEventListener('mousedown', s._trendMD);
@@ -2296,7 +2317,7 @@ function toggleFsTrend() {
   if (_fsTrendMM) { document.removeEventListener('mousemove', _fsTrendMM); _fsTrendMM = null; }
   if (_fsTrendMU) { document.removeEventListener('mouseup', _fsTrendMU); _fsTrendMU = null; }
   if (_fsTrendCM) { canvas.removeEventListener('contextmenu', _fsTrendCM); _fsTrendCM = null; }
-  _fsTrendP1 = null; _fsTrendPrev = null; _fsTrendDrag = null;
+  _fsTrendP1 = null; _fsTrendPrev = null; _fsTrendDrag = null; _fsTrendPending = null;
   canvas.style.pointerEvents = fsTrendActive ? 'auto' : 'none';
   canvas.style.cursor = fsTrendActive ? 'crosshair' : '';
   _fsTrendEnsureRAF();
@@ -2307,58 +2328,67 @@ function toggleFsTrend() {
     const rect = canvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
     const hit = _fsTrendNearest(e.clientX, e.clientY);
     if (hit && !_fsTrendP1) {
-      if (hit.part !== 'line') { _fsTrendDrag = { tl: hit.tl, part: hit.part }; canvas.style.cursor = 'crosshair'; }
-      else {
-        const ox1 = fsChart.timeScale().timeToCoordinate(hit.tl.t1), oy1 = fsCandleS.priceToCoordinate(hit.tl.p1);
-        const ox2 = fsChart.timeScale().timeToCoordinate(hit.tl.t2), oy2 = fsCandleS.priceToCoordinate(hit.tl.p2);
-        _fsTrendDrag = { tl: hit.tl, part: 'line', sx: px, sy: py, ox1, oy1, ox2, oy2 };
-        canvas.style.cursor = 'move';
-      }
+      // Non decidere subito se è drag o un click per iniziare una nuova linea:
+      // serve poter piazzare due trendline dallo stesso punto esatto (vedi mousemove/mouseup).
+      _fsTrendPending = { hit, px, py };
     } else if (!_fsTrendP1) {
       const t = fsChart.timeScale().coordinateToTime(px), p = fsCandleS.coordinateToPrice(py);
       if (t != null && p != null) _fsTrendP1 = { t, p };
     } else {
       const t2 = fsChart.timeScale().coordinateToTime(px), p2 = fsCandleS.coordinateToPrice(py);
       if (t2 != null && p2 != null) {
-        let pl1, pl2;
-        try { pl1 = fsCandleS.createPriceLine({ price: _fsTrendP1.p, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {}
-        try { pl2 = fsCandleS.createPriceLine({ price: p2,           color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {}
-        fsTrendlines.push({ t1: _fsTrendP1.t, p1: _fsTrendP1.p, t2, p2, pl1, pl2 });
+        fsTrendlines.push({ t1: _fsTrendP1.t, p1: _fsTrendP1.p, t2, p2 });
       }
       _fsTrendP1 = null; _fsTrendPrev = null;
-      if (_fsTrendHoverLine) { try { fsCandleS?.removePriceLine(_fsTrendHoverLine); } catch(e) {} _fsTrendHoverLine = null; }
       _fsTrendDrawAll();
     }
   };
   _fsTrendMM = e => {
     const rect = canvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
+    if (_fsTrendPending) {
+      if (Math.hypot(px - _fsTrendPending.px, py - _fsTrendPending.py) <= _TREND_CLICK_SLOP) return;
+      const { hit, px: dpx0, py: dpy0 } = _fsTrendPending;
+      if (hit.part !== 'line') { _fsTrendDrag = { tl: hit.tl, part: hit.part }; canvas.style.cursor = 'crosshair'; }
+      else {
+        const ox1 = fsChart.timeScale().timeToCoordinate(hit.tl.t1), oy1 = fsCandleS.priceToCoordinate(hit.tl.p1);
+        const ox2 = fsChart.timeScale().timeToCoordinate(hit.tl.t2), oy2 = fsCandleS.priceToCoordinate(hit.tl.p2);
+        _fsTrendDrag = { tl: hit.tl, part: 'line', sx: dpx0, sy: dpy0, ox1, oy1, ox2, oy2 };
+        canvas.style.cursor = 'move';
+      }
+      _fsTrendPending = null;
+    }
     if (_fsTrendDrag) {
       if (!(e.buttons & 1)) { _fsTrendDrag = null; return; }
       const { tl, part } = _fsTrendDrag;
-      if (part === 'p1') { const t=fsChart.timeScale().coordinateToTime(px),p=fsCandleS.coordinateToPrice(py); if(t&&p){tl.t1=t;tl.p1=p; if(tl.pl1) try{tl.pl1.applyOptions({price:p});}catch(ex){}} }
-      else if (part === 'p2') { const t=fsChart.timeScale().coordinateToTime(px),p=fsCandleS.coordinateToPrice(py); if(t&&p){tl.t2=t;tl.p2=p; if(tl.pl2) try{tl.pl2.applyOptions({price:p});}catch(ex){}} }
-      else { const dpx=px-_fsTrendDrag.sx,dpy=py-_fsTrendDrag.sy; const nt1=fsChart.timeScale().coordinateToTime(_fsTrendDrag.ox1+dpx),np1=fsCandleS.coordinateToPrice(_fsTrendDrag.oy1+dpy); const nt2=fsChart.timeScale().coordinateToTime(_fsTrendDrag.ox2+dpx),np2=fsCandleS.coordinateToPrice(_fsTrendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2; if(tl.pl1) try{tl.pl1.applyOptions({price:np1});}catch(ex){} if(tl.pl2) try{tl.pl2.applyOptions({price:np2});}catch(ex){}} }
+      if (part === 'p1') { const t=fsChart.timeScale().coordinateToTime(px),p=fsCandleS.coordinateToPrice(py); if(t&&p){tl.t1=t;tl.p1=p;} }
+      else if (part === 'p2') { const t=fsChart.timeScale().coordinateToTime(px),p=fsCandleS.coordinateToPrice(py); if(t&&p){tl.t2=t;tl.p2=p;} }
+      else { const dpx=px-_fsTrendDrag.sx,dpy=py-_fsTrendDrag.sy; const nt1=fsChart.timeScale().coordinateToTime(_fsTrendDrag.ox1+dpx),np1=fsCandleS.coordinateToPrice(_fsTrendDrag.oy1+dpy); const nt2=fsChart.timeScale().coordinateToTime(_fsTrendDrag.ox2+dpx),np2=fsCandleS.coordinateToPrice(_fsTrendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2;} }
       _fsTrendDrawAll();
     } else if (_fsTrendP1) {
       _fsTrendPrev = { x: px, y: py };
-      const hp = fsCandleS?.coordinateToPrice(py);
-      if (hp != null) {
-        if (_fsTrendHoverLine) { try { _fsTrendHoverLine.applyOptions({ price: hp }); } catch(ex) {} }
-        else { try { _fsTrendHoverLine = fsCandleS.createPriceLine({ price: hp, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
-      }
       _fsTrendDrawAll();
     } else {
-      if (_fsTrendHoverLine) { try { fsCandleS?.removePriceLine(_fsTrendHoverLine); } catch(e) {} _fsTrendHoverLine = null; }
       const hit = _fsTrendNearest(e.clientX, e.clientY);
       canvas.style.cursor = hit ? (hit.part === 'line' ? 'move' : 'crosshair') : 'crosshair';
     }
   };
-  _fsTrendMU = e => { if (e.button !== 0) return; _fsTrendDrag = null; canvas.style.cursor = 'crosshair'; };
+  _fsTrendMU = e => {
+    if (e.button !== 0) return;
+    if (_fsTrendPending) {
+      // Click senza drag su un punto/linea esistente → inizia una nuova trendline da qui.
+      const { px: cpx, py: cpy } = _fsTrendPending;
+      const t = fsChart.timeScale().coordinateToTime(cpx), p = fsCandleS.coordinateToPrice(cpy);
+      if (t != null && p != null) _fsTrendP1 = { t, p };
+      _fsTrendPending = null;
+      return;
+    }
+    _fsTrendDrag = null; canvas.style.cursor = 'crosshair';
+  };
   _fsTrendCM = e => {
     e.preventDefault();
-    if (_fsTrendP1) { _fsTrendP1 = null; _fsTrendPrev = null; if (_fsTrendHoverLine) { try { fsCandleS?.removePriceLine(_fsTrendHoverLine); } catch(e) {} _fsTrendHoverLine = null; } _fsTrendDrawAll(); return; }
+    if (_fsTrendP1) { _fsTrendP1 = null; _fsTrendPrev = null; _fsTrendDrawAll(); return; }
     const hit = _fsTrendNearest(e.clientX, e.clientY);
-    if (hit) { if(hit.tl.pl1) try{fsCandleS.removePriceLine(hit.tl.pl1);}catch(e){} if(hit.tl.pl2) try{fsCandleS.removePriceLine(hit.tl.pl2);}catch(e){} fsTrendlines = fsTrendlines.filter(tl => tl !== hit.tl); _fsTrendDrawAll(); }
+    if (hit) { fsTrendlines = fsTrendlines.filter(tl => tl !== hit.tl); _fsTrendDrawAll(); }
     else toggleFsTrend();
   };
   canvas.addEventListener('mousedown', _fsTrendMD);

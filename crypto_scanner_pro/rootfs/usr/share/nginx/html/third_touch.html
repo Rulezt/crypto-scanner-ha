@@ -871,6 +871,9 @@ createApp({
 
         const LC = LightweightCharts;
         const addS = (chart, type, opts) => {
+            // LineSeries qui = sempre indicatori overlay (EMA/canale): escluderli dall'autoscale
+            // evita che un indicatore lontano dal prezzo schiacci le candele in una riga piatta.
+            if (type === 'LineSeries') opts = { ...opts, autoscaleInfoProvider: () => null };
             if (typeof chart.addSeries === 'function' && LC[type]) return chart.addSeries(LC[type], opts);
             const m = { CandlestickSeries: 'addCandlestickSeries', LineSeries: 'addLineSeries' };
             return chart[m[type]](opts);

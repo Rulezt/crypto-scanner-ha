@@ -108,6 +108,11 @@ function makeOBChart(el) {
 }
 
 function addSeries(chart, type, opts) {
+    // Le LineSeries qui sono sempre indicatori overlay (EMA/canale/BB), mai la serie
+    // principale: escluderle dall'autoscale evita che un EMA223 lontano dal prezzo
+    // schiacci le candele in una riga piatta illeggibile — la scala verticale segue
+    // solo le candele.
+    if (type === 'LineSeries') opts = { ...opts, autoscaleInfoProvider: () => null };
     if (typeof chart.addSeries === 'function' && LC[type]) return chart.addSeries(LC[type], opts);
     const legacy = { CandlestickSeries: 'addCandlestickSeries', LineSeries: 'addLineSeries' };
     return chart[legacy[type]](opts);
@@ -220,23 +225,14 @@ function toggleObBB() {
 const OB_CH_PERIOD = 20, OB_CH_COLOR = '#22d3ee';
 let _obChActive = false, _obChSeries = { upper: null, mid: null, lower: null }, _obChData = null;
 
-function calcEmaChannel(klines, period) {
+function calcSmaChannel(klines, period) {
     const mid = [], upper = [], lower = [];
-    if (klines.length < period) return { mid, upper, lower };
-    const k = 2 / (period + 1);
-    let emaC = 0, emaH = 0, emaL = 0;
-    for (let i = 0; i < period; i++) { emaC += klines[i].close; emaH += klines[i].high; emaL += klines[i].low; }
-    emaC /= period; emaH /= period; emaL /= period;
-    mid.push({ time: klines[period - 1].time, value: emaC });
-    upper.push({ time: klines[period - 1].time, value: emaH });
-    lower.push({ time: klines[period - 1].time, value: emaL });
-    for (let i = period; i < klines.length; i++) {
-        emaC = klines[i].close * k + emaC * (1 - k);
-        emaH = klines[i].high  * k + emaH * (1 - k);
-        emaL = klines[i].low   * k + emaL * (1 - k);
-        mid.push({ time: klines[i].time, value: emaC });
-        upper.push({ time: klines[i].time, value: emaH });
-        lower.push({ time: klines[i].time, value: emaL });
+    for (let i = period - 1; i < klines.length; i++) {
+        let sumC = 0, sumH = 0, sumL = 0;
+        for (let j = i - period + 1; j <= i; j++) { sumC += klines[j].close; sumH += klines[j].high; sumL += klines[j].low; }
+        mid.push(  { time: klines[i].time, value: sumC / period });
+        upper.push({ time: klines[i].time, value: sumH / period });
+        lower.push({ time: klines[i].time, value: sumL / period });
     }
     return { mid, upper, lower };
 }
@@ -246,7 +242,7 @@ function calcEmaChannel(klines, period) {
 // _obKlines che è comunque limitato a poche decine/centinaia di candele).
 function _obChTail(klines) {
     if (klines.length < OB_CH_PERIOD) return null;
-    const c = calcEmaChannel(klines, OB_CH_PERIOD);
+    const c = calcSmaChannel(klines, OB_CH_PERIOD);
     return { upper: c.upper[c.upper.length - 1], mid: c.mid[c.mid.length - 1], lower: c.lower[c.lower.length - 1] };
 }
 
@@ -313,7 +309,7 @@ function _obApplyChannel() {
     _obChSeries.mid   = addSeries(_obChart, 'LineSeries', { ...lb, color: OB_CH_COLOR, lineWidth: 1, lineStyle: 2 });
     _obChSeries.lower = addSeries(_obChart, 'LineSeries', { ...lb, color: OB_CH_COLOR, lineWidth: 1 });
     if (_obKlines.length >= OB_CH_PERIOD) {
-        const c = calcEmaChannel(_obKlines, OB_CH_PERIOD);
+        const c = calcSmaChannel(_obKlines, OB_CH_PERIOD);
         _obChSeries.upper.setData(c.upper);
         _obChSeries.mid.setData(c.mid);
         _obChSeries.lower.setData(c.lower);
@@ -2042,9 +2038,8 @@ let _obRangeActive = false, _obRangeP1 = null, _obRangeMD = null, _obRangeMM = n
 let _obRangeHoverLine = null, _obRangeHoverMM = null, _obRangeHoverML = null;
 let _obHlineActive = false, _obHlines = [], _obHlineMD = null, _obHlineMM = null, _obHlineMU = null, _obHlineCM = null, _obHlineDragging = null;
 let _obHlineHoverLine = null, _obHlineHoverMM = null, _obHlineHoverML = null;
-let _obTrendActive = false, _obTrendlines = [], _obTrendP1 = null, _obTrendPrev = null;
+let _obTrendActive = false, _obTrendlines = [], _obTrendP1 = null, _obTrendPrev = null, _obTrendPending = null;
 let _obTrendMD = null, _obTrendMM = null, _obTrendMU = null, _obTrendCM = null, _obTrendDrag = null, _obTrendRAF = null;
-let _obTrendHoverLine = null;
 
 function _drawRangeCanvas(canvas, series, p1, p2) {
     canvas.width  = canvas.clientWidth  || canvas.parentElement?.clientWidth  || 100;
@@ -2242,27 +2237,9 @@ function toggleObHline() {
 }
 
 const _OB_TREND_HIT = 8;
+const _OB_TREND_CLICK_SLOP = 4;
 
 function _obTrendSync(canvas) { const w = canvas.clientWidth, h = canvas.clientHeight; if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; } }
-
-function _obTrendPriceTag(ctx, x, y, price, W, H) {
-    if (y < 0 || y > H) return;
-    const label = typeof fmtPrice === 'function' ? fmtPrice(price) : price.toPrecision(6);
-    ctx.save();
-    ctx.font = '10px -apple-system,BlinkMacSystemFont,sans-serif';
-    const tw = ctx.measureText(label).width, pad = 4, bh = 14;
-    const bx = Math.min(x + 6, W - tw - pad * 2 - 2);
-    const by = y - bh / 2;
-    ctx.fillStyle = '#22c55e';
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(bx, by, tw + pad * 2, bh, 2); else ctx.rect(bx, by, tw + pad * 2, bh);
-    ctx.fill();
-    ctx.fillStyle = '#000';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label, bx + pad, y);
-    ctx.restore();
-}
 
 function _obTrendDrawAll() {
     _syncObClearBtn();
@@ -2283,8 +2260,6 @@ function _obTrendDrawAll() {
             ctx.fillStyle = '#22c55e';
             ctx.beginPath(); ctx.arc(x1,y1,4,0,Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(x2,y2,4,0,Math.PI*2); ctx.fill();
-            if (y1 >= 0 && y1 <= H) _obTrendPriceTag(ctx, x1, y1, tl.p1, W, H);
-            if (y2 >= 0 && y2 <= H) _obTrendPriceTag(ctx, x2, y2, tl.p2, W, H);
         } catch(ex) {}
     }
     if (_obTrendP1 && _obTrendPrev) {
@@ -2295,7 +2270,6 @@ function _obTrendDrawAll() {
                 ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(_obTrendPrev.x, _obTrendPrev.y); ctx.stroke();
                 ctx.setLineDash([]);
                 ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(x1,y1,4,0,Math.PI*2); ctx.fill();
-                if (y1 >= 0 && y1 <= H) _obTrendPriceTag(ctx, x1, y1, _obTrendP1.p, W, H);
             }
         } catch(ex) {}
     }
@@ -2346,7 +2320,7 @@ function toggleObTrend() {
     if (_obTrendMM) { document.removeEventListener('mousemove', _obTrendMM); _obTrendMM = null; }
     if (_obTrendMU) { document.removeEventListener('mouseup', _obTrendMU); _obTrendMU = null; }
     if (_obTrendCM) { canvas.removeEventListener('contextmenu', _obTrendCM); _obTrendCM = null; }
-    _obTrendP1 = null; _obTrendPrev = null; _obTrendDrag = null;
+    _obTrendP1 = null; _obTrendPrev = null; _obTrendDrag = null; _obTrendPending = null;
     canvas.style.pointerEvents = _obTrendActive ? 'auto' : 'none';
     canvas.style.cursor = _obTrendActive ? 'crosshair' : '';
     _obTrendEnsureRAF();
@@ -2357,58 +2331,67 @@ function toggleObTrend() {
         const rect = canvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
         const hit = _obTrendNearest(e.clientX, e.clientY);
         if (hit && !_obTrendP1) {
-            if (hit.part !== 'line') { _obTrendDrag = { tl: hit.tl, part: hit.part }; canvas.style.cursor = 'crosshair'; }
-            else {
-                const ox1 = _obChart.timeScale().timeToCoordinate(hit.tl.t1), oy1 = _obCandleS.priceToCoordinate(hit.tl.p1);
-                const ox2 = _obChart.timeScale().timeToCoordinate(hit.tl.t2), oy2 = _obCandleS.priceToCoordinate(hit.tl.p2);
-                _obTrendDrag = { tl: hit.tl, part: 'line', sx: px, sy: py, ox1, oy1, ox2, oy2 };
-                canvas.style.cursor = 'move';
-            }
+            // Non decidere subito se è drag o un click per iniziare una nuova linea:
+            // serve poter piazzare due trendline dallo stesso punto esatto (vedi mousemove/mouseup).
+            _obTrendPending = { hit, px, py };
         } else if (!_obTrendP1) {
             const t = _obChart.timeScale().coordinateToTime(px), p = _obCandleS.coordinateToPrice(py);
             if (t != null && p != null) _obTrendP1 = { t, p };
         } else {
             const t2 = _obChart.timeScale().coordinateToTime(px), p2 = _obCandleS.coordinateToPrice(py);
             if (t2 != null && p2 != null) {
-                let pl1, pl2;
-                try { pl1 = _obCandleS.createPriceLine({ price: _obTrendP1.p, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {}
-                try { pl2 = _obCandleS.createPriceLine({ price: p2,           color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {}
-                _obTrendlines.push({ t1: _obTrendP1.t, p1: _obTrendP1.p, t2, p2, pl1, pl2 });
+                _obTrendlines.push({ t1: _obTrendP1.t, p1: _obTrendP1.p, t2, p2 });
             }
             _obTrendP1 = null; _obTrendPrev = null;
-            if (_obTrendHoverLine) { try { _obCandleS?.removePriceLine(_obTrendHoverLine); } catch(e) {} _obTrendHoverLine = null; }
             _obTrendDrawAll();
         }
     };
     _obTrendMM = e => {
         const rect = canvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
+        if (_obTrendPending) {
+            if (Math.hypot(px - _obTrendPending.px, py - _obTrendPending.py) <= _OB_TREND_CLICK_SLOP) return;
+            const { hit, px: dpx0, py: dpy0 } = _obTrendPending;
+            if (hit.part !== 'line') { _obTrendDrag = { tl: hit.tl, part: hit.part }; canvas.style.cursor = 'crosshair'; }
+            else {
+                const ox1 = _obChart.timeScale().timeToCoordinate(hit.tl.t1), oy1 = _obCandleS.priceToCoordinate(hit.tl.p1);
+                const ox2 = _obChart.timeScale().timeToCoordinate(hit.tl.t2), oy2 = _obCandleS.priceToCoordinate(hit.tl.p2);
+                _obTrendDrag = { tl: hit.tl, part: 'line', sx: dpx0, sy: dpy0, ox1, oy1, ox2, oy2 };
+                canvas.style.cursor = 'move';
+            }
+            _obTrendPending = null;
+        }
         if (_obTrendDrag) {
             if (!(e.buttons & 1)) { _obTrendDrag = null; return; }
             const { tl, part } = _obTrendDrag;
-            if (part === 'p1') { const t=_obChart.timeScale().coordinateToTime(px), p=_obCandleS.coordinateToPrice(py); if(t&&p){tl.t1=t;tl.p1=p; if(tl.pl1) try{tl.pl1.applyOptions({price:p});}catch(ex){}} }
-            else if (part === 'p2') { const t=_obChart.timeScale().coordinateToTime(px), p=_obCandleS.coordinateToPrice(py); if(t&&p){tl.t2=t;tl.p2=p; if(tl.pl2) try{tl.pl2.applyOptions({price:p});}catch(ex){}} }
-            else { const dpx=px-_obTrendDrag.sx, dpy=py-_obTrendDrag.sy; const nt1=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox1+dpx), np1=_obCandleS.coordinateToPrice(_obTrendDrag.oy1+dpy); const nt2=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox2+dpx), np2=_obCandleS.coordinateToPrice(_obTrendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2; if(tl.pl1) try{tl.pl1.applyOptions({price:np1});}catch(ex){} if(tl.pl2) try{tl.pl2.applyOptions({price:np2});}catch(ex){}} }
+            if (part === 'p1') { const t=_obChart.timeScale().coordinateToTime(px), p=_obCandleS.coordinateToPrice(py); if(t&&p){tl.t1=t;tl.p1=p;} }
+            else if (part === 'p2') { const t=_obChart.timeScale().coordinateToTime(px), p=_obCandleS.coordinateToPrice(py); if(t&&p){tl.t2=t;tl.p2=p;} }
+            else { const dpx=px-_obTrendDrag.sx, dpy=py-_obTrendDrag.sy; const nt1=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox1+dpx), np1=_obCandleS.coordinateToPrice(_obTrendDrag.oy1+dpy); const nt2=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox2+dpx), np2=_obCandleS.coordinateToPrice(_obTrendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2;} }
             _obTrendDrawAll();
         } else if (_obTrendP1) {
             _obTrendPrev = { x: px, y: py };
-            const hp = _obCandleS?.coordinateToPrice(py);
-            if (hp != null) {
-                if (_obTrendHoverLine) { try { _obTrendHoverLine.applyOptions({ price: hp }); } catch(ex) {} }
-                else { try { _obTrendHoverLine = _obCandleS.createPriceLine({ price: hp, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
-            }
             _obTrendDrawAll();
         } else {
-            if (_obTrendHoverLine) { try { _obCandleS?.removePriceLine(_obTrendHoverLine); } catch(e) {} _obTrendHoverLine = null; }
             const hit = _obTrendNearest(e.clientX, e.clientY);
             canvas.style.cursor = hit ? (hit.part === 'line' ? 'move' : 'crosshair') : 'crosshair';
         }
     };
-    _obTrendMU = e => { if (e.button !== 0) return; _obTrendDrag = null; canvas.style.cursor = 'crosshair'; };
+    _obTrendMU = e => {
+        if (e.button !== 0) return;
+        if (_obTrendPending) {
+            // Click senza drag su un punto/linea esistente → inizia una nuova trendline da qui.
+            const { px: cpx, py: cpy } = _obTrendPending;
+            const t = _obChart.timeScale().coordinateToTime(cpx), p = _obCandleS.coordinateToPrice(cpy);
+            if (t != null && p != null) _obTrendP1 = { t, p };
+            _obTrendPending = null;
+            return;
+        }
+        _obTrendDrag = null; canvas.style.cursor = 'crosshair';
+    };
     _obTrendCM = e => {
         e.preventDefault();
-        if (_obTrendP1) { _obTrendP1 = null; _obTrendPrev = null; if (_obTrendHoverLine) { try { _obCandleS?.removePriceLine(_obTrendHoverLine); } catch(e) {} _obTrendHoverLine = null; } _obTrendDrawAll(); return; }
+        if (_obTrendP1) { _obTrendP1 = null; _obTrendPrev = null; _obTrendDrawAll(); return; }
         const hit = _obTrendNearest(e.clientX, e.clientY);
-        if (hit) { if(hit.tl.pl1) try{_obCandleS.removePriceLine(hit.tl.pl1);}catch(e){} if(hit.tl.pl2) try{_obCandleS.removePriceLine(hit.tl.pl2);}catch(e){} _obTrendlines = _obTrendlines.filter(tl => tl !== hit.tl); _obTrendDrawAll(); }
+        if (hit) { _obTrendlines = _obTrendlines.filter(tl => tl !== hit.tl); _obTrendDrawAll(); }
         else toggleObTrend();
     };
     canvas.addEventListener('mousedown', _obTrendMD);
@@ -2669,11 +2652,12 @@ createApp({
         const startKlineWS = (tf) => {
             if (obKlineWS) { try { obKlineWS.close(); } catch(e) {} obKlineWS = null; }
             clearTimeout(obKlineWSTimer);
-            obKlineWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-            obKlineWS.onopen = () => {
-                if (obKlineWS) obKlineWS.send(JSON.stringify({ op: 'subscribe', args: [`kline.${tf}.${symbol.value}`] }));
+            const sock = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+            obKlineWS = sock;
+            sock.onopen = () => {
+                sock.send(JSON.stringify({ op: 'subscribe', args: [`kline.${tf}.${symbol.value}`] }));
             };
-            obKlineWS.onmessage = (event) => {
+            sock.onmessage = (event) => {
                 if (!candleS) return;
                 let msg; try { msg = JSON.parse(event.data); } catch(e) { return; }
                 if (!msg.topic || !msg.topic.startsWith('kline.')) return;
@@ -2689,8 +2673,8 @@ createApp({
                 _cdLastPrice = candle.close; _cdLastOpen = candle.open;
                 _obLiveCandle = { ...candle };
             };
-            obKlineWS.onerror = () => {};
-            obKlineWS.onclose = () => { obKlineWSTimer = setTimeout(() => startKlineWS(chartTF.value), 4000); };
+            sock.onerror = () => {};
+            sock.onclose = () => { obKlineWSTimer = setTimeout(() => startKlineWS(chartTF.value), 4000); };
         };
 
         const stopKlineWS = () => {
@@ -3183,11 +3167,12 @@ createApp({
 
         const connectTradeWS = () => {
             if (tradeWS) { tradeWS.close(); tradeWS = null; }
-            tradeWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-            tradeWS.onopen = () => {
-                tradeWS.send(JSON.stringify({ op: 'subscribe', args: [`publicTrade.${symbol.value}`] }));
+            const sock = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+            tradeWS = sock;
+            sock.onopen = () => {
+                sock.send(JSON.stringify({ op: 'subscribe', args: [`publicTrade.${symbol.value}`] }));
             };
-            tradeWS.onmessage = (event) => {
+            sock.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
                     if (!data.data || !Array.isArray(data.data)) return;
@@ -3199,20 +3184,21 @@ createApp({
                     cvdCalc();
                 } catch(e) {}
             };
-            tradeWS.onerror = () => {};
-            tradeWS.onclose = () => { tradeReconnTimer = setTimeout(connectTradeWS, 4000); };
+            sock.onerror = () => {};
+            sock.onclose = () => { tradeReconnTimer = setTimeout(connectTradeWS, 4000); };
         };
 
         watch(cvdWindow, () => { cvdBuffer.length = 0; cvdCalc(); });
 
         const connectBookWS = () => {
             setWSDot('connecting');
-            bookWS = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-            bookWS.onopen = () => {
-                bookWS.send(JSON.stringify({ op: 'subscribe', args: [`orderbook.200.${symbol.value}`] }));
+            const sock = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+            bookWS = sock;
+            sock.onopen = () => {
+                sock.send(JSON.stringify({ op: 'subscribe', args: [`orderbook.200.${symbol.value}`] }));
                 setWSDot('live');
             };
-            bookWS.onmessage = (event) => {
+            sock.onmessage = (event) => {
                 if (isPaused.value) return;
                 try {
                     const data = JSON.parse(event.data);
@@ -3222,8 +3208,8 @@ createApp({
                     }
                 } catch (err) { console.error(err); }
             };
-            bookWS.onerror  = (err) => { console.error('OB WS error:', err); setWSDot('error'); };
-            bookWS.onclose  = () => { setWSDot('off'); reconnectTimer = setTimeout(connectBookWS, 3000); };
+            sock.onerror  = (err) => { console.error('OB WS error:', err); setWSDot('error'); };
+            sock.onclose  = () => { setWSDot('off'); reconnectTimer = setTimeout(connectBookWS, 3000); };
         };
 
         // ============================

@@ -80,7 +80,7 @@
             <a href="/" style="display:inline-flex;align-items:center;color:#6b7280;">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M19 12H5"/><path d="m12 5-7 7 7 7"/></svg>
             </a>
-            <h1 style="color:#d97706">🤖 BOT — Breakout Pattern</h1>
+            <h1 style="color:#d97706">🤖 BOT — ORB</h1>
             <span class="status-pill" :class="status.running ? 'on' : 'off'">{{ status.running ? 'ATTIVO' : 'FERMO' }}</span>
         </div>
         <div class="header-right">
@@ -140,12 +140,10 @@
                         </div>
                     </div>
                     <div class="stat-card" v-if="status.position">
-                        <div class="lbl">SL / TP1 / TP2 / TP3</div>
+                        <div class="lbl">SL / TP</div>
                         <div class="val" style="font-size:0.8rem">
                             <span class="negative">{{ fmtPrice(status.position.stop) }}</span> /
-                            <span :class="status.position.tp1_hit?'positive':'muted'">{{ fmtPrice(status.position.tp1) }}{{ status.position.tp1_hit?' ✓':'' }}</span> /
-                            <span :class="status.position.tp2_hit?'positive':'muted'">{{ fmtPrice(status.position.tp2) }}{{ status.position.tp2_hit?' ✓':'' }}</span> /
-                            <span class="positive">{{ fmtPrice(status.position.tp3) }}</span>
+                            <span class="positive">{{ fmtPrice(status.position.target) }}</span>
                         </div>
                     </div>
                     <div class="stat-card" v-if="status.exchange_position">
@@ -178,13 +176,10 @@
                     <div class="t">{{ fmtTime(s.time) }} — {{ s.mode==='execution' ? 'Esecuzione' : 'Segnale' }}</div>
                     <span v-if="s.type==='entry'">
                         Entrata <b :class="s.side==='long'?'positive':'negative'">{{ s.side==='long'?'LONG':'SHORT' }}</b>
-                        [{{ s.strength }}] @ {{ fmtPrice(s.price) }} — SL {{ fmtPrice(s.stop) }} / TP1 {{ fmtPrice(s.tp1) }} / TP2 {{ fmtPrice(s.tp2) }} / TP3 {{ fmtPrice(s.tp3) }}
+                        [{{ s.strength }}] @ {{ fmtPrice(s.price) }} — SL {{ fmtPrice(s.stop) }} / TP {{ fmtPrice(s.target) }}
                     </span>
-                    <span v-else-if="s.type==='tp1_hit'">
-                        TP1 raggiunto @ {{ fmtPrice(s.price) }} — SL spostato a breakeven
-                    </span>
-                    <span v-else-if="s.type==='tp2_hit'">
-                        TP2 raggiunto @ {{ fmtPrice(s.price) }}
+                    <span v-else-if="s.type==='breakeven'">
+                        Breakeven (25% verso TP) — SL spostato a {{ fmtPrice(s.new_stop) }}
                     </span>
                     <span v-else>
                         Uscita ({{ REASON_LABEL[s.reason] || s.reason }}) @ {{ fmtPrice(s.price) }}
@@ -323,9 +318,21 @@
                 </button>
             </div>
             <div class="group">
-                <div class="group-title">Canale (SMA20 close/high/low)</div>
-                <div class="row"><label>Periodo SMA</label><input type="number" v-model.number="cfg.period" min="5" max="500" :disabled="status.running"></div>
-                <div class="row"><label>Mostra canale su grafico</label><input type="checkbox" v-model="showChannel"></div>
+                <div class="group-title">Opening Range (ORB)</div>
+                <div class="row"><label>Durata range apertura (minuti)</label><input type="number" v-model.number="cfg.orb_minutes" min="1" max="1440" :disabled="status.running"></div>
+                <div class="row"><label>Mostra range su grafico</label><input type="checkbox" v-model="showChannel"></div>
+            </div>
+            <div class="group">
+                <div class="group-title">Stop Loss</div>
+                <div class="row"><label>Stop Loss (%)</label><input type="number" step="0.05" v-model.number="cfg.sl_pct" min="0.05" max="20" :disabled="status.running"></div>
+            </div>
+            <div class="group">
+                <div class="group-title">Take Profit</div>
+                <div class="row"><label>Take Profit (%)</label><input type="number" step="0.05" v-model.number="cfg.tp_pct" min="0.05" max="50" :disabled="status.running"></div>
+            </div>
+            <div class="group">
+                <div class="group-title">Breakeven</div>
+                <div class="row"><label title="% della distanza entry→TP a cui lo SL si sposta a breakeven">Trigger breakeven (%)</label><input type="number" step="1" v-model.number="cfg.be_trigger_pct" min="0" max="100" :disabled="status.running"></div>
             </div>
             <div class="group">
                 <div class="group-title">Modalità</div>
@@ -395,7 +402,7 @@
                         {{ m.count }} trade
                     </div>
                     <div style="font-size:0.68rem;margin-top:2px;">
-                        <span class="positive">{{ m.tp3 }} TP3</span> / <span class="muted">{{ m.be }} BE</span> / <span class="negative">{{ m.sl }} SL</span>
+                        <span class="positive">{{ m.tp }} TP</span> / <span class="negative">{{ m.sl }} SL</span>
                         <span v-if="m.other" class="muted"> / {{ m.other }} altro</span>
                     </div>
                 </div>
@@ -508,7 +515,7 @@ const { createApp, ref, reactive, computed, watch, onMounted, onUnmounted, nextT
 
 const TF_LIST  = ['1','5','15','30','60','240','D','W','M'];
 const TF_LABEL = { '1':'1m','5':'5m','15':'15m','30':'30m','60':'1h','240':'4h','D':'1D','W':'1W','M':'1M' };
-const REASON_LABEL = { sl:'Stop Loss', be:'Breakeven (dopo TP1)', tp3:'Take Profit 3 (target)' };
+const REASON_LABEL = { sl:'Stop Loss', be:'Breakeven', tp:'Take Profit (target)' };
 const CFG_KEY = 'bot_cfg_draft';
 
 createApp({
@@ -516,7 +523,10 @@ createApp({
         const DEFAULT_CFG = {
             symbol: '', tf: '60', mode: 'signal',
             sizing: { type: 'fixed', value: 50 }, leverage: 1,
-            period: 20,
+            orb_minutes: 30,
+            sl_pct: 1.0,
+            tp_pct: 2.0,
+            be_trigger_pct: 25.0,
         };
 
         const cfg = reactive(JSON.parse(JSON.stringify(DEFAULT_CFG)));
@@ -612,11 +622,10 @@ createApp({
                 const d = new Date(tr.exit_time * 1000);
                 const year = d.getUTCFullYear(), month = d.getUTCMonth();
                 const key = `${year}-${String(month + 1).padStart(2, '0')}`;
-                if (!map.has(key)) map.set(key, { key, year, month, count: 0, tp3: 0, be: 0, sl: 0, other: 0, pnlPct: 0, pnlUsdt: 0 });
+                if (!map.has(key)) map.set(key, { key, year, month, count: 0, tp: 0, sl: 0, other: 0, pnlPct: 0, pnlUsdt: 0 });
                 const m = map.get(key);
                 m.count++;
-                if (tr.exit_reason === 'tp3') m.tp3++;
-                else if (tr.exit_reason === 'be') m.be++;
+                if (tr.exit_reason === 'tp') m.tp++;
                 else if (tr.exit_reason === 'sl') m.sl++;
                 else m.other++;
                 m.pnlPct += tr.pnl_pct;
@@ -707,6 +716,7 @@ createApp({
                 const d = await r.json();
                 if (!d.success) { alert(d.error || 'Errore backtest'); return; }
                 btResult.value = d;
+                TZ_OFFSET_S = d.utc_offset_s || 0;
                 await nextTick(); // assicura che i div dei grafici esistano nel DOM
                 await renderBacktestChart(d.candles, d.trades);
                 await renderEquityChart(d.equity_curve);
@@ -754,12 +764,18 @@ createApp({
 
         // ── Chart principale ─────────────────────────────────────────────────
         const LC = LightweightCharts;
-        const addS = (chart, type, opts) => {
+        const addS = (chart, type, opts, excludeAutoscale = true) => {
+            // LineSeries qui sono di norma indicatori overlay su un chart a candele
+            // (EMA/canale/BB): escluderli dall'autoscale evita che un indicatore lontano
+            // dal prezzo schiacci le candele in una riga piatta. MA sull'equity curve
+            // (grafico a sé, la linea È l'unica serie) l'esclusione lascerebbe la scala
+            // senza nessun dato da cui derivare il range — va disattivata lì (4° arg).
+            if (type === 'LineSeries' && excludeAutoscale) opts = { ...opts, autoscaleInfoProvider: () => null };
             if (typeof chart.addSeries === 'function' && LC[type]) return chart.addSeries(LC[type], opts);
             const m = { CandlestickSeries: 'addCandlestickSeries', LineSeries: 'addLineSeries' };
             return chart[m[type]](opts);
         };
-        let mainChart = null, candleSeries = null, slLine = null, tp1Line = null, tp2Line = null, tp3Line = null, entryLine = null, liveMarkers = null;
+        let mainChart = null, candleSeries = null, slLine = null, tpLine = null, entryLine = null, liveMarkers = null;
         let mainKlines = null;
         let liveWS = null, liveWSTimer = null, TZ_OFFSET_S = 0;
         let chHiLineSeries = null, chLoLineSeries = null;
@@ -767,7 +783,7 @@ createApp({
         let equityChart = null;
         let btChart = null, btMarkers = null, btCandles = null, bbSeries = [], btCandleSeries = null;
         let btFocusEntryLine = null, btFocusExitLine = null, btFocusRevert = null;
-        let btFocusSlLine = null, btFocusTp1Line = null, btFocusTp2Line = null, btFocusTp3Line = null;
+        let btFocusSlLine = null, btFocusTpLine = null;
         let btFocusOverrideActive = false, btFocusOverrideRange = null;
         // Solo le candele determinano l'asse prezzo del pannello Backtest — SMA e BB
         // sono escluse dall'autoscale (vedi btExcludeFromAutoscale sotto).
@@ -814,25 +830,36 @@ createApp({
         let btRangeP1 = null, btRangeMD = null, btRangeMM = null, btRangeMU = null, btRangeCM = null;
         let btRangeHoverLine = null, btRangeHoverMM = null, btRangeHoverML = null;
 
-        // ── Canale SMA(period) su high/low — porting client-side di
-        // scanners/bot_engine.py, usato SOLO per disegnare le bande sul
-        // grafico (stesso calcolo dello screener channel-breakout.html);
-        // lo stato reale del bot live/backtest è quello autoritativo
-        // restituito dal backend (posizione, trade, marker) ─────────────────
-        const _calcSMASeries = (values, period) => {
-            const n = values.length, out = new Array(n).fill(null);
-            let sum = 0;
+        // ── Opening Range giornaliero (UTC) — porting client-side di
+        // scanners/bot_engine.py (_calc_orb_ranges), usato SOLO per disegnare
+        // le bande sul grafico; lo stato reale del bot live/backtest è quello
+        // autoritativo restituito dal backend (posizione, trade, marker).
+        // tzOffsetS: le candele arrivano già shiftate dell'offset UTC
+        // configurato (vedi TZ_OFFSET_S) — serve per individuare correttamente
+        // il confine "00:00 UTC" del giorno, stessa logica del backend. ──────
+        const calcOrbArrJS = (candles, orbMinutes, tzOffsetS) => {
+            const n = candles.length;
+            const upper = new Array(n).fill(null), lower = new Array(n).fill(null);
+            const windowS = orbMinutes * 60;
+            let dayBucket = null, windowEnd = null, dayHigh = null, dayLow = null, orbHigh = null, orbLow = null;
             for (let i = 0; i < n; i++) {
-                sum += (values[i] || 0);
-                if (i >= period) sum -= (values[i-period] || 0);
-                if (i >= period - 1) out[i] = sum / period;
+                const t = candles[i].time;
+                const trueUtc = t - tzOffsetS;
+                const db = trueUtc - (trueUtc % 86400) + tzOffsetS;
+                if (db !== dayBucket) {
+                    dayBucket = db; windowEnd = dayBucket + windowS;
+                    dayHigh = dayLow = null; orbHigh = orbLow = null;
+                }
+                if (t < windowEnd) {
+                    dayHigh = dayHigh == null ? candles[i].high : Math.max(dayHigh, candles[i].high);
+                    dayLow  = dayLow  == null ? candles[i].low  : Math.min(dayLow,  candles[i].low);
+                } else if (orbHigh == null && dayHigh != null) {
+                    orbHigh = dayHigh; orbLow = dayLow;
+                }
+                upper[i] = orbHigh; lower[i] = orbLow;
             }
-            return out;
+            return { upper, lower };
         };
-        const calcChannelArrJS = (candles, period) => ({
-            upper: _calcSMASeries(candles.map(c => c.high), period),
-            lower: _calcSMASeries(candles.map(c => c.low),  period),
-        });
 
         const computeBollinger = (candles, period = 20, mult = 2) => {
             if (candles.length < period) return { upper: [], middle: [], lower: [] };
@@ -914,17 +941,17 @@ createApp({
         const destroyMainChart = () => {
             closeLiveWS();
             if (mainChart) { try { mainChart.remove(); } catch(e) {} mainChart = null; }
-            candleSeries = null; slLine = null; tp1Line = null; tp2Line = null; tp3Line = null; entryLine = null; liveMarkers = null;
+            candleSeries = null; slLine = null; tpLine = null; entryLine = null; liveMarkers = null;
             chHiLineSeries = null; chLoLineSeries = null; mainKlines = null;
             const el = document.getElementById('chart-box');
             if (el) el.innerHTML = '';
         };
 
-        // Disegna le bande upper/lower del canale SMA(period) sul grafico indicato,
-        // ricalcolandole client-side dalle klines fornite — solo visuale (il
-        // trigger/trade reali usano lo stato autoritativo del backend).
+        // Disegna le bande upper/lower dell'opening range giornaliero sul grafico
+        // indicato, ricalcolandole client-side dalle klines fornite — solo visuale
+        // (il trigger/trade reali usano lo stato autoritativo del backend).
         const drawChannelLines = (chart, klines, cfgP, which) => {
-            const { upper, lower } = calcChannelArrJS(klines, cfgP.period);
+            const { upper, lower } = calcOrbArrJS(klines, cfgP.orb_minutes, TZ_OFFSET_S);
             const opts = { color: '#FFEB3B', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: showChannel.value, autoscaleInfoProvider: btExcludeFromAutoscale };
             const hiSeries = addS(chart, 'LineSeries', opts);
             const loSeries = addS(chart, 'LineSeries', opts);
@@ -984,16 +1011,12 @@ createApp({
             if (!candleSeries) return;
             if (entryLine) { try { candleSeries.removePriceLine(entryLine); } catch(e) {} entryLine = null; }
             if (slLine) { try { candleSeries.removePriceLine(slLine); } catch(e) {} slLine = null; }
-            if (tp1Line) { try { candleSeries.removePriceLine(tp1Line); } catch(e) {} tp1Line = null; }
-            if (tp2Line) { try { candleSeries.removePriceLine(tp2Line); } catch(e) {} tp2Line = null; }
-            if (tp3Line) { try { candleSeries.removePriceLine(tp3Line); } catch(e) {} tp3Line = null; }
+            if (tpLine) { try { candleSeries.removePriceLine(tpLine); } catch(e) {} tpLine = null; }
             const pos = status.position;
             if (!pos) return;
             entryLine = candleSeries.createPriceLine({ price: pos.entry_price, color:'#f59e0b', lineWidth:1, lineStyle:0, title:'Entrata' });
             slLine = candleSeries.createPriceLine({ price: pos.stop, color:'#ef4444', lineWidth:1, lineStyle:2, title:'SL' });
-            tp1Line = candleSeries.createPriceLine({ price: pos.tp1, color:'#10b981', lineWidth:1, lineStyle:2, title: pos.tp1_hit ? 'TP1 ✓' : 'TP1' });
-            tp2Line = candleSeries.createPriceLine({ price: pos.tp2, color:'#10b981', lineWidth:1, lineStyle:2, title: pos.tp2_hit ? 'TP2 ✓' : 'TP2' });
-            tp3Line = candleSeries.createPriceLine({ price: pos.tp3, color:'#10b981', lineWidth:2, lineStyle:2, title:'TP3' });
+            tpLine = candleSeries.createPriceLine({ price: pos.target, color:'#10b981', lineWidth:2, lineStyle:2, title:'TP' });
         };
 
         // Marker ▲/▼ per lo storico segnali (entrate/uscite già eseguite) sul grafico
@@ -1001,8 +1024,6 @@ createApp({
         // chiusa una posizione non restava alcuna traccia visiva dell'esecuzione.
         const drawLiveSignalMarkers = () => {
             if (!candleSeries || !signals.value.length) return;
-            // tp1_hit/tp2_hit sono milestone informative (feed segnali), non hanno
-            // un proprio marker sul grafico — solo entrata/uscita.
             const markers = signals.value.filter(s => s.type === 'entry' || s.type === 'exit').map(s => s.type === 'entry' ? {
                 time: s.time, position: s.side === 'long' ? 'belowBar' : 'aboveBar',
                 color: s.side === 'long' ? '#10b981' : '#ef4444',
@@ -1201,9 +1222,7 @@ createApp({
             if (btFocusEntryLine) { try { btCandleSeries.removePriceLine(btFocusEntryLine); } catch(e) {} }
             if (btFocusExitLine) { try { btCandleSeries.removePriceLine(btFocusExitLine); } catch(e) {} }
             if (btFocusSlLine)  { try { btCandleSeries.removePriceLine(btFocusSlLine);  } catch(e) {} }
-            if (btFocusTp1Line) { try { btCandleSeries.removePriceLine(btFocusTp1Line); } catch(e) {} }
-            if (btFocusTp2Line) { try { btCandleSeries.removePriceLine(btFocusTp2Line); } catch(e) {} }
-            if (btFocusTp3Line) { try { btCandleSeries.removePriceLine(btFocusTp3Line); } catch(e) {} }
+            if (btFocusTpLine)  { try { btCandleSeries.removePriceLine(btFocusTpLine);  } catch(e) {} }
             btFocusEntryLine = btCandleSeries.createPriceLine({
                 price: tr.entry_price, color: tr.side === 'long' ? '#10b981' : '#ef4444',
                 lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Entrata',
@@ -1212,17 +1231,15 @@ createApp({
                 price: tr.exit_price, color: tr.pnl_pct >= 0 ? '#10b981' : '#ef4444',
                 lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Uscita',
             });
-            btFocusSlLine = btCandleSeries.createPriceLine({ price: tr.sl_orig, color: '#ef4444', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'SL' });
-            btFocusTp1Line = btCandleSeries.createPriceLine({ price: tr.tp1_price, color: '#10b981', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'TP1' });
-            btFocusTp2Line = btCandleSeries.createPriceLine({ price: tr.tp2_price, color: '#10b981', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'TP2' });
-            btFocusTp3Line = btCandleSeries.createPriceLine({ price: tr.tp3_price, color: '#10b981', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'TP3' });
+            btFocusSlLine = btCandleSeries.createPriceLine({ price: tr.sl_price_orig, color: '#ef4444', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'SL' });
+            btFocusTpLine = btCandleSeries.createPriceLine({ price: tr.tp_price, color: '#10b981', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'TP' });
             // Forza la scala prezzo a centrarsi sul range entrata/uscita: l'autoscale
             // normale guarda TUTTE le candele nel margine di 15 barre, quindi uno spike
             // estraneo in quel margine comprimeva visivamente il trade cliccato verso
             // il bordo del grafico anche se tecnicamente "in vista". Overriding
             // temporaneo, rimosso al primo scroll/drag manuale dell'utente sul grafico.
             if (btFocusRevert) { btFocusRevert(); btFocusRevert = null; }
-            const levels = [tr.entry_price, tr.exit_price, tr.sl_orig, tr.tp1_price, tr.tp2_price, tr.tp3_price];
+            const levels = [tr.entry_price, tr.exit_price, tr.sl_price_orig, tr.tp_price];
             const lo = Math.min(...levels);
             const hi = Math.max(...levels);
             const pad = (hi - lo) * 0.15 || lo * 0.02;
@@ -1255,7 +1272,7 @@ createApp({
                 rightPriceScale: { borderColor: '#2a2e39' },
                 timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false },
             });
-            const line = addS(equityChart, 'LineSeries', { color:'#d97706', lineWidth:2 });
+            const line = addS(equityChart, 'LineSeries', { color:'#d97706', lineWidth:2 }, false);
             line.setData(curve.map(p => ({ time: p.time, value: p.equity })));
         };
 
@@ -1270,7 +1287,7 @@ createApp({
             btChHiLineSeries = null; btChLoLineSeries = null;
             if (btFocusRevert) { try { btFocusRevert(); } catch(e) {} btFocusRevert = null; }
             btFocusEntryLine = null; btFocusExitLine = null;
-            btFocusSlLine = null; btFocusTp1Line = null; btFocusTp2Line = null; btFocusTp3Line = null;
+            btFocusSlLine = null; btFocusTpLine = null;
             disableBtRangeTool();
         };
 

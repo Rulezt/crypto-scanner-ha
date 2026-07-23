@@ -1245,7 +1245,18 @@ def _fetch_klines_bybit(symbol, interval, max_pages):
         params = {'category': 'linear', 'symbol': symbol, 'interval': interval, 'limit': 1000}
         if end_time:
             params['end'] = end_time
-        data = req.get(url, params=params, timeout=8).json()
+        # Un singolo hiccup di rete/rate-limit su Bybit non deve far fallire l'intera
+        # richiesta (l'utente vedeva popup grafici vuoti senza errore, da riprovare a mano):
+        # un retry silenzioso qui copre il caso più comune prima di risalire come 500.
+        data = None
+        for attempt in range(2):
+            try:
+                data = req.get(url, params=params, timeout=8).json()
+                break
+            except Exception:
+                if attempt == 1:
+                    raise
+                time.sleep(0.5)
         if data.get('retCode') != 0:
             raise RuntimeError(data.get('retMsg', 'Bybit API error'))
         batch = data['result']['list']  # newest first
@@ -1270,9 +1281,20 @@ def _fetch_klines_bybit(symbol, interval, max_pages):
     return result, tz_s
 
 
+_KLINES_CACHE_TTL = 15  # secondi
+_klines_cache = {}  # (symbol, interval) -> {'payload':..., 'ts':...}
+_klines_cache_lock = threading.Lock()
+
 @app.route('/api/klines', methods=['GET'])
 def get_klines():
-    """Proxy Bybit klines — paginated to fetch all available data"""
+    """Proxy Bybit klines — paginated to fetch all available data.
+
+    Le anteprime/popup grafico degli scanner (thumbnail + popup ingrandito) chiamano
+    questo endpoint più volte per la stessa riga in pochi secondi. Senza cache ogni
+    apertura rifaceva l'intera paginazione live su Bybit (fino a 5 richieste sequenziali),
+    rendendo i popup lenti o, in caso di rate-limit/hiccup su una singola pagina, vuoti
+    senza errore visibile finché l'utente non riprovava a mano.
+    """
     import re
 
     symbol   = request.args.get('symbol', 'BTCUSDT').upper()
@@ -1284,6 +1306,15 @@ def get_klines():
     custom_m = re.match(r'^c(\d+)$', interval)
     if not custom_m and interval not in {'1', '5', '15', '30', '60', '240', 'D', 'W', 'M'}:
         return jsonify({'error': 'Invalid interval'}), 400
+
+    cache_key = (symbol, interval)
+    now = time.time()
+    with _klines_cache_lock:
+        cached = _klines_cache.get(cache_key)
+        if cached and now - cached['ts'] < _KLINES_CACHE_TTL:
+            resp = jsonify(cached['payload'])
+            resp.headers['Cache-Control'] = 'no-store'
+            return resp
 
     try:
         if custom_m:
@@ -1301,8 +1332,17 @@ def get_klines():
             max_pages = {'1': 2, '5': 3, '15': 3, '30': 4, '60': 4, '240': 5}.get(interval, 5)
             result, tz_s = _fetch_klines_bybit(symbol, interval, max_pages)
 
-        resp = jsonify({'success': True, 'data': result, 'symbol': symbol,
-                        'interval': interval, 'utc_offset_s': tz_s})
+        payload = {'success': True, 'data': result, 'symbol': symbol,
+                   'interval': interval, 'utc_offset_s': tz_s}
+        with _klines_cache_lock:
+            _klines_cache[cache_key] = {'payload': payload, 'ts': now}
+            # Pulizia opportunistica delle voci scadute per non far crescere la cache
+            # indefinitamente (molte combinazioni symbol+interval nel tempo).
+            expired = [k for k, v in _klines_cache.items() if now - v['ts'] >= _KLINES_CACHE_TTL]
+            for k in expired:
+                del _klines_cache[k]
+
+        resp = jsonify(payload)
         resp.headers['Cache-Control'] = 'no-store'
         return resp
 
@@ -1588,12 +1628,12 @@ def trade_position():
 
 _DEFAULT_TAKER_FEE = 0.00055  # fallback standard Bybit derivati (VIP0) se manca API key
 
-def _bybit_taker_fee_rate(username, symbol):
-    """Fee taker reale dell'account (tiene conto di VIP tier/sconti) via
-    GET /v5/account/fee-rate. Richiede una API key configurata — altrimenti
-    ricade sul valore standard Bybit."""
+def _fetch_taker_fee_rate(k, s, en, symbol):
+    """Fee taker reale (tiene conto di VIP tier/sconti) via GET /v5/account/fee-rate.
+    Richiede una API key configurata — altrimenti ricade sul valore standard Bybit.
+    Condivisa da _bybit_taker_fee_rate (utente di /api/trade/*) e
+    _BotTradeClient.get_taker_fee_rate (account globale del BOT)."""
     import requests as rq
-    k, s, en = _tcfg_user(username)
     if not en:
         return _DEFAULT_TAKER_FEE
     try:
@@ -1607,6 +1647,11 @@ def _bybit_taker_fee_rate(username, symbol):
         return float(lst[0]['takerFeeRate'])
     except Exception:
         return _DEFAULT_TAKER_FEE
+
+
+def _bybit_taker_fee_rate(username, symbol):
+    k, s, en = _tcfg_user(username)
+    return _fetch_taker_fee_rate(k, s, en, symbol)
 
 @app.route('/api/trade/instrument')
 @login_required
@@ -1805,6 +1850,13 @@ class _BotTradeClient:
             except (KeyError, ValueError):
                 continue
         return out
+
+    def get_taker_fee_rate(self, symbol):
+        """Fee taker reale dell'account BOT (VIP tier/sconti inclusi) — usata per
+        calcolare un breakeven che recupera davvero le fee di andata+ritorno,
+        invece di spostare lo SL a un prezzo che dopo le fee è ancora in perdita."""
+        k, s, en = _tcfg()
+        return _fetch_taker_fee_rate(k, s, en, symbol)
 
     def get_position(self, symbol):
         import requests as rq
@@ -2058,28 +2110,47 @@ def bot_backtest():
 
     iv_s = TF_SECONDS.get(interval) or int(interval) * 60 if interval.isdigit() else TF_SECONDS.get(interval, 3600)
 
+    params = normalize_params(data)
+    # L'opening range si forma e si blocca DENTRO la stessa giornata: con un TF
+    # >= 24h (Daily/Weekly/Monthly) esiste una sola candela al giorno, quindi non
+    # può mai esserci una seconda candela nello stesso giorno che chiuda la
+    # finestra e confermi il breakout — zero segnali senza nessun errore visibile,
+    # prima di questo controllo. (TF sub-daily anche più larghi della finestra,
+    # es. 4h con orb_minutes=30, funzionano comunque — solo un'approssimazione
+    # più grezza del range, non un caso strutturalmente impossibile.)
+    if iv_s >= 86400:
+        return jsonify({'error': (f"TF {interval} troppo largo per un opening range giornaliero — "
+                                   f"serve un TF intraday (max 4h/240)")}), 400
+
     try:
         if is_synthetic_tf:
             # TF non nativo su Bybit (es. 6/7/8/9 minuti): niente API, si legge
-            # dal CSV pre-aggregato da scripts/bybit_tick_aggregate.py.
+            # dal CSV pre-aggregato da scripts/bybit_tick_aggregate.py — timestamp
+            # UTC puro (nessuno shift), stessa convenzione del motore live.
             candles = _load_tick_cache_klines(symbol, int(interval), lookback_days)
+            tz_s = 0
         else:
             candles_needed = int(lookback_days * 86400 / iv_s) + 5
             max_pages = max(1, min(100, -(-candles_needed // 1000)))  # ceil, cap 100 pagine (100k candele)
-            candles, _ = _fetch_klines_bybit(symbol, interval, max_pages)
+            candles, tz_s = _fetch_klines_bybit(symbol, interval, max_pages)
     except Exception as e:
         return jsonify({'error': str(e)}), 502
 
-    params = normalize_params(data)
     initial_capital = float(data.get('initial_capital', 1000.0))
     sizing = data.get('sizing') or {'type': 'fixed', 'value': 50.0}
     taker_fee_rate = _bybit_taker_fee_rate(session.get('username', ''), symbol)
 
     try:
-        result = run_backtest(candles, params, initial_capital, sizing, taker_fee_rate)
+        # tz_s: le candele di _fetch_klines_bybit hanno 'time' shiftato dell'offset
+        # UTC configurato — il motore ORB deve saperlo per individuare correttamente
+        # il confine "00:00 UTC" del giorno (vedi bot_engine.py, tz_offset_s).
+        result = run_backtest(candles, params, initial_capital, sizing, taker_fee_rate, tz_offset_s=tz_s)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     result['taker_fee_rate'] = taker_fee_rate
+    # Il frontend ne ha bisogno per ricalcolare client-side le bande dell'opening
+    # range (stessa convenzione oraria delle candele restituite sotto).
+    result['utc_offset_s'] = tz_s
 
     # Le candele usate per il backtest vengono restituite (senza volume, non
     # serve per il grafico) così il frontend può disegnare i marker di

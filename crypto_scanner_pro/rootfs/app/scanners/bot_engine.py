@@ -1,28 +1,51 @@
-"""BOT — Breakout Pattern (trigger: canale SMA20 close/high/low, port di channel-breakout.html)
+"""BOT — Opening Range Breakout (ORB), versione semplice senza filtri
 
-Canale a 2 linee (upper/lower = SMA(period) di high/low, stessa formula
-dell'indicatore Canale di chart.html/mtf.html e dello screener
-`channel-breakout.html` — qui la linea mid/close non serve al trigger, non
-viene calcolata). Segnale sulla candela i confrontato col canale della
-candela PRECEDENTE (i-1) per evitare l'auto-riferimento:
-  - STRONG: apre già fuori dal canale e chiude dal lato opposto (attraversa
-    tutto il canale in una candela).
-  - NORMAL: apre dentro il canale e chiude fuori (sopra=Long, sotto=Short).
-Scarta le candele di "continuazione" (trend già in corso, non un nuovo
-breakout) confrontando anche la candela precedente col canale di due bar fa —
-stesso fix anti falsi-segnali di `channel-breakout.html`.
+Ogni giorno UTC (00:00→24:00) i primi `orb_minutes` minuti definiscono
+l'opening range (massimo/minimo di quella finestra). Una volta chiusa la
+finestra il range resta BLOCCATO per il resto della giornata. Il trigger è IN
+TEMPO REALE (rottura intrabar, non alla chiusura candela — vedi
+_detect_orb_signal):
+  - STRONG: il livello era già superato in apertura (gap/continuazione) —
+    entry al prezzo di apertura.
+  - NORMAL: la candela apre dentro il range e lo rompe durante il suo
+    svolgimento (high/low) — entry al livello stesso, nel momento esatto
+    della rottura, senza aspettare che la candela chiuda.
+Un solo segnale per giorno per range (il primo che rompe, in una direzione o
+nell'altra — dopo non si ri-segnala più finché non parte il range del giorno
+successivo). Il PRIMO giorno della history fornita viene sempre scartato
+(range potenzialmente incompleto, la history potrebbe iniziare a metà finestra).
 
-Entry/SL/TP1-3 e gestione del trade (SL spostato a breakeven dopo TP1,
-chiusura solo a SL o TP3, nessuna chiusura parziale) sono INVARIATI rispetto
-alla strategia precedente (canali convergenti da pivot): SL all'estremo
-opposto del canale al momento del segnale, target = estremo rotto + altezza
-del canale, TP1/TP2/TP3 a un terzo/due terzi/tutto il movimento.
+Entry/SL/TP — un solo livello ciascuno, nessuna milestone TP1/TP2/TP3:
+  - Entry = vedi trigger sopra (livello o apertura, mai la chiusura).
+  - SL = percentuale fissa dal prezzo di entrata (`sl_pct`, configurabile,
+    default 1%) — NON più l'estremo opposto del range: un range molto stretto
+    o molto largo non deve più determinare un rischio imprevedibile per trade.
+  - TP = percentuale fissa dal prezzo di entrata (`tp_pct`, configurabile,
+    default 2%) — NON più il range ribaltato/geometrico, stessa logica dello SL.
+Poiché il trigger è intrabar, la STESSA candela che apre il trade può, nel
+resto del suo svolgimento, raggiungere già TP/SL/breakeven — viene controllata
+anche lei, non solo le candele successive (altrimenti un movimento intero
+dentro un'unica candela, dopo la rottura, andrebbe perso).
+Chiusura in un colpo solo, a SL o a TP — nessun trailing, nessun filtro
+trend/ampiezza/volatilità. Unica eccezione: quando il prezzo raggiunge
+`be_trigger_pct` (configurabile, default 25%) della distanza entry→TP, lo SL
+si sposta UNA VOLTA SOLA a breakeven (prezzo di entrata, fee-aware) — non
+toglie la possibilità di chiudere a TP pieno, protegge solo da un'inversione
+dopo aver raggiunto quel punto.
+
+I timestamp delle candele possono arrivare in due convenzioni diverse a
+seconda della fonte (vedi app.py): il motore live (ws_manager) usa epoch UTC
+puro, mentre le candele del backtest (/api/klines-style fetch) sono shiftate
+dell'offset UTC configurato dall'utente. `tz_offset_s` (per-chiamata, MAI un
+parametro di configurazione della strategia) dice a `run_engine`/`run_backtest`
+di quanto sono shiftate le candele ricevute, così il confine "00:00 UTC" del
+giorno viene individuato correttamente in entrambi i casi.
 
 `run_engine()` è l'unica funzione che replica lo stato bar-by-bar: il backtest
 la chiama una volta su tutta la history (accumulando i trade chiusi), il motore
 live la richiama da zero sull'intera finestra di kline in cache ad ogni nuova
 candela chiusa e confronta lo stato risultante con quello della chiamata
-precedente per rilevare le transizioni (entrata, TP1/TP2 toccati, chiusura).
+precedente per rilevare le transizioni (entrata, chiusura).
 """
 import json
 import math
@@ -37,15 +60,20 @@ TF_SECONDS = {
     '240': 14400, 'D': 86400, 'W': 604800, 'M': 2592000,  # M: approssimato a 30gg
 }
 
+DAY_SECONDS = 86400
+
 DEFAULT_PARAMS = {
-    'period': 20,
+    'orb_minutes': 30,
+    'sl_pct': 1.0,           # % fissa dal prezzo di entrata (non più l'estremo del range)
+    'tp_pct': 2.0,           # % fissa dal prezzo di entrata (non più il range ribaltato)
+    'be_trigger_pct': 25.0,  # % della distanza entry->TP a cui lo SL si sposta a breakeven
 }
 
 _EMPTY_ENGINE_STATE = {
     'breakout_dir': 0, 'breakout_bar': 0, 'break_strength': '—',
-    'entry_price': 0.0, 'sl_price': 0.0, 'sl_price_orig': 0.0,
-    'tp1_price': 0.0, 'tp2_price': 0.0, 'tp3_price': 0.0,
-    'tp1_hit': False, 'tp2_hit': False, 'tp3_hit': False, 'sl_hit': False, 'trade_open': False,
+    'entry_price': 0.0, 'sl_price': 0.0, 'sl_price_orig': 0.0, 'tp_price': 0.0,
+    'be_target_price': 0.0,
+    'sl_hit': False, 'tp_hit': False, 'be_hit': False, 'trade_open': False,
     'closed_bar': None, 'closed_reason': None, 'closed_dir': 0, 'closed_price': None,
 }
 
@@ -56,147 +84,192 @@ def normalize_params(cfg):
     for k in DEFAULT_PARAMS:
         if k in cfg:
             p[k] = cfg[k]
-    p['period'] = max(5, min(500, int(p['period'])))
+    p['orb_minutes'] = max(1, min(1440, int(p['orb_minutes'])))
+    p['sl_pct'] = max(0.05, min(20.0, float(p['sl_pct'])))
+    p['tp_pct'] = max(0.05, min(50.0, float(p['tp_pct'])))
+    p['be_trigger_pct'] = max(0.0, min(100.0, float(p['be_trigger_pct'])))
     return p
 
 
-def warmup_bars_for(params):
-    return params['period'] + 5
+def warmup_bars_for(params, tf_seconds=None):
+    """L'ORB non ha bisogno di N barre come una SMA: serve solo aver superato
+    il PRIMO giorno (potenzialmente incompleto, scartato sempre — vedi
+    run_engine) della history fornita. Senza il TF della candela non possiamo
+    convertire "1.5 giorni" in barre, quindi usiamo un minimo conservativo."""
+    if not tf_seconds:
+        return 5
+    return max(5, int(DAY_SECONDS * 1.5 / tf_seconds))
 
 
-# ── Canale SMA(period) su close/high/low ─────────────────────────────────────
+# ── Opening Range giornaliero (UTC) ───────────────────────────────────────────
 
-def _calc_sma_plain(values, period):
-    n = len(values)
-    out = [None] * n
-    s = 0.0
+def _day_bucket(t, tz_offset_s):
+    """Inizio del giorno UTC contenente il timestamp t, espresso nella STESSA
+    convenzione oraria di t (t può già includere l'offset UTC configurato,
+    vedi docstring modulo — tz_offset_s dice di quanto)."""
+    true_utc = t - tz_offset_s
+    return true_utc - (true_utc % DAY_SECONDS) + tz_offset_s
+
+
+def _calc_orb_ranges(candles, orb_minutes, tz_offset_s):
+    """Per ogni candela: (upper, lower) = opening range BLOCCATO della sua
+    giornata, o None finché la finestra di apertura è ancora in formazione
+    (o se il giorno non ha avuto candele nella finestra, es. gap di history)."""
+    n = len(candles)
+    upper = [None] * n
+    lower = [None] * n
+    window_s = orb_minutes * 60
+
+    day_bucket = None
+    window_end = None
+    day_high = day_low = None
+    orb_high = orb_low = None
+
     for i in range(n):
-        s += values[i] or 0.0
-        if i >= period:
-            s -= values[i - period] or 0.0
-        if i >= period - 1:
-            out[i] = s / period
-    return out
+        t = candles[i]['time']
+        db = _day_bucket(t, tz_offset_s)
+        if db != day_bucket:
+            day_bucket = db
+            window_end = day_bucket + window_s
+            day_high = day_low = None
+            orb_high = orb_low = None
 
+        if t < window_end:
+            day_high = candles[i]['high'] if day_high is None else max(day_high, candles[i]['high'])
+            day_low  = candles[i]['low']  if day_low  is None else min(day_low,  candles[i]['low'])
+        elif orb_high is None and day_high is not None:
+            orb_high, orb_low = day_high, day_low
 
-def _calc_channel(candles, period):
-    upper = _calc_sma_plain([c['high']  for c in candles], period)
-    lower = _calc_sma_plain([c['low']   for c in candles], period)
+        upper[i], lower[i] = orb_high, orb_low
+
     return upper, lower
 
 
-def _detect_channel_signal(candles, upper, lower, i):
-    """Segnale sulla candela i vs. il canale della candela i-1 (vedi docstring
-    modulo). Ritorna None oppure {'type': 'strong'|'normal', 'dir': 'bull'|'bear'}."""
-    u_prev, l_prev = upper[i - 1], lower[i - 1]
-    if u_prev is None or l_prev is None:
+def _detect_orb_signal(candles, upper, lower, i):
+    """Segnale sulla candela i vs. l'opening range BLOCCATO della sua stessa
+    giornata (fisso per tutto il giorno). Trigger IN TEMPO REALE: non aspetta
+    la chiusura della candela, scatta alla rottura del livello non appena
+    accade (high/low), esattamente come accadrebbe seguendo il prezzo tick per
+    tick — non a un prezzo "confermato" dalla chiusura.
+      - STRONG: il livello era già superato in apertura (gap/continuazione) —
+        entry al prezzo di apertura (il primo prezzo disponibile quella candela).
+      - NORMAL: la candela apre dentro il range e lo rompe durante il suo
+        svolgimento (high/low) — entry al livello stesso (il prezzo esatto
+        della rottura).
+    Ritorna None oppure {'type', 'dir', 'entry'}."""
+    o_hi, o_lo = upper[i], lower[i]
+    if o_hi is None or o_lo is None:
         return None
-    o, c = candles[i]['open'], candles[i]['close']
-    sig_type = sig_dir = None
-    if o < l_prev and c > u_prev:
-        sig_type, sig_dir = 'strong', 'bull'
-    elif o > u_prev and c < l_prev:
-        sig_type, sig_dir = 'strong', 'bear'
-    elif l_prev <= o <= u_prev and c > u_prev:
-        sig_type, sig_dir = 'normal', 'bull'
-    elif l_prev <= o <= u_prev and c < l_prev:
-        sig_type, sig_dir = 'normal', 'bear'
-    if sig_type is None:
-        return None
-    if i >= 2:
-        u_prev2, l_prev2 = upper[i - 2], lower[i - 2]
-        prev_close = candles[i - 1]['close']
-        if u_prev2 is not None and l_prev2 is not None:
-            if sig_dir == 'bull' and prev_close > u_prev2:
-                return None
-            if sig_dir == 'bear' and prev_close < l_prev2:
-                return None
-    return {'type': sig_type, 'dir': sig_dir}
+    o, h, l = candles[i]['open'], candles[i]['high'], candles[i]['low']
+    if o > o_hi:
+        return {'type': 'strong', 'dir': 'bull', 'entry': o}
+    if o < o_lo:
+        return {'type': 'strong', 'dir': 'bear', 'entry': o}
+    if h >= o_hi:
+        return {'type': 'normal', 'dir': 'bull', 'entry': o_hi}
+    if l <= o_lo:
+        return {'type': 'normal', 'dir': 'bear', 'entry': o_lo}
+    return None
 
 
 # ── Motore breakout — replay bar-by-bar ──────────────────────────────────────
 
-def run_engine(candles, params):
+def run_engine(candles, params, tz_offset_s=0, taker_fee_rate=0.00055):
     """Ritorna (stato_finale, trades). `trades` è la lista di tutti i trade
     chiusi durante il replay (per il backtest); `stato_finale` è lo stato "adesso"
-    (per il motore live, che lo confronta con la chiamata precedente)."""
+    (per il motore live, che lo confronta con la chiamata precedente).
+    `tz_offset_s`: di quanto le candele sono shiftate rispetto a UTC puro (vedi
+    docstring modulo) — SEMPRE passato esplicitamente dal chiamante, mai una
+    strategia-param persistita. `taker_fee_rate`: fee taker per lato (round-trip
+    = 2x), usata per il breakeven fee-aware — anch'essa sempre esterna, mai
+    parte di `params` (dipende dall'account/VIP tier, non dalla strategia)."""
     n = len(candles)
-    upper_arr, lower_arr = _calc_channel(candles, params['period'])
-    warmup = warmup_bars_for(params)
+    upper_arr, lower_arr = _calc_orb_ranges(candles, params['orb_minutes'], tz_offset_s)
 
     st = dict(_EMPTY_ENGINE_STATE)
     trades = []
     pending = None  # dettagli del trade attualmente aperto — costruisce il record alla chiusura
 
+    first_day_bucket = None   # il primo giorno della history è sempre scartato (range forse incompleto)
+    triggered_bucket = None   # giorno per cui è già scattato un segnale (max 1 trade/giorno)
+
     for i in range(n):
-        is_warmed_up = i >= warmup
+        day_bucket = _day_bucket(candles[i]['time'], tz_offset_s)
+        if first_day_bucket is None:
+            first_day_bucket = day_bucket
+        # A differenza di una SMA, l'ORB non ha bisogno di un numero minimo di
+        # barre: basta essere oltre il primo giorno (range potenzialmente
+        # incompleto) — nessun altro warmup serve.
+        is_warmed_up = day_bucket != first_day_bucket
 
-        # trigger — canale SMA(period) close/high/low, vedi _detect_channel_signal
+        # trigger — opening range giornaliero UTC, vedi _detect_orb_signal
         sig = None
-        if not st['trade_open'] and is_warmed_up and i >= 2:
-            sig = _detect_channel_signal(candles, upper_arr, lower_arr, i)
+        if (not st['trade_open'] and is_warmed_up and triggered_bucket != day_bucket):
+            sig = _detect_orb_signal(candles, upper_arr, lower_arr, i)
+            if sig is not None:
+                triggered_bucket = day_bucket
 
-        # Entry/SL/TP1-3 INVARIATI: SL all'estremo opposto del canale al momento
-        # del segnale, target = estremo rotto + altezza del canale (upper-lower
-        # alla candela di segnale), TP1/TP2/TP3 a 1/3, 2/3, tutto il movimento.
+        # Entry/SL/TP — un solo livello ciascuno, entrambi a percentuale fissa
+        # dal prezzo di entrata (`sl_pct`/`tp_pct`), non più dalla geometria
+        # del range (che serve solo a individuare il trigger, non più i livelli).
         if sig is not None:
-            u_prev, l_prev = upper_arr[i - 1], lower_arr[i - 1]
-            ch_height = u_prev - l_prev
-            entry = candles[i]['close']
+            entry = sig['entry']
             st['entry_price'] = entry
             st['break_strength'] = 'Strong' if sig['type'] == 'strong' else 'Normal'
+            sl_frac = params['sl_pct'] / 100.0
+            tp_frac = params['tp_pct'] / 100.0
             if sig['dir'] == 'bull':
                 breakout_dir = 1
-                sl_price = l_prev
-                target_price = u_prev + ch_height
+                sl_price = entry * (1.0 - sl_frac)
+                tp_price = entry * (1.0 + tp_frac)
+                side = 'long'
             else:
                 breakout_dir = -1
-                sl_price = u_prev
-                target_price = l_prev - ch_height
+                sl_price = entry * (1.0 + sl_frac)
+                tp_price = entry * (1.0 - tp_frac)
+                side = 'short'
             st['breakout_dir'], st['breakout_bar'] = breakout_dir, i
             st['sl_price'] = sl_price
             st['sl_price_orig'] = sl_price
-            full_move = abs(target_price - entry)
-            if breakout_dir == 1:
-                st['tp1_price'] = entry + full_move / 3.0
-                st['tp2_price'] = entry + full_move * 2.0 / 3.0
-                st['tp3_price'] = entry + full_move
-                side = 'long'
-            else:
-                st['tp1_price'] = entry - full_move / 3.0
-                st['tp2_price'] = entry - full_move * 2.0 / 3.0
-                st['tp3_price'] = entry - full_move
-                side = 'short'
-            st['tp1_hit'] = st['tp2_hit'] = st['tp3_hit'] = st['sl_hit'] = False
+            st['tp_price'] = tp_price
+            st['sl_hit'] = st['tp_hit'] = st['be_hit'] = False
             st['trade_open'] = True
+            # Breakeven "vero" = recupera anche le fee di andata+ritorno (entrambe
+            # taker su Bybit derivati), non il puro prezzo di entrata — altrimenti
+            # dopo le fee sarebbe comunque una piccola perdita.
+            round_trip_fee = 2.0 * taker_fee_rate
+            st['be_target_price'] = entry * (1.0 + round_trip_fee if breakout_dir == 1 else 1.0 - round_trip_fee)
             pending = {
                 'side': side, 'entry_time': candles[i]['time'], 'entry_price': st['entry_price'],
-                'sl_orig': st['sl_price_orig'], 'tp1_price': st['tp1_price'], 'tp2_price': st['tp2_price'],
-                'tp3_price': st['tp3_price'], 'strength': st['break_strength'],
+                'sl_price_orig': st['sl_price_orig'], 'tp_price': st['tp_price'], 'strength': st['break_strength'],
             }
 
-        # TP/SL hit detection
-        if st['trade_open'] and st['breakout_dir'] != 0 and not st['sl_hit'] and i > st['breakout_bar']:
+        # TP/SL hit detection — chiusura in un colpo solo. Unica eccezione: al 25%
+        # della distanza entry->TP lo SL si sposta una volta a breakeven (vedi
+        # docstring modulo), ma la chiusura resta comunque solo a SL o TP pieno.
+        # i >= breakout_bar (non solo >): il trigger è ora intrabar, quindi la
+        # STESSA candela che apre il trade può, nel resto del suo svolgimento,
+        # anche già raggiungere TP/SL/breakeven — non va ignorata.
+        if st['trade_open'] and st['breakout_dir'] != 0 and i >= st['breakout_bar']:
             hi, lo = candles[i]['high'], candles[i]['low']
-            tp_side  = (hi >= st['tp1_price']) if st['breakout_dir'] == 1 else (lo <= st['tp1_price'])
-            tp2_side = (hi >= st['tp2_price']) if st['breakout_dir'] == 1 else (lo <= st['tp2_price'])
-            tp3_side = (hi >= st['tp3_price']) if st['breakout_dir'] == 1 else (lo <= st['tp3_price'])
-            sl_side  = (lo <= st['sl_price'])  if st['breakout_dir'] == 1 else (hi >= st['sl_price'])
+            tp_side = (hi >= st['tp_price']) if st['breakout_dir'] == 1 else (lo <= st['tp_price'])
+            sl_side = (lo <= st['sl_price']) if st['breakout_dir'] == 1 else (hi >= st['sl_price'])
             if sl_side:
                 st['sl_hit'] = True
-            else:
-                if tp_side and not st['tp1_hit']:
-                    st['tp1_hit'] = True
-                    st['sl_price'] = st['entry_price']  # breakeven
-                if tp2_side and not st['tp2_hit']:
-                    st['tp2_hit'] = True
-                if tp3_side and not st['tp3_hit']:
-                    st['tp3_hit'] = True
+            elif tp_side:
+                st['tp_hit'] = True
+            elif not st['be_hit']:
+                be_trigger_price = st['entry_price'] + (st['tp_price'] - st['entry_price']) * (params['be_trigger_pct'] / 100.0)
+                be_trigger_side = (hi >= be_trigger_price) if st['breakout_dir'] == 1 else (lo <= be_trigger_price)
+                if be_trigger_side:
+                    st['be_hit'] = True
+                    st['sl_price'] = st['be_target_price']
 
-        # close trade (solo a SL o TP3 — nessuna chiusura parziale a TP1/TP2)
-        if st['trade_open'] and (st['tp3_hit'] or st['sl_hit']):
-            reason = ('be' if st['tp1_hit'] else 'sl') if st['sl_hit'] else 'tp3'
-            exit_price = st['tp3_price'] if reason == 'tp3' else st['sl_price']
+        # close trade (a SL o TP — chiusura unica; 'be' = SL colpito dopo essere
+        # stato spostato a breakeven, distinto da 'sl' = SL originale mai raggiunto il 25%)
+        if st['trade_open'] and (st['tp_hit'] or st['sl_hit']):
+            reason = ('be' if st['be_hit'] else 'sl') if st['sl_hit'] else 'tp'
+            exit_price = st['tp_price'] if reason == 'tp' else st['sl_price']
             st['closed_dir'] = st['breakout_dir']
             st['closed_reason'] = reason
             st['closed_bar'] = i
@@ -205,7 +278,6 @@ def run_engine(candles, params):
                 trades.append({
                     **pending,
                     'exit_time': candles[i]['time'], 'exit_price': exit_price, 'exit_reason': reason,
-                    'tp1_hit': st['tp1_hit'], 'tp2_hit': st['tp2_hit'],
                 })
                 pending = None
             st['trade_open'] = False
@@ -226,9 +298,9 @@ def _max_drawdown_pct(curve):
     return round(max_dd, 2)
 
 
-def run_backtest(candles, params, initial_capital=1000.0, sizing=None, taker_fee_rate=0.00055):
+def run_backtest(candles, params, initial_capital=1000.0, sizing=None, taker_fee_rate=0.00055, tz_offset_s=0):
     sizing = sizing or {'type': 'fixed', 'value': 50.0}
-    _, raw_trades = run_engine(candles, params)
+    _, raw_trades = run_engine(candles, params, tz_offset_s, taker_fee_rate)
 
     trades = []
     equity = float(initial_capital)
@@ -255,8 +327,7 @@ def run_backtest(candles, params, initial_capital=1000.0, sizing=None, taker_fee
             'exit_time': rt['exit_time'], 'exit_price': exit_price, 'exit_reason': rt['exit_reason'],
             'pnl_pct': round(pnl_pct, 4), 'pnl_usdt': round(pnl_usdt, 4), 'fee_usdt': round(fee_usdt, 4),
             'notional': round(notional, 2),
-            'sl_orig': rt['sl_orig'], 'tp1_price': rt['tp1_price'], 'tp2_price': rt['tp2_price'], 'tp3_price': rt['tp3_price'],
-            'strength': rt['strength'], 'tp1_hit': rt['tp1_hit'], 'tp2_hit': rt['tp2_hit'],
+            'sl_price_orig': rt['sl_price_orig'], 'tp_price': rt['tp_price'], 'strength': rt['strength'],
         })
         equity_curve.append({'time': rt['exit_time'], 'equity': round(equity, 4)})
 
@@ -303,6 +374,18 @@ class BotEngine:
         self.leverage = int(leverage or 1)
         self.params = normalize_params(params_cfg)
 
+        # Fee reale dell'account (VIP tier incluso) — usata per il breakeven
+        # fee-aware del motore (vedi run_engine). Un solo fetch qui: la reinit
+        # avviene ad ogni salvataggio config di un qualsiasi scanner, non serve
+        # richiamarla ad ogni candela (rischio rate-limit + fee tier non cambia
+        # praticamente mai durante una sessione).
+        self.taker_fee_rate = 0.00055
+        if trade_client and self.symbol:
+            try:
+                self.taker_fee_rate = trade_client.get_taker_fee_rate(self.symbol)
+            except Exception:
+                pass
+
         self._lock = threading.Lock()
         self._alert_queue = queue.Queue(maxsize=50)
         threading.Thread(target=self._alert_worker, daemon=True).start()
@@ -318,12 +401,13 @@ class BotEngine:
         self.running = bool(st.get('running', False))
         loaded_state = st.get('position_state') or {}
         self.state = dict(_EMPTY_ENGINE_STATE)
-        if isinstance(loaded_state, dict) and 'trade_open' in loaded_state:
+        if isinstance(loaded_state, dict) and 'trade_open' in loaded_state and 'tp_price' in loaded_state:
             self.state.update(loaded_state)
             self.signals = st.get('signals', [])
         else:
-            # Stato persistito dalla vecchia strategia (Cross EMA) — forma incompatibile,
-            # riparte da zero invece di crashare o mescolare segnali di due strategie diverse.
+            # Stato persistito da una strategia precedente (forma incompatibile,
+            # es. TP1/TP2/TP3) — riparte da zero invece di crashare o mescolare
+            # segnali di due strategie diverse.
             self.signals = []
 
         # Sicurezza: la modalità esecuzione reale non riprende mai da sola dopo
@@ -370,6 +454,10 @@ class BotEngine:
     def start(self):
         if not self.symbol:
             return False, 'Nessun simbolo configurato'
+        tf_seconds = TF_SECONDS.get(self.tf) or (int(self.tf) * 60 if self.tf.isdigit() else 3600)
+        if tf_seconds >= DAY_SECONDS:
+            return False, (f"TF {self.tf} troppo largo per un opening range giornaliero — "
+                            f"serve un TF intraday (max 4h/240)")
         if self.mode == 'execution' and self._trade_client:
             pos = self._trade_client.get_position(self.symbol)
             if pos:
@@ -418,9 +506,7 @@ class BotEngine:
             position = {
                 'side': 'long' if self.state['breakout_dir'] == 1 else 'short',
                 'entry_price': self.state['entry_price'], 'stop': self.state['sl_price'],
-                'tp1': self.state['tp1_price'], 'tp2': self.state['tp2_price'], 'tp3': self.state['tp3_price'],
-                'tp1_hit': self.state['tp1_hit'], 'tp2_hit': self.state['tp2_hit'],
-                'strength': self.state['break_strength'],
+                'target': self.state['tp_price'], 'strength': self.state['break_strength'],
             }
         return {
             'running': self.running, 'mode': self.mode, 'symbol': self.symbol, 'tf': self.tf,
@@ -443,8 +529,8 @@ class BotEngine:
 
     def _diff_events(self, prev, new, klines, i):
         """Confronta lo stato del motore tra due chiamate consecutive (una candela
-        chiusa in più) e ne deriva gli eventi — replica l'ordine Pine: sullo stesso
-        bar di un'entrata non si valuta nient'altro."""
+        chiusa in più) e ne deriva gli eventi: entrata, spostamento a breakeven
+        (25% verso il TP) e chiusura."""
         events = []
         t = klines[i]['time']
 
@@ -456,18 +542,14 @@ class BotEngine:
             # piazzare un ordine reale con Entry/SL/TP calcolati su un prezzo ormai
             # superato dal mercato.
             events.append({'type': 'entry', 'side': side, 'time': t, 'price': new['entry_price'],
-                            'stop': new['sl_price_orig'], 'tp1': new['tp1_price'], 'tp2': new['tp2_price'],
-                            'tp3': new['tp3_price'], 'strength': new['break_strength'],
+                            'stop': new['sl_price_orig'], 'target': new['tp_price'], 'strength': new['break_strength'],
                             'fresh': new['breakout_bar'] == i})
             return events
 
-        if prev.get('trade_open') and new['trade_open']:
+        if prev.get('trade_open') and new['trade_open'] and new['be_hit'] and not prev.get('be_hit'):
             side = 'long' if new['breakout_dir'] == 1 else 'short'
-            if new['tp1_hit'] and not prev.get('tp1_hit'):
-                events.append({'type': 'tp1_hit', 'side': side, 'time': t, 'price': new['tp1_price'],
-                                'new_stop': new['sl_price']})
-            if new['tp2_hit'] and not prev.get('tp2_hit'):
-                events.append({'type': 'tp2_hit', 'side': side, 'time': t, 'price': new['tp2_price']})
+            events.append({'type': 'breakeven', 'side': side, 'time': t,
+                            'price': new['entry_price'], 'new_stop': new['sl_price']})
 
         if prev.get('trade_open') and not new['trade_open'] and new['closed_bar'] == i:
             side = 'long' if new['closed_dir'] == 1 else 'short'
@@ -477,7 +559,13 @@ class BotEngine:
         return events
 
     def _on_kline(self, symbol, interval, candle, is_closed):
-        if not self.running or not is_closed:
+        # Trigger intrabar (vedi _detect_orb_signal): reagisce anche alla candela
+        # ANCORA IN FORMAZIONE, non solo a quella chiusa — altrimenti il segnale
+        # scatterebbe comunque solo alla chiusura, vanificando il senso di un
+        # trigger "in tempo reale". ws_manager aggiorna in-place l'ultima candela
+        # del buffer ad ogni tick (vedi ws_manager._handle_kline), quindi
+        # get_klines() riflette già il prezzo più recente anche a candela aperta.
+        if not self.running:
             return
         if symbol != self.symbol or interval != self.tf:
             return
@@ -485,12 +573,16 @@ class BotEngine:
             return
 
         klines = self._ws_manager.get_klines(symbol, interval)
-        needed = warmup_bars_for(self.params) + 5
+        tf_seconds = TF_SECONDS.get(self.tf) or (int(self.tf) * 60 if self.tf.isdigit() else 3600)
+        needed = warmup_bars_for(self.params, tf_seconds) + 5
         if len(klines) < needed:
             return
 
         with self._lock:
-            new_state, _ = run_engine(klines, self.params)
+            # ws_manager fornisce sempre epoch UTC puro (nessuno shift di
+            # timezone), a differenza delle candele del backtest — vedi
+            # docstring modulo su tz_offset_s.
+            new_state, _ = run_engine(klines, self.params, tz_offset_s=0, taker_fee_rate=self.taker_fee_rate)
             i = len(klines) - 1
 
             # Trade la cui apertura reale è fallita su Bybit (vedi _execute_entry):
@@ -532,7 +624,7 @@ class BotEngine:
                     self._exec_fail_bar = self.state.get('breakout_bar')
                     return
                 self._execute_entry(ev)
-            elif ev['type'] == 'tp1_hit':
+            elif ev['type'] == 'breakeven':
                 self._execute_breakeven(ev)
             elif ev['type'] == 'exit':
                 self._execute_exit(ev)
@@ -563,11 +655,9 @@ class BotEngine:
             return
 
         side = 'Buy' if ev['side'] == 'long' else 'Sell'
-        # SL originale + TP3 come take-profit dell'exchange: TP1/TP2 sono solo
-        # milestone informative che spostano lo SL a breakeven (vedi _execute_breakeven).
         ok, order_id, err = self._trade_client.place_order(
             symbol=symbol, side=side, qty=qty, leverage=self.leverage,
-            stop_loss=ev['stop'], take_profit=ev['tp3'])
+            stop_loss=ev['stop'], take_profit=ev['target'])
         if not ok:
             print(f'❌ BOT order failed: {err}')
             # Nessuna posizione reale aperta — marca questo trade come "fantasma"
@@ -634,34 +724,32 @@ class BotEngine:
         if rec['type'] == 'entry':
             side_label = 'LONG' if rec['side'] == 'long' else 'SHORT'
             lines = [
-                f'🤖 BOT Breakout Pattern {tf_label} — {side_label} [{rec.get("strength", "—")}]',
+                f'🤖 BOT ORB {tf_label} — {side_label} [{rec.get("strength", "—")}]',
                 '',
                 '------------------------------------------------',
                 f'- Coin: {self.symbol}',
                 f'- Modalità: {mode_label}',
                 f'- Prezzo entrata: {rec["price"]}',
                 f'- Stop Loss: {rec["stop"]:.6f}',
-                f'- TP1: {rec["tp1"]:.6f}  TP2: {rec["tp2"]:.6f}  TP3: {rec["tp3"]:.6f}',
+                f'- Take Profit: {rec["target"]:.6f}',
                 '------------------------------------------------',
                 '',
                 f'<a href="https://www.bybit.com/trade/usdt/{self.symbol}">- View Bybit</a>',
             ]
-        elif rec['type'] in ('tp1_hit', 'tp2_hit'):
-            label = 'TP1 raggiunto — SL spostato a breakeven' if rec['type'] == 'tp1_hit' else 'TP2 raggiunto'
+        elif rec['type'] == 'breakeven':
             lines = [
-                f'🤖 BOT Breakout Pattern {tf_label} — {label}',
+                f'🤖 BOT ORB {tf_label} — Breakeven (25% verso TP)',
                 '',
                 '------------------------------------------------',
                 f'- Coin: {self.symbol}',
                 f'- Modalità: {mode_label}',
-                f'- Prezzo: {rec["price"]}',
+                f'- SL spostato a: {rec["new_stop"]:.6f}',
                 '------------------------------------------------',
             ]
         else:
-            reason_label = {'sl': 'Stop Loss', 'be': 'Breakeven (dopo TP1)',
-                             'tp3': 'Take Profit 3 (target)'}.get(rec['reason'], rec['reason'])
+            reason_label = {'sl': 'Stop Loss', 'be': 'Breakeven', 'tp': 'Take Profit (target)'}.get(rec['reason'], rec['reason'])
             lines = [
-                f'🤖 BOT Breakout Pattern {tf_label} — CHIUSURA',
+                f'🤖 BOT ORB {tf_label} — CHIUSURA',
                 '',
                 '------------------------------------------------',
                 f'- Coin: {self.symbol}',
