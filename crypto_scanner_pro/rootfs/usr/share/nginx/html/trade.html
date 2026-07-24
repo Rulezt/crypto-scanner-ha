@@ -156,6 +156,7 @@
                                     :class="['ob-tf-btn', chartTF === tf.v ? 'active' : '']">
                                 <span style="line-height:1.3;">{{ tf.l }}</span>
                                 <span v-if="tfCountdowns[tf.v]" :class="tfCountdowns[tf.v].blink ? 'ob-cd-blink' : ''" :style="{fontSize:'10px',fontFamily:'monospace',lineHeight:'1',minWidth:'28px',textAlign:'center',color:tfCountdowns[tf.v].color}">{{ tfCountdowns[tf.v].text }}</span>
+                                <span v-if="grabTfColors[tf.v]" :title="'GRaB ' + tf.l" style="align-self:stretch;height:3px;border-radius:1px;margin-top:2px;" :style="{background: grabTfColors[tf.v]}"></span>
                             </button>
                         </div>
                         <div class="ob-ohlc-info" v-if="ohlc.c">
@@ -179,6 +180,18 @@
                                 onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
                                 title="Canale SMA20 (high/close/low)">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" style="vertical-align:middle" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path></svg>
+                            </button>
+                            <button id="ob-grab-btn" onclick="toggleObGrab()"
+                                style="padding:4px 8px;font-size:12px;font-weight:700;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
+                                title="GRaB — Buy green Sell Red (Murrey Math + EMA wave)">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" style="vertical-align:middle" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="4" height="8"/><rect x="10" y="5" width="4" height="13"/><rect x="17" y="8" width="4" height="10"/></svg>
+                            </button>
+                            <button id="ob-grab-cfg-btn" onclick="openGrabCfgPanel()"
+                                style="display:none;padding:4px 4px;font-size:11px;background:none;color:#6B7280;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
+                                title="Impostazioni GRaB">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                             </button>
                             <span style="color:#374151;margin:0 2px;">|</span>
                             <button id="ob-clear-draw-btn" onclick="clearObDrawings()"
@@ -658,6 +671,60 @@
             <div style="padding:32px 0;text-align:center;font-size:11px;color:#4B5563;">Digita per cercare tra le crypto su Bybit</div>
         </div>
     </div>
+</div>
+
+<!-- GRaB (Buy green Sell Red) settings panel -->
+<div id="grab-cfg-panel" style="display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);"
+     onclick="if(event.target===this) closeGrabCfgPanel()">
+  <div style="background:#131722;border:1px solid #2A2E39;border-radius:8px;padding:16px 18px;width:320px;max-height:85vh;overflow-y:auto;color:#B2B5BE;font-size:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h3 style="margin:0;font-size:13px;color:#F3F4F6;">Impostazioni GRaB</h3>
+      <button onclick="closeGrabCfgPanel()" style="background:none;border:none;color:#B2B5BE;font-size:16px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:8px 0 4px;">Murrey Math</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Lookback length
+      <input type="number" id="grab-cfg-murreyLength" min="10" max="500" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra midline
+      <input type="checkbox" id="grab-cfg-showMidline"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore midline
+      <input type="color" id="grab-cfg-midlineColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra range
+      <input type="checkbox" id="grab-cfg-showRange"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore range
+      <input type="color" id="grab-cfg-rangeColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:12px 0 4px;">GRaB Wave (EMA)</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">EMA Period
+      <input type="number" id="grab-cfg-emaPeriod" min="2" max="500" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra wave
+      <input type="checkbox" id="grab-cfg-showWave"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore EMA High
+      <input type="color" id="grab-cfg-emaHighColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore EMA Low
+      <input type="color" id="grab-cfg-emaLowColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore EMA Close
+      <input type="color" id="grab-cfg-emaCloseColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:12px 0 4px;">Colori candela</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Sopra wave, rialzo (lime)
+      <input type="color" id="grab-cfg-colorAboveBull" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Sopra wave, ribasso (green)
+      <input type="color" id="grab-cfg-colorAboveBear" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Sotto wave, rialzo (red)
+      <input type="color" id="grab-cfg-colorBelowBull" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Sotto wave, ribasso (maroon)
+      <input type="color" id="grab-cfg-colorBelowBear" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Dentro wave, rialzo (silver)
+      <input type="color" id="grab-cfg-colorMidBull" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Dentro wave, ribasso (gray)
+      <input type="color" id="grab-cfg-colorMidBear" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button onclick="saveGrabCfgPanel()" style="flex:1;padding:6px;border-radius:4px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:600;">Salva</button>
+      <button onclick="resetGrabCfgPanel()" style="flex:1;padding:6px;border-radius:4px;border:1px solid #2A2E39;background:none;color:#B2B5BE;cursor:pointer;">Reset</button>
+    </div>
+  </div>
 </div>
 
 <script>

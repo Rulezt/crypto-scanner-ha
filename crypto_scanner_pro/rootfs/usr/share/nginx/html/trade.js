@@ -62,6 +62,46 @@ function calcBB(klines, period, mult) {
     return { upper, mid, lower };
 }
 
+// ── GRaB (Buy green Sell Red) — porting Pine "BGSR": Murrey Math midline/range
+// (highest/lowest a `murreyLength` candele) + wave EMA(high/low/close, `emaPeriod`)
+// + ricolorazione candela in base a close/open vs wave (barcolor originale, sempre
+// attiva quando il toggle è ON — showWave controlla solo le 3 linee wave, non la
+// ricolorazione, esattamente come nel Pine di origine).
+const _DEFAULT_GRAB_CFG = {
+    murreyLength: 100, showMidline: true, showRange: true,
+    emaPeriod: 34, showWave: false,
+    midlineColor: '#000000', rangeColor: '#FF00FF',
+    emaHighColor: '#FF0000', emaLowColor: '#008000', emaCloseColor: '#C0C0C0',
+    colorAboveBull: '#00FF00', colorAboveBear: '#008000',
+    colorBelowBull: '#FF0000', colorBelowBear: '#800000',
+    colorMidBull:   '#C0C0C0', colorMidBear:   '#808080',
+};
+function getGrabCfg() {
+    try { const s = JSON.parse(localStorage.getItem('chart_grab_cfg')); if (s) return { ..._DEFAULT_GRAB_CFG, ...s }; } catch(e) {}
+    return { ..._DEFAULT_GRAB_CFG };
+}
+function setGrabCfg(cfg) { try { localStorage.setItem('chart_grab_cfg', JSON.stringify(cfg)); } catch(e) {} }
+function calcEMAField(bars, period, field) {
+    const k = 2 / (period + 1); let v = bars[0][field];
+    return bars.map((b, i) => { if (i > 0) v = b[field] * k + v * (1 - k); return { time: b.time, value: v }; });
+}
+function calcMurrey(klines, length) {
+    const mid = [], lo = [], hi = [];
+    for (let i = length - 1; i < klines.length; i++) {
+        let h = -Infinity, l = Infinity;
+        for (let j = i - length + 1; j <= i; j++) { h = Math.max(h, klines[j].high); l = Math.min(l, klines[j].low); }
+        mid.push({ time: klines[i].time, value: l + (h - l) / 2 });
+        lo.push( { time: klines[i].time, value: l });
+        hi.push( { time: klines[i].time, value: h });
+    }
+    return { mid, lo, hi };
+}
+function grabBarColor(close, open, eHigh, eLow, cfg) {
+    if (close < eLow)  return close > open ? cfg.colorBelowBull : cfg.colorBelowBear;
+    if (close > eHigh) return close > open ? cfg.colorAboveBull : cfg.colorAboveBear;
+    return close > open ? cfg.colorMidBull : cfg.colorMidBear;
+}
+
 const TF_OPTIONS = [
     { v: '1',   l: '1m'  },
     { v: '5',   l: '5m'  },
@@ -322,6 +362,148 @@ function toggleObChannel() {
     const btn = document.getElementById('ob-ch-btn');
     if (btn) btn.style.color = _obChActive ? OB_CH_COLOR : '#B2B5BE';
     _obApplyChannel();
+}
+
+// ── GRaB (Buy green Sell Red) ───────────────────────────────────────────────────
+let _obGrabActive = false;
+let _obGrabWaveSeries = { high: null, low: null, close: null };
+let _obGrabMurreySeries = { mid: null, lo: null, hi: null };
+let _obGrabState = null;
+
+function _obApplyGrab() {
+    for (const k of ['high', 'low', 'close']) {
+        if (_obGrabWaveSeries[k]) { try { _obChart.removeSeries(_obGrabWaveSeries[k]); } catch(e) {} _obGrabWaveSeries[k] = null; }
+    }
+    for (const k of ['mid', 'lo', 'hi']) {
+        if (_obGrabMurreySeries[k]) { try { _obChart.removeSeries(_obGrabMurreySeries[k]); } catch(e) {} _obGrabMurreySeries[k] = null; }
+    }
+    if (!_obGrabActive || !_obChart) {
+        if (_obCandleS && _obKlines.length) _obCandleS.setData(_obKlines);
+        _obGrabState = null;
+        return;
+    }
+    const cfg = getGrabCfg();
+    const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+    if (cfg.showWave) {
+        _obGrabWaveSeries.high  = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.emaHighColor,  lineWidth: 1 });
+        _obGrabWaveSeries.low   = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.emaLowColor,   lineWidth: 1 });
+        _obGrabWaveSeries.close = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.emaCloseColor, lineWidth: 1 });
+    }
+    if (cfg.showMidline) _obGrabMurreySeries.mid = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.midlineColor, lineWidth: 1 });
+    if (cfg.showRange) {
+        _obGrabMurreySeries.lo = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.rangeColor, lineWidth: 1 });
+        _obGrabMurreySeries.hi = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.rangeColor, lineWidth: 1 });
+    }
+    if (!_obKlines.length) return;
+    const period = cfg.emaPeriod;
+    const eh = calcEMAField(_obKlines, period, 'high');
+    const el = calcEMAField(_obKlines, period, 'low');
+    const ec = calcEMAField(_obKlines, period, 'close');
+    const colored = _obKlines.map((k, i) => {
+        const c = grabBarColor(k.close, k.open, eh[i].value, el[i].value, cfg);
+        return { ...k, color: c, wickColor: c, borderColor: c };
+    });
+    _obCandleS.setData(colored);
+    _obGrabState = { emaHigh: eh[eh.length - 1].value, emaLow: el[el.length - 1].value, emaClose: ec[ec.length - 1].value };
+    if (cfg.showWave) {
+        _obGrabWaveSeries.high.setData(eh);
+        _obGrabWaveSeries.low.setData(el);
+        _obGrabWaveSeries.close.setData(ec);
+    }
+    if ((cfg.showMidline || cfg.showRange) && _obKlines.length >= cfg.murreyLength) {
+        const m = calcMurrey(_obKlines, cfg.murreyLength);
+        if (cfg.showMidline) _obGrabMurreySeries.mid.setData(m.mid);
+        if (cfg.showRange) { _obGrabMurreySeries.lo.setData(m.lo); _obGrabMurreySeries.hi.setData(m.hi); }
+    }
+}
+
+function toggleObGrab() {
+    _obGrabActive = !_obGrabActive;
+    const btn = document.getElementById('ob-grab-btn');
+    if (btn) btn.style.color = _obGrabActive ? '#f59e0b' : '#B2B5BE';
+    const cfgBtn = document.getElementById('ob-grab-cfg-btn');
+    if (cfgBtn) cfgBtn.style.display = _obGrabActive ? 'inline-flex' : 'none';
+    _obApplyGrab();
+}
+
+// ── Pannello impostazioni GRaB ──────────────────────────────────────────────────
+function openGrabCfgPanel() {
+    const cfg = getGrabCfg();
+    for (const k of Object.keys(_DEFAULT_GRAB_CFG)) {
+        const el = document.getElementById('grab-cfg-' + k);
+        if (!el) continue;
+        if (el.type === 'checkbox') el.checked = !!cfg[k];
+        else el.value = cfg[k];
+    }
+    document.getElementById('grab-cfg-panel').style.display = 'flex';
+}
+function closeGrabCfgPanel() { document.getElementById('grab-cfg-panel').style.display = 'none'; }
+function saveGrabCfgPanel() {
+    const cfg = {};
+    for (const k of Object.keys(_DEFAULT_GRAB_CFG)) {
+        const el = document.getElementById('grab-cfg-' + k);
+        if (!el) { cfg[k] = _DEFAULT_GRAB_CFG[k]; continue; }
+        if (el.type === 'checkbox') cfg[k] = el.checked;
+        else if (el.type === 'number') cfg[k] = parseFloat(el.value);
+        else cfg[k] = el.value;
+    }
+    if (!isFinite(cfg.murreyLength)) cfg.murreyLength = _DEFAULT_GRAB_CFG.murreyLength;
+    if (!isFinite(cfg.emaPeriod))    cfg.emaPeriod    = _DEFAULT_GRAB_CFG.emaPeriod;
+    cfg.murreyLength = Math.max(10, Math.min(500, Math.round(cfg.murreyLength)));
+    cfg.emaPeriod    = Math.max(2,  Math.min(500, Math.round(cfg.emaPeriod)));
+    setGrabCfg(cfg);
+    closeGrabCfgPanel();
+    if (_obGrabActive) _obApplyGrab();
+}
+function resetGrabCfgPanel() {
+    localStorage.removeItem('chart_grab_cfg');
+    openGrabCfgPanel();
+    if (_obGrabActive) _obApplyGrab();
+}
+
+// Ricolora la candela riusando l'ultimo stato noto (no recompute) — per i punti ad
+// alta frequenza (WS kline raw, patch mid-price book) dove basta evitare che
+// l'update "spoglio" (senza color) faccia sfarfallare via il colore GRaB.
+function _obGrabColorCandle(candle) {
+    if (!_obGrabActive || !_obGrabState || !_obCandleS) return;
+    const cfg = getGrabCfg();
+    const color = grabBarColor(candle.close, candle.open, _obGrabState.emaHigh, _obGrabState.emaLow, cfg);
+    try { _obCandleS.update({ ...candle, color, wickColor: color, borderColor: color }); } catch(e) {}
+}
+// Full recompute (live emaHigh/Low/Close + ricolora + wave/murrey) — per i punti
+// "ufficiali" (poll REST 3s, roll-forward nuova candela), mirror di _obChUpdateTail.
+function _obGrabUpdateTail(candle, confirmed) {
+    if (!_obGrabActive || !_obGrabState || !_obCandleS) return;
+    const cfg = getGrabCfg();
+    const k = 2 / (cfg.emaPeriod + 1);
+    const liveEmaHigh  = candle.high  * k + _obGrabState.emaHigh  * (1 - k);
+    const liveEmaLow   = candle.low   * k + _obGrabState.emaLow   * (1 - k);
+    const liveEmaClose = candle.close * k + _obGrabState.emaClose * (1 - k);
+    const color = grabBarColor(candle.close, candle.open, liveEmaHigh, liveEmaLow, cfg);
+    try { _obCandleS.update({ ...candle, color, wickColor: color, borderColor: color }); } catch(e) {}
+    if (cfg.showWave && _obGrabWaveSeries.high) {
+        _obGrabWaveSeries.high.update({ time: candle.time, value: liveEmaHigh });
+        _obGrabWaveSeries.low.update( { time: candle.time, value: liveEmaLow });
+        _obGrabWaveSeries.close.update({ time: candle.time, value: liveEmaClose });
+    }
+    if (confirmed) { _obGrabState.emaHigh = liveEmaHigh; _obGrabState.emaLow = liveEmaLow; _obGrabState.emaClose = liveEmaClose; }
+    if ((cfg.showMidline || cfg.showRange) && _obKlines.length >= cfg.murreyLength) {
+        const win = _obKlines.slice(-cfg.murreyLength);
+        let h = -Infinity, l = Infinity;
+        for (const c of win) { h = Math.max(h, c.high); l = Math.min(l, c.low); }
+        if (cfg.showMidline && _obGrabMurreySeries.mid) _obGrabMurreySeries.mid.update({ time: candle.time, value: l + (h - l) / 2 });
+        if (cfg.showRange && _obGrabMurreySeries.lo)    { _obGrabMurreySeries.lo.update({ time: candle.time, value: l }); _obGrabMurreySeries.hi.update({ time: candle.time, value: h }); }
+    }
+}
+// Conferma lo stato EMA-H/L/C sulla candela appena chiusa — usa gli high/low REALI
+// della candela (non solo close, a differenza di lastEMA che è EMA-di-close):
+// _obGrabState traccia EMA(high)/EMA(low) separate, come nel Pine originale.
+function _obGrabConfirmPrev(prevCandle) {
+    if (!_obGrabActive || !_obGrabState || !prevCandle) return;
+    const k = 2 / (getGrabCfg().emaPeriod + 1);
+    _obGrabState.emaHigh  = prevCandle.high  * k + _obGrabState.emaHigh  * (1 - k);
+    _obGrabState.emaLow   = prevCandle.low   * k + _obGrabState.emaLow   * (1 - k);
+    _obGrabState.emaClose = prevCandle.close * k + _obGrabState.emaClose * (1 - k);
 }
 
 let _tradeEnabled = false, _tradePos = null, _tradeSide = null, _hadPosition = false;
@@ -2445,6 +2627,34 @@ createApp({
             }
             tfCountdowns.value = obj;
         };
+
+        // Striscia colori GRaB per TF (una candela per ciascuno dei 6 TF standard,
+        // indipendente dal TF mostrato sul grafico principale) — fetch leggero via
+        // api/klines (cache 15s lato server) invece di mantenere stato WS live per
+        // ogni TF: aggiornamento "quasi in tempo reale" (ogni 5s), non tick-by-tick,
+        // sufficiente per una barra di sintesi sotto ai bottoni TF.
+        const grabTfColors = ref({});
+        let _grabTfTick = 0;
+        const _updateGrabTfStrip = async () => {
+            const cfg = getGrabCfg();
+            const period = cfg.emaPeriod;
+            const need = period + 5;
+            const sym = symbol.value;
+            const results = {};
+            await Promise.all(TF_OPTIONS.map(async (tf) => {
+                try {
+                    const res = await fetch(`api/klines?symbol=${sym}&interval=${tf.v}`);
+                    const data = await res.json();
+                    if (!data.success || !data.data || data.data.length < need) return;
+                    const candles = data.data;
+                    const eh = calcEMAField(candles, period, 'high');
+                    const el = calcEMAField(candles, period, 'low');
+                    const last = candles[candles.length - 1];
+                    results[tf.v] = grabBarColor(last.close, last.open, eh[eh.length - 1].value, el[el.length - 1].value, cfg);
+                } catch(e) { /* skip tf */ }
+            }));
+            if (_obGrabActive && sym === symbol.value) grabTfColors.value = results;
+        };
         let lastConfirmedTime  = 0;
         let obKlineCount = 0;
         let hoverPriceLine = null;
@@ -2592,6 +2802,7 @@ createApp({
                 _obKlines = klines;
                 if (_obBbActive) _obApplyBB();
                 if (_obChActive) _obApplyChannel();
+                if (_obGrabActive) _obApplyGrab();
                 candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length - 1]?.close) });
 
                 for (const { p } of EMA_CFG) {
@@ -2669,7 +2880,8 @@ createApp({
                     low:    parseFloat(b.low),  close: parseFloat(b.close),
                     volume: parseFloat(b.volume),
                 };
-                try { candleS.update(candle); } catch(e) {}
+                if (_obGrabActive) _obGrabColorCandle(candle);
+                else try { candleS.update(candle); } catch(e) {}
                 _cdLastPrice = candle.close; _cdLastOpen = candle.open;
                 _obLiveCandle = { ...candle };
             };
@@ -2705,6 +2917,7 @@ createApp({
                                 const ek = 2 / (p + 1);
                                 lastEMA[p] = prev.close * ek + lastEMA[p] * (1 - ek);
                             }
+                            _obGrabConfirmPrev(prev);
                             lastConfirmedTime = prev.time;
                         }
                         // Live EMA for current forming candle
@@ -2732,6 +2945,7 @@ createApp({
                             }
                         }
                         _obChUpdateTail(_obKlines);
+                        _obGrabUpdateTail(last, false);
                     }
                 } catch(e) {}
                 chartPollTimer = setTimeout(poll, 3000);
@@ -2999,6 +3213,7 @@ createApp({
                     const ek = 2 / (p + 1);
                     lastEMA[p] = prevClose * ek + lastEMA[p] * (1 - ek);
                 }
+                _obGrabConfirmPrev(_obLiveCandle);
                 lastConfirmedTime = _obLiveCandle.time;
             }
             if (_obKlines.length) {
@@ -3013,7 +3228,7 @@ createApp({
                 close: midPrice, volume: 0,
             };
             _obLiveCandle = newCandle;
-            try { candleS.update({ ...newCandle }); } catch(e) {}
+            if (!_obGrabActive) { try { candleS.update({ ...newCandle }); } catch(e) {} }
             _cdLastPrice = newCandle.close; _cdLastOpen = newCandle.open;
 
             for (const { p } of EMA_CFG) {
@@ -3034,6 +3249,7 @@ createApp({
                 }
             }
             if (_obKlines.length) _obChUpdateTail([..._obKlines, newCandle]);
+            _obGrabUpdateTail(newCandle, false);
             return true;
         };
 
@@ -3098,7 +3314,8 @@ createApp({
                     _obLiveCandle.close = midPrice;
                     if (midPrice > _obLiveCandle.high) _obLiveCandle.high = midPrice;
                     if (midPrice < _obLiveCandle.low)  _obLiveCandle.low  = midPrice;
-                    try { candleS.update({ ..._obLiveCandle }); } catch(e) {}
+                    if (_obGrabActive) _obGrabColorCandle(_obLiveCandle);
+                    else try { candleS.update({ ..._obLiveCandle }); } catch(e) {}
                     _cdLastPrice = _obLiveCandle.close;
                 }
             }
@@ -3400,6 +3617,13 @@ createApp({
             _cdRepaintTimer = setInterval(() => {
                 if (obChart) try { obChart.applyOptions({}); } catch(e) {}
                 _updateTfCountdowns();
+                if (_obGrabActive) {
+                    _grabTfTick++;
+                    if (_grabTfTick % 5 === 1) _updateGrabTfStrip();
+                } else if (Object.keys(grabTfColors.value).length) {
+                    grabTfColors.value = {};
+                    _grabTfTick = 0;
+                }
             }, 1000);
             // Auth check + trade panel init
             (async () => {
@@ -3434,7 +3658,7 @@ createApp({
         return {
             t,
             symbol, symBase, symQuote, isStandalone,
-            ticker, TF_OPTIONS, chartTF, ohlc, chartContainerEl,
+            ticker, TF_OPTIONS, chartTF, ohlc, chartContainerEl, grabTfColors,
             displayLevels, grouping, groupingOptions,
             levelsDdOpen, groupingDdOpen, selectLevels, selectGrouping,
             displayAsks, displayBids, pressure,

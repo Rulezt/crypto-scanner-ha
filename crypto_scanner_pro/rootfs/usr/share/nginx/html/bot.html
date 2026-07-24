@@ -193,7 +193,7 @@
                     <label>Capitale iniziale (USDT)</label>
                     <input type="number" v-model.number="btCapital" min="1" step="10">
                     <label>Storico (giorni)</label>
-                    <input type="number" v-model.number="btLookbackDays" min="1" max="1095" step="1" title="Fino a 1095 giorni (3 anni) — con TF fini (1m/5m/15m) il recupero di storici lunghi può richiedere più tempo">
+                    <input type="number" v-model.number="btLookbackDays" min="1" max="1095" step="1" title="La strategia (range/trigger/SL-TP) gira sempre su candele 1m: oltre ~60 giorni lo storico usato per il backtest viene troncato (vedi avviso nei risultati). Il TF selezionato sopra influenza solo il grafico mostrato.">
                     <button class="btn primary" @click="runBacktest" :disabled="!cfg.symbol || btRunning">
                         {{ btRunning ? 'Esecuzione… (può richiedere qualche secondo con storici lunghi)' : 'Esegui Backtest' }}
                     </button>
@@ -201,45 +201,10 @@
                     <button class="btn" :class="{active: btRangeActive}" @click="toggleBtRange" :disabled="!btResult">Range Prezzo</button>
                 </div>
 
-                <div class="toolbar">
-                    <label>Scan multi-TF (minuti)</label>
-                    <span class="muted">da</span>
-                    <input type="number" v-model.number="scanTfFrom" min="1" max="1440" step="1" style="width:70px;" :disabled="scanRunning">
-                    <span class="muted">a</span>
-                    <input type="number" v-model.number="scanTfTo" min="1" max="1440" step="1" style="width:70px;" :disabled="scanRunning">
-                    <button class="btn primary" @click="runTfScan" :disabled="!cfg.symbol || scanRunning"
-                            title="Esegue un backtest per ogni TF del range, step 1 minuto (i TF non nativi su Bybit richiedono lo storico tick pre-aggregato via scripts/bybit_tick_aggregate.py)">
-                        {{ scanRunning ? `Scan in corso… (${scanProgress}/${scanTotal})` : 'Esegui Scan Multi-TF' }}
-                    </button>
-                </div>
-
-                <div v-if="scanResults.length" style="margin-bottom:14px;">
-                    <h3 style="font-size:0.8rem;color:#9ca3af;margin:4px 0 8px;">Risultati Scan Multi-TF</h3>
-                    <div class="trade-table-scroll">
-                        <table class="trade-table">
-                            <thead><tr>
-                                <th>TF</th><th>Net Profit</th><th>Trade</th><th>Win rate</th><th>Profit Factor</th><th>Max DD</th>
-                            </tr></thead>
-                            <tbody>
-                                <tr v-for="r in scanResults" :key="r.tf" style="cursor:pointer;" title="Carica questo TF nel grafico sotto" @click="loadScanResult(r)">
-                                    <td>{{ r.tf }}m</td>
-                                    <template v-if="r.error">
-                                        <td colspan="5" class="negative">{{ r.error }}</td>
-                                    </template>
-                                    <template v-else>
-                                        <td :class="r.net_profit>=0?'positive':'negative'">{{ r.net_profit }} ({{ r.net_profit_pct }}%)</td>
-                                        <td>{{ r.total_trades }}</td>
-                                        <td>{{ r.win_rate }}%</td>
-                                        <td>{{ r.profit_factor ?? '∞' }}</td>
-                                        <td class="negative">{{ r.max_drawdown_pct }}%</td>
-                                    </template>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
                 <div v-if="btResult">
+                    <div v-if="btResult.lookback_truncated" class="muted" style="font-size:0.75rem;color:#f59e0b;margin-bottom:10px;">
+                        ⚠ Storico richiesto troncato a {{ btResult.effective_lookback_days }} giorni — la strategia gira sempre su candele 1m, limite dovuto al numero massimo di candele recuperabili da Bybit in un'unica richiesta.
+                    </div>
                     <div class="stat-cards">
                         <div class="stat-card">
                             <div class="lbl">Net Profit</div>
@@ -537,12 +502,6 @@ createApp({
         const tab = ref('live');
         const btCapital = ref(1000);
         const btLookbackDays = ref(365);
-        const scanTfFrom = ref(5);
-        const scanTfTo = ref(10);
-        const scanRunning = ref(false);
-        const scanProgress = ref(0);
-        const scanTotal = ref(0);
-        const scanResults = ref([]);
         const btShowBB = ref(false);
         const btRangeActive = ref(false);
         const btRunning = ref(false);
@@ -722,44 +681,6 @@ createApp({
                 await renderEquityChart(d.equity_curve);
             } catch(e) { alert('Errore di rete'); }
             finally { btRunning.value = false; }
-        };
-
-        // Backtest in sequenza (mai in parallelo — evita di martellare l'API Bybit
-        // e incappare nel rate limit) per ogni TF nel range, step 1 minuto. I TF
-        // non nativi su Bybit (es. 6/7/8/9m) funzionano solo se lo storico tick è
-        // già stato aggregato con scripts/bybit_tick_aggregate.py — altrimenti
-        // quella riga mostra l'errore restituito dal backend.
-        const runTfScan = async () => {
-            if (!cfg.symbol) return;
-            const from = Math.min(scanTfFrom.value, scanTfTo.value);
-            const to = Math.max(scanTfFrom.value, scanTfTo.value);
-            const tfs = [];
-            for (let tf = from; tf <= to; tf++) tfs.push(tf);
-            scanRunning.value = true;
-            scanResults.value = [];
-            scanProgress.value = 0;
-            scanTotal.value = tfs.length;
-            for (const tf of tfs) {
-                scanProgress.value++;
-                try {
-                    const body = Object.assign({}, cfg, { tf: String(tf), initial_capital: btCapital.value, lookback_days: btLookbackDays.value });
-                    const r = await fetch('/api/bot/backtest', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body),
-                    });
-                    const d = await r.json();
-                    if (!d.success) scanResults.value.push({ tf, error: d.error || 'Errore' });
-                    else scanResults.value.push({ tf, ...d.stats });
-                } catch(e) {
-                    scanResults.value.push({ tf, error: 'Errore di rete' });
-                }
-            }
-            scanRunning.value = false;
-        };
-        const loadScanResult = async (r) => {
-            if (r.error) return;
-            cfg.tf = String(r.tf);
-            await runBacktest();
         };
 
         // ── Chart principale ─────────────────────────────────────────────────
@@ -1347,12 +1268,11 @@ createApp({
         return {
             TF_LIST, TF_LABEL, REASON_LABEL,
             cfg, modeChoice, status, signals, exchangeAlerts, tab, btCapital, btLookbackDays, btRunning, btResult, btShowBB, btRangeActive,
-            scanTfFrom, scanTfTo, scanRunning, scanProgress, scanTotal, scanResults,
             showExecConfirm, execConfirmChecked, showConfigModal, showChannel,
             showMonthlyModal, monthlyStats, monthLabel, showEquityCurve, btTradesSorted,
             onModeChoice, confirmExecMode, cancelExecConfirm,
             openSymbolSearch, saveConfig, startBot, stopBot, runBacktest, toggleBB, toggleBtRange, focusTrade,
-            runTfScan, loadScanResult, clearSignals,
+            clearSignals,
             fmtPrice, fmtTime, fmtDateShort,
         };
     }

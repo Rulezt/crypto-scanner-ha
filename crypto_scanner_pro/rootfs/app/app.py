@@ -1159,33 +1159,8 @@ def get_recent_triggered():
         _recently_triggered.clear()
     return jsonify({'success': True, 'data': data})
 
-# TF in minuti nativamente supportati dall'API kline di Bybit — tutto il resto
-# (es. 6/7/8/9 minuti) va costruito offline con scripts/bybit_tick_aggregate.py
-# e letto da qui.
+# TF in minuti nativamente supportati dall'API kline di Bybit.
 _BYBIT_NATIVE_MINUTES = {1, 3, 5, 15, 30, 60, 120, 240, 360, 720}
-_TICK_CACHE_DIR = '/data/tick_cache'
-
-
-def _load_tick_cache_klines(symbol, minutes, lookback_days):
-    """Candele OHLCV lette dal CSV pre-aggregato da scripts/bybit_tick_aggregate.py
-    (TF non nativi su Bybit, es. 6m/7m/8m/9m). Filtra agli ultimi lookback_days
-    rispetto all'ultima candela disponibile nel file."""
-    import csv as _csv
-    path = os.path.join(_TICK_CACHE_DIR, f'{symbol}_{minutes}m.csv')
-    if not os.path.exists(path):
-        raise RuntimeError(
-            f"Nessuno storico tick aggregato per {symbol} a {minutes}m — "
-            f"esegui prima scripts/bybit_tick_aggregate.py --symbol {symbol} --intervals {minutes} ...")
-    rows = []
-    with open(path, newline='') as f:
-        for row in _csv.DictReader(f):
-            rows.append({'time': int(row['time']), 'open': float(row['open']), 'high': float(row['high']),
-                         'low': float(row['low']), 'close': float(row['close']), 'volume': float(row['volume'])})
-    if not rows:
-        raise RuntimeError(f"File storico tick per {symbol} {minutes}m vuoto")
-    rows.sort(key=lambda r: r['time'])
-    cutoff = rows[-1]['time'] - int(lookback_days * 86400)
-    return [r for r in rows if r['time'] >= cutoff]
 
 
 # TF personalizzato dalla pagina chart (bottone clessidra): codificato come
@@ -2077,62 +2052,51 @@ def bot_exchange_alerts():
     return jsonify({'alerts': bot.get_exchange_alerts()})
 
 
+# Range/trigger/SL-TP dell'ORB girano SEMPRE su candele 1m, indipendentemente
+# dal TF scelto in UI (vedi STRATEGY_TF in bot_engine.py per il perché — un TF
+# più largo rendeva sia il range sia l'esito SL/TP dipendenti dalla granularità
+# della candela, non voluto). Bybit pagina 1000 candele/richiesta con un cap di
+# 100 pagine: a 1m sono ~69 giorni, quindi il lookback usato per la strategia è
+# limitato a STRATEGY_MAX_LOOKBACK_DAYS — se l'utente ne chiede di più il
+# risultato è segnalato come troncato invece di fallire silenziosamente.
+_STRATEGY_MAX_LOOKBACK_DAYS = 60
+
+
 @app.route('/api/bot/backtest', methods=['POST'])
 @login_required
 def bot_backtest():
     err = _bot_admin_gate()
     if err: return err
     import re
-    from scanners.bot_engine import normalize_params, run_backtest, TF_SECONDS
+    from scanners.bot_engine import normalize_params, run_backtest, TF_SECONDS, STRATEGY_TF
 
     data     = request.get_json() or {}
     symbol   = (data.get('symbol') or '').upper()
+    # interval: solo per l'aggregazione del grafico mostrato — non influenza più
+    # la strategia (vedi _STRATEGY_MAX_LOOKBACK_DAYS sopra).
     interval = str(data.get('tf', '60'))
 
     if not re.match(r'^[A-Z0-9]{3,20}$', symbol) or not symbol.endswith('USDT'):
         return jsonify({'error': 'Simbolo non valido'}), 400
     is_native_symbolic = interval in {'D', 'W', 'M'}
     is_native_minutes  = interval.isdigit() and int(interval) in _BYBIT_NATIVE_MINUTES
-    is_synthetic_tf    = interval.isdigit() and not is_native_minutes
-    if not (is_native_symbolic or is_native_minutes or is_synthetic_tf):
+    if not (is_native_symbolic or is_native_minutes):
         return jsonify({'error': 'TF non valido'}), 400
 
-    # Il backtest, a differenza del popup grafico interattivo di /api/klines, ha
-    # bisogno di storico lungo (anche 1+ anno) — calcoliamo le pagine necessarie
-    # in base ai giorni richiesti invece di usare il cap ridotto per TF pensato
-    # per i popup. Bybit limita 1000 candele a richiesta: più il TF è fine, più
-    # pagine (richieste sequenziali) servono per coprire lo stesso periodo.
     try:
         lookback_days = float(data.get('lookback_days', 365))
     except (TypeError, ValueError):
         lookback_days = 365.0
-    lookback_days = max(1.0, min(lookback_days, 1095.0))  # cap 3 anni
-
-    iv_s = TF_SECONDS.get(interval) or int(interval) * 60 if interval.isdigit() else TF_SECONDS.get(interval, 3600)
+    lookback_days = max(1.0, min(lookback_days, 1095.0))  # cap 3 anni (richiesto dall'utente)
+    strategy_lookback_days = min(lookback_days, _STRATEGY_MAX_LOOKBACK_DAYS)
+    lookback_truncated = lookback_days > _STRATEGY_MAX_LOOKBACK_DAYS
 
     params = normalize_params(data)
-    # L'opening range si forma e si blocca DENTRO la stessa giornata: con un TF
-    # >= 24h (Daily/Weekly/Monthly) esiste una sola candela al giorno, quindi non
-    # può mai esserci una seconda candela nello stesso giorno che chiuda la
-    # finestra e confermi il breakout — zero segnali senza nessun errore visibile,
-    # prima di questo controllo. (TF sub-daily anche più larghi della finestra,
-    # es. 4h con orb_minutes=30, funzionano comunque — solo un'approssimazione
-    # più grezza del range, non un caso strutturalmente impossibile.)
-    if iv_s >= 86400:
-        return jsonify({'error': (f"TF {interval} troppo largo per un opening range giornaliero — "
-                                   f"serve un TF intraday (max 4h/240)")}), 400
 
     try:
-        if is_synthetic_tf:
-            # TF non nativo su Bybit (es. 6/7/8/9 minuti): niente API, si legge
-            # dal CSV pre-aggregato da scripts/bybit_tick_aggregate.py — timestamp
-            # UTC puro (nessuno shift), stessa convenzione del motore live.
-            candles = _load_tick_cache_klines(symbol, int(interval), lookback_days)
-            tz_s = 0
-        else:
-            candles_needed = int(lookback_days * 86400 / iv_s) + 5
-            max_pages = max(1, min(100, -(-candles_needed // 1000)))  # ceil, cap 100 pagine (100k candele)
-            candles, tz_s = _fetch_klines_bybit(symbol, interval, max_pages)
+        candles_needed = int(strategy_lookback_days * 86400 / 60) + 5
+        max_pages = max(1, min(100, -(-candles_needed // 1000)))  # ceil, cap 100 pagine (100k candele)
+        candles_1m, tz_s = _fetch_klines_bybit(symbol, STRATEGY_TF, max_pages)
     except Exception as e:
         return jsonify({'error': str(e)}), 502
 
@@ -2144,19 +2108,22 @@ def bot_backtest():
         # tz_s: le candele di _fetch_klines_bybit hanno 'time' shiftato dell'offset
         # UTC configurato — il motore ORB deve saperlo per individuare correttamente
         # il confine "00:00 UTC" del giorno (vedi bot_engine.py, tz_offset_s).
-        result = run_backtest(candles, params, initial_capital, sizing, taker_fee_rate, tz_offset_s=tz_s)
+        result = run_backtest(candles_1m, params, initial_capital, sizing, taker_fee_rate, tz_offset_s=tz_s)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     result['taker_fee_rate'] = taker_fee_rate
     # Il frontend ne ha bisogno per ricalcolare client-side le bande dell'opening
     # range (stessa convenzione oraria delle candele restituite sotto).
     result['utc_offset_s'] = tz_s
+    result['lookback_truncated'] = lookback_truncated
+    result['effective_lookback_days'] = strategy_lookback_days
 
-    # Le candele usate per il backtest vengono restituite (senza volume, non
-    # serve per il grafico) così il frontend può disegnare i marker di
-    # entrata/uscita senza dover rifare un secondo fetch identico a Bybit.
+    # Grafico: le candele mostrate sono aggregate dal 1m nativo al TF scelto in
+    # UI (solo display — la strategia sopra ha già girato sui dati 1m).
+    display_iv_s = TF_SECONDS.get(interval) or (int(interval) * 60 if interval.isdigit() else 3600)
+    display_candles = candles_1m if display_iv_s <= 60 else _aggregate_candles(candles_1m, display_iv_s, tz_s)
     result['candles'] = [{'time': c['time'], 'open': c['open'], 'high': c['high'],
-                          'low': c['low'], 'close': c['close']} for c in candles]
+                          'low': c['low'], 'close': c['close']} for c in display_candles]
 
     return jsonify({'success': True, **result})
 
@@ -2442,6 +2409,18 @@ def vol_inefficiency_page():
 @app.route('/bb-squeeze.html', methods=['GET'])
 def bb_squeeze_page():
     return send_file('/usr/share/nginx/html/bb-squeeze.html')
+
+
+@app.route('/rvol', methods=['GET'])
+@app.route('/rvol.html', methods=['GET'])
+def rvol_page():
+    return send_file('/usr/share/nginx/html/rvol.html')
+
+
+@app.route('/midline-breakout', methods=['GET'])
+@app.route('/midline-breakout.html', methods=['GET'])
+def midline_breakout_page():
+    return send_file('/usr/share/nginx/html/midline-breakout.html')
 
 
 @app.route('/confluence', methods=['GET'])

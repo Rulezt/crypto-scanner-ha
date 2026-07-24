@@ -298,6 +298,9 @@ createApp({
             { key:'vol_inefficiency', label:'Volume Inefficiency', short:'V-INEF', color:'#f43f5e' },
             { key:'ath_atl',      label:'ATH/ATL',      short:'ATH',    color:'#fbbf24' },
             { key:'ico',          label:'ICO Levels',   short:'ICO',    color:'#f472b6' },
+            { key:'bb_squeeze',   label:'BB Squeeze',   short:'BB-SQ',  color:'#fb923c' },
+            { key:'rvol',         label:'RVOL',         short:'RVOL',   color:'#facc15' },
+            { key:'midline_breakout', label:'Midline Breakout', short:'MID-BRK', color:'#2dd4bf' },
         ];
         const SCREENER_DEFS = Object.fromEntries(SCREENER_LIST.map(d => [d.key, d]));
         const SCREENER_KEYS = SCREENER_LIST.map(d => d.key);
@@ -758,6 +761,118 @@ createApp({
             return out;
         };
 
+        // ── BB Squeeze (ported from bb-squeeze.html) — solo lo stato "fired" (rottura
+        // dopo compressione) genera match: "squeeze" da solo non ha una direzione, e
+        // Confluence esiste per trovare accordo DIREZIONALE tra screener diversi.
+        const calcBBSeriesConfl = (candles, per, m) => {
+            const n = candles.length;
+            const upper = new Array(n).fill(null), mid = new Array(n).fill(null), lower = new Array(n).fill(null), width = new Array(n).fill(null);
+            let sum = 0, sumSq = 0;
+            for (let i = 0; i < n; i++) {
+                const c = candles[i].close;
+                sum += c; sumSq += c * c;
+                if (i >= per) { const old = candles[i-per].close; sum -= old; sumSq -= old * old; }
+                if (i >= per - 1) {
+                    const mean = sum / per;
+                    const variance = Math.max(0, sumSq / per - mean * mean);
+                    const std = Math.sqrt(variance);
+                    mid[i] = mean; upper[i] = mean + m * std; lower[i] = mean - m * std;
+                    width[i] = mean !== 0 ? (upper[i] - lower[i]) / mean : 0;
+                }
+            }
+            return { upper, mid, lower, width };
+        };
+        const _bbRankAt = (widthArr, i, rankPeriod) => {
+            let higher = 0, count = 0;
+            for (let k = i - rankPeriod; k < i; k++) {
+                if (k < 0 || widthArr[k] == null) continue;
+                count++;
+                if (widthArr[k] > widthArr[i]) higher++;
+            }
+            return count > 0 ? (higher / count) * 100 : null;
+        };
+        const detectBBSqueeze = (candles, bb, cfg) => {
+            const { upper, lower, width } = bb;
+            const n = candles.length;
+            const minIdx = Math.max(cfg.bbPeriod + cfg.bbRankPeriod, 1);
+            if (n - 1 < minIdx) return null;
+            const lastIdx = n - 1;
+            const from = Math.max(minIdx, lastIdx - cfg.bbFreshBars - 1);
+            for (let i = lastIdx - 1; i >= from; i--) {
+                if (width[i] == null) continue;
+                const rank = _bbRankAt(width, i, cfg.bbRankPeriod);
+                if (rank == null || rank < cfg.bbPctThreshold) continue;
+                if (upper[i] == null || lower[i] == null) break;
+                for (let j = i + 1; j <= lastIdx; j++) {
+                    if (candles[j].close > upper[i]) return { idx: j, dir: 'bull' };
+                    if (candles[j].close < lower[i]) return { idx: j, dir: 'bear' };
+                }
+                break;
+            }
+            return null;
+        };
+        const bbSqueezeHit = (candles, cfg) => {
+            const WARMUP_MIN = cfg.bbPeriod + cfg.bbRankPeriod + 5;
+            if (candles.length < WARMUP_MIN) return null;
+            const bb = calcBBSeriesConfl(candles, cfg.bbPeriod, cfg.bbMult);
+            const sig = detectBBSqueeze(candles, bb, cfg);
+            if (!sig) return null;
+            return { dir: sig.dir, metric: 'Fired', sigTime: candles[sig.idx].time, period: cfg.bbPeriod, mult: cfg.bbMult };
+        };
+
+        // ── RVOL (ported from rvol.html) — ranking puro sul volume, nessuna richiesta
+        // di range compresso (diverso da Climax di Volume Inefficiency).
+        const rvolHit = (candles, cfg) => {
+            const n = candles.length;
+            const i = n - 1;
+            if (i < cfg.rvolAvgPeriod) return null;
+            let sumVol = 0;
+            for (let j = i - cfg.rvolAvgPeriod; j < i; j++) sumVol += candles[j].volume;
+            const avgVol = sumVol / cfg.rvolAvgPeriod;
+            if (avgVol <= 0) return null;
+            const rvol = candles[i].volume / avgVol;
+            if (rvol < cfg.rvolMin) return null;
+            const dir = candles[i].close >= candles[i].open ? 'bull' : 'bear';
+            return { dir, metric: 'RVOL ' + rvol.toFixed(1) + 'x', sigTime: candles[i].time };
+        };
+
+        // ── Midline Breakout (ported from midline-breakout.html) — stessa formula
+        // Murrey Math dell'indicatore GRaB (vedi mtf.html/trade.js calcMurrey).
+        const calcMidlineArrConfl = (candles, length) => {
+            const n = candles.length;
+            const mid = new Array(n).fill(null);
+            for (let i = length - 1; i < n; i++) {
+                let h = -Infinity, l = Infinity;
+                for (let j = i - length + 1; j <= i; j++) { h = Math.max(h, candles[j].high); l = Math.min(l, candles[j].low); }
+                mid[i] = l + (h - l) / 2;
+            }
+            return mid;
+        };
+        const detectMidlineBreakoutConfl = (candles, midArr, cfg) => {
+            const n = candles.length;
+            const minIdx = Math.max(cfg.midMurreyLength, 1);
+            const from = Math.max(minIdx, n - cfg.midLookback);
+            for (let i = n - 1; i >= from; i--) {
+                const line = midArr[i - 1];
+                if (line == null) continue;
+                const prevClose = candles[i - 1].close, curClose = candles[i].close;
+                let dir = null;
+                if (prevClose <= line && curClose > line) dir = 'bull';
+                else if (prevClose >= line && curClose < line) dir = 'bear';
+                if (!dir) continue;
+                return { idx: i, dir, midline: line };
+            }
+            return null;
+        };
+        const midlineBreakoutHit = (candles, cfg) => {
+            const WARMUP_MIN = cfg.midMurreyLength + 5;
+            if (candles.length < WARMUP_MIN) return null;
+            const midArr = calcMidlineArrConfl(candles, cfg.midMurreyLength);
+            const sig = detectMidlineBreakoutConfl(candles, midArr, cfg);
+            if (!sig) return null;
+            return { dir: sig.dir, metric: 'Midline', sigTime: candles[sig.idx].time, murreyLength: cfg.midMurreyLength };
+        };
+
         // ── SCAN ───────────────────────────────────────────────────────────────
         const stopScan = () => { stopFlag.value = true; };
 
@@ -787,8 +902,28 @@ createApp({
                 cbPeriod: 20, cbLookback: 3,
                 thrAth: 5, thrAtl: 20, icoThreshold: 5,
                 viHistoryBars: 300, viEnableLVN: true, viEnableClimax: true, viEnableSqueeze: true,
+                bbPeriod: 20, bbMult: 2, bbRankPeriod: 100, bbPctThreshold: 90, bbFreshBars: 5,
+                rvolAvgPeriod: 20, rvolMin: 2.5,
+                midMurreyLength: 100, midLookback: 20,
             };
             // Riusa le soglie già configurate dall'utente sulle pagine originali, se presenti.
+            try {
+                const c = JSON.parse(localStorage.getItem('ema60_cfg') || '{}');
+                if (c.proximity != null) cfg.touchProx = c.proximity;
+                if (c.touchTolerance != null) cfg.touchTol = c.touchTolerance;
+            } catch {}
+            try {
+                const c = JSON.parse(localStorage.getItem('third_touch_cfg') || '{}');
+                if (c.tolerance != null) cfg.ttTolerance = c.tolerance;
+                if (c.proximity != null) cfg.ttProximity = c.proximity;
+            } catch {}
+            try {
+                const c = JSON.parse(localStorage.getItem('e223f_cfg') || '{}');
+                if (c.emaPeriod != null) cfg.e223Period = c.emaPeriod;
+                if (c.tolerancePct != null) cfg.e223Tol = c.tolerancePct;
+                if (c.lookbackBars != null) cfg.e223Lookback = c.lookbackBars;
+                if (c.historyBars != null) cfg.klimitE223 = c.historyBars;
+            } catch {}
             try { const c = JSON.parse(localStorage.getItem('ath_atl_cfg') || '{}'); if (c.thrAth != null) cfg.thrAth = c.thrAth; if (c.thrAtl != null) cfg.thrAtl = c.thrAtl; } catch {}
             try { const c = JSON.parse(localStorage.getItem('ico_cfg') || '{}'); if (c.threshold != null) cfg.icoThreshold = c.threshold; } catch {}
             try { const c = JSON.parse(localStorage.getItem('chb_cfg') || '{}'); if (c.period != null) cfg.cbPeriod = c.period; if (c.lookbackBars != null) cfg.cbLookback = c.lookbackBars; } catch {}
@@ -798,6 +933,24 @@ createApp({
                 if (c.enableLVN != null) cfg.viEnableLVN = c.enableLVN;
                 if (c.enableClimax != null) cfg.viEnableClimax = c.enableClimax;
                 if (c.enableSqueeze != null) cfg.viEnableSqueeze = c.enableSqueeze;
+            } catch {}
+            try {
+                const c = JSON.parse(localStorage.getItem('bbsq_cfg') || '{}');
+                if (c.period != null) cfg.bbPeriod = c.period;
+                if (c.mult != null) cfg.bbMult = c.mult;
+                if (c.rankPeriod != null) cfg.bbRankPeriod = c.rankPeriod;
+                if (c.pctThreshold != null) cfg.bbPctThreshold = c.pctThreshold;
+                if (c.freshBars != null) cfg.bbFreshBars = c.freshBars;
+            } catch {}
+            try {
+                const c = JSON.parse(localStorage.getItem('rvol_cfg') || '{}');
+                if (c.avgPeriod != null) cfg.rvolAvgPeriod = c.avgPeriod;
+                if (c.minRvol != null) cfg.rvolMin = c.minRvol;
+            } catch {}
+            try {
+                const c = JSON.parse(localStorage.getItem('midbrk_cfg') || '{}');
+                if (c.murreyLength != null) cfg.midMurreyLength = c.murreyLength;
+                if (c.lookbackBars != null) cfg.midLookback = c.lookbackBars;
             } catch {}
 
             try {
@@ -842,7 +995,7 @@ createApp({
                 progressTotal.value = tickers.length;
                 statusMsg.value = `${SVG_SEARCH}${t('emax_progress')} ${tickers.length} ${t('dt_coin')}…`;
 
-                const anyClientEnabled = en.ema_touch || en.third_touch || en.ema223_cross || en.channel_breakout || en.vol_inefficiency;
+                const anyClientEnabled = en.ema_touch || en.third_touch || en.ema223_cross || en.channel_breakout || en.vol_inefficiency || en.bb_squeeze || en.rvol || en.midline_breakout;
                 if (anyClientEnabled) {
                     const BATCH = 5;
                     for (let i = 0; i < tickers.length; i += BATCH) {
@@ -881,6 +1034,18 @@ createApp({
                                         if (en.vol_inefficiency) {
                                             const hits = volIneffHits(candles, cfg);
                                             for (const h of hits) addMatch(ticker.symbol, ticker, 'vol_inefficiency', tf, h.dir, h.metric, h.draw);
+                                        }
+                                        if (en.bb_squeeze) {
+                                            const h = bbSqueezeHit(candles, cfg);
+                                            if (h) addMatch(ticker.symbol, ticker, 'bb_squeeze', tf, h.dir, h.metric, { sigTime: h.sigTime, period: h.period, mult: h.mult });
+                                        }
+                                        if (en.rvol) {
+                                            const h = rvolHit(candles, cfg);
+                                            if (h) addMatch(ticker.symbol, ticker, 'rvol', tf, h.dir, h.metric, { sigTime: h.sigTime });
+                                        }
+                                        if (en.midline_breakout) {
+                                            const h = midlineBreakoutHit(candles, cfg);
+                                            if (h) addMatch(ticker.symbol, ticker, 'midline_breakout', tf, h.dir, h.metric, { sigTime: h.sigTime, murreyLength: h.murreyLength });
                                         }
                                     } catch(e) { /* skip tf */ }
                                 }));
@@ -1050,6 +1215,24 @@ createApp({
                         } else if (g.screener === 'ico') {
                             if (d.first_high) candleSeries.createPriceLine({ price: d.first_high, color: '#fbbf24', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
                             if (d.first_low)  candleSeries.createPriceLine({ price: d.first_low,  color: '#60a5fa', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
+                        } else if (g.screener === 'bb_squeeze' && d.period) {
+                            const bb = calcBBSeriesConfl(klines, d.period, d.mult);
+                            const upperData = klines.map((k,i) => ({ time: k.time, value: bb.upper[i] })).filter(p => p.value != null);
+                            const lowerData = klines.map((k,i) => ({ time: k.time, value: bb.lower[i] })).filter(p => p.value != null);
+                            if (upperData.length) addS(chart, 'LineSeries', { ...lb, color: '#fb923c', lineWidth: 1 }).setData(upperData);
+                            if (lowerData.length) addS(chart, 'LineSeries', { ...lb, color: '#fb923c', lineWidth: 1 }).setData(lowerData);
+                            if (d.sigTime != null) {
+                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'BB Fired' });
+                            }
+                        } else if (g.screener === 'rvol' && d.sigTime != null) {
+                            markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#facc15', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'RVOL' });
+                        } else if (g.screener === 'midline_breakout' && d.murreyLength) {
+                            const midArr = calcMidlineArrConfl(klines, d.murreyLength);
+                            const midData = klines.map((k,i) => ({ time: k.time, value: midArr[i] })).filter(p => p.value != null);
+                            if (midData.length) addS(chart, 'LineSeries', { ...lb, color: '#f9fafb', lineWidth: 1.5 }).setData(midData);
+                            if (d.sigTime != null) {
+                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Midline' });
+                            }
                         }
                     }
                     if (markers.length && LC.createSeriesMarkers) { try { LC.createSeriesMarkers(candleSeries, markers); } catch(e) {} }
@@ -1150,6 +1333,24 @@ createApp({
                         } else if (g.screener === 'ico') {
                             if (d.first_high) candleSeries.createPriceLine({ price: d.first_high, color: '#fbbf24', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
                             if (d.first_low)  candleSeries.createPriceLine({ price: d.first_low,  color: '#60a5fa', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
+                        } else if (g.screener === 'bb_squeeze' && d.period) {
+                            const bb = calcBBSeriesConfl(klines, d.period, d.mult);
+                            const upperData = klines.map((k,i) => ({ time: k.time, value: bb.upper[i] })).filter(p => p.value != null);
+                            const lowerData = klines.map((k,i) => ({ time: k.time, value: bb.lower[i] })).filter(p => p.value != null);
+                            if (upperData.length) addS(chart, 'LineSeries', { ...lb, color: '#fb923c', lineWidth: 1 }).setData(upperData);
+                            if (lowerData.length) addS(chart, 'LineSeries', { ...lb, color: '#fb923c', lineWidth: 1 }).setData(lowerData);
+                            if (d.sigTime != null) {
+                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'BB Fired' });
+                            }
+                        } else if (g.screener === 'rvol' && d.sigTime != null) {
+                            markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#facc15', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'RVOL' });
+                        } else if (g.screener === 'midline_breakout' && d.murreyLength) {
+                            const midArr = calcMidlineArrConfl(klines, d.murreyLength);
+                            const midData = klines.map((k,i) => ({ time: k.time, value: midArr[i] })).filter(p => p.value != null);
+                            if (midData.length) addS(chart, 'LineSeries', { ...lb, color: '#f9fafb', lineWidth: 1.5 }).setData(midData);
+                            if (d.sigTime != null) {
+                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Midline' });
+                            }
                         }
                     }
                     if (markers.length && LC.createSeriesMarkers && mobilePreviewSymbol.value === key) { try { LC.createSeriesMarkers(candleSeries, markers); } catch(e) {} }
@@ -1238,6 +1439,12 @@ createApp({
                     } else if (g.screener === 'ico') {
                         if (d.first_high) lines.push({ color: '#fbbf24', dashed: true, values: bars.map(() => d.first_high) });
                         if (d.first_low)  lines.push({ color: '#60a5fa', dashed: true, values: bars.map(() => d.first_low) });
+                    } else if (g.screener === 'bb_squeeze' && d.period) {
+                        const bb = calcBBSeriesConfl(klines, d.period, d.mult);
+                        fill = { upper: bars.map((_, i) => bb.upper[offset + i]), lower: bars.map((_, i) => bb.lower[offset + i]) };
+                    } else if (g.screener === 'midline_breakout' && d.murreyLength) {
+                        const midArr = calcMidlineArrConfl(klines, d.murreyLength);
+                        lines.push({ color: '#f9fafb', values: bars.map((_, i) => midArr[offset + i]) });
                     }
                 }
             }

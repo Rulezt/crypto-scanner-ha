@@ -111,6 +111,16 @@
     data-i18n-title="squeeze_osc_tool" title="Canale Squeeze">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h3l2-7 4 14 3-10 2 5h6"/></svg>
   </button>
+  <button id="grab-btn" onclick="toggleGrab()" class="hdr-btn"
+    style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    title="GRaB — Buy green Sell Red (Murrey Math + EMA wave)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="4" height="8"/><rect x="10" y="5" width="4" height="13"/><rect x="17" y="8" width="4" height="10"/></svg>
+  </button>
+  <button id="grab-cfg-btn" onclick="openGrabCfgPanel()" class="hdr-btn"
+    style="font-size:12px;color:#6B7280;border:none;padding:6px 2px;cursor:pointer;line-height:1;flex-shrink:0;display:none;align-items:center;"
+    title="Impostazioni GRaB">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
   <button id="naked-btn" onclick="toggleNakedChart()" class="hdr-btn"
     style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
     data-i18n-title="ob_tt_hide_ind" title="Nascondi indicatori">
@@ -226,6 +236,7 @@ let mobileSlotIdx = 0;
 let bbActive = false;
 let channelActive = false;
 let sqzActive = false;
+let grabActive = false;
 let nakedChart = false;
 
 // ── Price alerts ──────────────────────────────────────────────────────────────
@@ -440,6 +451,177 @@ function _clearSqzChannel(candleS, lineRefs) {
   if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} lineRefs.hi = null; }
   if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} lineRefs.lo = null; }
 }
+
+// ── GRaB (Buy green Sell Red) — porting Pine "BGSR": Murrey Math midline/range
+// (highest/lowest a `murreyLength` candele) + wave EMA(high/low/close, `emaPeriod`)
+// + ricolorazione candela in base a close/open vs wave (barcolor originale).
+// showWave controlla solo la visibilità delle 3 linee wave: la ricolorazione
+// candela è SEMPRE attiva quando il toggle è ON (nel Pine originale barcolor
+// non è condizionato da nessun input, esattamente come qui).
+const _DEFAULT_GRAB_CFG = {
+  murreyLength: 100, showMidline: true, showRange: true,
+  emaPeriod: 34, showWave: false,
+  midlineColor: '#000000', rangeColor: '#FF00FF',
+  emaHighColor: '#FF0000', emaLowColor: '#008000', emaCloseColor: '#C0C0C0',
+  // Pine named colors esatti: red, maroon, lime, green, silver, gray
+  colorAboveBull: '#00FF00', colorAboveBear: '#008000',
+  colorBelowBull: '#FF0000', colorBelowBear: '#800000',
+  colorMidBull:   '#C0C0C0', colorMidBear:   '#808080',
+};
+function getGrabCfg() {
+  try { const s = JSON.parse(localStorage.getItem('chart_grab_cfg')); if (s) return { ..._DEFAULT_GRAB_CFG, ...s }; } catch(e) {}
+  return { ..._DEFAULT_GRAB_CFG };
+}
+function setGrabCfg(cfg) { try { localStorage.setItem('chart_grab_cfg', JSON.stringify(cfg)); } catch(e) {} }
+
+function calcEMAField(bars, period, field) {
+  const k = 2/(period+1); let v = bars[0][field];
+  return bars.map((b,i) => { if(i>0) v = b[field]*k + v*(1-k); return {time:b.time, value:v}; });
+}
+function calcMurrey(klines, length) {
+  const mid=[], lo=[], hi=[];
+  for (let i = length-1; i < klines.length; i++) {
+    let h = -Infinity, l = Infinity;
+    for (let j = i-length+1; j <= i; j++) { h = Math.max(h, klines[j].high); l = Math.min(l, klines[j].low); }
+    mid.push({time:klines[i].time, value:l+(h-l)/2});
+    lo.push( {time:klines[i].time, value:l});
+    hi.push( {time:klines[i].time, value:h});
+  }
+  return {mid, lo, hi};
+}
+function grabBarColor(close, open, eHigh, eLow, cfg) {
+  if (close < eLow)  return close > open ? cfg.colorBelowBull : cfg.colorBelowBear;
+  if (close > eHigh) return close > open ? cfg.colorAboveBull : cfg.colorAboveBear;
+  return close > open ? cfg.colorMidBull : cfg.colorMidBear;
+}
+
+function toggleGrab() {
+  grabActive = !grabActive;
+  const btn = document.getElementById('grab-btn');
+  btn.style.color = grabActive ? '#f59e0b' : '#B2B5BE';
+  const cfgBtn = document.getElementById('grab-cfg-btn');
+  if (cfgBtn) cfgBtn.style.display = grabActive ? 'flex' : 'none';
+  const cfg = getGrabCfg();
+  slots.forEach(s => applyGrabToSlot(s, cfg));
+  if (fsChart) applyFsGrab();
+}
+function applyGrabToSlot(s, cfg) {
+  for (const k of ['high','low','close']) {
+    if (s.grabWaveS[k]) { try { s.chart.removeSeries(s.grabWaveS[k]); } catch(e) {} s.grabWaveS[k] = null; }
+  }
+  for (const k of ['mid','lo','hi']) {
+    if (s.grabMurreyS[k]) { try { s.chart.removeSeries(s.grabMurreyS[k]); } catch(e) {} s.grabMurreyS[k] = null; }
+  }
+  if (!grabActive) {
+    if (s.candleS && s.klines.length) s.candleS.setData(s.klines);
+    s.grabState = null;
+    return;
+  }
+  const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
+  if (cfg.showWave) {
+    s.grabWaveS.high  = addS(s.chart,'LineSeries',{...lb,color:cfg.emaHighColor,  lineWidth:1});
+    s.grabWaveS.low   = addS(s.chart,'LineSeries',{...lb,color:cfg.emaLowColor,   lineWidth:1});
+    s.grabWaveS.close = addS(s.chart,'LineSeries',{...lb,color:cfg.emaCloseColor, lineWidth:1});
+  }
+  if (cfg.showMidline) s.grabMurreyS.mid = addS(s.chart,'LineSeries',{...lb,color:cfg.midlineColor, lineWidth:1});
+  if (cfg.showRange) {
+    s.grabMurreyS.lo = addS(s.chart,'LineSeries',{...lb,color:cfg.rangeColor, lineWidth:1});
+    s.grabMurreyS.hi = addS(s.chart,'LineSeries',{...lb,color:cfg.rangeColor, lineWidth:1});
+  }
+  if (!s.klines.length) return;
+  const period = cfg.emaPeriod;
+  const eh = calcEMAField(s.klines, period, 'high');
+  const el = calcEMAField(s.klines, period, 'low');
+  const ec = calcEMAField(s.klines, period, 'close');
+  const colored = s.klines.map((k,i) => {
+    const c = grabBarColor(k.close, k.open, eh[i].value, el[i].value, cfg);
+    return {...k, color:c, wickColor:c, borderColor:c};
+  });
+  s.candleS.setData(colored);
+  s.grabState = { emaHigh: eh[eh.length-1].value, emaLow: el[el.length-1].value, emaClose: ec[ec.length-1].value };
+  if (cfg.showWave) {
+    s.grabWaveS.high.setData(eh);
+    s.grabWaveS.low.setData(el);
+    s.grabWaveS.close.setData(ec);
+  }
+  if ((cfg.showMidline || cfg.showRange) && s.klines.length >= cfg.murreyLength) {
+    const m = calcMurrey(s.klines, cfg.murreyLength);
+    if (cfg.showMidline) s.grabMurreyS.mid.setData(m.mid);
+    if (cfg.showRange) { s.grabMurreyS.lo.setData(m.lo); s.grabMurreyS.hi.setData(m.hi); }
+  }
+}
+// Aggiorna colore candela + wave + murrey per un nuovo tick, SENZA confermare lo
+// stato (s.grabState) — usato da WS/roll (full, con conferma su candela chiusa)
+// e dal patch mid-price book (cheap, riusa solo l'ultimo stato noto, stesso
+// pattern di s.lastEMA che non si muove durante il patch — vedi _mtfBookPatchSlot).
+function _grabLiveColor(s, candle, cfg) {
+  if (!grabActive || !s.grabState) return;
+  const color = grabBarColor(candle.close, candle.open, s.grabState.emaHigh, s.grabState.emaLow, cfg);
+  try { s.candleS.update({...candle, color, wickColor:color, borderColor:color}); } catch(e) {}
+}
+function _grabLiveUpdate(s, candle, confirmed, cfg) {
+  if (!grabActive || !s.grabState) return;
+  const k = 2/(cfg.emaPeriod+1);
+  const liveEmaHigh  = candle.high  * k + s.grabState.emaHigh  * (1-k);
+  const liveEmaLow   = candle.low   * k + s.grabState.emaLow   * (1-k);
+  const liveEmaClose = candle.close * k + s.grabState.emaClose * (1-k);
+  const color = grabBarColor(candle.close, candle.open, liveEmaHigh, liveEmaLow, cfg);
+  try { s.candleS.update({...candle, color, wickColor:color, borderColor:color}); } catch(e) {}
+  if (cfg.showWave && s.grabWaveS.high) {
+    s.grabWaveS.high.update({time:candle.time, value:liveEmaHigh});
+    s.grabWaveS.low.update( {time:candle.time, value:liveEmaLow});
+    s.grabWaveS.close.update({time:candle.time, value:liveEmaClose});
+  }
+  if (confirmed) { s.grabState.emaHigh = liveEmaHigh; s.grabState.emaLow = liveEmaLow; s.grabState.emaClose = liveEmaClose; }
+  if ((cfg.showMidline || cfg.showRange) && s.klines.length >= cfg.murreyLength) {
+    const win = s.klines.slice(-cfg.murreyLength);
+    let h = -Infinity, l = Infinity;
+    for (const c of win) { h = Math.max(h,c.high); l = Math.min(l,c.low); }
+    if (cfg.showMidline && s.grabMurreyS.mid) s.grabMurreyS.mid.update({time:candle.time, value:l+(h-l)/2});
+    if (cfg.showRange && s.grabMurreyS.lo) { s.grabMurreyS.lo.update({time:candle.time, value:l}); s.grabMurreyS.hi.update({time:candle.time, value:h}); }
+  }
+}
+
+// ── Pannello impostazioni GRaB ──────────────────────────────────────────────────
+function _grabReapplyAll() {
+  const c = getGrabCfg();
+  slots.forEach(s => applyGrabToSlot(s, c));
+  if (fsChart) applyFsGrab();
+}
+function openGrabCfgPanel() {
+  const cfg = getGrabCfg();
+  for (const k of Object.keys(_DEFAULT_GRAB_CFG)) {
+    const el = document.getElementById('grab-cfg-' + k);
+    if (!el) continue;
+    if (el.type === 'checkbox') el.checked = !!cfg[k];
+    else el.value = cfg[k];
+  }
+  document.getElementById('grab-cfg-panel').style.display = 'flex';
+}
+function closeGrabCfgPanel() { document.getElementById('grab-cfg-panel').style.display = 'none'; }
+function saveGrabCfgPanel() {
+  const cfg = {};
+  for (const k of Object.keys(_DEFAULT_GRAB_CFG)) {
+    const el = document.getElementById('grab-cfg-' + k);
+    if (!el) { cfg[k] = _DEFAULT_GRAB_CFG[k]; continue; }
+    if (el.type === 'checkbox') cfg[k] = el.checked;
+    else if (el.type === 'number') cfg[k] = parseFloat(el.value);
+    else cfg[k] = el.value;
+  }
+  if (!isFinite(cfg.murreyLength)) cfg.murreyLength = _DEFAULT_GRAB_CFG.murreyLength;
+  if (!isFinite(cfg.emaPeriod))    cfg.emaPeriod    = _DEFAULT_GRAB_CFG.emaPeriod;
+  cfg.murreyLength = Math.max(10, Math.min(500, Math.round(cfg.murreyLength)));
+  cfg.emaPeriod    = Math.max(2,  Math.min(500, Math.round(cfg.emaPeriod)));
+  setGrabCfg(cfg);
+  closeGrabCfgPanel();
+  if (grabActive) _grabReapplyAll();
+}
+function resetGrabCfgPanel() {
+  localStorage.removeItem('chart_grab_cfg');
+  openGrabCfgPanel();
+  if (grabActive) _grabReapplyAll();
+}
+
 function toggleSqueeze() {
   sqzActive = !sqzActive;
   const btn = document.getElementById('sqz-btn');
@@ -805,6 +987,9 @@ const fsBtn = document.createElement('button');
       bbSeries: {upper:null, mid:null, lower:null},
       channelSeries: {upper:null, mid:null, lower:null}, channelData: null,
       sqzLines: {hi:null, lo:null},
+      grabWaveS: {high:null, low:null, close:null},
+      grabMurreyS: {mid:null, lo:null, hi:null},
+      grabState: null,
       klines: [],
     });
     try { candleS.attachPrimitive(new _MtfCountdownPrimitive(slots[slots.length-1])); } catch(e) {}
@@ -999,6 +1184,7 @@ function openWS() {
         _cdUpd(s.channelData.lower, liveL);
       }
     }
+    if (grabActive) _grabLiveUpdate(s, candle, confirmed, getGrabCfg());
   };
   sock.onerror = () => setWSDot('error');
   sock.onclose = () => {
@@ -1095,6 +1281,14 @@ function _mtfRollSlotIfNeeded(s, midPrice) {
     const k = 2 / (p + 1);
     s.lastEMA[p] = prevClose * k + s.lastEMA[p] * (1 - k);
   }
+  if (grabActive && s.grabState) {
+    // A differenza di lastEMA (EMA di close), qui usiamo gli high/low REALI dell'ultima
+    // candela chiusa (non prevClose) — s.grabState traccia EMA(high)/EMA(low) separate.
+    const _gk = 2 / (getGrabCfg().emaPeriod + 1);
+    s.grabState.emaHigh  = last.high  * _gk + s.grabState.emaHigh  * (1 - _gk);
+    s.grabState.emaLow   = last.low   * _gk + s.grabState.emaLow   * (1 - _gk);
+    s.grabState.emaClose = prevClose * _gk + s.grabState.emaClose * (1 - _gk);
+  }
 
   const newCandle = {
     time: expectedOpen, open: prevClose,
@@ -1103,7 +1297,7 @@ function _mtfRollSlotIfNeeded(s, midPrice) {
   };
   klines.push({ ...newCandle });
   s.lastPrice = newCandle.close; s.lastOpen = newCandle.open;
-  try { s.candleS.update(newCandle); } catch(e) {}
+  if (!grabActive) { try { s.candleS.update(newCandle); } catch(e) {} }
 
   for (const { p } of EMA_CFG) {
     if (s.lastEMA[p] == null) continue;
@@ -1136,6 +1330,7 @@ function _mtfRollSlotIfNeeded(s, midPrice) {
     }
   }
   if (sqzActive) { try { _drawSqzChannel(s.candleS, klines, s.sqzLines); } catch(e) {} }
+  if (grabActive) _grabLiveUpdate(s, newCandle, false, getGrabCfg());
   return true;
 }
 
@@ -1148,7 +1343,8 @@ function _mtfBookPatchSlot(s, midPrice) {
   if (midPrice > last.high) last.high = midPrice;
   if (midPrice < last.low)  last.low  = midPrice;
   s.lastPrice = last.close;
-  try { s.candleS.update({ ...last }); } catch(e) {}
+  if (grabActive) _grabLiveColor(s, last, getGrabCfg());
+  else try { s.candleS.update({ ...last }); } catch(e) {}
 }
 
 function _mtfRollFSIfNeeded(midPrice) {
@@ -1166,6 +1362,12 @@ function _mtfRollFSIfNeeded(midPrice) {
     const k = 2 / (p + 1);
     fsLastEMA[p] = prevClose * k + fsLastEMA[p] * (1 - k);
   }
+  if (grabActive && fsGrabState) {
+    const _gk = 2 / (getGrabCfg().emaPeriod + 1);
+    fsGrabState.emaHigh  = last.high  * _gk + fsGrabState.emaHigh  * (1 - _gk);
+    fsGrabState.emaLow   = last.low   * _gk + fsGrabState.emaLow   * (1 - _gk);
+    fsGrabState.emaClose = prevClose * _gk + fsGrabState.emaClose * (1 - _gk);
+  }
 
   const newCandle = {
     time: expectedOpen, open: prevClose,
@@ -1174,7 +1376,7 @@ function _mtfRollFSIfNeeded(midPrice) {
   };
   fsKlines.push({ ...newCandle });
   fsLastPrice = newCandle.close; fsLastOpen = newCandle.open;
-  try { fsCandleS.update(newCandle); } catch(e) {}
+  if (!grabActive) { try { fsCandleS.update(newCandle); } catch(e) {} }
 
   for (const { p } of EMA_CFG) {
     if (fsLastEMA[p] == null) continue;
@@ -1207,6 +1409,7 @@ function _mtfRollFSIfNeeded(midPrice) {
     }
   }
   if (sqzActive) { try { _drawSqzChannel(fsCandleS, fsKlines, fsSqzLines); } catch(e) {} }
+  if (grabActive) _grabLiveUpdate(fsGrabSlot, newCandle, false, getGrabCfg());
   return true;
 }
 
@@ -1218,6 +1421,7 @@ function _mtfBookPatchFS(midPrice) {
   if (midPrice > last.high) last.high = midPrice;
   if (midPrice < last.low)  last.low  = midPrice;
   fsLastPrice = last.close;
+  if (grabActive) { _grabLiveColor(fsGrabSlot, last, getGrabCfg()); return; }
   try { fsCandleS.update({ ...last }); } catch(e) {}
 }
 
@@ -1389,7 +1593,20 @@ let fsKlines = [];
 let fsBbSeries = { upper: null, mid: null, lower: null };
 let fsChannelSeries = { upper: null, mid: null, lower: null }, fsChannelData = null;
 let fsSqzLines = { hi: null, lo: null };
+let fsGrabWaveS = { high: null, low: null, close: null };
+let fsGrabMurreyS = { mid: null, lo: null, hi: null };
+let fsGrabState = null;
 const fsChannelSlot = { get channelData() { return fsChannelData; } };
+// Adapter per riusare _grabLiveUpdate/_grabLiveColor (scritte per un oggetto "slot"
+// della grid) anche sulle variabili globali fs* del fullscreen — stesso pattern di
+// fsChannelSlot/fsCdSlot già presente in questo file.
+const fsGrabSlot = {
+  get candleS() { return fsCandleS; },
+  get klines() { return fsKlines; },
+  get grabState() { return fsGrabState; },
+  get grabWaveS() { return fsGrabWaveS; },
+  get grabMurreyS() { return fsGrabMurreyS; },
+};
 let fsDayPrimitive = null, obDayPrimitive = null;
 let fsLastPrice = null, fsLastOpen = null;
 const fsCdSlot = { cfg: { get tf() { return fsTF; } }, get lastPrice() { return fsLastPrice; }, get lastOpen() { return fsLastOpen; } };
@@ -1451,6 +1668,9 @@ async function switchFSTF(tf) {
         if (fsChannelSeries[k]) { try { fsChart.removeSeries(fsChannelSeries[k]); } catch(e) {} fsChannelSeries[k] = null; }
     }
     _clearSqzChannel(fsCandleS, fsSqzLines);
+    for (const k of ['high','low','close']) { if (fsGrabWaveS[k]) { try { fsChart.removeSeries(fsGrabWaveS[k]); } catch(e) {} fsGrabWaveS[k] = null; } }
+    for (const k of ['mid','lo','hi'])      { if (fsGrabMurreyS[k]) { try { fsChart.removeSeries(fsGrabMurreyS[k]); } catch(e) {} fsGrabMurreyS[k] = null; } }
+    fsGrabState = null;
     fsChannelData = null; fsKlines = [];
     await loadFSData(); connectFSWS();
 }
@@ -1504,6 +1724,52 @@ function applyFsSqueeze() {
     if (!sqzActive) { _clearSqzChannel(fsCandleS, fsSqzLines); return; }
     _drawSqzChannel(fsCandleS, fsKlines, fsSqzLines);
 }
+function applyFsGrab() {
+    for (const k of ['high','low','close']) {
+        if (fsGrabWaveS[k]) { try { fsChart.removeSeries(fsGrabWaveS[k]); } catch(e) {} fsGrabWaveS[k] = null; }
+    }
+    for (const k of ['mid','lo','hi']) {
+        if (fsGrabMurreyS[k]) { try { fsChart.removeSeries(fsGrabMurreyS[k]); } catch(e) {} fsGrabMurreyS[k] = null; }
+    }
+    if (!grabActive || !fsChart) {
+        if (fsCandleS && fsKlines.length) fsCandleS.setData(fsKlines);
+        fsGrabState = null;
+        return;
+    }
+    const cfg = getGrabCfg();
+    const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
+    if (cfg.showWave) {
+        fsGrabWaveS.high  = addS(fsChart,'LineSeries',{...lb,color:cfg.emaHighColor,  lineWidth:1});
+        fsGrabWaveS.low   = addS(fsChart,'LineSeries',{...lb,color:cfg.emaLowColor,   lineWidth:1});
+        fsGrabWaveS.close = addS(fsChart,'LineSeries',{...lb,color:cfg.emaCloseColor, lineWidth:1});
+    }
+    if (cfg.showMidline) fsGrabMurreyS.mid = addS(fsChart,'LineSeries',{...lb,color:cfg.midlineColor, lineWidth:1});
+    if (cfg.showRange) {
+        fsGrabMurreyS.lo = addS(fsChart,'LineSeries',{...lb,color:cfg.rangeColor, lineWidth:1});
+        fsGrabMurreyS.hi = addS(fsChart,'LineSeries',{...lb,color:cfg.rangeColor, lineWidth:1});
+    }
+    if (!fsKlines.length) return;
+    const period = cfg.emaPeriod;
+    const eh = calcEMAField(fsKlines, period, 'high');
+    const el = calcEMAField(fsKlines, period, 'low');
+    const ec = calcEMAField(fsKlines, period, 'close');
+    const colored = fsKlines.map((k,i) => {
+        const c = grabBarColor(k.close, k.open, eh[i].value, el[i].value, cfg);
+        return {...k, color:c, wickColor:c, borderColor:c};
+    });
+    fsCandleS.setData(colored);
+    fsGrabState = { emaHigh: eh[eh.length-1].value, emaLow: el[el.length-1].value, emaClose: ec[ec.length-1].value };
+    if (cfg.showWave) {
+        fsGrabWaveS.high.setData(eh);
+        fsGrabWaveS.low.setData(el);
+        fsGrabWaveS.close.setData(ec);
+    }
+    if ((cfg.showMidline || cfg.showRange) && fsKlines.length >= cfg.murreyLength) {
+        const m = calcMurrey(fsKlines, cfg.murreyLength);
+        if (cfg.showMidline) fsGrabMurreyS.mid.setData(m.mid);
+        if (cfg.showRange) { fsGrabMurreyS.lo.setData(m.lo); fsGrabMurreyS.hi.setData(m.hi); }
+    }
+}
 function _applyNakedStateFS() {
     if (!fsCandleS) return;
     for (const {p} of EMA_CFG) if (fsEmaS[p]) try { fsEmaS[p].applyOptions({ visible: !nakedChart }); } catch(e) {}
@@ -1532,6 +1798,7 @@ async function loadFSData() {
         applyFsBB();
         applyFsChannel();
         applyFsSqueeze();
+        applyFsGrab();
         fsChart.timeScale().setVisibleLogicalRange({ from: fsKlineCount - getCandlesForTF(fsTF), to: fsKlineCount + 3 });
         fsChart.priceScale('right').applyOptions({ autoScale: true });
         if (jd.success && jd.data && jd.data.length) {
@@ -1603,6 +1870,7 @@ function connectFSWS() {
                     _cdUpd(fsChannelData.lower, liveL);
                 }
             }
+            if (grabActive) _grabLiveUpdate(fsGrabSlot, candle, confirmed, getGrabCfg());
         }
     };
     sock.onerror = () => {};
@@ -1657,6 +1925,9 @@ function closeFSModal() {
             if (fsBbSeries[k])      { try { fsChart.removeSeries(fsBbSeries[k]); } catch(e) {} fsBbSeries[k] = null; }
             if (fsChannelSeries[k]) { try { fsChart.removeSeries(fsChannelSeries[k]); } catch(e) {} fsChannelSeries[k] = null; }
         }
+        for (const k of ['high','low','close']) { if (fsGrabWaveS[k]) { try { fsChart.removeSeries(fsGrabWaveS[k]); } catch(e) {} fsGrabWaveS[k] = null; } }
+        for (const k of ['mid','lo','hi'])      { if (fsGrabMurreyS[k]) { try { fsChart.removeSeries(fsGrabMurreyS[k]); } catch(e) {} fsGrabMurreyS[k] = null; } }
+        fsGrabState = null;
         fsChannelData = null; fsKlines = [];
     }
 }
@@ -2720,6 +2991,60 @@ if (isMobile) {
     <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:#0F0F0F;">
         <iframe id="ob-iframe" src="" style="flex:1;border:none;width:100%;height:100%;"></iframe>
     </div>
+</div>
+
+<!-- GRaB (Buy green Sell Red) settings panel -->
+<div id="grab-cfg-panel" style="display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);"
+     onclick="if(event.target===this) closeGrabCfgPanel()">
+  <div style="background:#131722;border:1px solid #2A2E39;border-radius:8px;padding:16px 18px;width:320px;max-height:85vh;overflow-y:auto;color:#B2B5BE;font-size:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h3 style="margin:0;font-size:13px;color:#F3F4F6;">Impostazioni GRaB</h3>
+      <button onclick="closeGrabCfgPanel()" style="background:none;border:none;color:#B2B5BE;font-size:16px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:8px 0 4px;">Murrey Math</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Lookback length
+      <input type="number" id="grab-cfg-murreyLength" min="10" max="500" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra midline
+      <input type="checkbox" id="grab-cfg-showMidline"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore midline
+      <input type="color" id="grab-cfg-midlineColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra range
+      <input type="checkbox" id="grab-cfg-showRange"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore range
+      <input type="color" id="grab-cfg-rangeColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:12px 0 4px;">GRaB Wave (EMA)</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">EMA Period
+      <input type="number" id="grab-cfg-emaPeriod" min="2" max="500" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra wave
+      <input type="checkbox" id="grab-cfg-showWave"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore EMA High
+      <input type="color" id="grab-cfg-emaHighColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore EMA Low
+      <input type="color" id="grab-cfg-emaLowColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore EMA Close
+      <input type="color" id="grab-cfg-emaCloseColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:12px 0 4px;">Colori candela</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Sopra wave, rialzo (lime)
+      <input type="color" id="grab-cfg-colorAboveBull" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Sopra wave, ribasso (green)
+      <input type="color" id="grab-cfg-colorAboveBear" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Sotto wave, rialzo (red)
+      <input type="color" id="grab-cfg-colorBelowBull" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Sotto wave, ribasso (maroon)
+      <input type="color" id="grab-cfg-colorBelowBear" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Dentro wave, rialzo (silver)
+      <input type="color" id="grab-cfg-colorMidBull" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Dentro wave, ribasso (gray)
+      <input type="color" id="grab-cfg-colorMidBear" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button onclick="saveGrabCfgPanel()" style="flex:1;padding:6px;border-radius:4px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:600;">Salva</button>
+      <button onclick="resetGrabCfgPanel()" style="flex:1;padding:6px;border-radius:4px;border:1px solid #2A2E39;background:none;color:#B2B5BE;cursor:pointer;">Reset</button>
+    </div>
+  </div>
 </div>
 
 </body>

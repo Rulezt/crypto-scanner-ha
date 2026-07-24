@@ -62,6 +62,17 @@ TF_SECONDS = {
 
 DAY_SECONDS = 86400
 
+# Il TF scelto in UI (self.tf) NON governa più range/trigger/SL-TP — governava
+# solo la granularità delle candele usate dal motore, e con TF larghi questo
+# rendeva sia il range (vedi _calc_orb_ranges: finestra individuata su candele
+# intere, non sui minuti esatti) sia il controllo SL/TP (ambiguità quando
+# entrambi cadono nella stessa candela) dipendenti dal TF, cosa non voluta.
+# Range/trigger/SL-TP girano quindi SEMPRE su kline 1m (STRATEGY_TF), sia in
+# backtest (vedi app.py bot_backtest) sia dal vivo (vedi BotEngine._on_kline).
+# self.tf resta solo per l'etichetta negli alert Telegram e per il grafico.
+STRATEGY_TF = '1'
+STRATEGY_TF_SECONDS = 60
+
 DEFAULT_PARAMS = {
     'orb_minutes': 30,
     'sl_pct': 1.0,           # % fissa dal prezzo di entrata (non più l'estremo del range)
@@ -419,7 +430,8 @@ class BotEngine:
         if ws_manager is not None:
             ws_manager.add_kline_callback(self._on_kline)
             if self.running and self.symbol:
-                ws_manager.subscribe_klines([self.symbol], intervals=[self.tf])
+                # Il motore gira sempre su kline 1m — vedi STRATEGY_TF / _on_kline.
+                ws_manager.subscribe_klines([self.symbol], intervals=[STRATEGY_TF])
 
         print(f'🤖 BOT init — symbol={self.symbol or "-"} tf={self.tf} mode={self.mode} '
               f'running={self.running}')
@@ -454,10 +466,6 @@ class BotEngine:
     def start(self):
         if not self.symbol:
             return False, 'Nessun simbolo configurato'
-        tf_seconds = TF_SECONDS.get(self.tf) or (int(self.tf) * 60 if self.tf.isdigit() else 3600)
-        if tf_seconds >= DAY_SECONDS:
-            return False, (f"TF {self.tf} troppo largo per un opening range giornaliero — "
-                            f"serve un TF intraday (max 4h/240)")
         if self.mode == 'execution' and self._trade_client:
             pos = self._trade_client.get_position(self.symbol)
             if pos:
@@ -473,7 +481,7 @@ class BotEngine:
             self.signals = []
             self._save_state()
         if self._ws_manager:
-            self._ws_manager.subscribe_klines([self.symbol], intervals=[self.tf])
+            self._ws_manager.subscribe_klines([self.symbol], intervals=[STRATEGY_TF])
         return True, None
 
     def clear_signals(self):
@@ -567,14 +575,15 @@ class BotEngine:
         # get_klines() riflette già il prezzo più recente anche a candela aperta.
         if not self.running:
             return
-        if symbol != self.symbol or interval != self.tf:
+        # Il motore gira sempre su kline 1m (STRATEGY_TF) — self.tf è solo l'etichetta
+        # scelta in UI (alert Telegram/grafico), non governa più range/trigger/SL-TP.
+        if symbol != self.symbol or interval != STRATEGY_TF:
             return
         if not self._ws_manager:
             return
 
         klines = self._ws_manager.get_klines(symbol, interval)
-        tf_seconds = TF_SECONDS.get(self.tf) or (int(self.tf) * 60 if self.tf.isdigit() else 3600)
-        needed = warmup_bars_for(self.params, tf_seconds) + 5
+        needed = warmup_bars_for(self.params, STRATEGY_TF_SECONDS) + 5
         if len(klines) < needed:
             return
 
