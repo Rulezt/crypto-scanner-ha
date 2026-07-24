@@ -407,6 +407,13 @@
                     <div id="fs-trade-balance-row" style="display:block;padding:10px 12px 8px;border-bottom:1px solid #2A2E39;">
                         <span style="font-size:12px;color:#ADB1B8;"><span data-i18n="avail_balance"></span>: <span id="fs-trade-balance" style="color:#FFFFFF;">$1000.00 (demo)</span></span>
                     </div>
+                    <!-- Size massima stimata dal book (soglia slippage fissa 0.15%, vedi trade.js _computeMaxSafeSize) -->
+                    <div id="fs-maxsize-row" style="display:block;padding:6px 12px 8px;border-bottom:1px solid #2A2E39;font-size:11px;color:#6B7280;" data-i18n-title="maxsize_hint" title="">
+                        <span data-i18n="maxsize_label">Size max (slippage ≤0.15%)</span>:
+                        <span style="color:#10b981;">Buy $<span id="fs-maxsize-buy">—</span></span>
+                        <span style="color:#4B5563;"> · </span>
+                        <span style="color:#ef4444;">Sell $<span id="fs-maxsize-sell">—</span></span>
+                    </div>
                     <!-- Order form -->
                     <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
                         <!-- Leva + Tipo Ordine (stessa riga in portrait) -->

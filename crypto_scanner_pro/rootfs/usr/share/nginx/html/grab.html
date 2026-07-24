@@ -5,8 +5,8 @@
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-PSD4H66Z89"></script>
     <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-PSD4H66Z89');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Channel Breakout Scanner - Crypto Scanner Pro</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxwYXRoIGQ9Ik0zIDEyYzEuNCAxLjIgMi44IDIuNCA1LjUgMi40IDQuNSAwIDQuNS0zLjYgOS0zLjYgNSAwIDUgMy42IDEwIDMuNiAyLjIgMCAzLjQtMS4yIDQuNS0yLjQiIHN0cm9rZT0iIzM4YmRmOCIgc3Ryb2tlLXdpZHRoPSIyLjIiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDxwYXRoIGQ9Ik0zIDIwYzEuNCAxLjIgMi44IDIuNCA1LjUgMi40IDQuNSAwIDQuNS0zLjYgOS0zLjYgNSAwIDUgMy42IDEwIDMuNiAyLjIgMCAzLjQtMS4yIDQuNS0yLjQiIHN0cm9rZT0iIzBlYTVlOSIgc3Ryb2tlLXdpZHRoPSIyLjIiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgb3BhY2l0eT0iMC41NSIvPgo8L3N2Zz4=">
+    <title>GRaB Scanner - Crypto Scanner Pro</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxjaXJjbGUgY3g9IjkiIGN5PSIxNiIgcj0iNCIgZmlsbD0iIzg0Y2MxNiIvPgogIDxjaXJjbGUgY3g9IjIzIiBjeT0iMTYiIHI9IjQiIGZpbGw9IiNlZjQ0NDQiLz4KICA8cGF0aCBkPSJNNCAxMGgyNE00IDIyaDI0IiBzdHJva2U9IiM2YjcyODAiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtZGFzaGFycmF5PSIyIDIiLz4KPC9zdmc+">
     <script src="/i18n.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
@@ -24,12 +24,12 @@
         label { font-size: 0.75rem; color: #9ca3af; white-space: nowrap; }
         .btn { background: #374151; color: #f9fafb; border: 1px solid #4b5563; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; white-space: nowrap; transition: background 0.15s; text-decoration: none; }
         .btn:hover { background: #4b5563; }
-        .btn.primary { background: #0284c7; border-color: #0284c7; }
-        .btn.primary:hover { background: #0369a1; }
+        .btn.primary { background: #4d7c0f; border-color: #4d7c0f; }
+        .btn.primary:hover { background: #3f6212; }
         .btn.danger { background: #7f1d1d; border-color: #991b1b; }
         .btn.danger:hover { background: #991b1b; }
         .progress-wrap { height: 3px; background: #1E222D; }
-        .progress-fill { height: 100%; background: #38bdf8; transition: width 0.3s; }
+        .progress-fill { height: 100%; background: #84cc16; transition: width 0.3s; }
         .filter-bar { display: flex; gap: 8px; padding: 7px 16px; background: #1E2329; border-bottom: 1px solid #1E222D; flex-wrap: wrap; align-items: center; position: sticky; top: var(--sticky-top, 60px); z-index: 90; }
         .filter-label { font-size: 0.7rem; color: #6b7280; }
         .filt-btn { font-size: 0.7rem; padding: 2px 10px; border-radius: 10px; cursor: pointer; border: 1px solid #374151; background: transparent; color: #9ca3af; transition: all 0.15s; }
@@ -37,23 +37,22 @@
         .filt-btn.active { background: #374151; color: #f9fafb; border-color: #4b5563; }
         .filt-btn.bull.active { background: rgba(16,185,129,0.2); border-color: #10b981; color: #34d399; }
         .filt-btn.bear.active { background: rgba(239,68,68,0.2); border-color: #ef4444; color: #f87171; }
-        .filt-btn.strong.active { background: rgba(245,158,11,0.2); border-color: #f59e0b; color: #fbbf24; }
         .divider { width: 1px; height: 18px; background: #2a2a2a; }
         .table-wrap { padding-bottom: 30px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
         .draggable-th { cursor: grab; user-select: none; }
         .draggable-th:active { cursor: grabbing; }
-        .draggable-th.drag-over { background: rgba(56,189,248,0.12) !important; border-left: 2px solid #38bdf8; }
+        .draggable-th.drag-over { background: rgba(132,204,22,0.12) !important; border-left: 2px solid #84cc16; }
         thead th { position: sticky; top: var(--thead-top, 92px); z-index: 50; background: #161A1E; color: #6b7280; font-weight: 600; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 9px 12px; border-bottom: 1px solid #2A2E39; white-space: nowrap; cursor: pointer; user-select: none; }
         thead th:hover { color: #B2B5BE; }
         .sa { margin-left: 3px; color: #4b5563; }
-        thead th.sorted .sa { color: #38bdf8; }
+        thead th.sorted .sa { color: #84cc16; }
         tbody tr { border-bottom: 1px solid rgba(42,46,57,0.4); transition: background 0.1s; }
         tbody tr:hover { background: rgba(30,34,45,0.6); }
         td { padding: 9px 12px; white-space: nowrap; }
         .td-sym { font-weight: 700; }
         .td-sym a { color: #e5e7eb; text-decoration: none; }
-        .td-sym a:hover { color: #38bdf8; }
+        .td-sym a:hover { color: #84cc16; }
         .fav-star { cursor: pointer; font-size: 0.95rem; color: #4B5563; margin-right: 5px; user-select: none; }
         .fav-star.active { color: #fbbf24; }
         .td-num { text-align: right; font-family: 'Monaco','Consolas',monospace; font-size: 0.76rem; color: #D1D5DB; }
@@ -64,11 +63,8 @@
         .side-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.63rem; font-weight: 700; letter-spacing: 0.04em; }
         .side-above { background: rgba(16,185,129,0.18); color: #34d399; }
         .side-below { background: rgba(239,68,68,0.18); color: #f87171; }
-        .strength-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.63rem; font-weight: 700; letter-spacing: 0.03em; }
-        .strength-strong { background: rgba(245,158,11,0.2); color: #fbbf24; }
-        .strength-normal { background: rgba(107,114,128,0.2); color: #9ca3af; }
         .loading-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; gap: 14px; color: #6b7280; }
-        .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.08); border-top-color: #38bdf8; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.08); border-top-color: #84cc16; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .lwc-popup-overlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; pointer-events: none; opacity: 0; transition: opacity 0.13s ease; }
         .lwc-popup-overlay.visible { opacity: 1; }
@@ -78,8 +74,8 @@
         .lwc-popup-chart { width: 100%; height: calc(100% - 26px); }
         .legend { display: flex; gap: 14px; padding: 6px 16px; background: #0F0F0F; border-top: 1px solid #1E222D; flex-wrap: wrap; }
         .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: #6b7280; }
-        .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
         .legend-line { width: 14px; height: 2px; }
+        .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
         .cfg-scroll { max-height: 62vh; overflow-y: auto; padding-right: 4px; }
         .cfg-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .cfg-row label { font-size: 0.76rem; color: #9CA3AF; }
@@ -98,7 +94,7 @@
     <div class="header">
         <div class="header-left">
             <a href="screener" title="Screener" style="display:inline-flex;align-items:center;justify-content:center;color:#6b7280;flex-shrink:0;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M19 12H5"/><path d="m12 5-7 7 7 7"/></svg></a>
-            <h1 style="color:#38bdf8">{{ t('chb_title') }}</h1>
+            <h1 style="color:#84cc16">{{ t('grb_title') }}</h1>
             <span class="status" v-html="displayMsg"></span>
         </div>
         <div class="controls">
@@ -108,11 +104,11 @@
                 <button data-lang-btn="en" onclick="switchLang('en')" style="font-size:11px;background:none;border:none;cursor:pointer;padding:0;color:#9CA3AF;font-family:inherit;">EN</button>
             </div>
             <button @click="startScan" :disabled="scanning" class="btn primary" style="display:inline-flex;align-items:center;gap:6px">
-                <span v-if="scanning">{{ t('chb_scanning') }}</span>
-                <span v-else style="display:inline-flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> {{ t('chb_scan') }}</span>
+                <span v-if="scanning">{{ t('grb_scanning') }}</span>
+                <span v-else style="display:inline-flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> {{ t('grb_scan') }}</span>
             </button>
-            <button v-if="scanning" @click="stopScan" class="btn danger">{{ t('chb_stop') }}</button>
-            <button @click="cfgOpen=true" class="btn" style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;" :title="t('chb_cfg_title')">
+            <button v-if="scanning" @click="stopScan" class="btn danger">{{ t('grb_stop') }}</button>
+            <button @click="cfgOpen=true" class="btn" style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;" :title="t('grb_cfg_title')">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
         </div>
@@ -127,35 +123,30 @@
     <!-- FILTER BAR -->
     <div class="filter-bar" v-if="initialDone || scanning">
         <template v-if="results.length > 0">
-            <span class="filter-label">{{ t('chb_strength_lbl') }}</span>
-            <button @click="strengthFilter='all'"    :class="['filt-btn', strengthFilter==='all'    ? 'active':'']">{{ t('chb_all') }} ({{ results.length }})</button>
-            <button @click="strengthFilter='strong'" :class="['filt-btn strong', strengthFilter==='strong' ? 'active':'']">{{ t('chb_strength_strong') }} ({{ countStrong }})</button>
-            <button @click="strengthFilter='normal'" :class="['filt-btn', strengthFilter==='normal' ? 'active':'']">{{ t('chb_strength_normal') }} ({{ countNormal }})</button>
-            <div class="divider"></div>
-            <span class="filter-label">{{ t('chb_dir_lbl') }}</span>
-            <button @click="dirFilter='all'"  :class="['filt-btn', dirFilter==='all'  ? 'active':'']">{{ t('chb_all') }}</button>
+            <span class="filter-label">{{ t('grb_dir_lbl') }}</span>
+            <button @click="dirFilter='all'"  :class="['filt-btn', dirFilter==='all'  ? 'active':'']">{{ t('grb_all') }}</button>
             <button @click="dirFilter='bull'" :class="['filt-btn bull', dirFilter==='bull' ? 'active':'']">{{ t('btn_long') }} ({{ countBull }})</button>
             <button @click="dirFilter='bear'" :class="['filt-btn bear', dirFilter==='bear' ? 'active':'']">{{ t('btn_short') }} ({{ countBear }})</button>
             <div class="divider"></div>
-            <span class="filter-label">{{ t('chb_sort') }}</span>
-            <button @click="setSortBy('age')"    :class="['filt-btn', sortBy==='age'    ? 'active':'']">{{ t('chb_sort_age') }} <span class="sa">{{ sa('age') }}</span></button>
-            <button @click="setSortBy('gap')"    :class="['filt-btn', sortBy==='gap'    ? 'active':'']">{{ t('chb_sort_gap') }} <span class="sa">{{ sa('gap') }}</span></button>
-            <button @click="setSortBy('volume')" :class="['filt-btn', sortBy==='volume' ? 'active':'']">{{ t('dt_volume') }} <span class="sa">{{ sa('volume') }}</span></button>
-            <button @click="setSortBy('change')" :class="['filt-btn', sortBy==='change' ? 'active':'']">{{ t('chb_col_change') }} <span class="sa">{{ sa('change') }}</span></button>
+            <span class="filter-label">{{ t('grb_sort') }}</span>
+            <button @click="setSortBy('age')"    :class="['filt-btn', sortBy==='age'    ? 'active':'']">{{ t('grb_sort_age') }} <span class="sa">{{ sa('age') }}</span></button>
+            <button @click="setSortBy('gap')"    :class="['filt-btn', sortBy==='gap'    ? 'active':'']">{{ t('grb_sort_gap') }} <span class="sa">{{ sa('gap') }}</span></button>
+            <button @click="setSortBy('volume')" :class="['filt-btn', sortBy==='volume' ? 'active':'']">{{ t('grb_sort_volume') }} <span class="sa">{{ sa('volume') }}</span></button>
+            <button @click="setSortBy('change')" :class="['filt-btn', sortBy==='change' ? 'active':'']">{{ t('grb_sort_change') }} <span class="sa">{{ sa('change') }}</span></button>
             <div class="divider"></div>
         </template>
         <span class="filter-label">TF:</span>
-        <button @click="tfFilter='all'" :class="['filt-btn', tfFilter==='all' ? 'active':'']">{{ t('chb_all') }}</button>
+        <button @click="tfFilter='all'" :class="['filt-btn', tfFilter==='all' ? 'active':'']">{{ t('grb_all') }}</button>
         <button v-for="tf in ALL_TFS" :key="tf" @click="tfFilter=tf" :class="['filt-btn', tfFilter===tf ? 'active':'']">{{ TF_LABEL[tf] }}</button>
     </div>
 
     <!-- INITIAL STATE -->
     <div v-if="!scanning && !initialDone" class="loading-overlay">
-        <p style="font-weight:600;color:#e5e7eb;">{{ t('chb_title') }}</p>
-        <p style="font-size:0.78rem;color:#4b5563;max-width:520px;text-align:center;line-height:1.6">{{ t('chb_desc') }}</p>
+        <p style="font-weight:600;color:#e5e7eb;">{{ t('grb_title') }}</p>
+        <p style="font-size:0.78rem;color:#4b5563;max-width:520px;text-align:center;line-height:1.6">{{ t('grb_desc') }}</p>
         <button @click="startScan" class="btn primary" style="margin-top:8px;display:inline-flex;align-items:center;gap:6px">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            {{ t('chb_scan') }}
+            {{ t('grb_scan') }}
         </button>
     </div>
 
@@ -168,7 +159,7 @@
     <!-- EMPTY AFTER SCAN -->
     <div v-if="!scanning && initialDone && filteredResults.length === 0" class="loading-overlay">
         <span style="font-size:2rem;">🔍</span>
-        <span style="font-size:0.85rem;color:#6b7280;">{{ t('chb_no_results') }}</span>
+        <span style="font-size:0.85rem;color:#6b7280;">{{ t('grb_no_results') }}</span>
     </div>
 
     <!-- TABLE -->
@@ -191,7 +182,7 @@
                 </tr>
             </thead>
             <tbody>
-                <template v-for="(row, idx) in filteredResults" :key="row.symbol+row.tf">
+                <template v-for="(row, idx) in filteredResults" :key="row.symbol+row.tf+row.type">
                 <tr>
                     <td class="td-num muted" style="text-align:center;font-size:0.7rem;">{{ idx+1 }}</td>
                     <td v-for="col in columns" :key="col.key" :data-col="col.key" :class="col.tdClass(row)">
@@ -213,24 +204,23 @@
                         <template v-else-if="col.key==='tf'">
                             <span style="font-size:0.72rem;font-weight:600;color:#60a5fa;">{{ TF_LABEL[row.tf] }}</span>
                         </template>
-                        <template v-else-if="col.key==='strength'">
-                            <span class="strength-badge" :class="row.strength==='strong'?'strength-strong':'strength-normal'">{{ row.strength==='strong' ? t('chb_strength_strong') : t('chb_strength_normal') }}</span>
+                        <template v-else-if="col.key==='type'">
+                            <span class="side-badge" :style="row.type==='reentry' ? 'background:rgba(156,163,175,0.18);color:#D1D5DB' : 'background:rgba(132,204,22,0.18);color:#a3e635'">{{ row.type==='reentry' ? t('grb_type_reentry') : t('grb_type_flip') }}</span>
                         </template>
                         <template v-else-if="col.key==='dir'">
                             <span class="side-badge" :class="row.dir==='bull'?'side-above':'side-below'">{{ row.dir==='bull' ? t('btn_long') : t('btn_short') }}</span>
                         </template>
                         <template v-else-if="col.key==='age'">{{ row.age }}</template>
-                        <template v-else-if="col.key==='gap'"><span class="positive">+{{ row.gap.toFixed(2) }}%</span></template>
-                        <template v-else-if="col.key==='bandUp'">{{ formatPrice(row.bandUp) }}</template>
-                        <template v-else-if="col.key==='bandLow'">{{ formatPrice(row.bandLow) }}</template>
+                        <template v-else-if="col.key==='gap'">{{ row.gap.toFixed(2) }}%</template>
+                        <template v-else-if="col.key==='level'">{{ formatPrice(row.level) }}</template>
                         <template v-else-if="col.key==='price'">{{ formatPrice(row.price) }}</template>
                         <template v-else-if="col.key==='change'">{{ row.change>=0?'+':'' }}{{ row.change.toFixed(2) }}%</template>
                         <template v-else-if="col.key==='volume'">{{ formatVolume(row.volume) }}</template>
                     </td>
                 </tr>
-                <tr v-if="mobilePreviewSymbol===row.symbol+row.tf" class="mobile-preview-row">
+                <tr v-if="mobilePreviewSymbol===row.symbol+row.tf+row.type" class="mobile-preview-row">
                     <td :colspan="columns.length+1" style="padding:8px 12px;background:#0B0E11;">
-                        <div :id="'mp-chart-'+row.symbol+row.tf" style="width:100%;aspect-ratio:2/1;min-height:150px;max-height:280px;"></div>
+                        <div :id="'mp-chart-'+row.symbol+row.tf+row.type" style="width:100%;aspect-ratio:2/1;min-height:150px;max-height:280px;"></div>
                     </td>
                 </tr>
                 </template>
@@ -249,7 +239,7 @@
             <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
                 <span id="lwc-popup-candle-pct" style="font-family:monospace;font-size:0.75rem;min-width:52px;text-align:right;white-space:nowrap;"></span>
                 <span style="color:#374151;font-size:0.72rem;">|</span>
-                <span id="lwc-popup-tf" style="font-size:0.72rem;color:#38bdf8;font-weight:700;white-space:nowrap;"></span>
+                <span id="lwc-popup-tf" style="font-size:0.72rem;color:#84cc16;font-weight:700;white-space:nowrap;"></span>
                 <span id="lwc-popup-close" @click="closeThumbPopup" style="cursor:pointer;color:#6b7280;font-size:16px;line-height:1;padding:0 2px;">×</span>
             </div>
         </div>
@@ -263,9 +253,7 @@
         <div class="legend-item"><span class="legend-line" style="background:#fbbf24"></span> EMA10</div>
         <div class="legend-item"><span class="legend-line" style="background:#3b82f6"></span> EMA60</div>
         <div class="legend-item"><span class="legend-line" style="background:#a855f7"></span> EMA223</div>
-        <div class="legend-item"><span class="legend-line" style="background:#ffffff"></span> {{ t('chb_title') }}</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#10b981"></span> {{ t('btn_long') }}</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> {{ t('btn_short') }}</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#C0C0C0"></span> {{ t('grb_legend_gray') }}</div>
         <div class="legend-item" style="margin-left:auto;color:#374151">{{ filteredResults.length }} segnali</div>
     </div>
 
@@ -273,12 +261,12 @@
     <div v-if="cfgOpen" @click.self="cfgOpen=false" style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:flex;align-items:center;justify-content:center;">
         <div style="background:#161A1E;border:1px solid #2A2E39;border-radius:10px;padding:24px 22px;width:320px;position:relative;">
             <button @click="cfgOpen=false" style="position:absolute;top:10px;right:14px;background:none;border:none;color:#6B7280;cursor:pointer;font-size:20px;line-height:1;">×</button>
-            <div style="font-size:0.85rem;font-weight:700;color:#E5E7EB;margin-bottom:14px;">⚙ {{ t('chb_cfg_title') }}</div>
+            <div style="font-size:0.85rem;font-weight:700;color:#E5E7EB;margin-bottom:14px;">⚙ {{ t('grb_cfg_title') }}</div>
             <div class="cfg-scroll" style="display:flex;flex-direction:column;gap:11px;">
-                <div class="cfg-row"><label>{{ t('chb_period') }}</label><input type="number" v-model.number="period" min="5" max="100" step="1"></div>
-                <div class="cfg-row"><label>{{ t('chb_lookback') }}</label><input type="number" v-model.number="lookbackBars" min="1" max="50" step="1"></div>
-                <div class="cfg-row"><label>{{ t('chb_history') }}</label><input type="number" v-model.number="historyBars" min="200" max="1000" step="50"></div>
-                <div class="cfg-row"><label>{{ t('chb_vol') }}</label><input type="number" v-model.number="minVolM" min="0" max="1000" step="1"></div>
+                <div class="cfg-row"><label :title="t('grb_ema_period_hint')">{{ t('grb_ema_period') }}</label><input type="number" v-model.number="emaPeriod" min="2" max="500" step="1"></div>
+                <div class="cfg-row"><label>{{ t('grb_lookback') }}</label><input type="number" v-model.number="lookbackBars" min="1" max="100" step="1"></div>
+                <div class="cfg-row"><label>{{ t('grb_history') }}</label><input type="number" v-model.number="historyBars" min="150" max="1000" step="50"></div>
+                <div class="cfg-row"><label>{{ t('grb_vol') }}</label><input type="number" v-model.number="minVolM" min="0" max="1000" step="1"></div>
                 <div class="cfg-row"><label>{{ t('scr_min_var') }}</label><input type="number" v-model.number="minVarPct" min="0" max="1000" step="0.5"></div>
             </div>
             <button @click="cfgOpen=false" class="btn primary" style="width:100%;margin-top:18px;justify-content:center;">OK</button>
@@ -295,18 +283,18 @@ window.switchLang = function(l) { _origSwitch(l); _appLang.value = l; };
 
 createApp({
     setup() {
-        const ALL_TFS  = ['D','240','60','30'];
+        const ALL_TFS  = ['240','60','30','5'];
         const TF_LABEL = { '1':'1m','5':'5m','30':'30m','60':'1h','240':'4h','D':'D' };
 
         const t = (key) => { _appLang.value; return window.T[key] || key; };
 
         const cfgOpen = ref(false);
-        const _cfgB = (() => { try { return JSON.parse(localStorage.getItem('chb_cfg') || '{}'); } catch { return {}; } })();
-        const period          = ref(_cfgB.period          ?? 20);
-        const lookbackBars    = ref(_cfgB.lookbackBars    ?? 3);
-        const historyBars     = ref(_cfgB.historyBars     ?? 600);
-        const minVolM         = ref(_cfgB.minVolM         ?? 10);
-        const minVarPct       = ref(_cfgB.minVarPct       ?? 5);
+        const _cfgB = (() => { try { return JSON.parse(localStorage.getItem('grb_cfg') || '{}'); } catch { return {}; } })();
+        const emaPeriod    = ref(_cfgB.emaPeriod    ?? 34);
+        const lookbackBars = ref(_cfgB.lookbackBars ?? 20);
+        const historyBars  = ref(_cfgB.historyBars  ?? 200);
+        const minVolM      = ref(_cfgB.minVolM      ?? 10);
+        const minVarPct    = ref(_cfgB.minVarPct    ?? 0);
 
         const scanning    = ref(false);
         const stopFlag    = ref(false);
@@ -328,29 +316,28 @@ createApp({
             _appLang.value;
             if (_scanResult.value && !scanning.value) {
                 const { count, coins, time } = _scanResult.value;
-                return `${SVG_CHECK}${count} ${t('chb_found')} ${coins} · ${time}`;
+                return `${SVG_CHECK}${count} ${t('grb_found')} ${coins} · ${time}`;
             }
-            return statusMsg.value || t('chb_ready');
+            return statusMsg.value || t('grb_ready');
         });
 
         // ── COLUMNS (drag & drop) ─────────────────────────────────────────────
-        const STORAGE_KEY_CHB = 'chb_columns_order';
-        let _colKey_chb = STORAGE_KEY_CHB;
+        const STORAGE_KEY_GRB = 'grb_columns_order';
+        let _colKey_grb = STORAGE_KEY_GRB;
         const columnsDef = [
-            { key:'symbol',   labelKey:'chb_col_symbol',   sortKey:null,     align:'left',   tdClass:()=>'td-sym' },
-            { key:'mtf',      labelKey:'col_mtf',          sortKey:null,     align:'center', tdClass:()=>'td-center' },
-            { key:'trade',    labelKey:'col_trade',        sortKey:null,     align:'center', tdClass:()=>'td-center' },
-            { key:'preview', labelKey:'col_preview', sortKey:null, align:'center', tdClass:()=>'td-center' },
-            { key:'tf',       labelKey:'TF',                sortKey:'tf',     align:'center', tdClass:()=>'td-center' },
-            { key:'strength', labelKey:'chb_col_strength', sortKey:null,     align:'center', tdClass:()=>'td-center' },
-            { key:'dir',      labelKey:'chb_col_dir',      sortKey:null,     align:'center', tdClass:()=>'td-center' },
-            { key:'age',      labelKey:'chb_col_age',      sortKey:'age',    align:'right',  tdClass:()=>'td-num muted' },
-            { key:'gap',      labelKey:'chb_col_gap',      sortKey:'gap',    align:'right',  tdClass:()=>'td-num' },
-            { key:'bandUp',   labelKey:'chb_col_bandup',   sortKey:null,     align:'right',  tdClass:()=>'td-num muted' },
-            { key:'bandLow',  labelKey:'chb_col_bandlow',  sortKey:null,     align:'right',  tdClass:()=>'td-num muted' },
-            { key:'price',    labelKey:'chb_col_price',    sortKey:null,     align:'right',  tdClass:()=>'td-num' },
-            { key:'change',   labelKey:'chb_col_change',   sortKey:'change', align:'right',  tdClass:(r)=>r.change>=0?'td-num positive':'td-num negative' },
-            { key:'volume',   labelKey:'chb_col_vol24h',   sortKey:'volume', align:'right',  tdClass:()=>'td-num muted' },
+            { key:'symbol',   labelKey:'grb_col_symbol',  sortKey:null,     align:'left',   tdClass:()=>'td-sym' },
+            { key:'mtf',      labelKey:'col_mtf',         sortKey:null,     align:'center', tdClass:()=>'td-center' },
+            { key:'trade',    labelKey:'col_trade',       sortKey:null,     align:'center', tdClass:()=>'td-center' },
+            { key:'preview',  labelKey:'col_preview',     sortKey:null,     align:'center', tdClass:()=>'td-center' },
+            { key:'tf',       labelKey:'TF',              sortKey:'tf',     align:'center', tdClass:()=>'td-center' },
+            { key:'type',     labelKey:'grb_col_type',    sortKey:null,     align:'center', tdClass:()=>'td-center' },
+            { key:'dir',      labelKey:'grb_col_dir',     sortKey:null,     align:'center', tdClass:()=>'td-center' },
+            { key:'age',      labelKey:'grb_col_age',     sortKey:'age',    align:'right',  tdClass:()=>'td-num muted' },
+            { key:'gap',      labelKey:'grb_col_gap',     sortKey:'gap',    align:'right',  tdClass:()=>'td-num' },
+            { key:'level',    labelKey:'grb_col_level',   sortKey:null,     align:'right',  tdClass:()=>'td-num muted' },
+            { key:'price',    labelKey:'grb_col_price',   sortKey:null,     align:'right',  tdClass:()=>'td-num' },
+            { key:'change',   labelKey:'grb_col_change',  sortKey:'change', align:'right',  tdClass:(r)=>r.change>=0?'td-num positive':'td-num negative' },
+            { key:'volume',   labelKey:'grb_col_vol24h',  sortKey:'volume', align:'right',  tdClass:()=>'td-num muted' },
         ];
         const columns = ref([...columnsDef]);
         let dragKey = null;
@@ -365,16 +352,15 @@ createApp({
             const toIdx   = cols.findIndex(c => c.key === targetKey);
             if (fromIdx === -1 || toIdx === -1) { onDragEnd(); return; }
             cols.splice(toIdx, 0, cols.splice(fromIdx, 1)[0]);
-            try { localStorage.setItem(_colKey_chb, JSON.stringify(cols.map(c => c.key))); } catch {}
+            try { localStorage.setItem(_colKey_grb, JSON.stringify(cols.map(c => c.key))); } catch {}
             onDragEnd();
         };
 
         // ── FILTER & SORT ──────────────────────────────────────────────────────
-        const dirFilter      = ref('all');
-        const strengthFilter = ref('all');
-        const tfFilter       = ref('all');
-        const sortBy         = ref('age');
-        const sortDir        = ref(1);
+        const dirFilter = ref('all');
+        const tfFilter   = ref('all');
+        const sortBy     = ref('age');
+        const sortDir    = ref(1);
 
         const setSortBy = (key) => {
             if (sortBy.value === key) sortDir.value *= -1;
@@ -385,16 +371,13 @@ createApp({
             return sortDir.value === 1 ? '↑' : '↓';
         };
 
-        const countBull   = computed(() => results.value.filter(r => r.dir === 'bull').length);
-        const countBear   = computed(() => results.value.filter(r => r.dir === 'bear').length);
-        const countStrong = computed(() => results.value.filter(r => r.strength === 'strong').length);
-        const countNormal = computed(() => results.value.filter(r => r.strength === 'normal').length);
+        const countBull = computed(() => results.value.filter(r => r.dir === 'bull').length);
+        const countBear = computed(() => results.value.filter(r => r.dir === 'bear').length);
 
         const filteredResults = computed(() => {
             let list = [...results.value];
-            if (dirFilter.value      !== 'all') list = list.filter(r => r.dir === dirFilter.value);
-            if (strengthFilter.value !== 'all') list = list.filter(r => r.strength === strengthFilter.value);
-            if (tfFilter.value       !== 'all') list = list.filter(r => r.tf === tfFilter.value);
+            if (dirFilter.value !== 'all') list = list.filter(r => r.dir === dirFilter.value);
+            if (tfFilter.value  !== 'all') list = list.filter(r => r.tf === tfFilter.value);
             list.sort((a, b) => {
                 let va, vb;
                 switch(sortBy.value) {
@@ -412,69 +395,91 @@ createApp({
             return list;
         });
 
-        // ── CHANNEL BREAKOUT ENGINE ──────────────────────────────────────────────
-        // Canale a 3 linee: SMA(period) su close/high/low (stessa formula del canale
-        // disponibile in chart.html/mtf.html). Segnale sulla candela i confrontato col
-        // canale della candela PRECEDENTE (i-1), cioè il livello che esisteva PRIMA
-        // dell'apertura — evita l'auto-riferimento (la candela i influenza anche il suo
-        // stesso canale nella media).
-        const calcChannelArr = (candles, per) => {
-            const n = candles.length;
-            const upper = new Array(n).fill(null), mid = new Array(n).fill(null), lower = new Array(n).fill(null);
-            let sumC = 0, sumH = 0, sumL = 0;
-            for (let i = 0; i < n; i++) {
-                sumC += candles[i].close; sumH += candles[i].high; sumL += candles[i].low;
-                if (i >= per) { sumC -= candles[i-per].close; sumH -= candles[i-per].high; sumL -= candles[i-per].low; }
-                if (i >= per - 1) { mid[i] = sumC/per; upper[i] = sumH/per; lower[i] = sumL/per; }
-            }
-            return { upper, mid, lower };
+        // ── GRaB ENGINE ───────────────────────────────────────────────────────────
+        // Stessa "wave" dell'indicatore GRaB (vedi trade.js/mtf.html): EMA(high) ed
+        // EMA(low), separate (non EMA di close) — formano una banda. Zona 'above' =
+        // close oltre EMA(high) (candela verde nell'indicatore), 'below' = close sotto
+        // EMA(low) (candela rossa), 'mid' = dentro la banda (candela grigia/silver).
+        // Segnale richiesto dall'utente: PRIMA candela verde/rossa la cui candela
+        // PRECEDENTE era grigia — quindi una transizione mid→above (Long) o mid→below
+        // (Short), niente altre condizioni (non richiesto un controllo su i-2 come nel
+        // Channel Breakout: una volta fuori dalla banda la zona precedente non è più
+        // 'mid', quindi la transizione non si ripete da sola sulle candele successive).
+        const calcEMAFieldArr = (candles, period, field) => {
+            const k = 2 / (period + 1);
+            let v = candles[0][field];
+            const out = new Array(candles.length);
+            out[0] = v;
+            for (let i = 1; i < candles.length; i++) { v = candles[i][field] * k + v * (1 - k); out[i] = v; }
+            return out;
         };
-
-        // Cerca, entro lookbackBars candele, la più recente che soddisfa uno dei pattern:
-        //  - STRONG: apre fuori dal canale (sopra/sotto) e chiude dal lato opposto (attraversa tutto il canale)
-        //  - NORMAL: apre dentro il canale e chiude fuori (sopra=Long, sotto=Short)
-        // Scarta candele "di continuazione": se anche la candela precedente aveva già chiuso
-        // oltre lo stesso lato del canale, non è un nuovo breakout ma un trend già in corso
-        // (il canale SMA è in ritardo sul prezzo, quindi in un rally sostenuto OGNI candela
-        // chiuderebbe sopra la banda — senza questo controllo si ri-segnalerebbe ad ogni tick).
-        const detectBreakout = (candles, upperArr, lowerArr, cfg) => {
+        const classifyZone = (close, eHigh, eLow) => {
+            if (close > eHigh) return 'above';
+            if (close < eLow)  return 'below';
+            return 'mid';
+        };
+        const detectGrabFlip = (candles, ehArr, elArr, cfg) => {
             const n = candles.length;
-            const minIdx = Math.max(cfg.period, 1);
-            const from = Math.max(minIdx, n - cfg.lookbackBars);
-            for (let i = n - 1; i >= from; i--) {
-                const uPrev = upperArr[i-1], lPrev = lowerArr[i-1];
-                if (uPrev == null || lPrev == null) continue;
-                const o = candles[i].open, c = candles[i].close;
-                let type = null, dir = null;
-                if (o < lPrev && c > uPrev)      { type = 'strong'; dir = 'bull'; }
-                else if (o > uPrev && c < lPrev) { type = 'strong'; dir = 'bear'; }
-                else if (o >= lPrev && o <= uPrev && c > uPrev) { type = 'normal'; dir = 'bull'; }
-                else if (o >= lPrev && o <= uPrev && c < lPrev) { type = 'normal'; dir = 'bear'; }
-                if (!type) continue;
-                if (i >= 1) {
-                    const uPrev2 = upperArr[i-2], lPrev2 = lowerArr[i-2];
-                    const prevClose = candles[i-1].close;
-                    if (uPrev2 != null && lPrev2 != null) {
-                        if (dir === 'bull' && prevClose > uPrev2) continue;
-                        if (dir === 'bear' && prevClose < lPrev2) continue;
-                    }
-                }
-                return { idx: i, age: n - 1 - i, type, dir, bandUp: uPrev, bandLow: lPrev };
+            const from = Math.max(cfg.emaPeriod, n - cfg.lookbackBars);
+            for (let i = n - 1; i >= Math.max(from, 1); i--) {
+                const curZone = classifyZone(candles[i].close, ehArr[i], elArr[i]);
+                if (curZone === 'mid') continue;
+                const prevZone = classifyZone(candles[i - 1].close, ehArr[i - 1], elArr[i - 1]);
+                if (prevZone !== 'mid') continue;
+                const dir = curZone === 'above' ? 'bull' : 'bear';
+                const level = dir === 'bull' ? ehArr[i] : elArr[i];
+                return { idx: i, age: n - 1 - i, dir, level };
             }
             return null;
         };
 
-        const buildRow = (ticker, tf, candles, sig) => {
+        // ── Rientro in zona neutra (richiesta utente 2026-07-24) — l'opposto della
+        // transizione sopra: prima candela grigia/argento (zona 'mid') la cui candela
+        // PRECEDENTE era verde o rossa (zona 'above'/'below'). 'dir' qui NON indica la
+        // direzione della rottura (non c'è, la candela è dentro la banda) ma il colore
+        // della candela stessa — argento (colorMidBull, close>open) o grigio
+        // (colorMidBear, close<open) — esattamente le due sfumature che l'indicatore
+        // GRaB usa per la zona neutra. 'level' è la soglia appena "rientrata"
+        // (EMA-high se si veniva da 'above', EMA-low se si veniva da 'below').
+        const detectGrabReentry = (candles, ehArr, elArr, cfg) => {
+            const n = candles.length;
+            const from = Math.max(cfg.emaPeriod, n - cfg.lookbackBars);
+            for (let i = n - 1; i >= Math.max(from, 1); i--) {
+                const curZone = classifyZone(candles[i].close, ehArr[i], elArr[i]);
+                if (curZone !== 'mid') continue;
+                const prevZone = classifyZone(candles[i - 1].close, ehArr[i - 1], elArr[i - 1]);
+                if (prevZone === 'mid') continue;
+                const dir = candles[i].close > candles[i].open ? 'bull' : 'bear';
+                const level = prevZone === 'above' ? ehArr[i] : elArr[i];
+                return { idx: i, age: n - 1 - i, dir, level };
+            }
+            return null;
+        };
+
+        // Colori GRaB standard (stessa palette default di trade.js _DEFAULT_GRAB_CFG) —
+        // usati per ricolorare candele thumbnail/popup coerentemente con l'indicatore.
+        const GRAB_COLORS = {
+            colorAboveBull: '#00FF00', colorAboveBear: '#008000',
+            colorBelowBull: '#FF0000', colorBelowBear: '#800000',
+            colorMidBull:   '#C0C0C0', colorMidBear:   '#808080',
+        };
+        const grabBarColor = (close, open, eHigh, eLow) => {
+            if (close < eLow)  return close > open ? GRAB_COLORS.colorBelowBull : GRAB_COLORS.colorBelowBear;
+            if (close > eHigh) return close > open ? GRAB_COLORS.colorAboveBull : GRAB_COLORS.colorAboveBear;
+            return close > open ? GRAB_COLORS.colorMidBull : GRAB_COLORS.colorMidBear;
+        };
+
+        const buildRow = (ticker, tf, candles, sig, type) => {
             const lastIdx = candles.length - 1;
             const price = candles[lastIdx].close;
-            const sigClose = candles[sig.idx].close;
-            const gapPct = sig.dir === 'bull'
-                ? (sigClose - sig.bandUp)  / sig.bandUp  * 100
-                : (sig.bandLow - sigClose) / sig.bandLow * 100;
+            // Distanza assoluta dal livello rilevante (EMA-high o EMA-low) — per un
+            // 'flip' è quanto oltre il livello è la rottura, per un 'reentry' è quanto
+            // dentro la banda si è ritirato il prezzo: stessa formula, segno sempre
+            // positivo, evita di dover tenere due convenzioni di segno diverse.
+            const gapPct = Math.abs(price - sig.level) / sig.level * 100;
             return {
-                symbol: ticker.symbol, tf, dir: sig.dir, strength: sig.type,
-                age: sig.age, gap: Math.abs(gapPct),
-                bandUp: sig.bandUp, bandLow: sig.bandLow,
+                symbol: ticker.symbol, tf, dir: sig.dir, type,
+                age: sig.age, gap: gapPct, level: sig.level,
                 price, change: ticker.change, volume: ticker.volume,
                 sigTime: candles[sig.idx].time,
             };
@@ -493,12 +498,13 @@ createApp({
                 _scanResult.value = null;
                 results.value     = [];
             }
+            thumbCache.clear();
             const collected = [];
             progressDone.value  = 0;
             progressTotal.value = 0;
-            statusMsg.value   = `${SVG_SEARCH}${t('chb_fetching')}`;
+            statusMsg.value   = `${SVG_SEARCH}${t('grb_fetching')}`;
 
-            const cfg = { period: period.value, lookbackBars: lookbackBars.value };
+            const cfg = { emaPeriod: emaPeriod.value, lookbackBars: lookbackBars.value };
 
             try {
                 const resp = await fetch('https://api.bybit.com/v5/market/tickers?category=linear');
@@ -518,13 +524,13 @@ createApp({
                     .sort((a, b) => b.volume - a.volume);
 
                 progressTotal.value = tickers.length;
-                statusMsg.value = `${SVG_SEARCH}${t('chb_progress')} ${tickers.length} ${t('dt_coin')}…`;
+                statusMsg.value = `${SVG_SEARCH}${t('grb_progress')} ${tickers.length} ${t('dt_coin')}…`;
 
-                const KLIMIT     = Math.min(1000, historyBars.value + 30);
-                const WARMUP_MIN = cfg.period + cfg.lookbackBars + 5;
+                const KLIMIT     = Math.min(1000, historyBars.value + 20);
+                const WARMUP_MIN = cfg.emaPeriod + 10;
                 const BATCH = 4;
                 for (let i = 0; i < tickers.length; i += BATCH) {
-                    if (stopFlag.value) { statusMsg.value = t('chb_stopped'); break; }
+                    if (stopFlag.value) { statusMsg.value = t('grb_stopped'); break; }
                     const batch = tickers.slice(i, i + BATCH);
                     await Promise.all(batch.map(async (ticker) => {
                         try {
@@ -546,10 +552,17 @@ createApp({
 
                                     if (candles.length < WARMUP_MIN) return;
 
-                                    const { upper, lower } = calcChannelArr(candles, cfg.period);
-                                    const sig = detectBreakout(candles, upper, lower, cfg);
-                                    if (sig) {
-                                        const row = buildRow(ticker, tf, candles, sig);
+                                    const ehArr = calcEMAFieldArr(candles, cfg.emaPeriod, 'high');
+                                    const elArr = calcEMAFieldArr(candles, cfg.emaPeriod, 'low');
+                                    const sigFlip = detectGrabFlip(candles, ehArr, elArr, cfg);
+                                    if (sigFlip) {
+                                        const row = buildRow(ticker, tf, candles, sigFlip, 'flip');
+                                        collected.push(row);
+                                        if (!silent) results.value.push(row);
+                                    }
+                                    const sigReentry = detectGrabReentry(candles, ehArr, elArr, cfg);
+                                    if (sigReentry) {
+                                        const row = buildRow(ticker, tf, candles, sigReentry, 'reentry');
                                         collected.push(row);
                                         if (!silent) results.value.push(row);
                                     }
@@ -576,8 +589,6 @@ createApp({
 
 
         // ── POPUP CHART ────────────────────────────────────────────────────────
-        // Set standard sempre visibile in ogni popup (vedi reference_visual_scanner),
-        // più le 3 linee del canale (bianche) e il relativo riempimento.
         const EMA_CONFIG = [
             { period: 5,   color: '#ef4444', width: 1.5 },
             { period: 10,  color: '#fbbf24', width: 1.5 },
@@ -589,8 +600,6 @@ createApp({
 
         const LC = LightweightCharts;
         const addS = (chart, seriesType, options) => {
-            // LineSeries qui = sempre indicatori overlay (EMA/canale): escluderli dall'autoscale
-            // evita che un indicatore lontano dal prezzo schiacci le candele in una riga piatta.
             if (seriesType === 'LineSeries') options = { ...options, autoscaleInfoProvider: () => null };
             if (typeof chart.addSeries === 'function' && LC[seriesType]) return chart.addSeries(LC[seriesType], options);
             const fnName = 'add' + seriesType.replace('Series', '') + 'Series';
@@ -611,49 +620,77 @@ createApp({
             return out;
         };
 
-        function _hexToRgba(hex, alpha) {
-            const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || '');
-            if (!m) return `rgba(255,255,255,${alpha})`;
-            return `rgba(${parseInt(m[1],16)},${parseInt(m[2],16)},${parseInt(m[3],16)},${alpha})`;
-        }
-        class _ChannelFillPrimitive {
-            constructor(getData, series, chart) {
-                this._series = series;
-                const renderer = {
-                    draw: target => target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio, verticalPixelRatio }) => {
-                        const d = getData();
-                        if (!d || !d.upper.length || !d.lower.length) return;
-                        const ts = chart.timeScale();
-                        ctx.save();
-                        ctx.beginPath();
-                        let started = false;
-                        for (let i = 0; i < d.upper.length; i++) {
-                            const x = ts.timeToCoordinate(d.upper[i].time);
-                            const y = series.priceToCoordinate(d.upper[i].value);
-                            if (x == null || y == null) continue;
-                            const xp = x * horizontalPixelRatio, yp = y * verticalPixelRatio;
-                            if (!started) { ctx.moveTo(xp, yp); started = true; } else ctx.lineTo(xp, yp);
-                        }
-                        for (let i = d.lower.length - 1; i >= 0; i--) {
-                            const x = ts.timeToCoordinate(d.lower[i].time);
-                            const y = series.priceToCoordinate(d.lower[i].value);
-                            if (x == null || y == null) continue;
-                            ctx.lineTo(x * horizontalPixelRatio, y * verticalPixelRatio);
-                        }
-                        if (started) { ctx.closePath(); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fill(); }
-                        ctx.restore();
-                    })
-                };
-                this._view = { renderer: () => renderer, zOrder: () => 'bottom' };
-            }
-            attached() {}
-            detached() {}
-            updateAllViews() {}
-            paneViews() { return [this._view]; }
-        }
-
         const destroyPopupChart = () => {
             if (popupChart) { try { popupChart.remove(); } catch(e) {} popupChart = null; }
+        };
+
+        // Ricolora le candele (verde/rosso/grigio) esattamente come l'indicatore GRaB
+        // dal vivo, usando la wave EMA(high)/EMA(low) calcolata su queste stesse klines.
+        const buildGrabColoredData = (klines, period) => {
+            const ehArr = calcEMAFieldArr(klines, period, 'high');
+            const elArr = calcEMAFieldArr(klines, period, 'low');
+            return klines.map((k, i) => {
+                const c = grabBarColor(k.close, k.open, ehArr[i], elArr[i]);
+                return { ...k, color: c, wickColor: c, borderColor: c };
+            });
+        };
+
+        const buildPriceChart = async (container, row, visibleBarsOverride) => {
+            const res  = await fetch(`api/klines?symbol=${row.symbol}&interval=${row.tf}`);
+            if (!res.ok) return null;
+            const data = await res.json();
+            if (!data.success || !data.data?.length) return null;
+
+            const seen = new Set();
+            const klines = data.data.filter(c => {
+                if (seen.has(c.time)) return false;
+                seen.add(c.time);
+                return isFinite(c.open) && isFinite(c.close) && c.high >= c.low;
+            });
+            if (!klines.length) return null;
+
+            const chart = LC.createChart(container, {
+                autoSize: true,
+                layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
+                grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
+                crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
+                handleScroll: true, handleScale: true,
+                rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },
+                timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 10 },
+            });
+
+            const candleSeries = addS(chart, 'CandlestickSeries', {
+                upColor: '#089981', downColor: '#F23645',
+                borderVisible: false, wickUpColor: '#089981', wickDownColor: '#F23645',
+            });
+            candleSeries.setData(buildGrabColoredData(klines, emaPeriod.value));
+
+            for (const c of EMA_CONFIG) {
+                const line = calcEMASeriesTV(klines, c.period);
+                if (line.length) addS(chart, 'LineSeries', { color: c.color, lineWidth: c.width, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }).setData(line);
+            }
+
+            // Wave EMA-high/EMA-low NON disegnata (richiesta esplicita utente 2026-07-24)
+            // — solo le candele colorate GRaB + marker restano come indicazione visiva.
+
+            const _sigTimeAdj = row.sigTime != null ? row.sigTime + (data.utc_offset_s || 0) : null;
+            if (_sigTimeAdj && LC.createSeriesMarkers) {
+                try {
+                    const isReentry = row.type === 'reentry';
+                    LC.createSeriesMarkers(candleSeries, [{
+                        time: _sigTimeAdj,
+                        position: row.dir === 'bull' ? 'belowBar' : 'aboveBar',
+                        color: isReentry ? (row.dir === 'bull' ? '#C0C0C0' : '#808080') : (row.dir === 'bull' ? '#10b981' : '#ef4444'),
+                        shape: isReentry ? 'circle' : (row.dir === 'bull' ? 'arrowUp' : 'arrowDown'),
+                        text: isReentry ? (row.dir === 'bull' ? 'Silver' : 'Gray') : (row.dir === 'bull' ? 'GRaB Long' : 'GRaB Short'),
+                    }]);
+                } catch(e) { /* marker best-effort */ }
+            }
+
+            const visibleBars = visibleBarsOverride || (row.tf === 'D' ? 40 : row.tf === '240' ? 50 : 80);
+            chart.timeScale().setVisibleLogicalRange({ from: klines.length - visibleBars, to: klines.length + 10 });
+
+            return chart;
         };
 
         const buildPopupChart = async (row) => {
@@ -662,86 +699,9 @@ createApp({
             const container = document.getElementById('lwc-popup-chart');
             if (!container) return;
             try {
-                const res  = await fetch(`api/klines?symbol=${row.symbol}&interval=${row.tf}`);
-                if (!res.ok) return;
-                const data = await res.json();
-                if (!data.success || !data.data?.length || session !== buildSession) return;
-
-                const seen = new Set();
-                const klines = data.data.filter(c => {
-                    if (seen.has(c.time)) return false;
-                    seen.add(c.time);
-                    return isFinite(c.open) && isFinite(c.close) && c.high >= c.low;
-                });
-                if (!klines.length || session !== buildSession) return;
-
-                const chart = LC.createChart(container, {
-                    autoSize: true,
-                    layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
-                    grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
-                    crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 1 },
-                    handleScroll: true, handleScale: true,
-                    rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },
-                    timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 10 },
-                });
-                if (session !== buildSession) { try { chart.remove(); } catch(e) {} return; }
+                const chart = await buildPriceChart(container, row);
+                if (!chart || session !== buildSession) { if (chart) { try{chart.remove();}catch(e){} } return; }
                 popupChart = chart;
-
-                const candleSeries = addS(chart, 'CandlestickSeries', {
-                    upColor: '#089981', downColor: '#F23645',
-                    borderVisible: false, wickUpColor: '#089981', wickDownColor: '#F23645',
-                });
-                candleSeries.setData(klines);
-                chart.subscribeCrosshairMove(param => {
-                    const pctEl = document.getElementById('lwc-popup-candle-pct');
-                    if (!pctEl) return;
-                    const cd = param?.seriesData?.get(candleSeries);
-                    if (!cd) { pctEl.textContent = ''; return; }
-                    const pct = ((cd.close - cd.open) / cd.open) * 100;
-                    pctEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-                    pctEl.style.color = pct >= 0 ? '#34d399' : '#f87171';
-                });
-
-                for (const c of EMA_CONFIG) {
-                    const line = calcEMASeriesTV(klines, c.period);
-                    if (line.length) addS(chart, 'LineSeries', { color: c.color, lineWidth: c.width, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }).setData(line);
-                }
-
-                // Canale (bianco) + riempimento
-                const chCandles = klines.map(k => ({ time: k.time, open: k.open, high: k.high, low: k.low, close: k.close }));
-                const { upper, mid, lower } = calcChannelArr(chCandles, period.value);
-                const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
-                const upperS = addS(chart, 'LineSeries', { ...lb, color: '#ffffff', lineWidth: 1 });
-                const midS   = addS(chart, 'LineSeries', { ...lb, color: '#ffffff', lineWidth: 1, lineStyle: 2 });
-                const lowerS = addS(chart, 'LineSeries', { ...lb, color: '#ffffff', lineWidth: 1 });
-                const upperData = klines.map((k,i) => ({ time: k.time, value: upper[i] })).filter(p => p.value != null);
-                const midData   = klines.map((k,i) => ({ time: k.time, value: mid[i] })).filter(p => p.value != null);
-                const lowerData = klines.map((k,i) => ({ time: k.time, value: lower[i] })).filter(p => p.value != null);
-                upperS.setData(upperData); midS.setData(midData); lowerS.setData(lowerData);
-                try {
-                    const fillPrim = new _ChannelFillPrimitive(() => ({ upper: upperData, lower: lowerData }), candleSeries, chart);
-                    candleSeries.attachPrimitive(fillPrim);
-                } catch(e) {}
-
-                // row.sigTime viene dallo scan (fetch diretto a Bybit, timestamp UTC grezzo);
-                // api/klines invece applica l'offset del fuso orario configurato (utc_offset_s)
-                // a ogni candela — senza questa correzione il marker finiva su una candela
-                // sbagliata (spostata di ore), non sul vero segnale.
-                const _sigTimeAdj = row.sigTime != null ? row.sigTime + (data.utc_offset_s || 0) : null;
-                if (_sigTimeAdj && LC.createSeriesMarkers) {
-                    try {
-                        LC.createSeriesMarkers(candleSeries, [{
-                            time: _sigTimeAdj,
-                            position: row.dir === 'bull' ? 'belowBar' : 'aboveBar',
-                            color: row.dir === 'bull' ? '#10b981' : '#ef4444',
-                            shape: row.dir === 'bull' ? 'arrowUp' : 'arrowDown',
-                            text: row.strength === 'strong' ? 'Strong' : (row.dir === 'bull' ? 'Long' : 'Short'),
-                        }]);
-                    } catch(e) { /* marker best-effort */ }
-                }
-
-                const visibleBars = row.tf === 'D' ? 40 : row.tf === '240' ? 50 : 80;
-                chart.timeScale().setVisibleLogicalRange({ from: klines.length - visibleBars, to: klines.length + 10 });
             } catch(e) { console.error('popup chart error:', e); }
         };
 
@@ -754,7 +714,7 @@ createApp({
         };
         const toggleMobilePreview = async (row) => {
             if (!isMobilePreview()) return;
-            const key = row.symbol + row.tf;
+            const key = row.symbol + row.tf + row.type;
             if (mobilePreviewSymbol.value === key) {
                 mobilePreviewSymbol.value = null;
                 destroyMobilePreviewChart();
@@ -766,72 +726,9 @@ createApp({
             const container = document.getElementById('mp-chart-' + key);
             if (!container) return;
             try {
-                const res  = await fetch(`api/klines?symbol=${row.symbol}&interval=${row.tf}`);
-                if (!res.ok) return;
-                const data = await res.json();
-                if (!data.success || !data.data?.length || mobilePreviewSymbol.value !== key) return;
-
-                const seen = new Set();
-                const klines = data.data.filter(c => {
-                    if (seen.has(c.time)) return false;
-                    seen.add(c.time);
-                    return isFinite(c.open) && isFinite(c.close) && c.high >= c.low;
-                });
-                if (!klines.length || mobilePreviewSymbol.value !== key) return;
-
-                const chart = LC.createChart(container, {
-                    autoSize: true,
-                    layout: { background: { color: '#0B0E11' }, textColor: '#B2B5BE' },
-                    grid: { vertLines: { color: '#FFFFFF0F' }, horzLines: { color: '#FFFFFF0F' } },
-                    rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.05, bottom: 0.1 } },
-                    timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 6 },
-                    handleScroll: false, handleScale: false,
-                });
-                if (mobilePreviewSymbol.value !== key) { try { chart.remove(); } catch(e) {} return; }
+                const chart = await buildPriceChart(container, row, 50);
+                if (!chart || mobilePreviewSymbol.value !== key) { if (chart) { try{chart.remove();}catch(e){} } return; }
                 mobilePreviewChart = chart;
-
-                const candleSeries = addS(chart, 'CandlestickSeries', {
-                    upColor: '#089981', downColor: '#F23645',
-                    borderVisible: false, wickUpColor: '#089981', wickDownColor: '#F23645',
-                });
-                candleSeries.setData(klines);
-
-                for (const c of EMA_CONFIG) {
-                    const line = calcEMASeriesTV(klines, c.period);
-                    if (line.length) addS(chart, 'LineSeries', { color: c.color, lineWidth: c.width, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }).setData(line);
-                }
-
-                // Canale (bianco) + riempimento
-                const chCandles = klines.map(k => ({ time: k.time, open: k.open, high: k.high, low: k.low, close: k.close }));
-                const { upper, mid, lower } = calcChannelArr(chCandles, period.value);
-                const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
-                const upperS = addS(chart, 'LineSeries', { ...lb, color: '#ffffff', lineWidth: 1 });
-                const midS   = addS(chart, 'LineSeries', { ...lb, color: '#ffffff', lineWidth: 1, lineStyle: 2 });
-                const lowerS = addS(chart, 'LineSeries', { ...lb, color: '#ffffff', lineWidth: 1 });
-                const upperData = klines.map((k,i) => ({ time: k.time, value: upper[i] })).filter(p => p.value != null);
-                const midData   = klines.map((k,i) => ({ time: k.time, value: mid[i] })).filter(p => p.value != null);
-                const lowerData = klines.map((k,i) => ({ time: k.time, value: lower[i] })).filter(p => p.value != null);
-                upperS.setData(upperData); midS.setData(midData); lowerS.setData(lowerData);
-                try {
-                    const fillPrim = new _ChannelFillPrimitive(() => ({ upper: upperData, lower: lowerData }), candleSeries, chart);
-                    candleSeries.attachPrimitive(fillPrim);
-                } catch(e) {}
-
-                const _sigTimeAdj = row.sigTime != null ? row.sigTime + (data.utc_offset_s || 0) : null;
-                if (_sigTimeAdj && LC.createSeriesMarkers) {
-                    try {
-                        LC.createSeriesMarkers(candleSeries, [{
-                            time: _sigTimeAdj,
-                            position: row.dir === 'bull' ? 'belowBar' : 'aboveBar',
-                            color: row.dir === 'bull' ? '#10b981' : '#ef4444',
-                            shape: row.dir === 'bull' ? 'arrowUp' : 'arrowDown',
-                            text: row.strength === 'strong' ? 'Strong' : (row.dir === 'bull' ? 'Long' : 'Short'),
-                        }]);
-                    } catch(e) { /* marker best-effort */ }
-                }
-
-                const visibleBars = row.tf === 'D' ? 40 : row.tf === '240' ? 50 : 80;
-                chart.timeScale().setVisibleLogicalRange({ from: klines.length - visibleBars, to: klines.length + 5 });
             } catch(e) { console.error('mobile preview chart error:', e); }
         };
 
@@ -845,8 +742,8 @@ createApp({
             const volEl  = document.getElementById('lwc-popup-vol');
             const tfEl   = document.getElementById('lwc-popup-tf');
             if (coinEl) coinEl.textContent = `${row.symbol.replace('USDT','')} ${row.change>=0?'+':''}${row.change.toFixed(2)}%`;
-            if (chgEl)  { chgEl.textContent = formatVolume(row.volume); chgEl.style.color = '#60a5fa'; }
-            if (volEl)  volEl.textContent = '';
+            if (chgEl)  { chgEl.textContent = (row.dir==='bull'?'▲ ':'▼ ') + row.gap.toFixed(2) + '% ' + t('grb_col_gap'); chgEl.style.color = row.dir==='bull' ? '#34d399' : '#f87171'; }
+            if (volEl)  volEl.textContent = formatVolume(row.volume);
             if (tfEl)   tfEl.textContent = TF_LABEL[row.tf];
             const pctEl = document.getElementById('lwc-popup-candle-pct');
             if (pctEl) pctEl.textContent = '';
@@ -855,15 +752,9 @@ createApp({
         };
 
         // ── GRAFICO thumbnail (desktop): "foto" statica del grafico al posto dell'icona ─
-        // Non è un chart live: un solo fetch per riga (lazy, via IntersectionObserver) e
-        // disegno su canvas 2D, con cache per symbol+tf così scroll avanti/indietro non
-        // rifà la richiesta. Click sopra apre il popup ingrandito, centrato a schermo.
         const viewIsMobile = ref(isMobilePreview());
         window.addEventListener('resize', () => { viewIsMobile.value = isMobilePreview(); });
 
-        // Fisso e volutamente basso — sempre meno delle visibleBars minime usate dal
-        // popup ingrandito (40 su 'D', vedi buildPopupChart), altrimenti l'anteprima
-        // risulta più densa/illeggibile del grafico che dovrebbe solo "anticipare".
         const THUMB_BARS = 20;
         const thumbCache = new Map();
         let thumbObserver = null;
@@ -879,25 +770,22 @@ createApp({
             }, { rootMargin: '150px' });
             return thumbObserver;
         }
-        // Stessi indicatori del popup (canale SMA + EMA), ma solo sulla finestra
-        // THUMB_BARS: il canale è calcolato sull'intero storico (calcChannelArr è
-        // parallelo a klines, stesso indice) mentre le EMA vanno riallineate per
-        // tempo perché calcEMASeriesTV parte più avanti (offset per-1).
         function prepThumbData(klines) {
             const bars = klines.slice(-THUMB_BARS);
             if (!bars.length) return null;
             const offset = klines.length - bars.length;
-            const { upper, lower } = calcChannelArr(klines, period.value);
-            const chBars = bars.map((_, i) => ({ u: upper[offset + i], l: lower[offset + i] }));
-            const emaLines = EMA_CONFIG.map(c => {
-                const line = calcEMASeriesTV(klines, c.period);
-                const map = new Map(line.map(p => [p.time, p.value]));
-                return { color: c.color, values: bars.map(b => map.has(b.time) ? map.get(b.time) : null) };
+            const ehFull = klines.length >= emaPeriod.value ? calcEMAFieldArr(klines, emaPeriod.value, 'high') : null;
+            const elFull = klines.length >= emaPeriod.value ? calcEMAFieldArr(klines, emaPeriod.value, 'low')  : null;
+            const ehBars = ehFull ? bars.map((_, i) => ehFull[offset + i]) : bars.map(() => null);
+            const elBars = elFull ? bars.map((_, i) => elFull[offset + i]) : bars.map(() => null);
+            const coloredBars = bars.map((b, i) => {
+                if (ehBars[i] == null || elBars[i] == null) return b;
+                return { ...b, __color: grabBarColor(b.close, b.open, ehBars[i], elBars[i]) };
             });
-            return { bars, chBars, emaLines };
+            return { bars: coloredBars, ehBars, elBars };
         }
         function drawThumb(canvas, bundle) {
-            const { bars, chBars, emaLines } = bundle;
+            const { bars, ehBars, elBars } = bundle;
             if (!bars.length) return;
             const dpr = window.devicePixelRatio || 1;
             const cssW = 96, cssH = 38;
@@ -906,11 +794,6 @@ createApp({
             const ctx = canvas.getContext('2d');
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.clearRect(0, 0, cssW, cssH);
-            // Scala verticale basata SOLO sulle candele: se si include anche il canale/EMA
-            // lente (60/223), quando il prezzo si è allontanato da esse l'asse si allarga
-            // per contenerle e le candele vere spariscono schiacciate in poche righe di
-            // pixel. Le linee indicatore fuori range vengono semplicemente tagliate dal
-            // bordo del canvas (clipping nativo), esattamente come un grafico "zoomato".
             let min = Infinity, max = -Infinity;
             for (const k of bars) { if (k.low < min) min = k.low; if (k.high > max) max = k.high; }
             if (!(max > min)) return;
@@ -919,36 +802,14 @@ createApp({
             const pad = 2, innerH = cssH - pad * 2, bw = cssW / bars.length;
             const y = v => pad + innerH - ((v - min) / (max - min)) * innerH;
             const x = i => i * bw + bw / 2;
-            const strokeLine = (getVal, color) => {
-                ctx.strokeStyle = color; ctx.lineWidth = 1;
-                ctx.beginPath();
-                let started = false;
-                bars.forEach((b, i) => {
-                    const v = getVal(i);
-                    if (v == null) return;
-                    const xp = x(i), yp = y(v);
-                    if (!started) { ctx.moveTo(xp, yp); started = true; } else ctx.lineTo(xp, yp);
-                });
-                if (started) ctx.stroke();
-            };
+            // banda wave EMA(high)/EMA(low) NON disegnata (richiesta esplicita utente
+            // 2026-07-24) — ehBars/elBars restano solo per colorare le candele sotto.
 
-            // canale (riempimento + linee) sotto tutto, come nel popup
-            ctx.beginPath();
-            let started = false;
-            chBars.forEach((c, i) => { if (c.u == null) return; const xp = x(i), yp = y(c.u); if (!started) { ctx.moveTo(xp, yp); started = true; } else ctx.lineTo(xp, yp); });
-            for (let i = chBars.length - 1; i >= 0; i--) { if (chBars[i].l == null) continue; ctx.lineTo(x(i), y(chBars[i].l)); }
-            if (started) { ctx.closePath(); ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fill(); }
-            strokeLine(i => chBars[i].u, 'rgba(255,255,255,0.6)');
-            strokeLine(i => chBars[i].l, 'rgba(255,255,255,0.6)');
-
-            // EMA
-            for (const line of emaLines) strokeLine(i => line.values[i], line.color);
-
-            // candele sopra tutto, per restare leggibili
+            // candele colorate GRaB sopra tutto
             bars.forEach((k, i) => {
                 const xp = x(i);
-                const up = k.close >= k.open;
-                ctx.strokeStyle = ctx.fillStyle = up ? '#10b981' : '#ef4444';
+                const color = k.__color || (k.close >= k.open ? '#10b981' : '#ef4444');
+                ctx.strokeStyle = ctx.fillStyle = color;
                 ctx.lineWidth = 1;
                 ctx.beginPath(); ctx.moveTo(xp, y(k.high)); ctx.lineTo(xp, y(k.low)); ctx.stroke();
                 const yO = y(k.open), yC = y(k.close);
@@ -1004,9 +865,9 @@ createApp({
             document.documentElement.style.setProperty('--thead-top', (wh + fh) + 'px');
         };
         const { watch, nextTick } = Vue;
-        watch([period, lookbackBars, historyBars, minVolM, minVarPct], () => {
-            try { localStorage.setItem('chb_cfg', JSON.stringify({
-                period: period.value, lookbackBars: lookbackBars.value,
+        watch([emaPeriod, lookbackBars, historyBars, minVolM, minVarPct], () => {
+            try { localStorage.setItem('grb_cfg', JSON.stringify({
+                emaPeriod: emaPeriod.value, lookbackBars: lookbackBars.value,
                 historyBars: historyBars.value, minVolM: minVolM.value, minVarPct: minVarPct.value,
             })); } catch {}
         });
@@ -1016,12 +877,9 @@ createApp({
             try {
                 const d = await fetch('/api/auth/status').then(r => r.json());
                 const prefix = d.logged_in ? (d.username || 'guest') : 'guest';
-                _colKey_chb = prefix + '_' + STORAGE_KEY_CHB;
-                const saved = JSON.parse(localStorage.getItem(_colKey_chb) || 'null');
+                _colKey_grb = prefix + '_' + STORAGE_KEY_GRB;
+                const saved = JSON.parse(localStorage.getItem(_colKey_grb) || 'null');
                 if (saved) {
-                    // preserva l'ordine personalizzato salvato ma inserisce eventuali nuove colonne
-                    // (aggiunte in un aggiornamento successivo, es. Preview) nella loro posizione di default
-                    // invece di scartarle — altrimenti una colonna nuova sparirebbe per chi ha già un ordine salvato.
                     const merged = [...saved];
                     for (const col of columnsDef) {
                         if (!merged.includes(col.key)) {
@@ -1082,12 +940,12 @@ createApp({
         return {
             ALL_TFS, TF_LABEL, t,
             favoriteSymbols, isFav, toggleFav,
-            period, lookbackBars, historyBars, minVolM, minVarPct,
+            emaPeriod, lookbackBars, historyBars, minVolM, minVarPct,
             columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
             scanning, statusMsg, displayMsg, initialDone,
             results, filteredResults, progressDone, progressTotal, progressPct,
-            dirFilter, strengthFilter, tfFilter, sortBy, sortDir,
-            countBull, countBear, countStrong, countNormal,
+            dirFilter, tfFilter, sortBy, sortDir,
+            countBull, countBear,
             cfgOpen, setSortBy, sa,
             startScan, stopScan,
             mobilePreviewSymbol, toggleMobilePreview,

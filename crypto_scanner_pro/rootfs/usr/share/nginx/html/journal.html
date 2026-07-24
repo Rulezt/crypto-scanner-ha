@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journal - Crypto Scanner Pro</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxsaW5lIHgxPSIxIiB5MT0iOSIgeDI9IjMxIiB5Mj0iOSIgc3Ryb2tlPSIjMWEzYTRhIiBzdHJva2Utd2lkdGg9IjAuNCIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMTciIHgyPSIzMSIgeTI9IjE3IiBzdHJva2U9IiMxYTNhNGEiIHN0cm9rZS13aWR0aD0iMC40Ii8+CiAgPGxpbmUgeDE9IjEiIHkxPSIyNSIgeDI9IjMxIiB5Mj0iMjUiIHN0cm9rZT0iIzFhM2E0YSIgc3Ryb2tlLXdpZHRoPSIwLjQiLz4KICA8bGluZSB4MT0iNCIgeTE9IjciIHgyPSI0IiB5Mj0iMjkiIHN0cm9rZT0iIzhiNWNmNiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyLjUiIHk9IjE0IiB3aWR0aD0iMyIgaGVpZ2h0PSI5IiBmaWxsPSIjOGI1Y2Y2Ii8+CiAgPGxpbmUgeDE9IjEyIiB5MT0iMyIgeDI9IjEyIiB5Mj0iMjYiIHN0cm9rZT0iIzhiNWNmNiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIxMC41IiB5PSI3IiB3aWR0aD0iMyIgaGVpZ2h0PSIxMyIgZmlsbD0iIzhiNWNmNiIvPgogIDxsaW5lIHgxPSIyMCIgeTE9IjYiIHgyPSIyMCIgeTI9IjI4IiBzdHJva2U9IiM4YjVjZjYiIHN0cm9rZS13aWR0aD0iMC44Ii8+CiAgPHJlY3QgeD0iMTguNSIgeT0iMTMiIHdpZHRoPSIzIiBoZWlnaHQ9IjkiIGZpbGw9IiM4YjVjZjYiLz4KICA8bGluZSB4MT0iMjgiIHkxPSIxMCIgeDI9IjI4IiB5Mj0iMzAiIHN0cm9rZT0iIzhiNWNmNiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyNi41IiB5PSIxNiIgd2lkdGg9IjMiIGhlaWdodD0iOCIgZmlsbD0iIzhiNWNmNiIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMzAiIHgyPSIzMCIgeTI9IjIiIHN0cm9rZT0iIzhiNWNmNiIgc3Ryb2tlLXdpZHRoPSIxLjIiLz4KICA8cG9seWdvbiBwb2ludHM9IjMwLDIgMjQsNS41IDI2LjUsOC41IiBmaWxsPSIjOGI1Y2Y2Ii8+Cjwvc3ZnPgo=">
+    <script src="/i18n.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
+    <style>#tv-attr-logo{display:none!important}</style>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0B0E11; color: #f0f0f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+        .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 16px; background: #161A1E; border-bottom: 1px solid #2a2a2a; position: sticky; top: 0; z-index: 100; }
+        .header-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .header h1 { font-size: 1rem; color: #f9fafb; white-space: nowrap; }
+        .header-sub { font-size: 0.72rem; color: #6b7280; }
+        select, input[type="text"] { background: #1f2937; color: #f9fafb; border: 1px solid #374151; border-radius: 4px; padding: 5px 8px; font-size: 0.8rem; }
+        .btn { background: #374151; color: #f9fafb; border: 1px solid #4b5563; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; white-space: nowrap; transition: background 0.15s; }
+        .btn:hover { background: #4b5563; }
+        .btn.active { background: #4c1d95; border-color: #8b5cf6; color: #c4b5fd; }
+        .main-col { padding: 14px 16px; max-width: 1200px; margin: 0 auto; }
+        .toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom: 14px; }
+        .period-group { display:flex; gap:4px; }
+        .stat-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-bottom: 16px; }
+        .stat-card { background:#161A1E; border:1px solid #2A2E39; border-radius:8px; padding:10px 14px; }
+        .stat-card .lbl { font-size:0.65rem; color:#6b7280; text-transform:uppercase; letter-spacing:.03em; }
+        .stat-card .val { font-size:1.05rem; font-weight:700; margin-top:2px; }
+        .positive { color:#10b981; }
+        .negative { color:#ef4444; }
+        .muted { color:#6b7280; }
+        .chart-box { width: 100%; height: 220px; background:#0B0E11; border:1px solid #2A2E39; border-radius:6px; margin-bottom:16px; }
+        .trade-table-scroll { overflow-x:auto; border:1px solid #2A2E39; border-radius:6px; }
+        table.trade-table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+        table.trade-table th { text-align:left; padding:7px 10px; color:#6b7280; font-size:0.66rem; text-transform:uppercase; border-bottom:1px solid #2A2E39; white-space:nowrap; }
+        table.trade-table td { padding:7px 10px; border-bottom:1px solid rgba(42,46,57,0.4); white-space:nowrap; }
+        table.trade-table tbody tr:hover { background: rgba(139,92,246,0.06); }
+        .empty-state, .loading-state { text-align:center; padding:40px 20px; color:#6b7280; font-size:0.85rem; }
+        .icon-btn { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:6px; background:transparent; border:1px solid #374151; color:#9ca3af; cursor:pointer; transition:background 0.15s, color 0.15s; }
+        .icon-btn:hover { background:#1f2937; color:#f9fafb; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="header">
+        <div class="header-left">
+            <a href="/" style="display:inline-flex;align-items:center;color:#6b7280;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M19 12H5"/><path d="m12 5-7 7 7 7"/></svg>
+            </a>
+            <h1 style="color:#8b5cf6">📔 {{ t('jrn_title') }}</h1>
+            <span class="header-sub">{{ t('jrn_subtitle') }}</span>
+        </div>
+        <div>
+            <button class="icon-btn" :title="t('jrn_refresh')" @click="loadAll" :disabled="loading">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" :style="{animation: loading ? 'spin 0.8s linear infinite' : 'none'}"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="main-col">
+        <div class="toolbar">
+            <select v-model="symbolFilter" @change="loadAll" style="width:150px;">
+                <option value="">{{ t('jrn_filter_symbol') }}</option>
+                <option v-for="s in symbols" :key="s" :value="s">{{ s }}</option>
+            </select>
+            <div class="period-group">
+                <button class="btn" :class="{active: period==='7d'}" @click="setPeriod('7d')">{{ t('jrn_filter_7d') }}</button>
+                <button class="btn" :class="{active: period==='30d'}" @click="setPeriod('30d')">{{ t('jrn_filter_30d') }}</button>
+                <button class="btn" :class="{active: period==='90d'}" @click="setPeriod('90d')">{{ t('jrn_filter_90d') }}</button>
+                <button class="btn" :class="{active: period==='all'}" @click="setPeriod('all')">{{ t('jrn_filter_all') }}</button>
+            </div>
+        </div>
+
+        <div v-if="loading" class="loading-state">{{ t('jrn_loading') }}</div>
+        <div v-else-if="notConfigured" class="empty-state">{{ t('jrn_not_configured') }}</div>
+        <template v-else>
+            <div class="stat-cards">
+                <div class="stat-card">
+                    <div class="lbl">{{ t('jrn_total_pnl') }}</div>
+                    <div class="val" :class="stats.total_pnl>=0?'positive':'negative'">{{ fmtUsd(stats.total_pnl) }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="lbl">{{ t('jrn_win_rate') }}</div>
+                    <div class="val">{{ stats.win_rate.toFixed(1) }}%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="lbl">{{ t('jrn_profit_factor') }}</div>
+                    <div class="val">{{ stats.profit_factor === null ? '∞' : stats.profit_factor.toFixed(2) }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="lbl">{{ t('jrn_expectancy') }}</div>
+                    <div class="val" :class="stats.expectancy>=0?'positive':'negative'">{{ fmtUsd(stats.expectancy) }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="lbl">{{ t('jrn_avg_win') }}</div>
+                    <div class="val positive">{{ fmtUsd(stats.avg_win) }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="lbl">{{ t('jrn_avg_loss') }}</div>
+                    <div class="val negative">-{{ Math.abs(stats.avg_loss).toFixed(2) }} USDT</div>
+                </div>
+                <div class="stat-card">
+                    <div class="lbl">{{ t('jrn_max_dd') }}</div>
+                    <div class="val negative">-{{ stats.max_drawdown.toFixed(2) }} USDT</div>
+                </div>
+                <div class="stat-card">
+                    <div class="lbl">{{ t('jrn_fees') }}</div>
+                    <div class="val muted">{{ stats.total_fees.toFixed(2) }} USDT</div>
+                </div>
+                <div class="stat-card">
+                    <div class="lbl">{{ t('jrn_trades') }}</div>
+                    <div class="val">{{ stats.count }} <span class="muted" style="font-size:0.7rem;">({{ stats.wins }}W / {{ stats.losses }}L)</span></div>
+                </div>
+            </div>
+
+            <h3 style="font-size:0.8rem;color:#9ca3af;margin:4px 0 8px;">{{ t('jrn_equity_curve') }}</h3>
+            <div id="equity-chart-box" class="chart-box"></div>
+
+            <div v-if="trades.length===0" class="empty-state">{{ t('jrn_no_trades') }}</div>
+            <div v-else class="trade-table-scroll">
+                <table class="trade-table">
+                    <thead><tr>
+                        <th>{{ t('jrn_col_time') }}</th>
+                        <th>{{ t('jrn_col_symbol') }}</th>
+                        <th>{{ t('jrn_col_side') }}</th>
+                        <th>{{ t('jrn_col_qty') }}</th>
+                        <th>{{ t('jrn_col_leverage') }}</th>
+                        <th>{{ t('jrn_col_entry') }}</th>
+                        <th>{{ t('jrn_col_exit') }}</th>
+                        <th>{{ t('jrn_col_duration') }}</th>
+                        <th>{{ t('jrn_col_fees') }}</th>
+                        <th>{{ t('jrn_col_pnl') }}</th>
+                    </tr></thead>
+                    <tbody>
+                        <tr v-for="tr in trades" :key="tr.order_id">
+                            <td class="muted">{{ fmtTime(tr.close_time) }}</td>
+                            <td><b>{{ tr.symbol }}</b></td>
+                            <td :class="tr.side==='Buy'?'positive':'negative'">{{ tr.side==='Buy'?'LONG':'SHORT' }}</td>
+                            <td>{{ tr.qty }}</td>
+                            <td class="muted">{{ tr.leverage }}x</td>
+                            <td>{{ fmtPrice(tr.avg_entry) }}</td>
+                            <td>{{ fmtPrice(tr.avg_exit) }}</td>
+                            <td class="muted">{{ fmtDuration(tr.close_time - tr.open_time) }}</td>
+                            <td class="muted negative">-{{ tr.fees.toFixed(2) }}</td>
+                            <td :class="tr.pnl>=0?'positive':'negative'">{{ tr.pnl>=0?'+':'' }}{{ tr.pnl.toFixed(2) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </template>
+    </div>
+</div>
+
+<style>@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>
+
+<script>
+const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+
+const _appLang = ref(window._cspLang || 'en');
+const _origSwitch = window.switchLang;
+window.switchLang = function (l) { _origSwitch(l); _appLang.value = l; };
+
+createApp({
+    setup() {
+        const t = (key) => { _appLang.value; return (window.T && window.T[key]) || key; };
+
+        const loading = ref(true);
+        const notConfigured = ref(false);
+        const period = ref('30d');
+        const symbolFilter = ref('');
+        const symbols = ref([]);
+        const stats = reactive({
+            count: 0, wins: 0, losses: 0, win_rate: 0, total_pnl: 0, total_fees: 0,
+            avg_win: 0, avg_loss: 0, profit_factor: 0, expectancy: 0,
+            best_trade: 0, worst_trade: 0, max_drawdown: 0, equity_curve: [],
+        });
+        const trades = ref([]);
+
+        const setPeriod = (p) => { period.value = p; loadAll(); };
+
+        const loadSymbols = async () => {
+            try {
+                const r = await fetch('/api/journal/symbols');
+                if (!r.ok) return;
+                const d = await r.json();
+                symbols.value = d.symbols || [];
+            } catch (e) {}
+        };
+
+        const sinceParam = () => {
+            const now = Math.floor(Date.now() / 1000);
+            const days = { '7d': 7, '30d': 30, '90d': 90 }[period.value];
+            return days ? now - days * 86400 : null;
+        };
+
+        const buildQs = () => {
+            const params = new URLSearchParams();
+            if (symbolFilter.value) params.set('symbol', symbolFilter.value);
+            const since = sinceParam();
+            if (since) params.set('since', since);
+            return params.toString();
+        };
+
+        let equityChart = null, equitySeries = null;
+        const renderEquityChart = (curve) => {
+            const box = document.getElementById('equity-chart-box');
+            if (!box) return;
+            // Il box vive dietro v-if/v-else (loading/notConfigured): ogni ricarica
+            // (es. cambio periodo) fa passare loading da true a false, e Vue
+            // SMONTA/RIMONTA quel ramo del template — il vecchio nodo DOM a cui
+            // equityChart era agganciato viene distrutto e ne arriva uno nuovo
+            // vuoto. Ricreare sempre il chart (invece di riusare l'istanza) evita
+            // di restare agganciati a un nodo staccato dal documento.
+            if (equityChart) {
+                try { equityChart.remove(); } catch (e) {}
+                equityChart = null; equitySeries = null;
+            }
+            equityChart = LightweightCharts.createChart(box, {
+                width: box.clientWidth, height: box.clientHeight,
+                layout: { background: { color: '#0B0E11' }, textColor: '#9CA3AF', fontSize: 11 },
+                grid: { vertLines: { color: '#1a1d24' }, horzLines: { color: '#1a1d24' } },
+                rightPriceScale: { borderColor: '#2A2E39' },
+                timeScale: { borderColor: '#2A2E39', timeVisible: true },
+            });
+            equitySeries = equityChart.addSeries
+                ? equityChart.addSeries(LightweightCharts.LineSeries, { color: '#8b5cf6', lineWidth: 2, priceLineVisible: false })
+                : equityChart.addLineSeries({ color: '#8b5cf6', lineWidth: 2, priceLineVisible: false });
+            const ro = new ResizeObserver(() => { if (equityChart) equityChart.applyOptions({ width: box.clientWidth, height: box.clientHeight }); });
+            ro.observe(box);
+            const data = (curve || []).map(p => ({ time: p.t, value: p.equity }));
+            equitySeries.setData(data);
+            if (data.length) equityChart.timeScale().fitContent();
+        };
+
+        const loadAll = async () => {
+            loading.value = true;
+            notConfigured.value = false;
+            try {
+                const qs = buildQs();
+                const [rs, rt] = await Promise.all([
+                    fetch('/api/journal/stats?' + qs),
+                    fetch('/api/journal/trades?' + qs + '&limit=500'),
+                ]);
+                if (rs.status === 403 || rt.status === 403) { notConfigured.value = true; return; }
+                const ds = await rs.json();
+                const dt = await rt.json();
+                Object.assign(stats, ds);
+                trades.value = dt.trades || [];
+            } catch (e) {
+                notConfigured.value = true;
+            } finally {
+                // loading DEVE tornare false prima di renderEquityChart: il box del
+                // grafico vive dietro v-else (nascosto finché loading=true), quindi
+                // chiamare il render prima di questo punto trova il div ancora non
+                // montato e abortisce silenziosamente (chart mai creato).
+                loading.value = false;
+            }
+            if (!notConfigured.value) {
+                await nextTick();
+                renderEquityChart(stats.equity_curve);
+            }
+        };
+
+        const fmtUsd = (v) => (v >= 0 ? '+' : '') + (v || 0).toFixed(2) + ' USDT';
+        const fmtPrice = (p) => {
+            if (p === null || p === undefined) return '—';
+            if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 2 });
+            if (p >= 1)    return p.toFixed(4);
+            if (p >= 0.01) return p.toFixed(5);
+            return p.toFixed(7);
+        };
+        const fmtTime = (ts) => ts ? new Date(ts * 1000).toLocaleString('it-IT') : '—';
+        const fmtDuration = (s) => {
+            if (!s || s < 0) return '—';
+            const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+            if (h > 24) return Math.floor(h / 24) + 'd ' + (h % 24) + 'h';
+            if (h > 0) return h + 'h ' + m + 'm';
+            return m + 'm';
+        };
+
+        onMounted(() => { loadAll(); loadSymbols(); });
+
+        return {
+            t, loading, notConfigured, period, symbolFilter, symbols, stats, trades,
+            setPeriod, loadAll, fmtUsd, fmtPrice, fmtTime, fmtDuration,
+        };
+    },
+}).mount('#app');
+</script>
+</body>
+</html>

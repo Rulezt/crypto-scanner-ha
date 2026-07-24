@@ -55,6 +55,35 @@ import threading
 
 STATE_FILE = '/data/bot_state.json'
 
+# Registro permanente (mai troncato a 200 come self.signals) delle uscite
+# REALI del bot (mode='execution') — usato dal Journal (vedi journal.py) per
+# escludere dal conteggio "trade manuali" quelli aperti/chiusi dal bot,
+# riconciliando per simbolo+orario contro /v5/position/closed-pnl (Bybit non
+# espone un ID che leghi il trade chiuso all'ordine di apertura che lo ha
+# generato, quindi serve questo registro locale scritto al momento dell'uscita).
+BOT_TRADES_LEDGER_FILE = '/data/bot_trades_history.json'
+BOT_TRADES_LEDGER_MAX = 5000
+
+
+def _append_bot_ledger(rec):
+    try:
+        os.makedirs(os.path.dirname(BOT_TRADES_LEDGER_FILE), exist_ok=True)
+        rows = []
+        if os.path.exists(BOT_TRADES_LEDGER_FILE):
+            try:
+                with open(BOT_TRADES_LEDGER_FILE) as f:
+                    rows = json.load(f)
+            except Exception:
+                rows = []
+        rows.append(rec)
+        rows = rows[-BOT_TRADES_LEDGER_MAX:]
+        tmp = BOT_TRADES_LEDGER_FILE + '.tmp'
+        with open(tmp, 'w') as f:
+            json.dump(rows, f)
+        os.replace(tmp, BOT_TRADES_LEDGER_FILE)
+    except Exception as e:
+        print(f'⚠️ BOT: append ledger: {e}')
+
 TF_SECONDS = {
     '1': 60, '5': 300, '15': 900, '30': 1800, '60': 3600,
     '240': 14400, 'D': 86400, 'W': 604800, 'M': 2592000,  # M: approssimato a 30gg
@@ -637,6 +666,12 @@ class BotEngine:
                 self._execute_breakeven(ev)
             elif ev['type'] == 'exit':
                 self._execute_exit(ev)
+                # Registrato SEMPRE (anche se _execute_exit non ha dovuto inviare
+                # un ordine perché Bybit aveva già chiuso da solo via SL/TP nativo)
+                # — questo evento rappresenta comunque la chiusura reale della
+                # posizione del bot, candela in cui il nostro replay l'ha rilevata.
+                _append_bot_ledger({'symbol': self.symbol, 'side': ev.get('side', ''),
+                                     'exit_time': ev['time'], 'reason': ev.get('reason', '')})
         except Exception as e:
             print(f'❌ BOT execution error: {e}')
 

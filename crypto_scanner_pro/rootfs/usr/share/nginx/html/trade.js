@@ -20,6 +20,28 @@ const DEFAULT_LEVELS_CFG = {
     ath:      { color: '#f59e0b', style: 2, width: 1, vis:{chart:true, mtf:true, ob:false} },
     atl:      { color: '#a855f7', style: 2, width: 1, vis:{chart:true, mtf:true, ob:false} },
 };
+// ── Size massima stimabile dal book senza slippage eccessivo ──────────────────
+// Accumula liquidità dal miglior prezzo in poi (asks per Buy, bids per Sell,
+// entrambi già ordinati best-first) finché il prezzo medio ponderato (VWAP)
+// non si allontana dal miglior prezzo oltre MAX_SIZE_SLIPPAGE_PCT. Si ferma
+// PRIMA di aggiungere il livello che farebbe superare la soglia (non lo
+// riempie parzialmente) — stima volutamente conservativa: un'indicazione,
+// non un limite hard imposto sull'ordine.
+const MAX_SIZE_SLIPPAGE_PCT = 0.15;
+function computeMaxSafeSize(sortedLevels) {
+    if (!sortedLevels.length) return null;
+    const best = sortedLevels[0][0];
+    if (!(best > 0)) return null;
+    const maxDev = best * MAX_SIZE_SLIPPAGE_PCT / 100;
+    let cumQty = 0, cumNotional = 0;
+    for (const [price, qty] of sortedLevels) {
+        if (!(qty > 0)) continue;
+        const nQty = cumQty + qty, nNotional = cumNotional + price * qty;
+        if (Math.abs(nNotional / nQty - best) > maxDev) break;
+        cumQty = nQty; cumNotional = nNotional;
+    }
+    return cumQty > 0 ? { qty: cumQty, notional: cumNotional } : null;
+}
 function getEmaCfg() { try{const s=JSON.parse(localStorage.getItem('chart_ema_cfg'));if(s&&s.length===4)return s;}catch(e){}return DEFAULT_EMA_CFG.map(x=>({...x})); }
 function getLvCfg() {
     try {
@@ -2632,7 +2654,9 @@ createApp({
         // indipendente dal TF mostrato sul grafico principale) — fetch leggero via
         // api/klines (cache 15s lato server) invece di mantenere stato WS live per
         // ogni TF: aggiornamento "quasi in tempo reale" (ogni 5s), non tick-by-tick,
-        // sufficiente per una barra di sintesi sotto ai bottoni TF.
+        // sufficiente per una barra di sintesi sotto ai bottoni TF. SEMPRE attiva,
+        // indipendente dal bottone GRaB (che controlla solo la ricolorazione delle
+        // candele sul grafico) — richiesta esplicita dell'utente 2026-07-24.
         const grabTfColors = ref({});
         let _grabTfTick = 0;
         const _updateGrabTfStrip = async () => {
@@ -2653,7 +2677,7 @@ createApp({
                     results[tf.v] = grabBarColor(last.close, last.open, eh[eh.length - 1].value, el[el.length - 1].value, cfg);
                 } catch(e) { /* skip tf */ }
             }));
-            if (_obGrabActive && sym === symbol.value) grabTfColors.value = results;
+            if (sym === symbol.value) grabTfColors.value = results;
         };
         let lastConfirmedTime  = 0;
         let obKlineCount = 0;
@@ -3177,6 +3201,23 @@ createApp({
             if (t >= 1)    return parseFloat(t.toFixed(2)).toString();
             return parseFloat(t.toFixed(4)).toString();
         };
+
+        // Usa SEMPRE asksMap/bidsMap grezze (fino a 200 livelli dalla sub WS
+        // orderbook.200), non gli array già tagliati a displayLevels (10-20 righe
+        // visibili) — altrimenti con una soglia di slippage larga o un book
+        // profondo il calcolo si fermerebbe all'ultima riga mostrata invece che
+        // alla vera liquidità disponibile, sottostimando la size senza dirlo.
+        const renderMaxSafeSize = () => {
+            const buyEl  = document.getElementById('fs-maxsize-buy');
+            const sellEl = document.getElementById('fs-maxsize-sell');
+            if (!buyEl && !sellEl) return;
+            const asksFull = Array.from(asksMap.entries()).sort((a, b) => a[0] - b[0]);
+            const bidsFull = Array.from(bidsMap.entries()).sort((a, b) => b[0] - a[0]);
+            const maxBuy  = computeMaxSafeSize(asksFull);
+            const maxSell = computeMaxSafeSize(bidsFull);
+            if (buyEl)  buyEl.textContent  = maxBuy  ? fmtTotal(maxBuy.notional)  : '—';
+            if (sellEl) sellEl.textContent = maxSell ? fmtTotal(maxSell.notional) : '—';
+        };
         const formatPrice = (price) => {
             if (price >= 10000)    return price.toFixed(1);
             if (price >= 1000)     return price.toFixed(2);
@@ -3321,6 +3362,7 @@ createApp({
             }
 
             updateDisplay();
+            renderMaxSafeSize();
         };
 
         const setWSDot = (state) => {
@@ -3617,13 +3659,10 @@ createApp({
             _cdRepaintTimer = setInterval(() => {
                 if (obChart) try { obChart.applyOptions({}); } catch(e) {}
                 _updateTfCountdowns();
-                if (_obGrabActive) {
-                    _grabTfTick++;
-                    if (_grabTfTick % 5 === 1) _updateGrabTfStrip();
-                } else if (Object.keys(grabTfColors.value).length) {
-                    grabTfColors.value = {};
-                    _grabTfTick = 0;
-                }
+                // Sempre attiva, indipendente dal bottone GRaB (quello colora solo
+                // le candele sul grafico) — vedi commento su _updateGrabTfStrip.
+                _grabTfTick++;
+                if (_grabTfTick % 5 === 1) _updateGrabTfStrip();
             }, 1000);
             // Auth check + trade panel init
             (async () => {

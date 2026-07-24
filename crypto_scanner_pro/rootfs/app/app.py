@@ -22,6 +22,7 @@ from scanners.ico_levels_scanner import ICOLevelsScanner
 from scanners.double_touch import DoubleTouchScanner
 from scanners.bot_engine import BotEngine
 from ws_manager import BybitWSManager
+import journal
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -2129,6 +2130,69 @@ def bot_backtest():
 
 # ── END BOT ────────────────────────────────────────────────────────────────────
 
+# ── JOURNAL ────────────────────────────────────────────────────────────────────
+# Trade MANUALI (BOT esclusi di proposito — vedi journal.py) sincronizzati da
+# Bybit closed-pnl. Stesso gate admin del BOT: dati dell'account di trading
+# reale, accesso a singolo utente loggato come tutto il resto della sezione
+# trading (API Key/Telegram/BOT usano lo stesso pattern).
+
+@app.route('/journal', methods=['GET'])
+@app.route('/journal.html', methods=['GET'])
+@login_required
+def journal_page():
+    if session.get('role') != 'admin':
+        return redirect(url_for('index'))
+    return send_file('/usr/share/nginx/html/journal.html')
+
+
+def _journal_sync_and_filter():
+    k, s, en = _tcfg_user(session.get('username', ''))
+    if not en:
+        return None, jsonify({'error': 'Trading non configurato'}), 403
+    journal.sync(_bsign, k, s)
+    symbol = (request.args.get('symbol') or '').upper() or None
+    since = request.args.get('since', type=int)
+    until = request.args.get('until', type=int)
+    trades = journal.manual_trades(symbol=symbol, since=since, until=until)
+    return trades, None, None
+
+
+@app.route('/api/journal/trades', methods=['GET'])
+@login_required
+def journal_trades():
+    err = _bot_admin_gate()
+    if err: return err
+    trades, resp, code = _journal_sync_and_filter()
+    if resp is not None:
+        return resp, code
+    limit = request.args.get('limit', 200, type=int)
+    return jsonify({'trades': trades[:max(1, min(limit, 2000))], 'total': len(trades)})
+
+
+@app.route('/api/journal/stats', methods=['GET'])
+@login_required
+def journal_stats():
+    err = _bot_admin_gate()
+    if err: return err
+    trades, resp, code = _journal_sync_and_filter()
+    if resp is not None:
+        return resp, code
+    return jsonify(journal.compute_stats(trades))
+
+
+@app.route('/api/journal/symbols', methods=['GET'])
+@login_required
+def journal_symbols():
+    err = _bot_admin_gate()
+    if err: return err
+    k, s, en = _tcfg_user(session.get('username', ''))
+    if not en:
+        return jsonify({'error': 'Trading non configurato'}), 403
+    journal.sync(_bsign, k, s)
+    return jsonify({'symbols': journal.distinct_symbols()})
+
+# ── END JOURNAL ────────────────────────────────────────────────────────────────
+
 # ── AUTH ───────────────────────────────────────────────────────────────────────
 
 @app.route('/api/login', methods=['POST'])
@@ -2421,6 +2485,12 @@ def rvol_page():
 @app.route('/midline-breakout.html', methods=['GET'])
 def midline_breakout_page():
     return send_file('/usr/share/nginx/html/midline-breakout.html')
+
+
+@app.route('/grab', methods=['GET'])
+@app.route('/grab.html', methods=['GET'])
+def grab_scanner_page():
+    return send_file('/usr/share/nginx/html/grab.html')
 
 
 @app.route('/confluence', methods=['GET'])
