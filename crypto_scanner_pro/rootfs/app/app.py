@@ -100,6 +100,18 @@ def _db_get_user(username):
     except Exception:
         return None
 
+# ── USER PREFS (impostazioni scanner/indicatori per-account) ───────────────────
+def _init_user_prefs_db():
+    with sqlite3.connect(USERS_DB) as conn:
+        conn.execute('''CREATE TABLE IF NOT EXISTS user_prefs (
+            username TEXT NOT NULL,
+            pkey TEXT NOT NULL,
+            value TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (username, pkey)
+        )''')
+        conn.commit()
+
 def _db_create_user(username, email, password_hash):
     import secrets
     token = secrets.token_urlsafe(32)
@@ -2367,6 +2379,72 @@ def save_profile():
                 return jsonify({'success': False, 'error': 'Errore aggiornamento email'}), 500
     return jsonify({'success': True})
 
+@app.route('/api/prefs', methods=['GET'])
+def get_prefs():
+    if not session.get('logged_in'):
+        return jsonify({'logged_in': False, 'username': None, 'prefs': {}})
+    username = session.get('username', '')
+    with sqlite3.connect(USERS_DB) as conn:
+        rows = conn.execute('SELECT pkey, value FROM user_prefs WHERE username=?', (username,)).fetchall()
+    return jsonify({'logged_in': True, 'username': username, 'prefs': {k: v for k, v in rows}})
+
+@app.route('/api/prefs/<path:pkey>', methods=['PUT'])
+@login_required
+def put_pref(pkey):
+    username = session.get('username', '')
+    data = request.get_json(silent=True) or {}
+    value = data.get('value')
+    if value is None:
+        return jsonify({'error': 'missing value'}), 400
+    if not isinstance(value, str):
+        value = json.dumps(value)
+    with sqlite3.connect(USERS_DB) as conn:
+        conn.execute(
+            'INSERT INTO user_prefs (username, pkey, value, updated_at) VALUES (?,?,?,?) '
+            'ON CONFLICT(username, pkey) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at',
+            (username, pkey, value, datetime.utcnow().isoformat()))
+        conn.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/prefs/<path:pkey>', methods=['DELETE'])
+@login_required
+def delete_pref(pkey):
+    username = session.get('username', '')
+    with sqlite3.connect(USERS_DB) as conn:
+        conn.execute('DELETE FROM user_prefs WHERE username=? AND pkey=?', (username, pkey))
+        conn.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/prefs/flush', methods=['POST'])
+@login_required
+def flush_prefs():
+    username = session.get('username', '')
+    items = request.get_json(silent=True, force=True) or []
+    if not isinstance(items, list):
+        return jsonify({'error': 'invalid body'}), 400
+    now = datetime.utcnow().isoformat()
+    with sqlite3.connect(USERS_DB) as conn:
+        for it in items:
+            pkey = it.get('pkey')
+            if not pkey:
+                continue
+            if it.get('deleted'):
+                conn.execute('DELETE FROM user_prefs WHERE username=? AND pkey=?', (username, pkey))
+            else:
+                value = it.get('value')
+                if not isinstance(value, str):
+                    value = json.dumps(value)
+                conn.execute(
+                    'INSERT INTO user_prefs (username, pkey, value, updated_at) VALUES (?,?,?,?) '
+                    'ON CONFLICT(username, pkey) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at',
+                    (username, pkey, value, now))
+        conn.commit()
+    return jsonify({'success': True})
+
+@app.route('/prefs-sync.js')
+def serve_prefs_sync():
+    return send_file('/usr/share/nginx/html/prefs-sync.js', mimetype='application/javascript')
+
 @app.route('/api/auth/change-password', methods=['POST'])
 @login_required
 def change_password():
@@ -2636,6 +2714,7 @@ def admin_delete_user(username):
             if row[0] == 'admin':
                 return jsonify({'error': 'Non puoi eliminare un admin'}), 400
             conn.execute('DELETE FROM users WHERE username=?', (username,))
+            conn.execute('DELETE FROM user_prefs WHERE username=?', (username,))
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -2661,6 +2740,7 @@ if __name__ == '__main__':
 
     # Init users database
     _init_users_db()
+    _init_user_prefs_db()
 
     # Load config
     load_config()
