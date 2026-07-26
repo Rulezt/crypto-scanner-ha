@@ -2571,6 +2571,12 @@ def grab_scanner_page():
     return send_file('/usr/share/nginx/html/grab.html')
 
 
+@app.route('/trendline', methods=['GET'])
+@app.route('/trendline.html', methods=['GET'])
+def trendline_scanner_page():
+    return send_file('/usr/share/nginx/html/trendline.html')
+
+
 @app.route('/confluence', methods=['GET'])
 @app.route('/confluence.html', methods=['GET'])
 def confluence_page():
