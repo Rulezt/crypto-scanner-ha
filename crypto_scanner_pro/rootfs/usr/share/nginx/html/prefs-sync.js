@@ -6,7 +6,7 @@
     'chart_ema_cfg', 'chart_levels_cfg', 'chart_bb_cfg', 'chart_channel_cfg', 'chart_grab_cfg',
     'bot_cfg_draft', 'bot_channel_visibility', 'ob_book_w_pct',
     'ath_atl_cfg', 'chb_cfg', 'bbsq_cfg', 'e223f_cfg', 'ico_cfg',
-    'midbrk_cfg', 'grb_cfg', 'rvol_cfg', 'vinef_cfg', 'third_touch_cfg', 'ema60_cfg', 'trdln_cfg',
+    'midbrk_cfg', 'grb_cfg', 'rvol_cfg', 'vinef_cfg', 'third_touch_cfg', 'ema60_cfg', 'trdln_cfg', 'chart_tb_cfg',
     'confl_cfg', 'mtf_drawings'
   ];
   var SUFFIX_MATCH = '_columns_order';

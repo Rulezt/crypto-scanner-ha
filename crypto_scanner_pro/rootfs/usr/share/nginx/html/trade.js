@@ -124,6 +124,47 @@ function grabBarColor(close, open, eHigh, eLow, cfg) {
     return close > open ? cfg.colorMidBull : cfg.colorMidBear;
 }
 
+// ── Trend Band — banda tra EMA fast/slow, colorata bull/bear/flat (flat quando
+// |spread EMA| < ATR(14)*flatMult). Stessa logica/default di mtf.html (EMA 5/10).
+const _DEFAULT_TB_CFG = {
+    fastLen: 5, slowLen: 10,
+    bullColor: '#22c55e', bearColor: '#ef4444', flatColor: '#eab308',
+    bandTransp: 22, flatMult: 0.25, hideLines: true,
+};
+function getTbCfg() {
+    try { const s = JSON.parse(localStorage.getItem('chart_tb_cfg')); if (s) return { ..._DEFAULT_TB_CFG, ...s }; } catch(e) {}
+    return { ..._DEFAULT_TB_CFG };
+}
+function setTbCfg(cfg) { try { localStorage.setItem('chart_tb_cfg', JSON.stringify(cfg)); } catch(e) {} }
+function calcTR(klines) {
+    return klines.map((k,i) => {
+        if (i === 0) return k.high - k.low;
+        const pc = klines[i-1].close;
+        return Math.max(k.high - k.low, Math.abs(k.high - pc), Math.abs(k.low - pc));
+    });
+}
+function calcRMA(values, length) {
+    const out = new Array(values.length).fill(null);
+    if (values.length < length) return out;
+    let sum = 0;
+    for (let i = 0; i < length; i++) sum += values[i];
+    out[length-1] = sum / length;
+    for (let i = length; i < values.length; i++) out[i] = (values[i] - out[i-1]) / length + out[i-1];
+    return out;
+}
+function tbBandColor(spread, atr, cfg) {
+    if (atr != null && Math.abs(spread) < atr * cfg.flatMult) return cfg.flatColor;
+    return spread > 0 ? cfg.bullColor : cfg.bearColor;
+}
+function calcTrendBand(klines, cfg) {
+    const ef = calcEMAField(klines, cfg.fastLen, 'close');
+    const es = calcEMAField(klines, cfg.slowLen, 'close');
+    const tr = calcTR(klines);
+    const atr = calcRMA(tr, 14);
+    const color = klines.map((k,i) => tbBandColor(ef[i].value - es[i].value, atr[i], cfg));
+    return { fast: ef, slow: es, color, lastAtr: atr[atr.length-1] };
+}
+
 const TF_OPTIONS = [
     { v: '1',   l: '1m'  },
     { v: '5',   l: '5m'  },
@@ -188,9 +229,13 @@ function _obCdRemain(tf) {
     if (tf === 'D') return 86400 - (s % 86400);
     return 0;
 }
-function _obCdFmt(s) {
+function _obCdFmt(s, hideSecAboveHour) {
     if (s <= 0) return '0:00';
-    if (s >= 3600) { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60; return `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; }
+    if (s >= 3600) {
+        const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;
+        if (hideSecAboveHour) return `${h}:${String(m).padStart(2,'0')}`;
+        return `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+    }
     return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 }
 class _OBCountdownPrimitive {
@@ -206,7 +251,8 @@ class _OBCountdownPrimitive {
         if (y == null) return [];
         const bull = s.lastOpen == null || s.lastPrice >= s.lastOpen;
         const rem = _obCdRemain(s.curTF);
-        return [{ coordinate: () => y + 17, text: () => _obCdFmt(rem), textColor: () => '#FFFFFF', backColor: () => bull ? '#20B26C' : '#EF454A' }];
+        const hideSec = s.curTF === 'D' || s.curTF === '240';
+        return [{ coordinate: () => y + 17, text: () => _obCdFmt(rem, hideSec), textColor: () => '#FFFFFF', backColor: () => bull ? '#20B26C' : '#EF454A' }];
     }
 }
 
@@ -528,12 +574,170 @@ function _obGrabConfirmPrev(prevCandle) {
     _obGrabState.emaClose = prevCandle.close * k + _obGrabState.emaClose * (1 - k);
 }
 
+// ── Trend Band (banda EMA fast/slow) ───────────────────────────────────────────
+let _obTbActive = false;
+let _obTbSeries = { fast: null, slow: null }, _obTbData = null, _obTbState = null;
+
+class _TrendBandFillPrimitive {
+    constructor() {
+        this._series = null;
+        const renderer = {
+            draw: target => target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio, verticalPixelRatio }) => {
+                const series = this._series;
+                if (!series || !_obTbActive || !_obTbData || !_obChart) return;
+                const { fast, slow, color } = _obTbData;
+                if (fast.length < 2) return;
+                const ts = _obChart.timeScale();
+                ctx.save();
+                const cfg = getTbCfg();
+                const alpha = (100 - (cfg.bandTransp ?? 22)) / 100;
+                for (let i = 0; i < fast.length - 1; i++) {
+                    const x0 = ts.timeToCoordinate(fast[i].time), x1 = ts.timeToCoordinate(fast[i+1].time);
+                    if (x0 == null || x1 == null) continue;
+                    const yf0 = series.priceToCoordinate(fast[i].value),   yf1 = series.priceToCoordinate(fast[i+1].value);
+                    const ys0 = series.priceToCoordinate(slow[i].value),   ys1 = series.priceToCoordinate(slow[i+1].value);
+                    if (yf0 == null || yf1 == null || ys0 == null || ys1 == null) continue;
+                    const xp0 = x0 * horizontalPixelRatio, xp1 = x1 * horizontalPixelRatio;
+                    ctx.beginPath();
+                    ctx.moveTo(xp0, yf0 * verticalPixelRatio);
+                    ctx.lineTo(xp1, yf1 * verticalPixelRatio);
+                    ctx.lineTo(xp1, ys1 * verticalPixelRatio);
+                    ctx.lineTo(xp0, ys0 * verticalPixelRatio);
+                    ctx.closePath();
+                    ctx.fillStyle = _hexToRgba(color[i], alpha);
+                    ctx.fill();
+                }
+                ctx.restore();
+            })
+        };
+        this._view = { renderer: () => renderer, zOrder: () => 'bottom' };
+    }
+    attached({ series }) { this._series = series; }
+    detached() { this._series = null; }
+    updateAllViews() {}
+    paneViews() { return [this._view]; }
+}
+
+function _obApplyTb() {
+    for (const k of ['fast','slow']) {
+        if (_obTbSeries[k]) { try { _obChart.removeSeries(_obTbSeries[k]); } catch(e) {} _obTbSeries[k] = null; }
+    }
+    _obTbData = null; _obTbState = null;
+    if (!_obTbActive || !_obChart || !_obKlines.length) return;
+    const cfg = getTbCfg();
+    const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: !cfg.hideLines };
+    _obTbSeries.fast = addSeries(_obChart, 'LineSeries', { ...lb, color: '#ffe082', lineWidth: 1 });
+    _obTbSeries.slow = addSeries(_obChart, 'LineSeries', { ...lb, color: '#e0e0e0', lineWidth: 1 });
+    const tb = calcTrendBand(_obKlines, cfg);
+    _obTbSeries.fast.setData(tb.fast);
+    _obTbSeries.slow.setData(tb.slow);
+    _obTbData = { fast: tb.fast, slow: tb.slow, color: tb.color };
+    _obTbState = {
+        emaFast: tb.fast[tb.fast.length-1].value, emaSlow: tb.slow[tb.slow.length-1].value,
+        atr: tb.lastAtr, prevClose: _obKlines[_obKlines.length-2] ? _obKlines[_obKlines.length-2].close : _obKlines[_obKlines.length-1].close,
+    };
+}
+
+function toggleObTb() {
+    _obTbActive = !_obTbActive;
+    const btn = document.getElementById('ob-tb-btn');
+    if (btn) btn.style.color = _obTbActive ? '#8a9a5b' : '#B2B5BE';
+    const cfgBtn = document.getElementById('ob-tb-cfg-btn');
+    if (cfgBtn) cfgBtn.style.display = _obTbActive ? 'inline-flex' : 'none';
+    _obApplyTb();
+}
+
+// Live update (tick non confermato) — mirror di _obGrabUpdateTail: ricalcola EMA
+// fast/slow + ATR "in corso" e ridisegna linee/banda, senza committare lo stato.
+function _obTbUpdateTail(candle, confirmed) {
+    if (!_obTbActive || !_obTbState) return;
+    const cfg = getTbCfg();
+    const kf = 2/(cfg.fastLen+1), ks = 2/(cfg.slowLen+1);
+    const liveEmaFast = candle.close * kf + _obTbState.emaFast * (1-kf);
+    const liveEmaSlow = candle.close * ks + _obTbState.emaSlow * (1-ks);
+    const pc = _obTbState.prevClose;
+    const tr = Math.max(candle.high - candle.low, Math.abs(candle.high - pc), Math.abs(candle.low - pc));
+    const liveAtr = _obTbState.atr != null ? (tr - _obTbState.atr) / 14 + _obTbState.atr : null;
+    const color = tbBandColor(liveEmaFast - liveEmaSlow, liveAtr, cfg);
+    if (_obTbSeries.fast) { _obTbSeries.fast.update({time:candle.time, value:liveEmaFast}); _obTbSeries.slow.update({time:candle.time, value:liveEmaSlow}); }
+    if (_obTbData) {
+        const lastPt = _obTbData.fast[_obTbData.fast.length-1];
+        if (lastPt && lastPt.time === candle.time) {
+            _obTbData.fast[_obTbData.fast.length-1]  = {time:candle.time, value:liveEmaFast};
+            _obTbData.slow[_obTbData.slow.length-1]  = {time:candle.time, value:liveEmaSlow};
+            _obTbData.color[_obTbData.color.length-1] = color;
+        } else {
+            _obTbData.fast.push({time:candle.time, value:liveEmaFast});
+            _obTbData.slow.push({time:candle.time, value:liveEmaSlow});
+            _obTbData.color.push(color);
+        }
+    }
+    if (confirmed) { _obTbState.emaFast = liveEmaFast; _obTbState.emaSlow = liveEmaSlow; _obTbState.atr = liveAtr; _obTbState.prevClose = candle.close; }
+}
+// Conferma lo stato sulla candela appena chiusa (mirror di _obGrabConfirmPrev) —
+// chiamata dal poll REST quando rileva che è iniziata una nuova barra.
+function _obTbConfirmPrev(prevCandle) {
+    if (!_obTbActive || !_obTbState || !prevCandle) return;
+    const cfg = getTbCfg();
+    const kf = 2/(cfg.fastLen+1), ks = 2/(cfg.slowLen+1);
+    const pc = _obTbState.prevClose;
+    const tr = Math.max(prevCandle.high - prevCandle.low, Math.abs(prevCandle.high - pc), Math.abs(prevCandle.low - pc));
+    _obTbState.atr      = _obTbState.atr != null ? (tr - _obTbState.atr) / 14 + _obTbState.atr : null;
+    _obTbState.emaFast   = prevCandle.close * kf + _obTbState.emaFast * (1 - kf);
+    _obTbState.emaSlow   = prevCandle.close * ks + _obTbState.emaSlow * (1 - ks);
+    _obTbState.prevClose = prevCandle.close;
+}
+
+// ── Pannello impostazioni Trend Band ────────────────────────────────────────────
+function _obTbReapplyAll() { if (_obTbActive) _obApplyTb(); }
+function openTbCfgPanel() {
+    const cfg = getTbCfg();
+    for (const k of Object.keys(_DEFAULT_TB_CFG)) {
+        const el = document.getElementById('tb-cfg-' + k);
+        if (!el) continue;
+        if (el.type === 'checkbox') el.checked = !!cfg[k];
+        else el.value = cfg[k];
+    }
+    document.getElementById('tb-cfg-panel').style.display = 'flex';
+}
+function closeTbCfgPanel() { document.getElementById('tb-cfg-panel').style.display = 'none'; }
+function saveTbCfgPanel() {
+    const cfg = {};
+    for (const k of Object.keys(_DEFAULT_TB_CFG)) {
+        const el = document.getElementById('tb-cfg-' + k);
+        if (!el) { cfg[k] = _DEFAULT_TB_CFG[k]; continue; }
+        if (el.type === 'checkbox') cfg[k] = el.checked;
+        else if (el.type === 'number') cfg[k] = parseFloat(el.value);
+        else cfg[k] = el.value;
+    }
+    if (!isFinite(cfg.fastLen))    cfg.fastLen    = _DEFAULT_TB_CFG.fastLen;
+    if (!isFinite(cfg.slowLen))    cfg.slowLen    = _DEFAULT_TB_CFG.slowLen;
+    if (!isFinite(cfg.bandTransp)) cfg.bandTransp = _DEFAULT_TB_CFG.bandTransp;
+    if (!isFinite(cfg.flatMult))   cfg.flatMult   = _DEFAULT_TB_CFG.flatMult;
+    cfg.fastLen    = Math.max(1, Math.min(500, Math.round(cfg.fastLen)));
+    cfg.slowLen    = Math.max(1, Math.min(500, Math.round(cfg.slowLen)));
+    cfg.bandTransp = Math.max(0, Math.min(95, Math.round(cfg.bandTransp)));
+    cfg.flatMult   = Math.max(0.05, cfg.flatMult);
+    setTbCfg(cfg);
+    closeTbCfgPanel();
+    _obTbReapplyAll();
+}
+function resetTbCfgPanel() {
+    localStorage.removeItem('chart_tb_cfg');
+    openTbCfgPanel();
+    _obTbReapplyAll();
+}
+
 let _tradeEnabled = false, _tradePos = null, _tradeSide = null, _hadPosition = false;
 let _tradeBalance = null, _instInfo = null, _tradePollT = null;
+let _tradeSSE = null;
 let _fsOrderType = 'Market', _fsCondExec = 'Market';
 let _fsPendingOrderId = null, _fsPendingOrderFilter = null, _orderSeenInList = false, _pendingOrderSetAt = 0, _lastAmendAt = 0, _orderMissingCount = 0, _posMissingCount = 0;
 let _pricePickTarget = null;
 let _fsSlLine = null, _fsTpLine = null, _fsSlPrice = null, _fsTpPrice = null;
+// TP può essere Market (default, alla trigger) o Limit (ordine limite alla trigger,
+// stesso prezzo). SL resta sempre market — un limit SL rischia di non riempirsi.
+let _fsTpOrderType = 'Market';
 let _fsSlLabel = null, _fsTpLabel = null, _fsExecLabel = null;
 let _fsEntryLine = null, _fsEntryPrice = null, _fsEntryLabel = null, _fsEntryIsPosition = false;
 let _fsExecLine = null, _fsExecPrice = null;
@@ -571,8 +775,46 @@ function toggleTradePanel() {
     p.style.flexDirection = 'column';
     const btn = document.getElementById('fs-trade-btn');
     if (btn) { btn.style.background = open ? '#2A2E39' : '#1e3a5f'; btn.style.color = open ? '#B2B5BE' : '#60a5fa'; }
-    if (!open) { clearInterval(_tradePollT); _tradePollT = null; loadTradeData(); _tradePollT = setInterval(loadTradeData, 3000); }
-    else { clearInterval(_tradePollT); _tradePollT = null; resetTradeSide('panelClose'); }
+    if (!open) { clearInterval(_tradePollT); _tradePollT = null; loadTradeData(); _tradePollT = setInterval(loadTradeData, 3000); _startTradeSSE(); }
+    else { clearInterval(_tradePollT); _tradePollT = null; _stopTradeSSE(); resetTradeSide('panelClose'); }
+}
+
+// ── Push posizione/ordini via websocket privata Bybit (backend, private_ws_manager.py)
+// invece di aspettare il prossimo poll REST — vedi indagine "lentezza P&L/chiusura TP-SL".
+// Il poll REST (loadTradeData, sopra) resta attivo come fallback/resync (balance,
+// istrumento, lista ordini pendenti) — qui copriamo solo il percorso rapido posizione.
+function _startTradeSSE() {
+    _stopTradeSSE();
+    if (!_tradeEnabled || !_isLoggedIn || !_obSymbol) return;
+    try {
+        const es = new EventSource(`api/trade/stream?symbol=${_obSymbol}`);
+        _tradeSSE = es;
+        es.addEventListener('snapshot', ev => {
+            try {
+                const d = JSON.parse(ev.data);
+                if (d.position) { _tradePos = d.position; _hadPosition = true; _posMissingCount = 0; _renderPosition(); }
+            } catch(e) {}
+        });
+        es.addEventListener('position', ev => {
+            try {
+                const d = JSON.parse(ev.data);
+                // SOLO percorso "posizione aggiornata/apertao" — l'aggiornamento veloce
+                // di P&L che serviva. La CHIUSURA resta gestita esclusivamente dal poll
+                // REST con debounce a 5 poll (vedi _renderPosition): un push "size=0" da
+                // qui si è rivelato un falso positivo (probabile riga con size=0 non
+                // relativa alla posizione reale, es. hedge-mode/altro positionIdx) che
+                // ha azzerato la UI SL/TP senza che la posizione fosse davvero chiusa.
+                // Da NON riattivare senza aver capito la causa esatta.
+                if (d.position) {
+                    _tradePos = d.position; _hadPosition = true; _posMissingCount = 0;
+                    _renderPosition();
+                }
+            } catch(e) {}
+        });
+    } catch(e) {}
+}
+function _stopTradeSSE() {
+    if (_tradeSSE) { try { _tradeSSE.close(); } catch(e) {} _tradeSSE = null; }
 }
 
 async function loadTradeData() {
@@ -842,6 +1084,8 @@ function _renderPosition() {
     if (badge) { badge.textContent = `${long ? 'LONG' : 'SHORT'} ${p.size} @ ${fmtPrice(p.entryPrice)} · ${p.leverage}x`; badge.style.color = long ? '#10b981' : '#ef4444'; }
     const pnlEl = document.getElementById('fs-pos-pnl');
     if (pnlEl) { pnlEl.textContent = `P&L: ${p.unrealizedPnl >= 0 ? '+' : ''}${p.unrealizedPnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`; pnlEl.style.color = p.unrealizedPnl >= 0 ? '#10b981' : '#ef4444'; }
+    const qtyEl = document.getElementById('fs-pos-qty');
+    if (qtyEl) qtyEl.textContent = `Qty: ${p.size}`;
     const liqEl = document.getElementById('fs-pos-liq');
     if (liqEl) liqEl.textContent = p.liqPrice ? `Liq: ${fmtPrice(p.liqPrice)}` : '';
     _syncPositionEntryMarker(p);
@@ -907,7 +1151,11 @@ function _buildSlTpLabel(kind) {
         const combined = usdtStr ? usdtStr + (pctStr ? ` (${pctStr})` : '') : pctStr;
         infoHtml = combined ? `<span>${combined}</span>` : '';
     }
-    const kindLabel = kind === 'tp' ? 'TP' : 'SL';
+    // "TP" resta fisso (fa parte della maniglia di drag, cursore ns-resize); solo il
+    // suffisso MKT/LMT è cliccabile per scegliere il tipo — cursore a manina (pointer)
+    // e stopPropagation sul mousedown così il click non fa partire anche il drag.
+    const tpTypeSpan = `<span onmousedown="event.stopPropagation()" onclick="_toggleTpTypeMenu(event)" title="${window.t('tp_type_hint')}" style="cursor:pointer;">${_fsTpOrderType === 'Limit' ? 'LMT' : 'MKT'}</span>`;
+    const kindLabel = kind === 'tp' ? `TP ${tpTypeSpan}` : 'SL';
     const alertIcon = `<svg width="13" height="13" viewBox="0 0 24 24" style="display:block;flex-shrink:0"><circle cx="12" cy="12" r="11" fill="#ef4444"/><rect x="11" y="5" width="2" height="9" rx="1" fill="white"/><rect x="11" y="16" width="2" height="2.5" rx="1" fill="white"/></svg>`;
     const leftContent = isInvalid ? alertIcon : kindLabel;
     const leftBg      = isInvalid ? '#3d0a0a' : '#1E222D';
@@ -916,7 +1164,7 @@ function _buildSlTpLabel(kind) {
     label.id = `fs-${kind}-label`;
     label.style.cssText = `position:absolute;right:180px;z-index:20;display:flex;align-items:stretch;border:1px solid ${border};border-radius:4px;overflow:hidden;font-size:11px;font-weight:600;pointer-events:all;white-space:nowrap;user-select:none;transform:translateY(-50%);box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:ns-resize;`;
     label.innerHTML = `
-        <div onmousedown="_startSlTpLabelDrag(event,'${kind}')" ontouchstart="_startSlTpLabelDrag(event,'${kind}')" style="padding:5px 8px;background:${leftBg};color:${leftColor};cursor:ns-resize;touch-action:none;display:flex;align-items:center;">${leftContent}</div>
+        <div onmousedown="_startSlTpLabelDrag(event,'${kind}')" ontouchstart="_startSlTpLabelDrag(event,'${kind}')" style="padding:5px 8px;background:${leftBg};color:${leftColor};cursor:ns-resize;touch-action:none;display:flex;align-items:center;gap:3px;">${leftContent}</div>
         ${infoHtml ? `<div onmousedown="_startSlTpLabelDrag(event,'${kind}')" ontouchstart="_startSlTpLabelDrag(event,'${kind}')" style="padding:5px 8px;background:${isInvalid ? '#2d0a0a' : '#1E222D'};color:${isInvalid ? '#f87171' : color};display:flex;gap:6px;align-items:center;cursor:ns-resize;touch-action:none;border-left:1px solid #2A2E39;">${infoHtml}</div>` : ''}
         <div onclick="_removeSlTpLine('${kind}')" title="${window.t('remove_sltp')}" style="padding:5px 7px;color:#6B7280;cursor:pointer;border-left:1px solid #2A2E39;background:#1E222D;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">✕</div>
     `;
@@ -924,6 +1172,51 @@ function _buildSlTpLabel(kind) {
     label.onmouseleave = () => _hideTradeZone();
     chartEl.appendChild(label);
     return label;
+}
+
+// ── Scelta tipo TP (Market/Limit) — click sull'etichetta "TP MKT/LMT" sul grafico.
+// Il prezzo limite coincide col prezzo di trigger del TP (nessuna seconda linea
+// separata da gestire) — copre il caso comune "TP come limit invece che market".
+function _toggleTpTypeMenu(e) {
+    e.stopPropagation();
+    const existing = document.getElementById('fs-tp-type-menu');
+    if (existing) { existing.remove(); return; }
+    const menu = document.createElement('div');
+    menu.id = 'fs-tp-type-menu';
+    menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY + 10}px;z-index:9999;background:#1E222D;border:1px solid #2A2E39;border-radius:4px;overflow:hidden;font-size:11px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.6);min-width:90px;`;
+    const opt = (type, label) => `<div onclick="_setTpOrderType('${type}')" style="padding:7px 12px;color:${_fsTpOrderType===type?'#10b981':'#B2B5BE'};cursor:pointer;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'">${label}</div>`;
+    menu.innerHTML = opt('Market', 'TP MKT') + `<div style="border-top:1px solid #2A2E39;"></div>` + opt('Limit', 'TP LMT');
+    document.body.appendChild(menu);
+    const closeOnce = ev => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('mousedown', closeOnce, true); } };
+    setTimeout(() => document.addEventListener('mousedown', closeOnce, true), 0);
+}
+function _setTpOrderType(type) {
+    _fsTpOrderType = type;
+    document.getElementById('fs-tp-type-menu')?.remove();
+    _drawSlTpLines();
+    _pushTpOrderType();
+}
+function _pushTpOrderType() {
+    if (_fsTpPrice == null || !_obSymbol) return;
+    const tp = parseFloat(_fsTpPrice.toFixed(8));
+    if (_tradePos) {
+        const body = { symbol: _obSymbol, positionIdx: _tradePos.positionIdx ?? 0, takeProfit: tp, tpOrderType: _fsTpOrderType };
+        if (_fsTpOrderType === 'Limit') body.tpLimitPrice = tp;
+        fetch('api/trade/set-sltp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+            .then(r => r.json()).then(d => { if (!d.success) _showTradeMsg(_bybMsg(d), false); })
+            .catch(() => _showTradeMsg(window.t('err_net'), false));
+    } else if (_fsPendingOrderId) {
+        // Ordine ancora pendente (non riempito): stesso cambio ma via amend ordine,
+        // non trading-stop posizione (non esiste ancora nessuna posizione).
+        const body = { symbol: _obSymbol, orderId: _fsPendingOrderId, orderFilter: _fsPendingOrderFilter || 'Order', takeProfit: tp, tpOrderType: _fsTpOrderType };
+        if (_fsTpOrderType === 'Limit') body.tpLimitPrice = tp;
+        _lastAmendAt = Date.now();
+        fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+            .then(r => r.json()).then(d => { if (!d.success) _showTradeMsg(_bybMsg(d), false); })
+            .catch(() => _showTradeMsg(window.t('err_net'), false));
+    }
+    // else: bozza pre-ordine, senza posizione né ordine pendente — il tipo scelto
+    // verrà incluso al momento della creazione dell'ordine (vedi confirmFsOrder).
 }
 
 function _updateSlTpLabelPos(kind) {
@@ -1013,7 +1306,7 @@ function _removeSlTpLine(kind) {
     } else {
         if (_fsTpLine && _obCandleS) { try { _obCandleS.removePriceLine(_fsTpLine); } catch(e){} _fsTpLine = null; }
         if (_fsTpLabel) { _fsTpLabel.remove(); _fsTpLabel = null; }
-        _fsTpPrice = null;
+        _fsTpPrice = null; _fsTpOrderType = 'Market';
         const el = document.getElementById('fs-el-tp');
         if (el) { el.style.display = ''; el.style.color = '#10b981'; el.style.pointerEvents = 'auto'; el.textContent = 'TP'; }
         const ti = document.getElementById('fs-tp-input'); if (ti) ti.value = '';
@@ -1097,7 +1390,7 @@ function _removeSlTpLines() {
     if (_fsTpLine) { try { _obCandleS.removePriceLine(_fsTpLine); } catch(e) {} _fsTpLine = null; }
     if (_fsSlLabel) { _fsSlLabel.remove(); _fsSlLabel = null; }
     if (_fsTpLabel) { _fsTpLabel.remove(); _fsTpLabel = null; }
-    _fsSlPrice = null; _fsTpPrice = null;
+    _fsSlPrice = null; _fsTpPrice = null; _fsTpOrderType = 'Market';
 }
 
 function addFsSlLine() {
@@ -1118,9 +1411,10 @@ function addFsTpLine() {
     const price = _obLivePrice || _tradePos.entryPrice;
     const long = _tradePos.side === 'Buy';
     _fsTpPrice = long ? price * 1.04 : price * 0.96;
+    _fsTpOrderType = 'Market';
     _drawSlTpLines();
     if (_obSymbol) {
-        fetch('api/trade/set-sltp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ symbol: _obSymbol, positionIdx: _tradePos.positionIdx ?? 0, takeProfit: parseFloat(_fsTpPrice.toFixed(8)) }) })
+        fetch('api/trade/set-sltp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ symbol: _obSymbol, positionIdx: _tradePos.positionIdx ?? 0, takeProfit: parseFloat(_fsTpPrice.toFixed(8)), tpOrderType: 'Market' }) })
             .then(r => r.json()).then(d => { if (!d.success) _showTradeMsg(_bybMsg(d), false); })
             .catch(() => _showTradeMsg(window.t('err_net'), false));
     }
@@ -1245,7 +1539,11 @@ async function _onFsMU() {
                 // Open position: use trading-stop
                 const body = { symbol: _obSymbol, positionIdx: _tradePos.positionIdx ?? 0 };
                 if (slVal) body.stopLoss = parseFloat(slVal.toFixed(8));
-                if (tpVal) body.takeProfit = parseFloat(tpVal.toFixed(8));
+                if (tpVal) {
+                    body.takeProfit = parseFloat(tpVal.toFixed(8));
+                    body.tpOrderType = _fsTpOrderType;
+                    if (_fsTpOrderType === 'Limit') body.tpLimitPrice = parseFloat(tpVal.toFixed(8));
+                }
                 const d = await fetch('api/trade/set-sltp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
                 if (!d.success) _showTradeMsg(_bybMsg(d), false);
             } else if (_fsPendingOrderId) {
@@ -1253,7 +1551,11 @@ async function _onFsMU() {
                 _lastAmendAt = Date.now();
                 const body = { symbol: _obSymbol, orderId: _fsPendingOrderId, orderFilter: _fsPendingOrderFilter || 'Order' };
                 if (slVal) body.stopLoss = parseFloat(slVal.toFixed(8));
-                if (tpVal) body.takeProfit = parseFloat(tpVal.toFixed(8));
+                if (tpVal) {
+                    body.takeProfit = parseFloat(tpVal.toFixed(8));
+                    body.tpOrderType = _fsTpOrderType;
+                    if (_fsTpOrderType === 'Limit') body.tpLimitPrice = parseFloat(tpVal.toFixed(8));
+                }
                 const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
                 if (!d.success) _showTradeMsg(_bybMsg(d), false);
             }
@@ -2025,7 +2327,11 @@ async function confirmFsOrder() {
             // existing open position immediately, ignoring the trigger. Set after fill.
         } else {
             if (_fsSlPrice != null) body.stopLoss = parseFloat(_fsSlPrice.toFixed(8));
-            if (_fsTpPrice != null) body.takeProfit = parseFloat(_fsTpPrice.toFixed(8));
+            if (_fsTpPrice != null) {
+                body.takeProfit = parseFloat(_fsTpPrice.toFixed(8));
+                body.tpOrderType = _fsTpOrderType;
+                if (_fsTpOrderType === 'Limit') body.tpLimitPrice = parseFloat(_fsTpPrice.toFixed(8));
+            }
         }
         const d = await fetch('api/trade/order', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
         if (d.success) {
@@ -2041,7 +2347,11 @@ async function confirmFsOrder() {
                         if (_fsPendingOrderId !== _oid) return;
                         const ab = { symbol: _obSymbol, orderId: _oid, orderFilter: 'StopOrder' };
                         if (_fsSlPrice != null) ab.stopLoss = parseFloat(_fsSlPrice.toFixed(8));
-                        if (_fsTpPrice != null) ab.takeProfit = parseFloat(_fsTpPrice.toFixed(8));
+                        if (_fsTpPrice != null) {
+                            ab.takeProfit = parseFloat(_fsTpPrice.toFixed(8));
+                            ab.tpOrderType = _fsTpOrderType;
+                            if (_fsTpOrderType === 'Limit') ab.tpLimitPrice = parseFloat(_fsTpPrice.toFixed(8));
+                        }
                         _lastAmendAt = Date.now();
                         const da = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(ab) }).then(r => r.json());
                         if (!da.success) _showTradeMsg(_bybMsg(da), false);
@@ -2063,6 +2373,22 @@ async function closeFsPosition() {
         const d = await fetch('api/trade/close', { method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ symbol: _obSymbol, side: p.side === 'Buy' ? 'Sell' : 'Buy', qty: String(p.size) }) }).then(r => r.json());
         if (d.success) { _showTradeMsg(window.t('position_closed'), true); _tradePos = null; resetTradeSide(); const row = document.getElementById('fs-pos-row'); if (row) row.style.display = 'none'; setTimeout(loadTradeData, 2000); }
+        else _showTradeMsg(_bybMsg(d), false);
+    } catch(e) { _showTradeMsg(window.t('err_net'), false); }
+}
+
+async function reverseFsPosition() {
+    if (!_tradePos || !_obSymbol) return;
+    const p = _tradePos;
+    const newLabel = p.side === 'Buy' ? 'SHORT' : 'LONG';
+    if (!confirm(`${window.t('reverse_pos_q')}\n${p.side === 'Buy' ? 'LONG' : 'SHORT'} ${p.size} ${_obSymbol} → ${newLabel} ${p.size} ${_obSymbol}`)) return;
+    try {
+        // qty/side vengono ricalcolati server-side dalla posizione reale su Bybit
+        // (non dal client) — vedi /api/trade/reverse, stesso principio di sicurezza
+        // già applicato altrove dopo l'incidente SL/TP.
+        const d = await fetch('api/trade/reverse', { method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ symbol: _obSymbol }) }).then(r => r.json());
+        if (d.success) { _showTradeMsg(window.t('position_reversed'), true); resetTradeSide('reverseOrder'); setTimeout(loadTradeData, 2000); }
         else _showTradeMsg(_bybMsg(d), false);
     } catch(e) { _showTradeMsg(window.t('err_net'), false); }
 }
@@ -2645,7 +2971,7 @@ createApp({
                 else if (tf === '5') { warn = rem <= 60; blink = warn; }
                 else if (tf === '30' || tf === '60') { warn = rem <= 300; blink = rem <= 60; }
                 else if (_CD_TF_WARN.has(tf)) { warn = rem <= 300; }
-                obj[tf] = { text: _obCdFmt(rem), color: warn ? '#FF9C2E' : '#F3F4F6', blink };
+                obj[tf] = { text: _obCdFmt(rem, tf === 'D' || tf === '240'), color: warn ? '#FF9C2E' : '#F3F4F6', blink };
             }
             tfCountdowns.value = obj;
         };
@@ -2760,6 +3086,7 @@ createApp({
                 const _obLvlSlot = { get obActive() { return showObLines.value; }, get obBidVal() { return maxLevelDistance.value.bidPrice; }, get obAskVal() { return maxLevelDistance.value.askPrice; } };
                 candleS.attachPrimitive(new _ObBandFillPrimitive(_obLvlSlot));
                 candleS.attachPrimitive(new _ObChannelFillPrimitive());
+                candleS.attachPrimitive(new _TrendBandFillPrimitive());
             } catch(e) {}
             const lineBase = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
             for (const { p, color, width, style } of EMA_CFG)
@@ -2827,6 +3154,7 @@ createApp({
                 if (_obBbActive) _obApplyBB();
                 if (_obChActive) _obApplyChannel();
                 if (_obGrabActive) _obApplyGrab();
+                if (_obTbActive) _obApplyTb();
                 candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length - 1]?.close) });
 
                 for (const { p } of EMA_CFG) {
@@ -2906,6 +3234,7 @@ createApp({
                 };
                 if (_obGrabActive) _obGrabColorCandle(candle);
                 else try { candleS.update(candle); } catch(e) {}
+                if (_obTbActive) _obTbUpdateTail(candle, false);
                 _cdLastPrice = candle.close; _cdLastOpen = candle.open;
                 _obLiveCandle = { ...candle };
             };
@@ -2942,6 +3271,7 @@ createApp({
                                 lastEMA[p] = prev.close * ek + lastEMA[p] * (1 - ek);
                             }
                             _obGrabConfirmPrev(prev);
+                            _obTbConfirmPrev(prev);
                             lastConfirmedTime = prev.time;
                         }
                         // Live EMA for current forming candle
@@ -2970,6 +3300,7 @@ createApp({
                         }
                         _obChUpdateTail(_obKlines);
                         _obGrabUpdateTail(last, false);
+                        _obTbUpdateTail(last, false);
                     }
                 } catch(e) {}
                 chartPollTimer = setTimeout(poll, 3000);

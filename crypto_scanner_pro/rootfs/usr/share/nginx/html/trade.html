@@ -133,12 +133,6 @@
                             title="Order Book">
                         Book
                     </button>
-                    <button v-if="isStandalone" @click="toggleNakedChart()"
-                            :class="['imbalance-toggle', nakedChart ? 'active' : '']"
-                            :title="nakedChart ? t('ob_tt_show_ind') : t('ob_tt_hide_ind')">
-                        <svg v-if="!nakedChart" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>
-                        <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M11.83,9L15,12.16C15,12.11 15,12.05 15,12A3,3 0 0,0 12,9C11.94,9 11.89,9 11.83,9M7.53,9.8L9.08,11.35C9.03,11.56 9,11.77 9,12A3,3 0 0,0 12,15C12.22,15 12.44,14.97 12.65,14.92L14.2,16.47C13.53,16.8 12.79,17 12,17A5,5 0 0,1 7,12C7,11.21 7.2,10.47 7.53,9.8M2,4.27L4.28,6.55L4.73,7C3.08,8.3 1.78,10 1,12C2.73,16.39 7,19.5 12,19.5C13.55,19.5 15.03,19.2 16.38,18.66L16.81,19.08L19.73,22L21,20.73L3.27,3M12,7A5,5 0 0,1 17,12C17,12.64 16.87,13.26 16.64,13.82L19.57,16.75C21.07,15.5 22.27,13.86 23,12C21.27,7.61 17,4.5 12,4.5C10.6,4.5 9.26,4.75 8,5.2L10.17,7.35C10.74,7.13 11.35,7 12,7Z"/></svg>
-                    </button>
                     <button v-if="isStandalone" onclick="openChartSearch()" class="imbalance-toggle" title="Cerca coin">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                     </button>
@@ -188,10 +182,29 @@
                                 title="GRaB — Buy green Sell Red (Murrey Math + EMA wave)">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" style="vertical-align:middle" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="4" height="8"/><rect x="10" y="5" width="4" height="13"/><rect x="17" y="8" width="4" height="10"/></svg>
                             </button>
+                            <button v-if="isStandalone" @click="toggleNakedChart()"
+                                style="padding:4px 8px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
+                                :title="nakedChart ? t('ob_tt_show_ind') : t('ob_tt_hide_ind')">
+                                <svg v-if="!nakedChart" viewBox="0 0 24 24" width="17" height="17" fill="currentColor" style="vertical-align:middle"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>
+                                <svg v-else viewBox="0 0 24 24" width="17" height="17" fill="currentColor" style="vertical-align:middle"><path d="M11.83,9L15,12.16C15,12.11 15,12.05 15,12A3,3 0 0,0 12,9C11.94,9 11.89,9 11.83,9M7.53,9.8L9.08,11.35C9.03,11.56 9,11.77 9,12A3,3 0 0,0 12,15C12.22,15 12.44,14.97 12.65,14.92L14.2,16.47C13.53,16.8 12.79,17 12,17A5,5 0 0,1 7,12C7,11.21 7.2,10.47 7.53,9.8M2,4.27L4.28,6.55L4.73,7C3.08,8.3 1.78,10 1,12C2.73,16.39 7,19.5 12,19.5C13.55,19.5 15.03,19.2 16.38,18.66L16.81,19.08L19.73,22L21,20.73L3.27,3M12,7A5,5 0 0,1 17,12C17,12.64 16.87,13.26 16.64,13.82L19.57,16.75C21.07,15.5 22.27,13.86 23,12C21.27,7.61 17,4.5 12,4.5C10.6,4.5 9.26,4.75 8,5.2L10.17,7.35C10.74,7.13 11.35,7 12,7Z"/></svg>
+                            </button>
                             <button id="ob-grab-cfg-btn" onclick="openGrabCfgPanel()"
                                 style="display:none;padding:4px 4px;font-size:11px;background:none;color:#6B7280;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
                                 onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
                                 title="Impostazioni GRaB">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                            </button>
+                            <button id="ob-tb-btn" onclick="toggleObTb()"
+                                style="padding:4px 8px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
+                                title="Trend Band (EMA 5/10)">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" style="vertical-align:middle" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16c2 1 4 2 6-1s3-6 6-7 5 2 8 1"/><path d="M2 19c2 1 4 2 6-1s3-6 6-7 5 2 8 1"/></svg>
+                            </button>
+                            <button id="ob-tb-cfg-btn" onclick="openTbCfgPanel()"
+                                style="display:none;padding:4px 4px;font-size:11px;background:none;color:#6B7280;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
+                                title="Impostazioni Trend Band">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                             </button>
                             <span style="color:#374151;margin:0 2px;">|</span>
@@ -586,12 +599,14 @@
                             <span id="fs-pos-badge" style="font-weight:700;font-size:12px;"></span>
                             <span id="fs-pos-pnl" style="font-family:monospace;font-size:12px;"></span>
                         </div>
+                        <span id="fs-pos-qty" style="color:#9CA3AF;font-size:11px;font-family:monospace;"></span>
                         <span id="fs-pos-liq" style="color:#6B7280;font-size:11px;"></span>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
                             <button id="fs-pos-sl-btn" onclick="addFsSlLine()" data-i18n-title="tip_pos_sl" title="Drag Stop Loss on chart"     style="padding:4px 0;font-size:11px;background:#2A2E39;color:#ef4444;border:1px solid #3d1e1e;border-radius:3px;cursor:pointer;">SL</button>
                             <button id="fs-pos-tp-btn" onclick="addFsTpLine()" data-i18n-title="tip_pos_tp" title="Drag Take Profit on chart" style="padding:4px 0;font-size:11px;background:#2A2E39;color:#10b981;border:1px solid #1e3d2a;border-radius:3px;cursor:pointer;">TP</button>
                         </div>
                         <button onclick="closeFsPosition()" style="width:100%;padding:6px 0;font-size:12px;background:#7f1d1d;color:#fca5a5;border:none;border-radius:4px;cursor:pointer;font-weight:600;" data-i18n="close_position">Chiudi Posizione</button>
+                        <button onclick="reverseFsPosition()" style="width:100%;padding:6px 0;font-size:12px;background:#7c4a03;color:#fbbf24;border:none;border-radius:4px;cursor:pointer;font-weight:600;" data-i18n="reverse_position">Reverse</button>
                     </div>
                     <!-- Open orders section -->
                     <div id="fs-orders-row" style="display:none;flex-direction:column;gap:4px;padding:8px 12px;border-top:1px solid #2A2E39;">
@@ -731,6 +746,42 @@
     <div style="display:flex;gap:8px;margin-top:14px;">
       <button onclick="saveGrabCfgPanel()" style="flex:1;padding:6px;border-radius:4px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:600;">Salva</button>
       <button onclick="resetGrabCfgPanel()" style="flex:1;padding:6px;border-radius:4px;border:1px solid #2A2E39;background:none;color:#B2B5BE;cursor:pointer;">Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- Trend Band settings panel -->
+<div id="tb-cfg-panel" style="display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);"
+     onclick="if(event.target===this) closeTbCfgPanel()">
+  <div style="background:#131722;border:1px solid #2A2E39;border-radius:8px;padding:16px 18px;width:320px;max-height:85vh;overflow-y:auto;color:#B2B5BE;font-size:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h3 style="margin:0;font-size:13px;color:#F3F4F6;">Impostazioni Trend Band</h3>
+      <button onclick="closeTbCfgPanel()" style="background:none;border:none;color:#B2B5BE;font-size:16px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:8px 0 4px;">EMA</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Fast EMA Length
+      <input type="number" id="tb-cfg-fastLen" min="1" max="500" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Slow EMA Length
+      <input type="number" id="tb-cfg-slowLen" min="1" max="500" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Nascondi linee EMA (solo banda)
+      <input type="checkbox" id="tb-cfg-hideLines"></label>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:12px 0 4px;">Banda</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore rialzo (bull)
+      <input type="color" id="tb-cfg-bullColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore ribasso (bear)
+      <input type="color" id="tb-cfg-bearColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore transizione (flat)
+      <input type="color" id="tb-cfg-flatColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Trasparenza banda (0-95)
+      <input type="number" id="tb-cfg-bandTransp" min="0" max="95" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Sensibilità transizione
+      <input type="number" id="tb-cfg-flatMult" min="0.05" step="0.05" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button onclick="saveTbCfgPanel()" style="flex:1;padding:6px;border-radius:4px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:600;">Salva</button>
+      <button onclick="resetTbCfgPanel()" style="flex:1;padding:6px;border-radius:4px;border:1px solid #2A2E39;background:none;color:#B2B5BE;cursor:pointer;">Reset</button>
     </div>
   </div>
 </div>

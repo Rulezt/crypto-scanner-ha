@@ -175,6 +175,7 @@ let _fsOrderType = 'Market', _fsCondExec = 'Market';
 let _fsPendingOrderId = null, _fsPendingOrderFilter = null, _orderSeenInList = false, _pendingOrderSetAt = 0, _lastAmendAt = 0, _orderMissingCount = 0, _posMissingCount = 0;
 let _pricePickTarget = null;
 let _fsSlLine = null, _fsTpLine = null, _fsSlPrice = null, _fsTpPrice = null;
+let _fsTpOrderType = 'Market';
 let _fsSlLabel = null, _fsTpLabel = null, _fsExecLabel = null;
 let _fsEntryLine = null, _fsEntryPrice = null, _fsEntryLabel = null;
 let _fsExecLine = null, _fsExecPrice = null;
@@ -463,6 +464,8 @@ function _renderPosition() {
     if (badge) { badge.textContent = `${long ? 'LONG' : 'SHORT'} ${p.size} @ ${fmtPrice(p.entryPrice)} · ${p.leverage}x`; badge.style.color = long ? '#10b981' : '#ef4444'; }
     const pnlEl = document.getElementById('fs-pos-pnl');
     if (pnlEl) { pnlEl.textContent = `P&L: ${p.unrealizedPnl >= 0 ? '+' : ''}${p.unrealizedPnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`; pnlEl.style.color = p.unrealizedPnl >= 0 ? '#10b981' : '#ef4444'; }
+    const qtyEl = document.getElementById('fs-pos-qty');
+    if (qtyEl) qtyEl.textContent = `Qty: ${p.size}`;
     const liqEl = document.getElementById('fs-pos-liq');
     if (liqEl) liqEl.textContent = p.liqPrice ? `Liq: ${fmtPrice(p.liqPrice)}` : '';
     if (!_tradeSide) { _fsSlPrice = p.stopLoss || null; _fsTpPrice = p.takeProfit || null; _drawSlTpLines(); }
@@ -501,7 +504,8 @@ function _buildSlTpLabel(kind) {
         const combined = usdtStr ? usdtStr + (pctStr ? ` (${pctStr})` : '') : pctStr;
         infoHtml = combined ? `<span>${combined}</span>` : '';
     }
-    const kindLabel = kind === 'tp' ? 'TP' : 'SL';
+    const tpTypeSpan = `<span onmousedown="event.stopPropagation()" onclick="_toggleTpTypeMenu(event)" title="${window.t('tp_type_hint')}" style="cursor:pointer;">${_fsTpOrderType === 'Limit' ? 'LMT' : 'MKT'}</span>`;
+    const kindLabel = kind === 'tp' ? `TP ${tpTypeSpan}` : 'SL';
     const alertIcon = `<svg width="13" height="13" viewBox="0 0 24 24" style="display:block;flex-shrink:0"><circle cx="12" cy="12" r="11" fill="#ef4444"/><rect x="11" y="5" width="2" height="9" rx="1" fill="white"/><rect x="11" y="16" width="2" height="2.5" rx="1" fill="white"/></svg>`;
     const leftContent = isInvalid ? alertIcon : kindLabel;
     const leftBg      = isInvalid ? '#3d0a0a' : '#1E222D';
@@ -510,7 +514,7 @@ function _buildSlTpLabel(kind) {
     label.id = `fs-${kind}-label`;
     label.style.cssText = `position:absolute;right:180px;z-index:20;display:flex;align-items:stretch;border:1px solid ${border};border-radius:4px;overflow:hidden;font-size:11px;font-weight:600;pointer-events:all;white-space:nowrap;user-select:none;transform:translateY(-50%);box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:ns-resize;`;
     label.innerHTML = `
-        <div onmousedown="_startSlTpLabelDrag(event,'${kind}')" style="padding:5px 8px;background:${leftBg};color:${leftColor};cursor:ns-resize;display:flex;align-items:center;">${leftContent}</div>
+        <div onmousedown="_startSlTpLabelDrag(event,'${kind}')" style="padding:5px 8px;background:${leftBg};color:${leftColor};cursor:ns-resize;display:flex;align-items:center;gap:3px;">${leftContent}</div>
         ${infoHtml ? `<div onmousedown="_startSlTpLabelDrag(event,'${kind}')" style="padding:5px 8px;background:${isInvalid ? '#2d0a0a' : '#1E222D'};color:${isInvalid ? '#f87171' : color};display:flex;gap:6px;align-items:center;cursor:ns-resize;border-left:1px solid #2A2E39;">${infoHtml}</div>` : ''}
         <div onclick="_removeSlTpLine('${kind}')" title="${window.t('remove_sltp')}" style="padding:5px 7px;color:#6B7280;cursor:pointer;border-left:1px solid #2A2E39;background:#1E222D;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='#1E222D'">✕</div>
     `;
@@ -518,6 +522,44 @@ function _buildSlTpLabel(kind) {
     label.onmouseleave = () => _hideTradeZone();
     chartEl.appendChild(label);
     return label;
+}
+
+function _toggleTpTypeMenu(e) {
+    e.stopPropagation();
+    const existing = document.getElementById('fs-tp-type-menu');
+    if (existing) { existing.remove(); return; }
+    const menu = document.createElement('div');
+    menu.id = 'fs-tp-type-menu';
+    menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY + 10}px;z-index:9999;background:#1E222D;border:1px solid #2A2E39;border-radius:4px;overflow:hidden;font-size:11px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.6);min-width:90px;`;
+    const opt = (type, label) => `<div onclick="_setTpOrderType('${type}')" style="padding:7px 12px;color:${_fsTpOrderType===type?'#10b981':'#B2B5BE'};cursor:pointer;" onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'">${label}</div>`;
+    menu.innerHTML = opt('Market', 'TP MKT') + `<div style="border-top:1px solid #2A2E39;"></div>` + opt('Limit', 'TP LMT');
+    document.body.appendChild(menu);
+    const closeOnce = ev => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('mousedown', closeOnce, true); } };
+    setTimeout(() => document.addEventListener('mousedown', closeOnce, true), 0);
+}
+function _setTpOrderType(type) {
+    _fsTpOrderType = type;
+    document.getElementById('fs-tp-type-menu')?.remove();
+    _drawSlTpLines();
+    _pushTpOrderType();
+}
+function _pushTpOrderType() {
+    if (_fsTpPrice == null || !_obSymbol) return;
+    const tp = parseFloat(_fsTpPrice.toFixed(8));
+    if (_tradePos) {
+        const body = { symbol: _obSymbol, positionIdx: _tradePos.positionIdx ?? 0, takeProfit: tp, tpOrderType: _fsTpOrderType };
+        if (_fsTpOrderType === 'Limit') body.tpLimitPrice = tp;
+        fetch('api/trade/set-sltp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+            .then(r => r.json()).then(d => { if (!d.success) _showTradeMsg(_bybMsg(d), false); })
+            .catch(() => _showTradeMsg(window.t('err_net'), false));
+    } else if (_fsPendingOrderId) {
+        const body = { symbol: _obSymbol, orderId: _fsPendingOrderId, orderFilter: _fsPendingOrderFilter || 'Order', takeProfit: tp, tpOrderType: _fsTpOrderType };
+        if (_fsTpOrderType === 'Limit') body.tpLimitPrice = tp;
+        _lastAmendAt = Date.now();
+        fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+            .then(r => r.json()).then(d => { if (!d.success) _showTradeMsg(_bybMsg(d), false); })
+            .catch(() => _showTradeMsg(window.t('err_net'), false));
+    }
 }
 
 function _updateSlTpLabelPos(kind) {
@@ -605,7 +647,7 @@ function _removeSlTpLine(kind) {
     } else {
         if (_fsTpLine && _obCandleS) { try { _obCandleS.removePriceLine(_fsTpLine); } catch(e){} _fsTpLine = null; }
         if (_fsTpLabel) { _fsTpLabel.remove(); _fsTpLabel = null; }
-        _fsTpPrice = null;
+        _fsTpPrice = null; _fsTpOrderType = 'Market';
         const el = document.getElementById('fs-el-tp');
         if (el) { el.style.display = ''; el.style.color = '#10b981'; el.style.pointerEvents = 'auto'; el.textContent = 'TP'; }
         const ti = document.getElementById('fs-tp-input'); if (ti) ti.value = '';
@@ -687,7 +729,7 @@ function _removeSlTpLines() {
     if (_fsTpLine) { try { _obCandleS.removePriceLine(_fsTpLine); } catch(e) {} _fsTpLine = null; }
     if (_fsSlLabel) { _fsSlLabel.remove(); _fsSlLabel = null; }
     if (_fsTpLabel) { _fsTpLabel.remove(); _fsTpLabel = null; }
-    _fsSlPrice = null; _fsTpPrice = null;
+    _fsSlPrice = null; _fsTpPrice = null; _fsTpOrderType = 'Market';
 }
 
 function addFsSlLine() {
@@ -708,9 +750,10 @@ function addFsTpLine() {
     const price = _obLivePrice || _tradePos.entryPrice;
     const long = _tradePos.side === 'Buy';
     _fsTpPrice = long ? price * 1.04 : price * 0.96;
+    _fsTpOrderType = 'Market';
     _drawSlTpLines();
     if (_obSymbol) {
-        fetch('api/trade/set-sltp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ symbol: _obSymbol, positionIdx: _tradePos.positionIdx ?? 0, takeProfit: parseFloat(_fsTpPrice.toFixed(8)) }) })
+        fetch('api/trade/set-sltp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ symbol: _obSymbol, positionIdx: _tradePos.positionIdx ?? 0, takeProfit: parseFloat(_fsTpPrice.toFixed(8)), tpOrderType: 'Market' }) })
             .then(r => r.json()).then(d => { if (!d.success) _showTradeMsg(_bybMsg(d), false); })
             .catch(() => _showTradeMsg(window.t('err_net'), false));
     }
@@ -833,7 +876,11 @@ async function _onFsMU() {
                 // Open position: use trading-stop
                 const body = { symbol: _obSymbol, positionIdx: _tradePos.positionIdx ?? 0 };
                 if (slVal) body.stopLoss = parseFloat(slVal.toFixed(8));
-                if (tpVal) body.takeProfit = parseFloat(tpVal.toFixed(8));
+                if (tpVal) {
+                    body.takeProfit = parseFloat(tpVal.toFixed(8));
+                    body.tpOrderType = _fsTpOrderType;
+                    if (_fsTpOrderType === 'Limit') body.tpLimitPrice = parseFloat(tpVal.toFixed(8));
+                }
                 const d = await fetch('api/trade/set-sltp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
                 if (!d.success) _showTradeMsg(_bybMsg(d), false);
             } else if (_fsPendingOrderId) {
@@ -841,7 +888,11 @@ async function _onFsMU() {
                 _lastAmendAt = Date.now();
                 const body = { symbol: _obSymbol, orderId: _fsPendingOrderId, orderFilter: _fsPendingOrderFilter || 'Order' };
                 if (slVal) body.stopLoss = parseFloat(slVal.toFixed(8));
-                if (tpVal) body.takeProfit = parseFloat(tpVal.toFixed(8));
+                if (tpVal) {
+                    body.takeProfit = parseFloat(tpVal.toFixed(8));
+                    body.tpOrderType = _fsTpOrderType;
+                    if (_fsTpOrderType === 'Limit') body.tpLimitPrice = parseFloat(tpVal.toFixed(8));
+                }
                 const d = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
                 if (!d.success) _showTradeMsg(_bybMsg(d), false);
             }
@@ -1548,7 +1599,11 @@ async function confirmFsOrder() {
             // existing open position immediately, ignoring the trigger. Set after fill.
         } else {
             if (_fsSlPrice != null) body.stopLoss = parseFloat(_fsSlPrice.toFixed(8));
-            if (_fsTpPrice != null) body.takeProfit = parseFloat(_fsTpPrice.toFixed(8));
+            if (_fsTpPrice != null) {
+                body.takeProfit = parseFloat(_fsTpPrice.toFixed(8));
+                body.tpOrderType = _fsTpOrderType;
+                if (_fsTpOrderType === 'Limit') body.tpLimitPrice = parseFloat(_fsTpPrice.toFixed(8));
+            }
         }
         const d = await fetch('api/trade/order', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
         if (d.success) {
@@ -1564,7 +1619,11 @@ async function confirmFsOrder() {
                         if (_fsPendingOrderId !== _oid) return;
                         const ab = { symbol: _obSymbol, orderId: _oid, orderFilter: 'StopOrder' };
                         if (_fsSlPrice != null) ab.stopLoss = parseFloat(_fsSlPrice.toFixed(8));
-                        if (_fsTpPrice != null) ab.takeProfit = parseFloat(_fsTpPrice.toFixed(8));
+                        if (_fsTpPrice != null) {
+                            ab.takeProfit = parseFloat(_fsTpPrice.toFixed(8));
+                            ab.tpOrderType = _fsTpOrderType;
+                            if (_fsTpOrderType === 'Limit') ab.tpLimitPrice = parseFloat(_fsTpPrice.toFixed(8));
+                        }
                         _lastAmendAt = Date.now();
                         const da = await fetch('api/trade/amend', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(ab) }).then(r => r.json());
                         if (!da.success) _showTradeMsg(_bybMsg(da), false);
@@ -1586,6 +1645,19 @@ async function closeFsPosition() {
         const d = await fetch('api/trade/close', { method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ symbol: _obSymbol, side: p.side === 'Buy' ? 'Sell' : 'Buy', qty: String(p.size) }) }).then(r => r.json());
         if (d.success) { _showTradeMsg(window.t('position_closed'), true); _tradePos = null; resetTradeSide(); const row = document.getElementById('fs-pos-row'); if (row) row.style.display = 'none'; setTimeout(loadTradeData, 2000); }
+        else _showTradeMsg(_bybMsg(d), false);
+    } catch(e) { _showTradeMsg(window.t('err_net'), false); }
+}
+
+async function reverseFsPosition() {
+    if (!_tradePos || !_obSymbol) return;
+    const p = _tradePos;
+    const newLabel = p.side === 'Buy' ? 'SHORT' : 'LONG';
+    if (!confirm(`${window.t('reverse_pos_q')}\n${p.side === 'Buy' ? 'LONG' : 'SHORT'} ${p.size} ${_obSymbol} → ${newLabel} ${p.size} ${_obSymbol}`)) return;
+    try {
+        const d = await fetch('api/trade/reverse', { method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ symbol: _obSymbol }) }).then(r => r.json());
+        if (d.success) { _showTradeMsg(window.t('position_reversed'), true); resetTradeSide('reverseOrder'); setTimeout(loadTradeData, 2000); }
         else _showTradeMsg(_bybMsg(d), false);
     } catch(e) { _showTradeMsg(window.t('err_net'), false); }
 }

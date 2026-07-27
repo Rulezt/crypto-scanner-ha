@@ -605,6 +605,7 @@
       select_from_chart:'Seleziona dal grafico',
       order_btn:        'Ordine',
       close_position:   'Chiudi Posizione',
+      reverse_position: 'Reverse',
       sheet_close:      'Chiudi',
       active_orders:    'ORDINI ATTIVI',
       tip_lev_btn:      'Seleziona la leva',
@@ -635,6 +636,7 @@
       enter_exec_price: 'Inserisci il prezzo di esecuzione',
       /* label grafico trading */
       drag_tp:          'Trascina per impostare il Take Profit',
+      tp_type_hint:     'Click per scegliere TP Market o Limit',
       drag_sl:          'Trascina per impostare lo Stop Loss',
       drag_trigger:     'Trascina per impostare il prezzo trigger',
       remove_sltp:      'Rimuovi',
@@ -780,6 +782,7 @@
       /* chart extra */
       candles_on_load:  '📊 Candele al caricamento',
       close_pos_q:      'Chiudi posizione?',
+      reverse_pos_q:    'Invertire la posizione? Chiude quella attuale e ne apre subito una opposta della stessa size.',
       lvl_section:      'Livelli',
       lvl_ath:          'ATH',
       lvl_atl:          'ATL',
@@ -792,6 +795,7 @@
       no_price:         'Nessun prezzo',
       order_done:       '✅ Ordine eseguito!',
       position_closed:  'Posizione chiusa',
+      position_reversed:'Posizione invertita',
       price_pick_hint:  'Clicca sul grafico per selezionare il prezzo',
       search_hint:      'Cerca crypto...',
       search_init:      'Digita per cercare',
@@ -1498,6 +1502,7 @@
       select_from_chart:'Select from chart',
       order_btn:        'Order',
       close_position:   'Close Position',
+      reverse_position: 'Reverse',
       sheet_close:      'Close',
       active_orders:    'ACTIVE ORDERS',
       tip_lev_btn:      'Select leverage',
@@ -1528,6 +1533,7 @@
       enter_exec_price: 'Enter execution price',
       /* trading chart labels */
       drag_tp:          'Drag to set Take Profit',
+      tp_type_hint:     'Click to choose TP Market or Limit',
       drag_sl:          'Drag to set Stop Loss',
       drag_trigger:     'Drag to set trigger price',
       remove_sltp:      'Remove',
@@ -1673,6 +1679,7 @@
       /* chart extra */
       candles_on_load:  '📊 Candles on load',
       close_pos_q:      'Close position?',
+      reverse_pos_q:    'Reverse position? Closes the current one and immediately opens an opposite one of the same size.',
       lvl_section:      'Levels',
       lvl_ath:          'ATH',
       lvl_atl:          'ATL',
@@ -1685,6 +1692,7 @@
       no_price:         'No price',
       order_done:       '✅ Order done!',
       position_closed:  'Position closed',
+      position_reversed:'Position reversed',
       price_pick_hint:  'Click on chart to select price',
       search_hint:      'Search crypto...',
       search_init:      'Type to search',

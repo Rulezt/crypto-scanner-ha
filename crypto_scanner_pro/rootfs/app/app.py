@@ -22,6 +22,7 @@ from scanners.ico_levels_scanner import ICOLevelsScanner
 from scanners.double_touch import DoubleTouchScanner
 from scanners.bot_engine import BotEngine
 from ws_manager import BybitWSManager
+from private_ws_manager import BybitPrivateWSPool
 import journal
 
 # Setup logging
@@ -251,6 +252,7 @@ config = DEFAULT_CONFIG.copy()
 scanners = {}
 scanner_threads = {}
 ws_manager = BybitWSManager()
+private_ws_pool = BybitPrivateWSPool()
 
 _triggered_lock = threading.Lock()
 _recently_triggered = []
@@ -1614,6 +1616,40 @@ def trade_position():
         'markPrice': float(p.get('markPrice', 0)), 'liqPrice': _fv(p.get('liqPrice')),
     }})
 
+@app.route('/api/trade/stream')
+@login_required
+def trade_stream():
+    """SSE: push posizione/ordini in tempo reale via websocket privata Bybit
+    (position/order topic), invece del polling REST ogni 3s con debounce a
+    5 poll per la chiusura — vedi private_ws_manager.py. Read-only, nessun
+    ordine viene mai inviato da qui."""
+    import queue as _queue
+    from flask import stream_with_context
+    username = session.get('username', '')
+    k, s, en = _tcfg_user(username)
+    if not en:
+        return jsonify({'error': 'not configured'}), 403
+    symbol = request.args.get('symbol', '').upper()
+    conn = private_ws_pool.ensure(username, k, s)
+    q = conn.add_listener()
+
+    def gen():
+        try:
+            snap = conn.snapshot(symbol)
+            yield f"event: snapshot\ndata: {json.dumps(snap)}\n\n"
+            while True:
+                try:
+                    ev = q.get(timeout=15)
+                    if ev.get('symbol') == symbol:
+                        yield f"event: {ev['type']}\ndata: {json.dumps(ev)}\n\n"
+                except _queue.Empty:
+                    yield ": heartbeat\n\n"
+        finally:
+            conn.remove_listener(q)
+
+    return Response(stream_with_context(gen()), mimetype='text/event-stream',
+                     headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
 _DEFAULT_TAKER_FEE = 0.00055  # fallback standard Bybit derivati (VIP0) se manca API key
 
 def _fetch_taker_fee_rate(k, s, en, symbol):
@@ -1729,7 +1765,12 @@ def trade_amend():
     if data.get('takeProfit') is not None and data.get('takeProfit') not in ('', None):
         tp = data['takeProfit']
         body['takeProfit'] = str(tp)
-        if float(tp) != 0: body['tpTriggerBy'] = 'MarkPrice'
+        if float(tp) != 0:
+            body['tpTriggerBy'] = 'MarkPrice'
+            if data.get('tpOrderType') in ('Market', 'Limit'):
+                body['tpOrderType'] = data['tpOrderType']
+                if data['tpOrderType'] == 'Limit' and data.get('tpLimitPrice') is not None:
+                    body['tpLimitPrice'] = str(data['tpLimitPrice'])
     b = json.dumps(body)
     d = rq.post(f'{_BYB}/v5/order/amend', headers=_bsign(k, s, b), data=b, timeout=10).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
@@ -1760,7 +1801,14 @@ def trade_order():
         if data.get('triggerDirection'): order['triggerDirection'] = int(data['triggerDirection'])
     if otype == 'Limit' and data.get('price'): order['price'] = str(data['price'])
     if data.get('stopLoss'): order['stopLoss'] = str(data['stopLoss'])
-    if data.get('takeProfit'): order['takeProfit'] = str(data['takeProfit'])
+    if data.get('takeProfit'):
+        order['takeProfit'] = str(data['takeProfit'])
+        # TP come ordine limite invece di market alla trigger — SL resta sempre market,
+        # stessa scelta già applicata su /api/trade/set-sltp per la posizione aperta.
+        if data.get('tpOrderType') in ('Market', 'Limit'):
+            order['tpOrderType'] = data['tpOrderType']
+            if data['tpOrderType'] == 'Limit' and data.get('tpLimitPrice') is not None:
+                order['tpLimitPrice'] = str(data['tpLimitPrice'])
     body = json.dumps(order)
     d = rq.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg', 'Order failed')}), 400
@@ -1780,6 +1828,37 @@ def trade_close_pos():
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     return jsonify({'success': True})
 
+@app.route('/api/trade/reverse', methods=['POST'])
+@login_required
+def trade_reverse_pos():
+    """Chiude la posizione corrente e ne apre subito una opposta della stessa size,
+    in un solo ordine market (side opposto, qty = 2x la size attuale, NON reduceOnly
+    — stesso pattern usato da Bybit/altre app per il bottone "Reverse"). La size
+    viene rilettera da Bybit qui (non dal client) per sicurezza, così l'ordine
+    riflette sempre la posizione reale al momento del click, non un valore
+    potenzialmente stantio mostrato in UI."""
+    import requests as rq
+    from decimal import Decimal
+    k, s, en = _tcfg_user(session.get("username", ""))
+    if not en: return jsonify({'error': 'not configured'}), 403
+    data = request.get_json() or {}
+    sym = data.get('symbol', '').upper()
+    if not sym: return jsonify({'error': 'missing symbol'}), 400
+    qs = f'category=linear&symbol={sym}'
+    d = rq.get(f'{_BYB}/v5/position/list?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+    if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
+    lst = d['result']['list']
+    if not lst or float(lst[0].get('size', 0)) == 0:
+        return jsonify({'error': 'no open position'}), 400
+    p = lst[0]
+    opp_side = 'Sell' if p['side'] == 'Buy' else 'Buy'
+    new_qty = str(Decimal(p['size']) * 2)
+    body = json.dumps({'category': 'linear', 'symbol': sym, 'side': opp_side, 'orderType': 'Market',
+                        'qty': new_qty, 'reduceOnly': False, 'timeInForce': 'IOC'})
+    dd = rq.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
+    if dd.get('retCode') != 0: return jsonify({'error': dd.get('retMsg'), 'code': dd.get('retCode')}), 400
+    return jsonify({'success': True, 'newSide': opp_side, 'newSize': str(Decimal(p['size']))})
+
 @app.route('/api/trade/set-sltp', methods=['POST'])
 @login_required
 def trade_set_sltp():
@@ -1794,7 +1873,15 @@ def trade_set_sltp():
         if float(data['stopLoss']) != 0: body['slTriggerBy'] = 'MarkPrice'
     if data.get('takeProfit') is not None:
         body['takeProfit'] = str(data['takeProfit'])
-        if float(data['takeProfit']) != 0: body['tpTriggerBy'] = 'MarkPrice'
+        if float(data['takeProfit']) != 0:
+            body['tpTriggerBy'] = 'MarkPrice'
+            # TP come ordine limite invece di market alla trigger — SL resta sempre
+            # market (un SL limit può non riempirsi durante un movimento veloce,
+            # vanificando la protezione: mai esposto come opzione lato utente).
+            if data.get('tpOrderType') in ('Market', 'Limit'):
+                body['tpOrderType'] = data['tpOrderType']
+                if data['tpOrderType'] == 'Limit' and data.get('tpLimitPrice') is not None:
+                    body['tpLimitPrice'] = str(data['tpLimitPrice'])
     b = json.dumps(body)
     d = rq.post(f'{_BYB}/v5/position/trading-stop', headers=_bsign(k, s, b), data=b, timeout=6).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
