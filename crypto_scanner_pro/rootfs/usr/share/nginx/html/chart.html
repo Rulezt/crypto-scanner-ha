@@ -214,14 +214,17 @@
 
     <div class="w-px h-5 bg-dark-border"></div>
 
-    <button id="btn-mode-fav" onclick="switchMode('favorites')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-fav-idle">★<span class="btn-lbl" data-i18n="tab_fav"> Preferiti</span></button>
+    <button id="btn-mode-fav" onclick="switchMode('favorites')" class="px-3 py-1 rounded font-medium transition-colors btn-fav-idle" title="Preferiti" data-i18n-title="tab_fav" style="font-size:18px;line-height:1;">★</button>
     <button id="alerts-btn" onclick="openAlertsPanel()" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Alert attivi" data-i18n-title="nav_alerts"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none" style="display:block"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5m-2.031 1.324.002-.003v-.008z"/></svg></button>
-    <button id="cfg-btn" onclick="openCfgPanel()" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Impostazioni livelli" data-i18n-title="nav_lvl_settings"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
-
     <div class="w-px h-5 bg-dark-border"></div>
 
     <button id="btn-view" onclick="toggleLayoutMenu(event)" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Layout grafici" data-i18n-title="nav_layout" style="display:flex;align-items:center;gap:3px;"><span id="layout-btn-icon" style="display:flex;align-items:center;"></span><span id="layout-btn-label" style="font-size:11px;"></span></button>
 <div id="layout-menu" style="display:none;position:fixed;z-index:300;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;padding:6px 0;box-shadow:0 8px 32px rgba(0,0,0,.85);max-height:80vh;overflow-y:auto;"></div>
+
+    <button id="ind-btn" onclick="openIndPanel()" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Indicatori" data-i18n-title="ind_panel_title" style="display:flex;align-items:center;gap:4px;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none"><path stroke="currentColor" stroke-width="1.4" d="M6 12l4.8-4.8a1 1 0 0 1 1.4 0l2.7 2.7a1 1 0 0 0 1.3.1L23 5"></path><path fill="currentColor" fill-rule="evenodd" d="M19 12a1 1 0 0 0-1 1v4h-3v-1a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v2H7a1 1 0 0 0-1 1v4h17V13a1 1 0 0 0-1-1h-3zm0 10h3v-9h-3v9zm-1 0v-4h-3v4h3zm-4-4.5V22h-3v-6h3v1.5zM10 22v-3H7v3h3z"></path></svg>
+        <span class="btn-lbl" data-i18n="ind_panel_title" style="font-size:11px;"> Indicatori</span>
+    </button>
 
     <div class="w-px h-5 bg-dark-border"></div>
 
@@ -303,19 +306,6 @@
             </span>
             <span id="mkt-us-cd" style="font-size:9px;font-family:monospace;color:#6B7280;line-height:1.4;min-height:12px;white-space:nowrap;"></span>
         </button>
-    </div>
-
-    <div class="w-px h-5 bg-dark-border"></div>
-
-    <div class="flex items-center gap-1">
-        <button id="channel-all-btn" onclick="toggleChannelAll()" title="Canale SMA 20" data-i18n-title="channel_tool"
-            style="color:#B2B5BE;background:none;border:none;cursor:pointer;padding:4px 6px;line-height:1;flex-shrink:0;display:flex;align-items:center;transition:color .15s;">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>
-        </button>
-        <button id="bb-all-btn" onclick="toggleBBAll()" title="Bollinger Bands (20,2)"
-            style="font-size:13px;font-weight:700;color:#B2B5BE;background:none;border:none;cursor:pointer;padding:4px 6px;line-height:1;flex-shrink:0;transition:color .15s;">BB</button>
-        <button id="ob-all-btn" onclick="toggleOBAll()" title="Livelli Order Book (bid/ask wall)"
-            style="font-size:13px;font-weight:700;color:#B2B5BE;background:none;border:none;cursor:pointer;padding:4px 6px;line-height:1;flex-shrink:0;transition:color .15s;">OB</button>
     </div>
 
     <div class="flex-1"></div>
@@ -682,33 +672,43 @@
     </div>
 </div>
 
-<!-- Config panel -->
-<div id="cfg-panel" style="display:none;position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.55);" onclick="closeCfgOutside(event)">
-    <div style="position:absolute;top:56px;left:50%;transform:translateX(-50%);width:500px;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);">
+<!-- Indicatori panel -->
+<div id="ind-panel" style="display:none;position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.55);" onclick="closeIndPanelOutside(event)">
+    <div style="position:absolute;top:56px;left:50%;transform:translateX(-50%);width:600px;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);" onclick="event.stopPropagation()">
         <div style="padding:11px 14px;border-bottom:1px solid #2A2E39;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-            <span style="font-size:13px;font-weight:700;color:#E5E7EB;" data-i18n="cfg_chart_title">Impostazioni Grafici</span>
-            <button onclick="closeCfgPanel()" style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
+            <span style="font-size:13px;font-weight:700;color:#E5E7EB;" data-i18n="ind_panel_title">Indicatori</span>
+            <button onclick="closeIndPanel()" style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
         </div>
-        <div style="overflow-y:auto;flex:1;padding:12px 14px;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;">
-                <thead>
-                    <tr style="border-bottom:1px solid #2A2E39;">
-                        <th style="text-align:left;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_level">Livello</th>
-                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_color">Colore</th>
-                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_thickness">Spessore</th>
-                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_style">Stile</th>
-                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_chart">Chart</th>
-                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_mtf">MTF</th>
-                        <th style="text-align:center;padding:4px 6px;color:#6B7280;font-weight:500;" data-i18n="col_ob">OB</th>
-                    </tr>
-                </thead>
-                <tbody id="cfg-rows"></tbody>
-            </table>
+        <div style="overflow-y:auto;flex:1;padding:6px 0;" id="ind-rows"></div>
+    </div>
+</div>
+
+<!-- Indicatori: pannello impostazioni generico -->
+<div id="ind-cfg-panel" style="display:none;position:fixed;inset:0;z-index:260;background:rgba(0,0,0,.55);" onclick="closeIndCfgOutside(event)">
+    <div style="position:absolute;top:56px;left:50%;transform:translateX(-50%);width:300px;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);" onclick="event.stopPropagation()">
+        <div style="padding:11px 14px;border-bottom:1px solid #2A2E39;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+            <span id="ind-cfg-title" style="font-size:13px;font-weight:700;color:#E5E7EB;"></span>
+            <button onclick="closeIndCfgPanel()" style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
         </div>
+        <div style="overflow-y:auto;flex:1;padding:6px 14px;" id="ind-cfg-rows"></div>
         <div style="padding:10px 14px;border-top:1px solid #2A2E39;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
-            <button onclick="resetCfg()" style="padding:5px 12px;border-radius:5px;border:1px solid #2A2E39;background:#1E222D;color:#9CA3AF;font-size:12px;cursor:pointer;" data-i18n="btn_reset">Reset</button>
-            <button onclick="saveCfgPanel()" style="padding:5px 12px;border-radius:5px;border:none;background:#2563EB;color:#fff;font-size:12px;cursor:pointer;font-weight:600;" data-i18n="cfg_save">Salva</button>
+            <button onclick="resetIndCfg()" style="padding:5px 12px;border-radius:5px;border:1px solid #2A2E39;background:#1E222D;color:#9CA3AF;font-size:12px;cursor:pointer;">Reset</button>
+            <button onclick="saveIndCfgPanel()" style="padding:5px 12px;border-radius:5px;border:none;background:#2563EB;color:#fff;font-size:12px;cursor:pointer;font-weight:600;">Salva</button>
         </div>
+    </div>
+</div>
+
+<!-- Coin Info panel -->
+<div id="coin-info-panel" style="display:none;position:fixed;inset:0;z-index:270;background:rgba(0,0,0,.55);" onclick="closeCoinInfoOutside(event)">
+    <div style="position:absolute;top:56px;left:50%;transform:translateX(-50%);width:340px;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);" onclick="event.stopPropagation()">
+        <div style="padding:11px 14px;border-bottom:1px solid #2A2E39;display:flex;align-items:center;gap:8px;justify-content:space-between;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                <img id="coin-info-img" width="20" height="20" style="border-radius:50%;display:none;flex-shrink:0;">
+                <span id="coin-info-title" style="font-size:13px;font-weight:700;color:#E5E7EB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+            </div>
+            <button onclick="closeCoinInfoPanel()" style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;">✕</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:12px 14px;" id="coin-info-body"></div>
     </div>
 </div>
 
@@ -774,10 +774,10 @@ const INSTRUMENT_NAMES = {
     'XAUUSDT':'Gold',     'XAGUSDT':'Silver',      'CLUSDT':'Crude Oil',
 };
 const DEFAULT_EMA_CFG = [
-    {p:5,   color:'#ef4444', style:0, width:2},
-    {p:10,  color:'#fbbf24', style:0, width:2},
-    {p:60,  color:'#3b82f6', style:0, width:3},
-    {p:223, color:'#a855f7', style:0, width:2.5},
+    {p:5,   color:'#ef4444', style:0, width:2,   enabled:true},
+    {p:10,  color:'#fbbf24', style:0, width:2,   enabled:true},
+    {p:60,  color:'#3b82f6', style:0, width:3,   enabled:true},
+    {p:223, color:'#a855f7', style:0, width:2.5, enabled:true},
 ];
 const DEFAULT_LEVELS_CFG = {
     dayHigh:  {color:'#22c55e', style:0, width:2, vis:{chart:true, mtf:true, ob:true}},
@@ -789,7 +789,16 @@ const DEFAULT_LEVELS_CFG = {
     ath:      {color:'#f59e0b', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
     atl:      {color:'#a855f7', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
 };
-function getEmaCfg() { try{const s=JSON.parse(localStorage.getItem('chart_ema_cfg'));if(s&&s.length===4)return s;}catch(e){}return DEFAULT_EMA_CFG.map(x=>({...x})); }
+function getEmaCfg() {
+    try {
+        const s = JSON.parse(localStorage.getItem('chart_ema_cfg'));
+        // .enabled !== false, non "?? true": cfg salvate prima dell'introduzione del
+        // flag non hanno la chiave (undefined) e vanno trattate come "attivo" (default
+        // storico), non nascoste di colpo dopo l'update.
+        if (s && s.length === 4) return s.map((e, i) => ({ ...DEFAULT_EMA_CFG[i], ...e, enabled: e.enabled !== false }));
+    } catch(e) {}
+    return DEFAULT_EMA_CFG.map(x => ({...x}));
+}
 function getLvCfg() {
     try {
         const s = JSON.parse(localStorage.getItem('chart_levels_cfg'));
@@ -1157,6 +1166,29 @@ function calcEMA(bars, period) {
         return { time: b.time, value: v };
     });
 }
+// s.lastEMA[p] resta null quando disattivata: il gestore WS live (`if (s.lastEMA[p]
+// === null) continue;`) la salta automaticamente, nessun controllo enabled duplicato lì.
+function applyEmaToSlot(s) {
+    if (!s.klines || !s.klines.length) return;
+    for (const {p, enabled} of EMA_CFG) {
+        if (enabled === false) {
+            s.emaSeries[p].setData([]);
+            s.lastEMA[p] = null;
+        } else {
+            const ema = calcEMA(s.klines, p);
+            s.emaSeries[p].setData(ema);
+            s.lastEMA[p] = ema[ema.length - 1].value;
+        }
+    }
+}
+function toggleEmaAll(period) {
+    const cfg = getEmaCfg();
+    const entry = cfg.find(e => e.p === period);
+    entry.enabled = !(entry.enabled !== false);
+    try { localStorage.setItem('chart_ema_cfg', JSON.stringify(cfg)); } catch(e) {}
+    EMA_CFG = cfg;
+    slots.forEach(applyEmaToSlot);
+}
 
 const DEFAULT_BB_CFG = { enabled: false, period: 20, mult: 2, color: '#60a5fa', width: 1, style: 0 };
 function getBbCfg() {
@@ -1206,6 +1238,11 @@ function getChannelCfg() {
 }
 let CHANNEL_CFG = getChannelCfg();
 let channelActive = false, obLevelsActive = false;
+let tbActive = false, grabActive = false, sqzActive = false, srActive = false; // valorizzate più sotto, dopo i rispettivi const _DEFAULT_*_CFG
+function calcEMAField(bars, period, field) {
+    const k = 2 / (period + 1); let v = bars[0][field];
+    return bars.map((b, i) => { if (i > 0) v = b[field] * k + v * (1 - k); return { time: b.time, value: v }; });
+}
 function calcChannel(klines, period) {
     const mid = [], upper = [], lower = [];
     for (let i = period - 1; i < klines.length; i++) {
@@ -1310,6 +1347,737 @@ class _ObBandFillPrimitive {
     updateAllViews() {}
     paneViews() { return [this._view]; }
 }
+
+// ── Trend Band — porting da mtf.html: banda tra EMA fast/slow, colorata bull/bear/flat
+// (flat quando |spread EMA| < ATR(14)*flatMult). Stesso cfg/chiave localStorage di mtf.html
+// così le impostazioni sono condivise fra le pagine.
+const _DEFAULT_TB_CFG = {
+    enabled: false, fastLen: 5, slowLen: 10,
+    bullColor: '#22c55e', bearColor: '#ef4444', flatColor: '#eab308',
+    bandTransp: 22, flatMult: 0.25, hideLines: true,
+    showFlatArrow: false,
+};
+function getTbCfg() {
+    try { const s = JSON.parse(localStorage.getItem('chart_tb_cfg')); if (s) return { ..._DEFAULT_TB_CFG, ...s }; } catch(e) {}
+    return { ..._DEFAULT_TB_CFG };
+}
+function calcTR(klines) {
+    return klines.map((k, i) => {
+        if (i === 0) return k.high - k.low;
+        const pc = klines[i-1].close;
+        return Math.max(k.high - k.low, Math.abs(k.high - pc), Math.abs(k.low - pc));
+    });
+}
+function calcRMA(values, length) {
+    const out = new Array(values.length).fill(null);
+    if (values.length < length) return out;
+    let sum = 0;
+    for (let i = 0; i < length; i++) sum += values[i];
+    out[length-1] = sum / length;
+    for (let i = length; i < values.length; i++) out[i] = (values[i] - out[i-1]) / length + out[i-1];
+    return out;
+}
+function tbBandColor(spread, atr, cfg) {
+    if (atr != null && Math.abs(spread) < atr * cfg.flatMult) return cfg.flatColor;
+    return spread > 0 ? cfg.bullColor : cfg.bearColor;
+}
+function calcTrendBand(klines, cfg) {
+    const ef = calcEMAField(klines, cfg.fastLen, 'close');
+    const es = calcEMAField(klines, cfg.slowLen, 'close');
+    const tr = calcTR(klines);
+    const atr = calcRMA(tr, 14);
+    const color = klines.map((k, i) => tbBandColor(ef[i].value - es[i].value, atr[i], cfg));
+    return { fast: ef, slow: es, color, lastAtr: atr[atr.length-1] };
+}
+function toggleTrendBandAll() {
+    const cfg = getTbCfg();
+    cfg.enabled = !cfg.enabled;
+    try { localStorage.setItem('chart_tb_cfg', JSON.stringify(cfg)); } catch(e) {}
+    tbActive = cfg.enabled;
+    slots.forEach(s => applyTbToSlot(s, cfg));
+}
+function applyTbToSlot(s, cfg) {
+    for (const k of ['fast', 'slow']) {
+        if (s.tbSeries[k]) { try { s.chart.removeSeries(s.tbSeries[k]); } catch(e) {} s.tbSeries[k] = null; }
+    }
+    s.tbData = null; s.tbState = null;
+    if (!s.tbMarkersHandle && LC.createSeriesMarkers) { try { s.tbMarkersHandle = LC.createSeriesMarkers(s.candleS, []); } catch(e) {} }
+    if (!tbActive || !s.klines.length) {
+        s.tbMarkersData = [];
+        if (s.tbMarkersHandle) s.tbMarkersHandle.setMarkers([]);
+        return;
+    }
+    const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: !cfg.hideLines };
+    s.tbSeries.fast = addSeries(s.chart, 'LineSeries', { ...lb, color: '#ffe082', lineWidth: 1 });
+    s.tbSeries.slow = addSeries(s.chart, 'LineSeries', { ...lb, color: '#e0e0e0', lineWidth: 1 });
+    const tb = calcTrendBand(s.klines, cfg);
+    s.tbSeries.fast.setData(tb.fast);
+    s.tbSeries.slow.setData(tb.slow);
+    s.tbData = { fast: tb.fast, slow: tb.slow, color: tb.color };
+    s.tbState = {
+        emaFast: tb.fast[tb.fast.length-1].value, emaSlow: tb.slow[tb.slow.length-1].value,
+        atr: tb.lastAtr, prevClose: s.klines[s.klines.length-2] ? s.klines[s.klines.length-2].close : s.klines[s.klines.length-1].close,
+        prevColor: tb.color[tb.color.length-1],
+    };
+    // Freccia solo sulla candela CHIUSA che entra in flat (transizione da bull/bear a flat),
+    // non su ogni candela flat successiva — richiesta esplicita utente.
+    s.tbMarkersData = [];
+    if (cfg.showFlatArrow) {
+        for (let i = 1; i < tb.color.length; i++) {
+            if (tb.color[i] === cfg.flatColor && tb.color[i-1] !== cfg.flatColor) {
+                s.tbMarkersData.push({ time: tb.fast[i].time, position: 'aboveBar', color: cfg.flatColor, shape: 'arrowDown', text: '' });
+            }
+        }
+    }
+    if (s.tbMarkersHandle) s.tbMarkersHandle.setMarkers(s.tbMarkersData);
+}
+function _tbLiveUpdate(s, candle, confirmed, cfg) {
+    if (!tbActive || !s.tbState) return;
+    const kf = 2/(cfg.fastLen+1), ks = 2/(cfg.slowLen+1);
+    const liveEmaFast = candle.close * kf + s.tbState.emaFast * (1-kf);
+    const liveEmaSlow = candle.close * ks + s.tbState.emaSlow * (1-ks);
+    const pc = s.tbState.prevClose;
+    const tr = Math.max(candle.high - candle.low, Math.abs(candle.high - pc), Math.abs(candle.low - pc));
+    const liveAtr = s.tbState.atr != null ? (tr - s.tbState.atr) / 14 + s.tbState.atr : null;
+    const color = tbBandColor(liveEmaFast - liveEmaSlow, liveAtr, cfg);
+    if (s.tbSeries.fast) {
+        try { s.tbSeries.fast.update({time:candle.time, value:liveEmaFast}); s.tbSeries.slow.update({time:candle.time, value:liveEmaSlow}); } catch(e) {}
+    }
+    if (s.tbData) {
+        const lastPt = s.tbData.fast[s.tbData.fast.length-1];
+        if (lastPt && lastPt.time === candle.time) {
+            s.tbData.fast[s.tbData.fast.length-1] = {time:candle.time, value:liveEmaFast};
+            s.tbData.slow[s.tbData.slow.length-1] = {time:candle.time, value:liveEmaSlow};
+            s.tbData.color[s.tbData.color.length-1] = color;
+        } else {
+            s.tbData.fast.push({time:candle.time, value:liveEmaFast});
+            s.tbData.slow.push({time:candle.time, value:liveEmaSlow});
+            s.tbData.color.push(color);
+            const MAX_TB_POINTS = 1500;
+            if (s.tbData.fast.length > MAX_TB_POINTS) {
+                s.tbData.fast.shift(); s.tbData.slow.shift(); s.tbData.color.shift();
+            }
+        }
+    }
+    if (confirmed) {
+        if (cfg.showFlatArrow && s.tbMarkersHandle && color === cfg.flatColor && s.tbState.prevColor !== cfg.flatColor) {
+            s.tbMarkersData = s.tbMarkersData || [];
+            s.tbMarkersData.push({ time: candle.time, position: 'aboveBar', color: cfg.flatColor, shape: 'arrowDown', text: '' });
+            s.tbMarkersHandle.setMarkers(s.tbMarkersData);
+        }
+        s.tbState.emaFast = liveEmaFast; s.tbState.emaSlow = liveEmaSlow; s.tbState.atr = liveAtr; s.tbState.prevClose = candle.close;
+        s.tbState.prevColor = color;
+    }
+}
+class _TrendBandFillPrimitive {
+    constructor(slot, chart) {
+        this._slot = slot;
+        this._series = null;
+        const renderer = {
+            draw: target => target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio, verticalPixelRatio }) => {
+                const s = this._slot, series = this._series;
+                if (!series || !tbActive || !s.tbData) return;
+                const { fast, slow, color } = s.tbData;
+                if (fast.length < 2) return;
+                const ts = chart.timeScale();
+                ctx.save();
+                const _cfg = getTbCfg();
+                const alpha = (100 - (_cfg.bandTransp ?? 35)) / 100;
+                for (let i = 0; i < fast.length - 1; i++) {
+                    const x0 = ts.timeToCoordinate(fast[i].time), x1 = ts.timeToCoordinate(fast[i+1].time);
+                    if (x0 == null || x1 == null) continue;
+                    const yf0 = series.priceToCoordinate(fast[i].value), yf1 = series.priceToCoordinate(fast[i+1].value);
+                    const ys0 = series.priceToCoordinate(slow[i].value), ys1 = series.priceToCoordinate(slow[i+1].value);
+                    if (yf0 == null || yf1 == null || ys0 == null || ys1 == null) continue;
+                    const xp0 = x0 * horizontalPixelRatio, xp1 = x1 * horizontalPixelRatio;
+                    ctx.beginPath();
+                    ctx.moveTo(xp0, yf0 * verticalPixelRatio);
+                    ctx.lineTo(xp1, yf1 * verticalPixelRatio);
+                    ctx.lineTo(xp1, ys1 * verticalPixelRatio);
+                    ctx.lineTo(xp0, ys0 * verticalPixelRatio);
+                    ctx.closePath();
+                    ctx.fillStyle = _hexToRgba(color[i], alpha);
+                    ctx.fill();
+                }
+                ctx.restore();
+            })
+        };
+        this._view = { renderer: () => renderer, zOrder: () => 'bottom' };
+    }
+    attached({ series }) { this._series = series; }
+    detached() { this._series = null; }
+    updateAllViews() {}
+    paneViews() { return [this._view]; }
+}
+
+// ── GRaB — porting da mtf.html: Murrey Math midline/range + wave EMA(high/low/close) +
+// ricolorazione candela close/open vs wave. Stessa chiave localStorage di mtf.html.
+const _DEFAULT_GRAB_CFG = {
+    enabled: false,
+    murreyLength: 100, showMidline: true, showRange: true,
+    emaPeriod: 34, showWave: false,
+    midlineColor: '#000000', rangeColor: '#FF00FF',
+    emaHighColor: '#FF0000', emaLowColor: '#008000', emaCloseColor: '#C0C0C0',
+    colorAboveBull: '#00FF00', colorAboveBear: '#008000',
+    colorBelowBull: '#FF0000', colorBelowBear: '#800000',
+    colorMidBull: '#C0C0C0', colorMidBear: '#808080',
+};
+function getGrabCfg() {
+    try { const s = JSON.parse(localStorage.getItem('chart_grab_cfg')); if (s) return { ..._DEFAULT_GRAB_CFG, ...s }; } catch(e) {}
+    return { ..._DEFAULT_GRAB_CFG };
+}
+function calcMurrey(klines, length) {
+    const mid = [], lo = [], hi = [];
+    for (let i = length-1; i < klines.length; i++) {
+        let h = -Infinity, l = Infinity;
+        for (let j = i-length+1; j <= i; j++) { h = Math.max(h, klines[j].high); l = Math.min(l, klines[j].low); }
+        mid.push({time:klines[i].time, value:l+(h-l)/2});
+        lo.push( {time:klines[i].time, value:l});
+        hi.push( {time:klines[i].time, value:h});
+    }
+    return {mid, lo, hi};
+}
+function grabBarColor(close, open, eHigh, eLow, cfg) {
+    if (close < eLow)  return close > open ? cfg.colorBelowBull : cfg.colorBelowBear;
+    if (close > eHigh) return close > open ? cfg.colorAboveBull : cfg.colorAboveBear;
+    return close > open ? cfg.colorMidBull : cfg.colorMidBear;
+}
+function toggleGrabAll() {
+    const cfg = getGrabCfg();
+    cfg.enabled = !cfg.enabled;
+    try { localStorage.setItem('chart_grab_cfg', JSON.stringify(cfg)); } catch(e) {}
+    grabActive = cfg.enabled;
+    slots.forEach(s => applyGrabToSlot(s, cfg));
+}
+function applyGrabToSlot(s, cfg) {
+    for (const k of ['high','low','close']) {
+        if (s.grabWaveS[k]) { try { s.chart.removeSeries(s.grabWaveS[k]); } catch(e) {} s.grabWaveS[k] = null; }
+    }
+    for (const k of ['mid','lo','hi']) {
+        if (s.grabMurreyS[k]) { try { s.chart.removeSeries(s.grabMurreyS[k]); } catch(e) {} s.grabMurreyS[k] = null; }
+    }
+    if (!grabActive) {
+        if (s.candleS && s.klines.length) s.candleS.setData(s.klines);
+        s.grabState = null;
+        return;
+    }
+    const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
+    if (cfg.showWave) {
+        s.grabWaveS.high  = addSeries(s.chart,'LineSeries',{...lb,color:cfg.emaHighColor,  lineWidth:1});
+        s.grabWaveS.low   = addSeries(s.chart,'LineSeries',{...lb,color:cfg.emaLowColor,   lineWidth:1});
+        s.grabWaveS.close = addSeries(s.chart,'LineSeries',{...lb,color:cfg.emaCloseColor, lineWidth:1});
+    }
+    if (cfg.showMidline) s.grabMurreyS.mid = addSeries(s.chart,'LineSeries',{...lb,color:cfg.midlineColor, lineWidth:1});
+    if (cfg.showRange) {
+        s.grabMurreyS.lo = addSeries(s.chart,'LineSeries',{...lb,color:cfg.rangeColor, lineWidth:1});
+        s.grabMurreyS.hi = addSeries(s.chart,'LineSeries',{...lb,color:cfg.rangeColor, lineWidth:1});
+    }
+    if (!s.klines.length) return;
+    const period = cfg.emaPeriod;
+    const eh = calcEMAField(s.klines, period, 'high');
+    const el = calcEMAField(s.klines, period, 'low');
+    const ec = calcEMAField(s.klines, period, 'close');
+    const colored = s.klines.map((k,i) => {
+        const c = grabBarColor(k.close, k.open, eh[i].value, el[i].value, cfg);
+        return {...k, color:c, wickColor:c, borderColor:c};
+    });
+    s.candleS.setData(colored);
+    s.grabState = { emaHigh: eh[eh.length-1].value, emaLow: el[el.length-1].value, emaClose: ec[ec.length-1].value };
+    if (cfg.showWave) {
+        s.grabWaveS.high.setData(eh);
+        s.grabWaveS.low.setData(el);
+        s.grabWaveS.close.setData(ec);
+    }
+    if ((cfg.showMidline || cfg.showRange) && s.klines.length >= cfg.murreyLength) {
+        const m = calcMurrey(s.klines, cfg.murreyLength);
+        if (cfg.showMidline) s.grabMurreyS.mid.setData(m.mid);
+        if (cfg.showRange) { s.grabMurreyS.lo.setData(m.lo); s.grabMurreyS.hi.setData(m.hi); }
+    }
+}
+function _grabLiveUpdate(s, candle, confirmed, cfg) {
+    if (!grabActive || !s.grabState) return;
+    const k = 2/(cfg.emaPeriod+1);
+    const liveEmaHigh  = candle.high  * k + s.grabState.emaHigh  * (1-k);
+    const liveEmaLow   = candle.low   * k + s.grabState.emaLow   * (1-k);
+    const liveEmaClose = candle.close * k + s.grabState.emaClose * (1-k);
+    const color = grabBarColor(candle.close, candle.open, liveEmaHigh, liveEmaLow, cfg);
+    try { s.candleS.update({...candle, color, wickColor:color, borderColor:color}); } catch(e) {}
+    if (cfg.showWave && s.grabWaveS.high) {
+        s.grabWaveS.high.update({time:candle.time, value:liveEmaHigh});
+        s.grabWaveS.low.update( {time:candle.time, value:liveEmaLow});
+        s.grabWaveS.close.update({time:candle.time, value:liveEmaClose});
+    }
+    if (confirmed) { s.grabState.emaHigh = liveEmaHigh; s.grabState.emaLow = liveEmaLow; s.grabState.emaClose = liveEmaClose; }
+    if ((cfg.showMidline || cfg.showRange) && s.klines.length >= cfg.murreyLength) {
+        const win = s.klines.slice(-cfg.murreyLength);
+        let h = -Infinity, l = Infinity;
+        for (const c of win) { h = Math.max(h,c.high); l = Math.min(l,c.low); }
+        if (cfg.showMidline && s.grabMurreyS.mid) s.grabMurreyS.mid.update({time:candle.time, value:l+(h-l)/2});
+        if (cfg.showRange && s.grabMurreyS.lo) { s.grabMurreyS.lo.update({time:candle.time, value:l}); s.grabMurreyS.hi.update({time:candle.time, value:h}); }
+    }
+}
+
+// ── Squeeze Channel — porting da mtf.html: volume dry-up + range compresso (stessa logica
+// dello screener Volume Inefficiency), 2 price-line tratteggiate hi/lo, stateless.
+const SQZ_K = 6, SQZ_VOL_DRY_RATIO = 0.55, SQZ_RANGE_DRY_RATIO = 0.55;
+function _sqzCond(klines, i) {
+    const widerN = SQZ_K * 4;
+    if (i - SQZ_K - widerN + 1 < 0) return null;
+    let sumRecent = 0; for (let j = i - SQZ_K + 1; j <= i; j++) sumRecent += klines[j].volume;
+    const pf = i - SQZ_K - widerN + 1, pt = i - SQZ_K;
+    let sumPrior = 0; for (let j = pf; j <= pt; j++) sumPrior += klines[j].volume;
+    const avgRecent = sumRecent / SQZ_K, avgPrior = sumPrior / (pt - pf + 1);
+    if (avgPrior <= 0 || avgRecent / avgPrior > SQZ_VOL_DRY_RATIO) return null;
+    let hiR = -Infinity, loR = Infinity;
+    for (let j = i - SQZ_K + 1; j <= i; j++) { hiR = Math.max(hiR, klines[j].high); loR = Math.min(loR, klines[j].low); }
+    let hiP = -Infinity, loP = Infinity;
+    for (let j = Math.max(0, i - widerN + 1); j <= i; j++) { hiP = Math.max(hiP, klines[j].high); loP = Math.min(loP, klines[j].low); }
+    const rangeRecent = (hiR - loR) / klines[i].close, rangeWider = (hiP - loP) / klines[i].close;
+    if (rangeWider <= 0 || rangeRecent / rangeWider > SQZ_RANGE_DRY_RATIO) return null;
+    return { hiR, loR };
+}
+function checkSqueeze(klines) {
+    if (!klines || !klines.length) return null;
+    return _sqzCond(klines, klines.length - 1);
+}
+function _drawSqzChannel(candleS, klines, lineRefs) {
+    const hit = checkSqueeze(klines);
+    if (hit) {
+        if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} }
+        if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} }
+        lineRefs.hi = candleS.createPriceLine({ price: hit.hiR, color:'#22d3ee', lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'Squeeze' });
+        lineRefs.lo = candleS.createPriceLine({ price: hit.loR, color:'#22d3ee', lineWidth:1, lineStyle:2, axisLabelVisible:false, title:'' });
+    } else {
+        if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} lineRefs.hi = null; }
+        if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} lineRefs.lo = null; }
+    }
+}
+function _clearSqzChannel(candleS, lineRefs) {
+    if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} lineRefs.hi = null; }
+    if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} lineRefs.lo = null; }
+}
+function toggleSqueezeAll() {
+    sqzActive = !sqzActive;
+    try { localStorage.setItem('chart_sqz_active', sqzActive ? '1' : '0'); } catch(e) {}
+    slots.forEach(s => { if (sqzActive) _drawSqzChannel(s.candleS, s.klines, s.sqzLines); else _clearSqzChannel(s.candleS, s.sqzLines); });
+}
+
+// ── Trendline S/R automatica — porting da trendline.html: 2 pivot (recente/vecchio) su
+// minimi (supporto) e massimi (resistenza), retta valida finché nessuna chiusura la rompe.
+const TRENDLINE_SR_CFG = { shortPeriod: 30, longPeriod: 100, tolerancePct: 0.3 };
+function pivotExtreme(candles, iEnd, offFrom, offTo) {
+    let lowVal = Infinity, lowOff = null, highVal = -Infinity, highOff = null;
+    for (let off = offFrom; off <= offTo; off++) {
+        const idx = iEnd - off;
+        if (idx < 0) return null;
+        const c = candles[idx];
+        if (c.low  < lowVal)  { lowVal  = c.low;  lowOff  = off; }
+        if (c.high > highVal) { highVal = c.high; highOff = off; }
+    }
+    return { lowVal, lowOff, highVal, highOff };
+}
+function trendlineAt(candles, iEnd, shortPeriod, longPeriod) {
+    if (iEnd - longPeriod < 0) return null;
+    const rec = pivotExtreme(candles, iEnd, 1, shortPeriod);
+    const old = pivotExtreme(candles, iEnd, shortPeriod + 1, longPeriod);
+    if (!rec || !old) return null;
+    const supX1 = iEnd - old.lowOff,  supY1 = old.lowVal,  supX2 = iEnd - rec.lowOff,  supY2 = rec.lowVal;
+    const resX1 = iEnd - old.highOff, resY1 = old.highVal, resX2 = iEnd - rec.highOff, resY2 = rec.highVal;
+    const supSlope = (supY2 - supY1) / (supX2 - supX1);
+    const resSlope = (resY2 - resY1) / (resX2 - resX1);
+    return {
+        supX1, supY1, supX2, supY2, supSlope, supVal: supY2 + supSlope * (iEnd - supX2),
+        resX1, resY1, resX2, resY2, resSlope, resVal: resY2 + resSlope * (iEnd - resX2),
+    };
+}
+function isLineValid(candles, x1Idx, y1, slope, kind, tolerancePct) {
+    for (let idx = x1Idx; idx < candles.length; idx++) {
+        const lineVal = y1 + slope * (idx - x1Idx);
+        const tol = Math.abs(lineVal) * (tolerancePct / 100);
+        if (kind === 'support'    && candles[idx].close < lineVal - tol) return false;
+        if (kind === 'resistance' && candles[idx].close > lineVal + tol) return false;
+    }
+    return true;
+}
+function detectActiveTrendlines(candles, cfg) {
+    const n = candles.length;
+    const iEnd = n - 1;
+    const cur = trendlineAt(candles, iEnd, cfg.shortPeriod, cfg.longPeriod);
+    if (!cur) return [];
+    const toPt = (idx, price) => ({ time: candles[idx].time, price });
+    const sup = { p1: toPt(cur.supX1, cur.supY1), p2: toPt(cur.supX2, cur.supY2) };
+    const res = { p1: toPt(cur.resX1, cur.resY1), p2: toPt(cur.resX2, cur.resY2) };
+    const hits = [];
+    if (isLineValid(candles, cur.supX1, cur.supY1, cur.supSlope, 'support', cfg.tolerancePct))
+        hits.push({ kind: 'support', lineVal: cur.supVal, sup, res });
+    if (isLineValid(candles, cur.resX1, cur.resY1, cur.resSlope, 'resistance', cfg.tolerancePct))
+        hits.push({ kind: 'resistance', lineVal: cur.resVal, sup, res });
+    return hits;
+}
+function lineSlope(p1, p2) { return (p2.price - p1.price) / (p2.time - p1.time); }
+function lineSeriesFromPts(p1, p2, klines) {
+    const slope = lineSlope(p1, p2);
+    return klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
+}
+function toggleTrendlineSRAll() {
+    srActive = !srActive;
+    try { localStorage.setItem('chart_sr_active', srActive ? '1' : '0'); } catch(e) {}
+    slots.forEach(applyTrendlineSRToSlot);
+}
+function applyTrendlineSRToSlot(s) {
+    if (s.srSeries.sup) { try { s.chart.removeSeries(s.srSeries.sup); } catch(e) {} s.srSeries.sup = null; }
+    if (s.srSeries.res) { try { s.chart.removeSeries(s.srSeries.res); } catch(e) {} s.srSeries.res = null; }
+    if (!srActive || !s.klines || s.klines.length < TRENDLINE_SR_CFG.longPeriod + 2) return;
+    const hits = detectActiveTrendlines(s.klines, TRENDLINE_SR_CFG);
+    const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+    for (const hit of hits) {
+        const pts = hit.kind === 'support' ? hit.sup : hit.res;
+        const color = hit.kind === 'support' ? '#22c55e' : '#ef4444';
+        const line = lineSeriesFromPts(pts.p1, pts.p2, s.klines);
+        const series = addSeries(s.chart, 'LineSeries', { ...lb, color, lineWidth: 2 });
+        series.setData(line);
+        if (hit.kind === 'support') s.srSeries.sup = series; else s.srSeries.res = series;
+    }
+}
+
+tbActive = getTbCfg().enabled;
+grabActive = getGrabCfg().enabled;
+sqzActive = localStorage.getItem('chart_sqz_active') === '1';
+srActive = localStorage.getItem('chart_sr_active') === '1';
+
+// ── Toggle rapido gruppi di livelli (day/prev/ATH-ATL), riusa lo stesso cfg
+// (chart_levels_cfg / getLvCfg) del pannello Impostazioni Livelli — qui si tocca
+// solo il flag vis.chart, colori/stile restano quelli già impostati lì.
+function _toggleLvVisChart(keys) {
+    const lv = getLvCfg();
+    const newVal = !lv[keys[0]].vis.chart;
+    for (const k of keys) lv[k].vis.chart = newVal;
+    try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+    applyCfgToAllSlots();
+}
+function toggleDayLevelsAll()  { _toggleLvVisChart(['dayHigh', 'dayLow']); }
+function togglePrevLevelsAll() { _toggleLvVisChart(['prevHigh', 'prevLow']); }
+function toggleAthAtlAll()     { _toggleLvVisChart(['ath', 'atl']); }
+
+// ── Indicatori panel (popup unico per attivare/disattivare tutti gli overlay) ──
+const IND_LIST = [
+    { label: 'EMA 5',   isOn: () => getEmaCfg().find(e => e.p === 5).enabled,   toggle: () => toggleEmaAll(5),   cfgKey: 'ema5',   col: 1 },
+    { label: 'EMA 10',  isOn: () => getEmaCfg().find(e => e.p === 10).enabled,  toggle: () => toggleEmaAll(10),  cfgKey: 'ema10',  col: 1 },
+    { label: 'EMA 60',  isOn: () => getEmaCfg().find(e => e.p === 60).enabled,  toggle: () => toggleEmaAll(60),  cfgKey: 'ema60',  col: 1 },
+    { label: 'EMA 223', isOn: () => getEmaCfg().find(e => e.p === 223).enabled, toggle: () => toggleEmaAll(223), cfgKey: 'ema223', col: 1 },
+    { label: 'Canale SMA 20',        isOn: () => channelActive,               toggle: toggleChannelAll,      cfgKey: 'channel', col: 2 },
+    { label: 'Bollinger Bands',      isOn: () => getBbCfg().enabled,          toggle: toggleBBAll,           cfgKey: 'bb',      col: 2 },
+    { label: 'Order Book Levels',    isOn: () => obLevelsActive,              toggle: toggleOBAll,            cfgKey: 'obLevels', col: 2 },
+    { label: 'Trend Band',           isOn: () => tbActive,                    toggle: toggleTrendBandAll,    cfgKey: 'tb',      col: 2 },
+    { label: 'GRaB',                 isOn: () => grabActive,                  toggle: toggleGrabAll,          cfgKey: 'grab',    col: 2 },
+    { label: 'Squeeze Channel',      isOn: () => sqzActive,                   toggle: toggleSqueezeAll,                        col: 2 },
+    { label: 'Trendline S/R',        isOn: () => srActive,                    toggle: toggleTrendlineSRAll,                    col: 2 },
+    { label: 'Livelli Daily',        isOn: () => getLvCfg().dayHigh.vis.chart,  toggle: toggleDayLevelsAll,  cfgKey: 'dayLevels',  col: 3 },
+    { label: 'Massimi/Minimi Storici', isOn: () => getLvCfg().ath.vis.chart,    toggle: toggleAthAtlAll,     cfgKey: 'athAtl',     col: 3 },
+    { label: 'Livelli Giorno Prec.', isOn: () => getLvCfg().prevHigh.vis.chart, toggle: togglePrevLevelsAll, cfgKey: 'prevLevels', col: 3 },
+];
+const _GEAR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+function renderIndPanel() {
+    const el = document.getElementById('ind-rows');
+    if (!el) return;
+    const renderRow = (it, idx) => {
+        const on = it.isOn();
+        const gear = (it.cfgKey || it.cfgOpen) ? `<span data-ind-idx-gear="${idx}" title="Impostazioni" style="margin-right:6px;color:#6B7280;cursor:pointer;display:flex;align-items:center;">${_GEAR_SVG}</span>` : '';
+        return `<div data-ind-idx="${idx}" style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;cursor:pointer;gap:6px;">
+            <span style="font-size:11px;color:#E5E7EB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.label}</span>
+            <span style="display:flex;align-items:center;flex-shrink:0;">
+                ${gear}
+                <span style="width:30px;height:16px;border-radius:8px;background:${on ? '#2563EB' : '#2A2E39'};position:relative;flex-shrink:0;transition:background .15s;">
+                    <span style="position:absolute;top:2px;left:${on ? '16px' : '2px'};width:12px;height:12px;border-radius:50%;background:#fff;transition:left .15s;"></span>
+                </span>
+            </span>
+        </div>`;
+    };
+    const cols = [[], [], []];
+    IND_LIST.forEach((it, idx) => cols[(it.col || 1) - 1].push(renderRow(it, idx)));
+    el.innerHTML = `<div style="display:flex;">
+        ${cols.map((rows, ci) => `<div style="flex:1;min-width:0;${ci > 0 ? 'border-left:1px solid #2A2E39;' : ''}">${rows.join('')}</div>`).join('')}
+    </div>`;
+    el.onclick = ev => {
+        const gearEl = ev.target.closest('[data-ind-idx-gear]');
+        if (gearEl) {
+            ev.stopPropagation();
+            const it = IND_LIST[+gearEl.dataset.indIdxGear];
+            if (it.cfgOpen) it.cfgOpen(); else openIndCfgPanel(it.cfgKey);
+            return;
+        }
+        const row = ev.target.closest('[data-ind-idx]');
+        if (!row) return;
+        IND_LIST[+row.dataset.indIdx].toggle();
+        renderIndPanel();
+    };
+}
+function openIndPanel() { renderIndPanel(); document.getElementById('ind-panel').style.display = 'block'; }
+function closeIndPanel() { document.getElementById('ind-panel').style.display = 'none'; }
+function closeIndPanelOutside(ev) { if (ev.target.id === 'ind-panel') closeIndPanel(); }
+
+// ── Pannello impostazioni generico per gli indicatori configurabili ───────────
+function _emaCfgSchema(period) {
+    const d = DEFAULT_EMA_CFG.find(x => x.p === period);
+    return {
+        title: `EMA ${period}`,
+        getCfg: () => { const e = getEmaCfg().find(x => x.p === period); return { color: e.color, width: e.width, style: e.style }; },
+        defaults: { color: d.color, width: d.width, style: d.style },
+        fields: [
+            { key:'color', label:'Colore', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:0.5 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+        ],
+        apply: cfg => {
+            const arr = getEmaCfg();
+            const e = arr.find(x => x.p === period);
+            e.color = cfg.color; e.width = cfg.width; e.style = cfg.style;
+            try { localStorage.setItem('chart_ema_cfg', JSON.stringify(arr)); } catch(err) {}
+            EMA_CFG = arr;
+            for (const s of slots) { if (s.emaSeries?.[period]) s.emaSeries[period].applyOptions({ color: cfg.color, lineWidth: cfg.width, lineStyle: cfg.style }); }
+        },
+    };
+}
+const IND_CFG_SCHEMAS = {
+    channel: {
+        title: 'Canale SMA 20', getCfg: getChannelCfg, defaults: DEFAULT_CHANNEL_CFG,
+        fields: [
+            { key:'period', label:'Periodo', type:'number', min:2, max:300, step:1 },
+            { key:'color', label:'Colore linee', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:1 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+            { key:'bgColor', label:'Colore sfondo', type:'color' },
+            { key:'bgOpacity', label:'Opacità sfondo %', type:'number', min:0, max:100, step:1 },
+        ],
+        apply: cfg => { CHANNEL_CFG = cfg; try { localStorage.setItem('chart_channel_cfg', JSON.stringify(cfg)); } catch(e) {} slots.forEach(applyChannelToSlot); },
+    },
+    bb: {
+        title: 'Bollinger Bands', getCfg: getBbCfg, defaults: DEFAULT_BB_CFG,
+        fields: [
+            { key:'period', label:'Periodo', type:'number', min:2, max:300, step:1 },
+            { key:'mult', label:'Moltiplicatore Dev.Std', type:'number', min:0.5, max:5, step:0.1 },
+            { key:'color', label:'Colore', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:1 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+        ],
+        apply: cfg => { try { localStorage.setItem('chart_bb_cfg', JSON.stringify(cfg)); } catch(e) {} slots.forEach(s => applyBBToSlot(s, cfg)); },
+    },
+    tb: {
+        title: 'Trend Band', getCfg: getTbCfg, defaults: _DEFAULT_TB_CFG,
+        fields: [
+            { key:'fastLen', label:'EMA veloce', type:'number', min:2, max:100, step:1 },
+            { key:'slowLen', label:'EMA lenta', type:'number', min:2, max:200, step:1 },
+            { key:'bullColor', label:'Colore rialzo', type:'color' },
+            { key:'bearColor', label:'Colore ribasso', type:'color' },
+            { key:'flatColor', label:'Colore flat', type:'color' },
+            { key:'bandTransp', label:'Trasparenza banda %', type:'number', min:0, max:100, step:1 },
+            { key:'flatMult', label:'Soglia flat (xATR)', type:'number', min:0, max:2, step:0.05 },
+            { key:'hideLines', label:'Nascondi linee EMA', type:'checkbox' },
+            { key:'showFlatArrow', label:'Freccia ingresso flat', type:'checkbox' },
+        ],
+        apply: cfg => { try { localStorage.setItem('chart_tb_cfg', JSON.stringify(cfg)); } catch(e) {} slots.forEach(s => applyTbToSlot(s, cfg)); },
+    },
+    grab: {
+        title: 'GRaB', getCfg: getGrabCfg, defaults: _DEFAULT_GRAB_CFG,
+        fields: [
+            { key:'murreyLength', label:'Lunghezza Murrey', type:'number', min:10, max:300, step:1 },
+            { key:'emaPeriod', label:'Periodo EMA wave', type:'number', min:2, max:200, step:1 },
+            { key:'showMidline', label:'Mostra midline', type:'checkbox' },
+            { key:'showRange', label:'Mostra range', type:'checkbox' },
+            { key:'showWave', label:'Mostra wave EMA', type:'checkbox' },
+            { key:'midlineColor', label:'Colore midline', type:'color' },
+            { key:'rangeColor', label:'Colore range', type:'color' },
+            { key:'emaHighColor', label:'Colore wave high', type:'color' },
+            { key:'emaLowColor', label:'Colore wave low', type:'color' },
+            { key:'emaCloseColor', label:'Colore wave close', type:'color' },
+            { key:'colorAboveBull', label:'Sopra range (rialzo)', type:'color' },
+            { key:'colorAboveBear', label:'Sopra range (ribasso)', type:'color' },
+            { key:'colorBelowBull', label:'Sotto range (rialzo)', type:'color' },
+            { key:'colorBelowBear', label:'Sotto range (ribasso)', type:'color' },
+            { key:'colorMidBull', label:'Dentro range (rialzo)', type:'color' },
+            { key:'colorMidBear', label:'Dentro range (ribasso)', type:'color' },
+        ],
+        apply: cfg => { try { localStorage.setItem('chart_grab_cfg', JSON.stringify(cfg)); } catch(e) {} slots.forEach(s => applyGrabToSlot(s, cfg)); },
+    },
+    dayLevels: {
+        title: 'Livelli Daily',
+        getCfg: () => { const lv = getLvCfg(); return { highColor: lv.dayHigh.color, lowColor: lv.dayLow.color, width: lv.dayHigh.width, style: lv.dayHigh.style }; },
+        defaults: { highColor: DEFAULT_LEVELS_CFG.dayHigh.color, lowColor: DEFAULT_LEVELS_CFG.dayLow.color, width: DEFAULT_LEVELS_CFG.dayHigh.width, style: DEFAULT_LEVELS_CFG.dayHigh.style },
+        fields: [
+            { key:'highColor', label:'Colore Massimo', type:'color' },
+            { key:'lowColor', label:'Colore Minimo', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:1 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+        ],
+        apply: cfg => {
+            const lv = getLvCfg();
+            lv.dayHigh.color = cfg.highColor; lv.dayHigh.width = cfg.width; lv.dayHigh.style = cfg.style;
+            lv.dayLow.color  = cfg.lowColor;  lv.dayLow.width  = cfg.width; lv.dayLow.style  = cfg.style;
+            try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+            applyCfgToAllSlots();
+        },
+    },
+    prevLevels: {
+        title: 'Livelli Giorno Precedente',
+        getCfg: () => { const lv = getLvCfg(); return { highColor: lv.prevHigh.color, lowColor: lv.prevLow.color, width: lv.prevHigh.width, style: lv.prevHigh.style }; },
+        defaults: { highColor: DEFAULT_LEVELS_CFG.prevHigh.color, lowColor: DEFAULT_LEVELS_CFG.prevLow.color, width: DEFAULT_LEVELS_CFG.prevHigh.width, style: DEFAULT_LEVELS_CFG.prevHigh.style },
+        fields: [
+            { key:'highColor', label:'Colore Massimo', type:'color' },
+            { key:'lowColor', label:'Colore Minimo', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:1 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+        ],
+        apply: cfg => {
+            const lv = getLvCfg();
+            lv.prevHigh.color = cfg.highColor; lv.prevHigh.width = cfg.width; lv.prevHigh.style = cfg.style;
+            lv.prevLow.color  = cfg.lowColor;  lv.prevLow.width  = cfg.width; lv.prevLow.style  = cfg.style;
+            try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+            applyCfgToAllSlots();
+        },
+    },
+    athAtl: {
+        title: 'Massimi/Minimi Storici',
+        getCfg: () => { const lv = getLvCfg(); return { athColor: lv.ath.color, atlColor: lv.atl.color, width: lv.ath.width, style: lv.ath.style }; },
+        defaults: { athColor: DEFAULT_LEVELS_CFG.ath.color, atlColor: DEFAULT_LEVELS_CFG.atl.color, width: DEFAULT_LEVELS_CFG.ath.width, style: DEFAULT_LEVELS_CFG.ath.style },
+        fields: [
+            { key:'athColor', label:'Colore ATH', type:'color' },
+            { key:'atlColor', label:'Colore ATL', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:1 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+        ],
+        apply: cfg => {
+            const lv = getLvCfg();
+            lv.ath.color = cfg.athColor; lv.ath.width = cfg.width; lv.ath.style = cfg.style;
+            lv.atl.color = cfg.atlColor; lv.atl.width = cfg.width; lv.atl.style = cfg.style;
+            try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+            applyCfgToAllSlots();
+        },
+    },
+    obLevels: {
+        title: 'Order Book Levels',
+        getCfg: () => { const lv = getLvCfg(); return { bidColor: lv.obBid.color, askColor: lv.obAsk.color, width: lv.obBid.width, style: lv.obBid.style }; },
+        defaults: { bidColor: DEFAULT_LEVELS_CFG.obBid.color, askColor: DEFAULT_LEVELS_CFG.obAsk.color, width: DEFAULT_LEVELS_CFG.obBid.width, style: DEFAULT_LEVELS_CFG.obBid.style },
+        fields: [
+            { key:'bidColor', label:'Colore Bid', type:'color' },
+            { key:'askColor', label:'Colore Ask', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:1 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+        ],
+        apply: cfg => {
+            const lv = getLvCfg();
+            lv.obBid.color = cfg.bidColor; lv.obBid.width = cfg.width; lv.obBid.style = cfg.style;
+            lv.obAsk.color = cfg.askColor; lv.obAsk.width = cfg.width; lv.obAsk.style = cfg.style;
+            try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+            applyCfgToAllSlots();
+        },
+    },
+    ema5:   _emaCfgSchema(5),
+    ema10:  _emaCfgSchema(10),
+    ema60:  _emaCfgSchema(60),
+    ema223: _emaCfgSchema(223),
+};
+let _indCfgKey = null, _indCfgWorking = null;
+function openIndCfgPanel(key) {
+    _indCfgKey = key;
+    const schema = IND_CFG_SCHEMAS[key];
+    _indCfgWorking = schema.getCfg();
+    const titleEl = document.getElementById('ind-cfg-title');
+    if (titleEl) titleEl.textContent = schema.title;
+    renderIndCfgRows(schema);
+    document.getElementById('ind-cfg-panel').style.display = 'block';
+}
+function renderIndCfgRows(schema) {
+    const el = document.getElementById('ind-cfg-rows');
+    if (!el) return;
+    el.innerHTML = schema.fields.map(f => {
+        const val = _indCfgWorking[f.key];
+        let input;
+        if (f.type === 'color') input = `<input type="color" data-cfg-key="${f.key}" value="${val}" style="width:36px;height:22px;border:none;background:none;cursor:pointer;">`;
+        else if (f.type === 'checkbox') input = `<input type="checkbox" data-cfg-key="${f.key}" ${val ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;">`;
+        else if (f.type === 'select') input = `<select data-cfg-key="${f.key}" style="background:#1E222D;color:#E5E7EB;border:1px solid #2A2E39;border-radius:4px;font-size:11px;padding:2px 4px;">${f.options.map(([v,l]) => `<option value="${v}" ${v==val?'selected':''}>${l}</option>`).join('')}</select>`;
+        else input = `<input type="number" data-cfg-key="${f.key}" value="${val}" min="${f.min ?? ''}" max="${f.max ?? ''}" step="${f.step ?? 1}" style="width:64px;background:#1E222D;color:#E5E7EB;border:1px solid #2A2E39;border-radius:4px;font-size:11px;padding:2px 4px;">`;
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;">
+            <span style="font-size:11px;color:#9CA3AF;">${f.label}</span>
+            ${input}
+        </div>`;
+    }).join('');
+}
+function closeIndCfgPanel() { document.getElementById('ind-cfg-panel').style.display = 'none'; }
+function closeIndCfgOutside(ev) { if (ev.target.id === 'ind-cfg-panel') closeIndCfgPanel(); }
+function resetIndCfg() {
+    const schema = IND_CFG_SCHEMAS[_indCfgKey];
+    _indCfgWorking = { ...schema.defaults, enabled: _indCfgWorking.enabled };
+    renderIndCfgRows(schema);
+}
+function saveIndCfgPanel() {
+    const schema = IND_CFG_SCHEMAS[_indCfgKey];
+    const el = document.getElementById('ind-cfg-rows');
+    el.querySelectorAll('[data-cfg-key]').forEach(input => {
+        const key = input.dataset.cfgKey;
+        const field = schema.fields.find(f => f.key === key);
+        let v;
+        if (field.type === 'checkbox') v = input.checked;
+        else if (field.type === 'select') v = parseInt(input.value, 10);
+        else if (field.type === 'number') v = parseFloat(input.value);
+        else v = input.value;
+        _indCfgWorking[key] = v;
+    });
+    schema.apply(_indCfgWorking);
+    closeIndCfgPanel();
+}
+
+// ── Coin Info popup (click sul nome coin → CoinGecko via /api/coin-info) ───────
+function _escHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function _fmtUsdCompact(v) {
+    if (v == null) return '—';
+    if (v >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
+    if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+    return '$' + v.toLocaleString();
+}
+function openCoinInfoPanel(symbol) {
+    if (!symbol) return;
+    const panel = document.getElementById('coin-info-panel');
+    const body  = document.getElementById('coin-info-body');
+    const titleEl = document.getElementById('coin-info-title');
+    const imgEl   = document.getElementById('coin-info-img');
+    titleEl.textContent = symbol;
+    imgEl.style.display = 'none';
+    body.innerHTML = `<div style="color:#6B7280;font-size:12px;">${_escHtml(window.t('coin_info_loading'))}</div>`;
+    panel.style.display = 'block';
+    const lang = window._cspLang === 'en' ? 'en' : 'it';
+    fetch(`api/coin-info?symbol=${encodeURIComponent(symbol)}&lang=${lang}`)
+        .then(r => r.json())
+        .then(d => {
+            if (!d.success) { body.innerHTML = `<div style="color:#f87171;font-size:12px;">${_escHtml(window.t('coin_info_not_found'))}</div>`; return; }
+            titleEl.textContent = `${d.name} (${d.symbol})`;
+            if (d.image) { imgEl.src = d.image; imgEl.style.display = 'block'; }
+            const rows = [
+                [window.t('coin_info_rank'),     d.market_cap_rank ? '#' + d.market_cap_rank : '—'],
+                [window.t('coin_info_mcap'),      _fmtUsdCompact(d.market_cap_usd)],
+                [window.t('coin_info_ath'),       d.ath_usd != null ? '$' + d.ath_usd.toLocaleString() : '—'],
+                [window.t('coin_info_circ_sup'),  d.circulating_supply != null ? Math.round(d.circulating_supply).toLocaleString() : '—'],
+                [window.t('coin_info_max_sup'),   d.max_supply != null ? Math.round(d.max_supply).toLocaleString() : window.t('coin_info_unlimited')],
+            ];
+            const catsHtml = (d.categories || []).length
+                ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">${d.categories.map(c => `<span style="font-size:10px;background:#1E222D;border:1px solid #2A2E39;border-radius:10px;padding:2px 8px;color:#9CA3AF;">${_escHtml(c)}</span>`).join('')}</div>`
+                : '';
+            const homepageOk = /^https?:\/\//i.test(d.homepage || '');
+            body.innerHTML = `
+                <div style="font-size:12px;color:#D1D5DB;line-height:1.5;margin-bottom:2px;">${_escHtml(d.description) || _escHtml(window.t('coin_info_no_desc'))}</div>
+                ${d.desc_translated ? `<div style="font-size:10px;color:#6B7280;font-style:italic;margin-bottom:10px;">${_escHtml(window.t('coin_info_auto_tr'))}</div>` : '<div style="margin-bottom:10px;"></div>'}
+                ${catsHtml}
+                <table style="width:100%;font-size:11px;border-collapse:collapse;">
+                    ${rows.map(([k, v]) => `<tr><td style="padding:3px 0;color:#6B7280;">${_escHtml(k)}</td><td style="padding:3px 0;text-align:right;color:#D1D5DB;">${_escHtml(v)}</td></tr>`).join('')}
+                </table>
+                ${homepageOk ? `<div style="margin-top:10px;"><a href="${_escHtml(d.homepage)}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#60a5fa;text-decoration:none;">${_escHtml(d.homepage)} ↗</a></div>` : ''}
+            `;
+        })
+        .catch(() => { body.innerHTML = `<div style="color:#f87171;font-size:12px;">${_escHtml(window.t('coin_info_net_error'))}</div>`; });
+}
+function closeCoinInfoPanel() { document.getElementById('coin-info-panel').style.display = 'none'; }
+function closeCoinInfoOutside(ev) { if (ev.target.id === 'coin-info-panel') closeCoinInfoPanel(); }
 
 // ── favorites API ─────────────────────────────────────────────────────────────
 async function fetchFavoritesList() {
@@ -1672,7 +2440,10 @@ function buildGrid() {
         starEl.onclick = () => toggleFavorite(i);
 
         const titleEl  = document.createElement('span');
-        titleEl.style.cssText = 'font-weight:700;color:#E5E7EB;white-space:nowrap;';
+        titleEl.style.cssText = 'font-size:14px;font-weight:700;color:#E5E7EB;white-space:nowrap;cursor:pointer;';
+        titleEl.title = window.t('coin_info_tooltip');
+        titleEl.dataset.i18nTitle = 'coin_info_tooltip';
+        titleEl.onclick = () => openCoinInfoPanel(slots[i].symbol);
 
         const wsDotEl = document.createElement('div');
         wsDotEl.className = 'slot-ws-dot';
@@ -1711,7 +2482,7 @@ function buildGrid() {
         rightGroup.style.cssText = 'margin-left:auto;display:flex;align-items:center;gap:2px;';
 
         const candlePctEl = document.createElement('span');
-        candlePctEl.style.cssText = 'font-size:16px;font-family:monospace;min-width:48px;text-align:right;white-space:nowrap;';
+        candlePctEl.style.cssText = 'font-size:14px;font-family:monospace;min-width:48px;text-align:right;white-space:nowrap;';
 
 const mtfEl = document.createElement('button');
         mtfEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" style="vertical-align:middle" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1.5"/><rect x="15" y="3" width="10" height="10" rx="1.5"/><rect x="3" y="15" width="10" height="10" rx="1.5"/><rect x="15" y="15" width="10" height="10" rx="1.5"/></svg>';
@@ -1861,11 +2632,17 @@ const mtfEl = document.createElement('button');
             dayPrimitive: null,
             bbSeries: { upper: null, mid: null, lower: null }, klines: [],
             channelSeries: { upper: null, mid: null, lower: null }, channelData: null,
+            tbSeries: { fast: null, slow: null }, tbData: null, tbState: null,
+            tbMarkersHandle: null, tbMarkersData: [],
+            grabWaveS: { high: null, low: null, close: null }, grabMurreyS: { mid: null, lo: null, hi: null }, grabState: null,
+            sqzLines: { hi: null, lo: null },
+            srSeries: { sup: null, res: null },
         });
         const _s = slots[slots.length - 1];
         try { const _cdp = new _CountdownPrimitive(_s); candleS.attachPrimitive(_cdp); } catch(e) {}
         try { const _cfp = new _ChannelFillPrimitive(_s, chart); candleS.attachPrimitive(_cfp); } catch(e) {}
         try { const _obp = new _ObBandFillPrimitive(_s); candleS.attachPrimitive(_obp); } catch(e) {}
+        try { const _tbp = new _TrendBandFillPrimitive(_s, chart); candleS.attachPrimitive(_tbp); } catch(e) {}
         chart.timeScale().subscribeVisibleTimeRangeChange(() => {});
         chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) { const n = TF_DEFAULT_N[s.curTF]||80; s.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, s.klineCount-n), to: s.klineCount+3 }); s.chart.priceScale('right').applyOptions({ autoScale: true }); } });
     }
@@ -2165,13 +2942,13 @@ async function loadSlotData(idx) {
         s.candleS.setData(klines);
         applyBBToSlot(s, getBbCfg());
         applyChannelToSlot(s);
+        applyTbToSlot(s, getTbCfg());
+        applyGrabToSlot(s, getGrabCfg());
+        if (sqzActive) _drawSqzChannel(s.candleS, s.klines, s.sqzLines); else _clearSqzChannel(s.candleS, s.sqzLines);
+        applyTrendlineSRToSlot(s);
         s.dayPrimitive = attachDayLines(s.candleS, s.chart, klines, s.curTF, s.dayPrimitive);
         s.candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
-        for (const {p} of EMA_CFG) {
-            const ema = calcEMA(klines, p);
-            s.emaSeries[p].setData(ema);
-            s.lastEMA[p] = ema[ema.length - 1].value;
-        }
+        applyEmaToSlot(s);
         const _sn = TF_DEFAULT_N[s.curTF] || 80;
         const _sr = () => s.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, s.klineCount - _sn), to: s.klineCount + 3 });
         _sr(); requestAnimationFrame(_sr);
@@ -2479,6 +3256,7 @@ function openWS() {
             time: Math.floor(parseInt(b.start)/1000) + TZ_OFFSET_S,
             open: parseFloat(b.open), high: parseFloat(b.high),
             low:  parseFloat(b.low),  close: parseFloat(b.close),
+            volume: parseFloat(b.volume) || 0,
         };
         s.candleS.update(candle);
         s.lastPrice = candle.close;
@@ -2493,10 +3271,12 @@ function openWS() {
         }
         if (s.klines.length > 0) {
             const last = s.klines[s.klines.length - 1];
+            let isNewBar = false;
             if (last.time === candle.time) {
-                s.klines[s.klines.length - 1] = { time: candle.time, open: last.open, high: Math.max(last.high, candle.high), low: Math.min(last.low, candle.low), close: candle.close };
+                s.klines[s.klines.length - 1] = { time: candle.time, open: last.open, high: Math.max(last.high, candle.high), low: Math.min(last.low, candle.low), close: candle.close, volume: candle.volume };
             } else {
                 s.klines.push({ ...candle });
+                isNewBar = true;
             }
             const _bb = getBbCfg();
             if (_bb.enabled && s.bbSeries.upper && s.klines.length >= _bb.period) {
@@ -2521,6 +3301,14 @@ function openWS() {
                     _cdUpd(s.channelData.lower, liveL);
                 }
             }
+            if (tbActive) _tbLiveUpdate(s, candle, confirmed, getTbCfg());
+            if (grabActive) _grabLiveUpdate(s, candle, confirmed, getGrabCfg());
+            if (sqzActive) _drawSqzChannel(s.candleS, s.klines, s.sqzLines);
+            // Ricalcolo su "nuova candela iniziata" (klines.push) invece che sul solo flag
+            // WS confirm=true: quest'ultimo può arrivare in ritardo/perdersi in caso di
+            // reconnect proprio a cavallo della chiusura candela, lasciando la linea ferma
+            // — bug reale segnalato dall'utente ("non si aggiorna al cambio candela").
+            if (srActive && (confirmed || isNewBar)) applyTrendlineSRToSlot(s);
         }
     };
     sock.onerror = () => setWSDot('error');
@@ -2631,27 +3419,55 @@ function updateCountdown() {
 
 // ── Market session flags (Asia/Europe/US, standard forex-session UTC hours, Mon-Fri) ──
 const MARKET_SESSIONS = {
-    cn: { startH: 0,  endH: 9,  nameKey: 'market_asia_name',   cityKey: 'market_asia_city'   },
-    gb: { startH: 8,  endH: 17, nameKey: 'market_europe_name', cityKey: 'market_europe_city' },
-    us: { startH: 13, endH: 22, nameKey: 'market_us_name',     cityKey: 'market_us_city'     },
+    // orari reali di borsa (non convenzione forex): TSE ha pausa pranzo (2 sessioni), NYSE/LSE 1 sessione.
+    // DST (EST/EDT, GMT/BST) gestito automaticamente tramite IANA timezone, nessuna regola manuale.
+    cn: { tz: 'Asia/Tokyo',       nameKey: 'market_asia_name',   cityKey: 'market_asia_city',
+          sessions: [ { sh: 9,  sm: 0,  eh: 11, em: 30 }, { sh: 12, sm: 30, eh: 15, em: 0 } ] },
+    gb: { tz: 'Europe/London',    nameKey: 'market_europe_name', cityKey: 'market_europe_city',
+          sessions: [ { sh: 8,  sm: 0,  eh: 16, em: 30 } ] },
+    us: { tz: 'America/New_York', nameKey: 'market_us_name',     cityKey: 'market_us_city',
+          sessions: [ { sh: 9,  sm: 30, eh: 16, em: 0  } ] },
 };
+const _DOW = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+const _tzFormatters = {};
+function _tzParts(tz, ms) {
+    if (!_tzFormatters[tz]) {
+        _tzFormatters[tz] = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz, hourCycle: 'h23', weekday: 'short',
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+        });
+    }
+    return _tzFormatters[tz].formatToParts(new Date(ms)).reduce((acc, p) => { acc[p.type] = p.value; return acc; }, {});
+}
+function _tzOffsetMin(ms, parts) {
+    const asUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+    return Math.round((asUTC - ms) / 60000);
+}
 function getMarketSession(cfg, nowMs) {
     for (let i = 0; i < 8; i++) {
-        const day = new Date(nowMs); day.setUTCDate(day.getUTCDate() + i);
-        const y = day.getUTCFullYear(), m = day.getUTCMonth(), dt = day.getUTCDate();
-        const dow = day.getUTCDay();
+        const refMs = nowMs + i * 86400000;
+        const parts = _tzParts(cfg.tz, refMs);
+        const dow = _DOW[parts.weekday];
         if (dow >= 1 && dow <= 5) {
-            const openTs  = Date.UTC(y, m, dt, cfg.startH, 0, 0);
-            const closeTs = Date.UTC(y, m, dt, cfg.endH, 0, 0);
-            if (i === 0 && nowMs >= openTs && nowMs < closeTs) {
-                return { active: true, secs: Math.round((closeTs - nowMs) / 1000) };
-            }
-            if (openTs > nowMs) {
-                return { active: false, secs: Math.round((openTs - nowMs) / 1000) };
+            const offMin = _tzOffsetMin(refMs, parts);
+            const y = +parts.year, m = +parts.month - 1, d = +parts.day;
+            for (const s of cfg.sessions) {
+                const openTs  = Date.UTC(y, m, d, s.sh, s.sm, 0) - offMin * 60000;
+                const closeTs = Date.UTC(y, m, d, s.eh, s.em, 0) - offMin * 60000;
+                if (i === 0 && nowMs >= openTs && nowMs < closeTs) {
+                    return { active: true, secs: Math.round((closeTs - nowMs) / 1000), targetTs: closeTs };
+                }
+                if (openTs > nowMs) {
+                    return { active: false, secs: Math.round((openTs - nowMs) / 1000), targetTs: openTs };
+                }
             }
         }
     }
-    return { active: false, secs: 0 };
+    return { active: false, secs: 0, targetTs: nowMs };
+}
+function fmtLocalClock(ts) {
+    return new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 function updateMarketSessions() {
     const now = Date.now();
@@ -2677,8 +3493,11 @@ function updateMarketSessions() {
         if (btnEl) {
             // arrotondato al minuto: scrivere il title ogni secondo (coi secondi) farebbe
             // sparire/ricomparire il tooltip nativo del browser ad ogni tick (flicker)
+            const localTxt = fmtLocalClock(st.targetTs) + ' ' + window.t('market_local_time');
             const minsTxt = fmtCountdown(Math.ceil(st.secs / 60) * 60, true);
-            const newTitle = window.t(cfg.nameKey) + ': ' + (st.active ? window.t('market_open') + ' (' + window.t('market_closes_in') + ' ' + minsTxt + ')' : window.t('market_opens_in') + ' ' + minsTxt);
+            const newTitle = st.active
+                ? window.t('market_session_prefix') + ' ' + window.t(cfg.nameKey) + ' ' + window.t('market_ends_in') + ' ' + minsTxt
+                : window.t(cfg.nameKey) + ': ' + window.t('market_opens_in') + ' ' + minsTxt + ' (' + localTxt + ')';
             if (btnEl.title !== newTitle) btnEl.title = newTitle;
         }
     });
@@ -3976,183 +4795,9 @@ function _openBTCTicker() {
 })();
 
 // ── config panel ──────────────────────────────────────────────────────────────
-const LEVEL_META = [
-    {key:'ath',      label:'lvl_ath'},
-    {key:'atl',      label:'lvl_atl'},
-    {key:'dayHigh',  label:'lvl_day_high'},
-    {key:'dayLow',   label:'lvl_day_low'},
-    {key:'prevHigh', label:'lvl_prev_high'},
-    {key:'prevLow',  label:'lvl_prev_low'},
-    {key:'obBid',    label:'lvl_ob_bid'},
-    {key:'obAsk',    label:'lvl_ob_ask'},
-];
-const EMA_META = [{p:5,defColor:'#ef4444'},{p:10,defColor:'#fbbf24'},{p:60,defColor:'#3b82f6'},{p:223,defColor:'#a855f7'}];
-const STYLE_OPTS = [{v:0,l:'style_solid'},{v:1,l:'style_dotted'},{v:2,l:'style_dashed'},{v:3,l:'style_long_dash'},{v:4,l:'style_sparse'}];
-
-function _sectionHdr(label) {
-    return `<tr><td colspan="4" style="padding:10px 6px 4px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #2A2E39;">${label}</td></tr>`;
-}
-
-function openCfgPanel() {
-    const lv = getLvCfg();
-    const emaCfg = getEmaCfg();
-
-    let rows = _sectionHdr(window.t('lvl_section'));
-    rows += LEVEL_META.map(({key, label}) => {
-        const c = lv[key] || DEFAULT_LEVELS_CFG[key];
-        const widths = [1,2,3].map(w => `<option value="${w}"${c.width==w?' selected':''}>${w}px</option>`).join('');
-        const styles = STYLE_OPTS.map(({v,l}) => `<option value="${v}"${c.style==v?' selected':''}>${window.t(l)}</option>`).join('');
-        return `<tr style="border-bottom:1px solid #1a1e24;">
-            <td style="padding:6px 6px;color:#D1D5DB;white-space:nowrap;">${window.t(label)}</td>
-            <td style="padding:6px 6px;text-align:center;"><input type="color" id="cfg-${key}-color" value="${c.color}" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0;"></td>
-            <td style="padding:6px 6px;text-align:center;"><select id="cfg-${key}-width" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${widths}</select></td>
-            <td style="padding:6px 6px;text-align:center;"><select id="cfg-${key}-style" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${styles}</select></td>
-            <td style="padding:6px 6px;text-align:center;"><input type="checkbox" id="cfg-${key}-vis-chart" ${c.vis?.chart!==false?'checked':''} style="cursor:pointer;width:14px;height:14px;accent-color:#2563eb;"></td>
-            <td style="padding:6px 6px;text-align:center;"><input type="checkbox" id="cfg-${key}-vis-mtf" ${c.vis?.mtf!==false?'checked':''} style="cursor:pointer;width:14px;height:14px;accent-color:#2563eb;"></td>
-            <td style="padding:6px 6px;text-align:center;"><input type="checkbox" id="cfg-${key}-vis-ob" ${c.vis?.ob!==false?'checked':''} style="cursor:pointer;width:14px;height:14px;accent-color:#2563eb;"></td>
-        </tr>`;
-    }).join('');
-
-    rows += _sectionHdr('EMA');
-    rows += emaCfg.map(e => {
-        const widths = [1,1.5,2,2.5,3,3.5,4].map(w => `<option value="${w}"${e.width==w?' selected':''}>${w}px</option>`).join('');
-        const styles = STYLE_OPTS.map(({v,l}) => `<option value="${v}"${e.style==v?' selected':''}>${window.t(l)}</option>`).join('');
-        return `<tr style="border-bottom:1px solid #1a1e24;">
-            <td style="padding:6px 6px;color:#D1D5DB;">EMA ${e.p}</td>
-            <td style="padding:6px 6px;text-align:center;"><input type="color" id="cfg-ema-color-${e.p}" value="${e.color}" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0;"></td>
-            <td style="padding:6px 6px;text-align:center;"><select id="cfg-ema-width-${e.p}" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${widths}</select></td>
-            <td style="padding:6px 6px;text-align:center;"><select id="cfg-ema-style-${e.p}" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${styles}</select></td>
-            <td style="padding:6px 6px;"></td>
-            <td style="padding:6px 6px;"></td>
-            <td style="padding:6px 6px;"></td>
-        </tr>`;
-    }).join('');
-
-    const bbCfg = getBbCfg();
-    rows += _sectionHdr('Bollinger Bands');
-    const bbWidths = [1,1.5,2,2.5,3].map(w => `<option value="${w}"${bbCfg.width==w?' selected':''}>${w}px</option>`).join('');
-    const bbStyles = STYLE_OPTS.map(({v,l}) => `<option value="${v}"${bbCfg.style==v?' selected':''}>${window.t(l)}</option>`).join('');
-    rows += `<tr><td colspan="7" style="padding:6px 6px;">
-        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-            <label style="display:flex;align-items:center;gap:5px;color:#D1D5DB;font-size:12px;cursor:pointer;">
-                <input type="checkbox" id="cfg-bb-enabled" ${bbCfg.enabled?'checked':''} style="cursor:pointer;width:14px;height:14px;accent-color:#2563eb;">
-                <span data-i18n="bb_enabled">Attivo</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;color:#9CA3AF;font-size:11px;"><span data-i18n="bb_period">Periodo</span>
-                <input type="number" id="cfg-bb-period" min="2" max="200" value="${bbCfg.period}" style="width:52px;background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;text-align:center;">
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;color:#9CA3AF;font-size:11px;"><span data-i18n="bb_mult">Deviaz.</span>
-                <input type="number" id="cfg-bb-mult" min="0.5" max="5" step="0.5" value="${bbCfg.mult}" style="width:52px;background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;text-align:center;">
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;color:#9CA3AF;font-size:11px;"><span data-i18n="col_color">Colore</span>
-                <input type="color" id="cfg-bb-color" value="${bbCfg.color}" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0;">
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;color:#9CA3AF;font-size:11px;"><span data-i18n="col_thickness">Spessore</span>
-                <select id="cfg-bb-width" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${bbWidths}</select>
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;color:#9CA3AF;font-size:11px;"><span data-i18n="col_style">Stile</span>
-                <select id="cfg-bb-style" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${bbStyles}</select>
-            </label>
-        </div>
-    </td></tr>`;
-
-    const channelCfg = getChannelCfg();
-    rows += _sectionHdr(window.t('channel_tool'));
-    const chWidths = [1,1.5,2,2.5,3].map(w => `<option value="${w}"${channelCfg.width==w?' selected':''}>${w}px</option>`).join('');
-    const chStyles = STYLE_OPTS.map(({v,l}) => `<option value="${v}"${channelCfg.style==v?' selected':''}>${window.t(l)}</option>`).join('');
-    rows += `<tr><td colspan="7" style="padding:6px 6px;">
-        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-            <label style="display:flex;align-items:center;gap:5px;color:#9CA3AF;font-size:11px;"><span data-i18n="bb_period">Periodo</span>
-                <input type="number" id="cfg-channel-period" min="2" max="200" value="${channelCfg.period}" style="width:52px;background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;text-align:center;">
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;color:#9CA3AF;font-size:11px;"><span data-i18n="col_color">Colore</span>
-                <input type="color" id="cfg-channel-color" value="${channelCfg.color}" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0;">
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;color:#9CA3AF;font-size:11px;"><span data-i18n="col_thickness">Spessore</span>
-                <select id="cfg-channel-width" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${chWidths}</select>
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;color:#9CA3AF;font-size:11px;"><span data-i18n="col_style">Stile</span>
-                <select id="cfg-channel-style" style="background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;">${chStyles}</select>
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;color:#9CA3AF;font-size:11px;"><span data-i18n="channel_bg_color">Sfondo</span>
-                <input type="color" id="cfg-channel-bgcolor" value="${channelCfg.bgColor}" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0;">
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;color:#9CA3AF;font-size:11px;"><span data-i18n="channel_bg_opacity">Opacità %</span>
-                <input type="number" id="cfg-channel-bgopacity" min="0" max="100" value="${channelCfg.bgOpacity}" style="width:52px;background:#1E222D;border:1px solid #2A2E39;border-radius:4px;color:#D1D5DB;font-size:11px;padding:2px 4px;text-align:center;">
-            </label>
-        </div>
-    </td></tr>`;
-
-    document.getElementById('cfg-rows').innerHTML = rows;
-    document.getElementById('cfg-panel').style.display = 'block';
-}
-
-function closeCfgPanel() { document.getElementById('cfg-panel').style.display = 'none'; }
-function closeCfgOutside(e) { if (e.target === document.getElementById('cfg-panel')) closeCfgPanel(); }
-
-function saveCfgPanel() {
-    // Levels
-    const lvCfg = {};
-    for (const {key} of LEVEL_META) {
-        lvCfg[key] = {
-            color: document.getElementById(`cfg-${key}-color`).value,
-            width: parseInt(document.getElementById(`cfg-${key}-width`).value),
-            style: parseInt(document.getElementById(`cfg-${key}-style`).value),
-            vis: {
-                chart: document.getElementById(`cfg-${key}-vis-chart`).checked,
-                mtf:   document.getElementById(`cfg-${key}-vis-mtf`).checked,
-                ob:    document.getElementById(`cfg-${key}-vis-ob`).checked,
-            },
-        };
-    }
-    localStorage.setItem('chart_levels_cfg', JSON.stringify(lvCfg));
-    // EMA
-    const emaSave = EMA_META.map(({p}) => ({
-        p,
-        color: document.getElementById(`cfg-ema-color-${p}`).value,
-        width: parseFloat(document.getElementById(`cfg-ema-width-${p}`).value),
-        style: parseInt(document.getElementById(`cfg-ema-style-${p}`).value),
-    }));
-    localStorage.setItem('chart_ema_cfg', JSON.stringify(emaSave));
-    EMA_CFG = emaSave;
-    // BB
-    const bbSave = {
-        enabled: document.getElementById('cfg-bb-enabled').checked,
-        period:  Math.max(2, Math.min(200, parseInt(document.getElementById('cfg-bb-period').value) || 20)),
-        mult:    Math.max(0.5, Math.min(5, parseFloat(document.getElementById('cfg-bb-mult').value) || 2)),
-        color:   document.getElementById('cfg-bb-color').value,
-        width:   parseFloat(document.getElementById('cfg-bb-width').value),
-        style:   parseInt(document.getElementById('cfg-bb-style').value),
-    };
-    localStorage.setItem('chart_bb_cfg', JSON.stringify(bbSave));
-    // Channel
-    const channelSave = {
-        period:    Math.max(2, Math.min(200, parseInt(document.getElementById('cfg-channel-period').value) || 20)),
-        color:     document.getElementById('cfg-channel-color').value,
-        width:     parseFloat(document.getElementById('cfg-channel-width').value),
-        style:     parseInt(document.getElementById('cfg-channel-style').value),
-        bgColor:   document.getElementById('cfg-channel-bgcolor').value,
-        bgOpacity: Math.max(0, Math.min(100, parseInt(document.getElementById('cfg-channel-bgopacity').value) || 0)),
-    };
-    localStorage.setItem('chart_channel_cfg', JSON.stringify(channelSave));
-    CHANNEL_CFG = channelSave;
-
-    applyCfgToAllSlots();
-    closeCfgPanel();
-}
-
-function resetCfg() {
-    localStorage.removeItem('chart_levels_cfg');
-    localStorage.removeItem('chart_ema_cfg');
-
-    localStorage.removeItem('chart_bb_cfg');
-    localStorage.removeItem('chart_channel_cfg');
-    EMA_CFG = getEmaCfg();
-    CHANNEL_CFG = getChannelCfg();
-    applyCfgToAllSlots();
-    openCfgPanel();
-}
-
+// Bottone/pannello "Impostazioni Grafici" rimosso: EMA/Canale/BB/Livelli hanno
+// tutti i propri mini pannelli dedicati nel popup Indicatori. applyCfgToAllSlots()
+// resta: è il riapplica-tutto condiviso richiamato da quei mini pannelli.
 function applyCfgToAllSlots() {
     const lv = getLvCfg();
     // Re-apply EMA styles

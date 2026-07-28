@@ -246,6 +246,12 @@
             <span id="lwc-popup-change" style="font-size:0.72rem;font-weight:500;white-space:nowrap;"></span>
             <span style="color:#374151;font-size:0.72rem;">|</span>
             <span id="lwc-popup-vol"    style="font-size:0.72rem;color:#60a5fa;white-space:nowrap;"></span>
+            <span id="lwc-popup-ohlc" style="display:none;align-items:center;gap:3px;font-family:monospace;font-size:0.68rem;white-space:nowrap;">
+                <span style="color:#6b7280;">O</span><span id="lwc-popup-o"></span>
+                <span style="color:#6b7280;">H</span><span id="lwc-popup-h" style="color:#34d399;"></span>
+                <span style="color:#6b7280;">L</span><span id="lwc-popup-l" style="color:#f87171;"></span>
+                <span style="color:#6b7280;">C</span><span id="lwc-popup-c"></span>
+            </span>
             <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
                 <span id="lwc-popup-candle-pct" style="font-family:monospace;font-size:0.75rem;min-width:52px;text-align:right;white-space:nowrap;"></span>
                 <span style="color:#374151;font-size:0.72rem;">|</span>
@@ -623,12 +629,23 @@ createApp({
                 candleSeries.setData(klines);
                 chart.subscribeCrosshairMove(param => {
                     const pctEl = document.getElementById('lwc-popup-candle-pct');
+                    const ohlcEl = document.getElementById('lwc-popup-ohlc');
                     if (!pctEl) return;
                     const cd = param?.seriesData?.get(candleSeries);
-                    if (!cd) { pctEl.textContent = ''; return; }
+                    if (!cd) { pctEl.textContent = ''; if (ohlcEl) ohlcEl.style.display = 'none'; return; }
                     const pct = ((cd.close - cd.open) / cd.open) * 100;
+                    const col = pct >= 0 ? '#34d399' : '#f87171';
                     pctEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-                    pctEl.style.color = pct >= 0 ? '#34d399' : '#f87171';
+                    pctEl.style.color = col;
+                    if (ohlcEl) {
+                        ohlcEl.style.display = 'inline-flex';
+                        const oEl = document.getElementById('lwc-popup-o'), hEl = document.getElementById('lwc-popup-h');
+                        const lEl = document.getElementById('lwc-popup-l'), cEl = document.getElementById('lwc-popup-c');
+                        if (oEl) { oEl.textContent = formatPrice(cd.open); oEl.style.color = col; }
+                        if (hEl) hEl.textContent = formatPrice(cd.high);
+                        if (lEl) lEl.textContent = formatPrice(cd.low);
+                        if (cEl) { cEl.textContent = formatPrice(cd.close); cEl.style.color = col; }
+                    }
                 });
 
                 for (const cfg of EMA_CONFIG) {

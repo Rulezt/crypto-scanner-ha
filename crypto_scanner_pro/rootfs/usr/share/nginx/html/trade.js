@@ -5,10 +5,10 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
 const LC = window.LightweightCharts;
 
 const DEFAULT_EMA_CFG = [
-    { p: 5,   color: '#ef4444', style: 0, width: 2   },
-    { p: 10,  color: '#fbbf24', style: 0, width: 2   },
-    { p: 60,  color: '#3b82f6', style: 0, width: 3   },
-    { p: 223, color: '#a855f7', style: 0, width: 2.5 },
+    { p: 5,   color: '#ef4444', style: 0, width: 2,   enabled: true },
+    { p: 10,  color: '#fbbf24', style: 0, width: 2,   enabled: true },
+    { p: 60,  color: '#3b82f6', style: 0, width: 3,   enabled: true },
+    { p: 223, color: '#a855f7', style: 0, width: 2.5, enabled: true },
 ];
 const DEFAULT_LEVELS_CFG = {
     dayHigh:  { color: '#22c55e', style: 0, width: 2, vis:{chart:true, mtf:true, ob:true} },
@@ -42,7 +42,13 @@ function computeMaxSafeSize(sortedLevels) {
     }
     return cumQty > 0 ? { qty: cumQty, notional: cumNotional } : null;
 }
-function getEmaCfg() { try{const s=JSON.parse(localStorage.getItem('chart_ema_cfg'));if(s&&s.length===4)return s;}catch(e){}return DEFAULT_EMA_CFG.map(x=>({...x})); }
+function getEmaCfg() {
+    try {
+        const s = JSON.parse(localStorage.getItem('chart_ema_cfg'));
+        if (s && s.length === 4) return s.map((e, i) => ({ ...DEFAULT_EMA_CFG[i], ...e, enabled: e.enabled !== false }));
+    } catch(e) {}
+    return DEFAULT_EMA_CFG.map(x => ({...x}));
+}
 function getLvCfg() {
     try {
         const s = JSON.parse(localStorage.getItem('chart_levels_cfg'));
@@ -64,7 +70,27 @@ function getLvCfg() {
     } catch(e) {}
     return Object.fromEntries(Object.entries(DEFAULT_LEVELS_CFG).map(([k,v])=>[k,{...v,vis:{...v.vis}}]));
 }
-const EMA_CFG = getEmaCfg();
+let EMA_CFG = getEmaCfg();
+let _obEmaS = {}, _obLastEMA = {};
+function toggleEmaAll(period) {
+    const cfg = getEmaCfg();
+    const entry = cfg.find(e => e.p === period);
+    entry.enabled = !(entry.enabled !== false);
+    try { localStorage.setItem('chart_ema_cfg', JSON.stringify(cfg)); } catch(e) {}
+    EMA_CFG = cfg;
+    if (!_obKlines || !_obKlines.length) return;
+    for (const {p, enabled} of EMA_CFG) {
+        if (!_obEmaS[p]) continue;
+        if (enabled === false) {
+            _obEmaS[p].setData([]);
+            _obLastEMA[p] = null;
+        } else {
+            const ema = calcEMA(_obKlines, p);
+            _obEmaS[p].setData(ema);
+            _obLastEMA[p] = ema[ema.length - 1].value;
+        }
+    }
+}
 
 const DEFAULT_BB_CFG = { enabled: false, period: 20, mult: 2, color: '#60a5fa', width: 1, style: 0 };
 function getBbCfg() {
@@ -130,6 +156,7 @@ const _DEFAULT_TB_CFG = {
     fastLen: 5, slowLen: 10,
     bullColor: '#22c55e', bearColor: '#ef4444', flatColor: '#eab308',
     bandTransp: 22, flatMult: 0.25, hideLines: true,
+    showFlatArrow: false,
 };
 function getTbCfg() {
     try { const s = JSON.parse(localStorage.getItem('chart_tb_cfg')); if (s) return { ..._DEFAULT_TB_CFG, ...s }; } catch(e) {}
@@ -574,6 +601,132 @@ function _obGrabConfirmPrev(prevCandle) {
     _obGrabState.emaClose = prevCandle.close * k + _obGrabState.emaClose * (1 - k);
 }
 
+// ── Squeeze Channel — porting verbatim da chart.html/mtf.html: volume dry-up +
+// range compresso, 2 price-line tratteggiate hi/lo, stateless. Assente in trade.js.
+let _obSqzActive = false;
+let _obSqzLines = { hi: null, lo: null };
+const SQZ_K = 6, SQZ_VOL_DRY_RATIO = 0.55, SQZ_RANGE_DRY_RATIO = 0.55;
+function _sqzCond(klines, i) {
+    const widerN = SQZ_K * 4;
+    if (i - SQZ_K - widerN + 1 < 0) return null;
+    let sumRecent = 0; for (let j = i - SQZ_K + 1; j <= i; j++) sumRecent += klines[j].volume;
+    const pf = i - SQZ_K - widerN + 1, pt = i - SQZ_K;
+    let sumPrior = 0; for (let j = pf; j <= pt; j++) sumPrior += klines[j].volume;
+    const avgRecent = sumRecent / SQZ_K, avgPrior = sumPrior / (pt - pf + 1);
+    if (avgPrior <= 0 || avgRecent / avgPrior > SQZ_VOL_DRY_RATIO) return null;
+    let hiR = -Infinity, loR = Infinity;
+    for (let j = i - SQZ_K + 1; j <= i; j++) { hiR = Math.max(hiR, klines[j].high); loR = Math.min(loR, klines[j].low); }
+    let hiP = -Infinity, loP = Infinity;
+    for (let j = Math.max(0, i - widerN + 1); j <= i; j++) { hiP = Math.max(hiP, klines[j].high); loP = Math.min(loP, klines[j].low); }
+    const rangeRecent = (hiR - loR) / klines[i].close, rangeWider = (hiP - loP) / klines[i].close;
+    if (rangeWider <= 0 || rangeRecent / rangeWider > SQZ_RANGE_DRY_RATIO) return null;
+    return { hiR, loR };
+}
+function checkSqueeze(klines) {
+    if (!klines || !klines.length) return null;
+    return _sqzCond(klines, klines.length - 1);
+}
+function _drawSqzChannel(candleS, klines, lineRefs) {
+    const hit = checkSqueeze(klines);
+    if (hit) {
+        if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} }
+        if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} }
+        lineRefs.hi = candleS.createPriceLine({ price: hit.hiR, color:'#22d3ee', lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'Squeeze' });
+        lineRefs.lo = candleS.createPriceLine({ price: hit.loR, color:'#22d3ee', lineWidth:1, lineStyle:2, axisLabelVisible:false, title:'' });
+    } else {
+        if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} lineRefs.hi = null; }
+        if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} lineRefs.lo = null; }
+    }
+}
+function _clearSqzChannel(candleS, lineRefs) {
+    if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} lineRefs.hi = null; }
+    if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} lineRefs.lo = null; }
+}
+function toggleObSqueeze() {
+    _obSqzActive = !_obSqzActive;
+    if (!_obCandleS) return;
+    if (_obSqzActive) _drawSqzChannel(_obCandleS, _obKlines, _obSqzLines);
+    else _clearSqzChannel(_obCandleS, _obSqzLines);
+}
+
+// ── Trendline S/R automatica — porting da chart.html/trendline.html ────────────
+let _obSrActive = false;
+let _obSrSeries = { sup: null, res: null };
+const TRENDLINE_SR_CFG = { shortPeriod: 30, longPeriod: 100, tolerancePct: 0.3 };
+function pivotExtreme(candles, iEnd, offFrom, offTo) {
+    let lowVal = Infinity, lowOff = null, highVal = -Infinity, highOff = null;
+    for (let off = offFrom; off <= offTo; off++) {
+        const idx = iEnd - off;
+        if (idx < 0) return null;
+        const c = candles[idx];
+        if (c.low  < lowVal)  { lowVal  = c.low;  lowOff  = off; }
+        if (c.high > highVal) { highVal = c.high; highOff = off; }
+    }
+    return { lowVal, lowOff, highVal, highOff };
+}
+function trendlineAt(candles, iEnd, shortPeriod, longPeriod) {
+    if (iEnd - longPeriod < 0) return null;
+    const rec = pivotExtreme(candles, iEnd, 1, shortPeriod);
+    const old = pivotExtreme(candles, iEnd, shortPeriod + 1, longPeriod);
+    if (!rec || !old) return null;
+    const supX1 = iEnd - old.lowOff,  supY1 = old.lowVal,  supX2 = iEnd - rec.lowOff,  supY2 = rec.lowVal;
+    const resX1 = iEnd - old.highOff, resY1 = old.highVal, resX2 = iEnd - rec.highOff, resY2 = rec.highVal;
+    const supSlope = (supY2 - supY1) / (supX2 - supX1);
+    const resSlope = (resY2 - resY1) / (resX2 - resX1);
+    return {
+        supX1, supY1, supX2, supY2, supSlope, supVal: supY2 + supSlope * (iEnd - supX2),
+        resX1, resY1, resX2, resY2, resSlope, resVal: resY2 + resSlope * (iEnd - resX2),
+    };
+}
+function isLineValid(candles, x1Idx, y1, slope, kind, tolerancePct) {
+    for (let idx = x1Idx; idx < candles.length; idx++) {
+        const lineVal = y1 + slope * (idx - x1Idx);
+        const tol = Math.abs(lineVal) * (tolerancePct / 100);
+        if (kind === 'support'    && candles[idx].close < lineVal - tol) return false;
+        if (kind === 'resistance' && candles[idx].close > lineVal + tol) return false;
+    }
+    return true;
+}
+function detectActiveTrendlines(candles, cfg) {
+    const n = candles.length;
+    const iEnd = n - 1;
+    const cur = trendlineAt(candles, iEnd, cfg.shortPeriod, cfg.longPeriod);
+    if (!cur) return [];
+    const toPt = (idx, price) => ({ time: candles[idx].time, price });
+    const sup = { p1: toPt(cur.supX1, cur.supY1), p2: toPt(cur.supX2, cur.supY2) };
+    const res = { p1: toPt(cur.resX1, cur.resY1), p2: toPt(cur.resX2, cur.resY2) };
+    const hits = [];
+    if (isLineValid(candles, cur.supX1, cur.supY1, cur.supSlope, 'support', cfg.tolerancePct))
+        hits.push({ kind: 'support', lineVal: cur.supVal, sup, res });
+    if (isLineValid(candles, cur.resX1, cur.resY1, cur.resSlope, 'resistance', cfg.tolerancePct))
+        hits.push({ kind: 'resistance', lineVal: cur.resVal, sup, res });
+    return hits;
+}
+function lineSlope(p1, p2) { return (p2.price - p1.price) / (p2.time - p1.time); }
+function lineSeriesFromPts(p1, p2, klines) {
+    const slope = lineSlope(p1, p2);
+    return klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
+}
+function applyTrendlineSRToOb() {
+    if (_obSrSeries.sup) { try { _obChart.removeSeries(_obSrSeries.sup); } catch(e) {} _obSrSeries.sup = null; }
+    if (_obSrSeries.res) { try { _obChart.removeSeries(_obSrSeries.res); } catch(e) {} _obSrSeries.res = null; }
+    if (!_obSrActive || !_obChart || !_obKlines || _obKlines.length < TRENDLINE_SR_CFG.longPeriod + 2) return;
+    const hits = detectActiveTrendlines(_obKlines, TRENDLINE_SR_CFG);
+    const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+    for (const hit of hits) {
+        const pts = hit.kind === 'support' ? hit.sup : hit.res;
+        const color = hit.kind === 'support' ? '#22c55e' : '#ef4444';
+        const line = lineSeriesFromPts(pts.p1, pts.p2, _obKlines);
+        const series = addSeries(_obChart, 'LineSeries', { ...lb, color, lineWidth: 2 });
+        series.setData(line);
+        if (hit.kind === 'support') _obSrSeries.sup = series; else _obSrSeries.res = series;
+    }
+}
+function toggleObTrendlineSR() {
+    _obSrActive = !_obSrActive;
+    applyTrendlineSRToOb();
+}
+
 // ── Trend Band (banda EMA fast/slow) ───────────────────────────────────────────
 let _obTbActive = false;
 let _obTbSeries = { fast: null, slow: null }, _obTbData = null, _obTbState = null;
@@ -618,12 +771,18 @@ class _TrendBandFillPrimitive {
     paneViews() { return [this._view]; }
 }
 
+let _obTbMarkersHandle = null, _obTbMarkersData = [];
 function _obApplyTb() {
     for (const k of ['fast','slow']) {
         if (_obTbSeries[k]) { try { _obChart.removeSeries(_obTbSeries[k]); } catch(e) {} _obTbSeries[k] = null; }
     }
     _obTbData = null; _obTbState = null;
-    if (!_obTbActive || !_obChart || !_obKlines.length) return;
+    if (!_obTbMarkersHandle && _obChart && _obCandleS && LC.createSeriesMarkers) { try { _obTbMarkersHandle = LC.createSeriesMarkers(_obCandleS, []); } catch(e) {} }
+    if (!_obTbActive || !_obChart || !_obKlines.length) {
+        _obTbMarkersData = [];
+        if (_obTbMarkersHandle) _obTbMarkersHandle.setMarkers([]);
+        return;
+    }
     const cfg = getTbCfg();
     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: !cfg.hideLines };
     _obTbSeries.fast = addSeries(_obChart, 'LineSeries', { ...lb, color: '#ffe082', lineWidth: 1 });
@@ -635,7 +794,17 @@ function _obApplyTb() {
     _obTbState = {
         emaFast: tb.fast[tb.fast.length-1].value, emaSlow: tb.slow[tb.slow.length-1].value,
         atr: tb.lastAtr, prevClose: _obKlines[_obKlines.length-2] ? _obKlines[_obKlines.length-2].close : _obKlines[_obKlines.length-1].close,
+        prevColor: tb.color[tb.color.length-1],
     };
+    _obTbMarkersData = [];
+    if (cfg.showFlatArrow) {
+        for (let i = 1; i < tb.color.length; i++) {
+            if (tb.color[i] === cfg.flatColor && tb.color[i-1] !== cfg.flatColor) {
+                _obTbMarkersData.push({ time: tb.fast[i].time, position: 'aboveBar', color: cfg.flatColor, shape: 'arrowDown', text: '' });
+            }
+        }
+    }
+    if (_obTbMarkersHandle) _obTbMarkersHandle.setMarkers(_obTbMarkersData);
 }
 
 function toggleObTb() {
@@ -659,7 +828,9 @@ function _obTbUpdateTail(candle, confirmed) {
     const tr = Math.max(candle.high - candle.low, Math.abs(candle.high - pc), Math.abs(candle.low - pc));
     const liveAtr = _obTbState.atr != null ? (tr - _obTbState.atr) / 14 + _obTbState.atr : null;
     const color = tbBandColor(liveEmaFast - liveEmaSlow, liveAtr, cfg);
-    if (_obTbSeries.fast) { _obTbSeries.fast.update({time:candle.time, value:liveEmaFast}); _obTbSeries.slow.update({time:candle.time, value:liveEmaSlow}); }
+    if (_obTbSeries.fast) {
+        try { _obTbSeries.fast.update({time:candle.time, value:liveEmaFast}); _obTbSeries.slow.update({time:candle.time, value:liveEmaSlow}); } catch(e) {}
+    }
     if (_obTbData) {
         const lastPt = _obTbData.fast[_obTbData.fast.length-1];
         if (lastPt && lastPt.time === candle.time) {
@@ -670,6 +841,14 @@ function _obTbUpdateTail(candle, confirmed) {
             _obTbData.fast.push({time:candle.time, value:liveEmaFast});
             _obTbData.slow.push({time:candle.time, value:liveEmaSlow});
             _obTbData.color.push(color);
+            // Cap la crescita: senza questo, su una pagina trade tenuta aperta per ore
+            // l'array cresce all'infinito e il _TrendBandFillPrimitive (che lo ridisegna
+            // per intero ad ogni frame) rallenta/degrada progressivamente — bug reale
+            // segnalato dall'utente ("dopo un po' si sfanculizza la colorazione").
+            const MAX_TB_POINTS = 1500;
+            if (_obTbData.fast.length > MAX_TB_POINTS) {
+                _obTbData.fast.shift(); _obTbData.slow.shift(); _obTbData.color.shift();
+            }
         }
     }
     if (confirmed) { _obTbState.emaFast = liveEmaFast; _obTbState.emaSlow = liveEmaSlow; _obTbState.atr = liveAtr; _obTbState.prevClose = candle.close; }
@@ -686,6 +865,13 @@ function _obTbConfirmPrev(prevCandle) {
     _obTbState.emaFast   = prevCandle.close * kf + _obTbState.emaFast * (1 - kf);
     _obTbState.emaSlow   = prevCandle.close * ks + _obTbState.emaSlow * (1 - ks);
     _obTbState.prevClose = prevCandle.close;
+    const color = tbBandColor(_obTbState.emaFast - _obTbState.emaSlow, _obTbState.atr, cfg);
+    if (cfg.showFlatArrow && _obTbMarkersHandle && color === cfg.flatColor && _obTbState.prevColor !== cfg.flatColor) {
+        _obTbMarkersData = _obTbMarkersData || [];
+        _obTbMarkersData.push({ time: prevCandle.time, position: 'aboveBar', color: cfg.flatColor, shape: 'arrowDown', text: '' });
+        _obTbMarkersHandle.setMarkers(_obTbMarkersData);
+    }
+    _obTbState.prevColor = color;
 }
 
 // ── Pannello impostazioni Trend Band ────────────────────────────────────────────
@@ -3021,6 +3207,55 @@ createApp({
                 if (ref && candleS) try { candleS.removePriceLine(ref); } catch(e) {}
             dayHighLine = dayLowLine = prevHighLine = prevLowLine = null;
         };
+        const _applyDayPrevLines = () => {
+            _clearDayLines();
+            if (!candleS || nakedChart.value) return;
+            const lv = getLvCfg();
+            if (_dayHighPrice  != null && lv.dayHigh.vis?.ob  !== false) dayHighLine  = candleS.createPriceLine({price:_dayHighPrice,  color:lv.dayHigh.color,  lineWidth:lv.dayHigh.width,  lineStyle:lv.dayHigh.style,  axisLabelVisible:false, title:''});
+            if (_dayLowPrice   != null && lv.dayLow.vis?.ob   !== false) dayLowLine   = candleS.createPriceLine({price:_dayLowPrice,   color:lv.dayLow.color,   lineWidth:lv.dayLow.width,   lineStyle:lv.dayLow.style,   axisLabelVisible:false, title:''});
+            if (_prevHighPrice != null && lv.prevHigh.vis?.ob !== false) prevHighLine = candleS.createPriceLine({price:_prevHighPrice, color:lv.prevHigh.color, lineWidth:lv.prevHigh.width, lineStyle:lv.prevHigh.style, axisLabelVisible:false, title:''});
+            if (_prevLowPrice  != null && lv.prevLow.vis?.ob  !== false) prevLowLine  = candleS.createPriceLine({price:_prevLowPrice,  color:lv.prevLow.color,  lineWidth:lv.prevLow.width,  lineStyle:lv.prevLow.style,  axisLabelVisible:false, title:''});
+        };
+        const toggleDayLevelsAll = () => {
+            const lv = getLvCfg();
+            const newVal = !lv.dayHigh.vis.ob;
+            lv.dayHigh.vis.ob = newVal; lv.dayLow.vis.ob = newVal;
+            try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+            _applyDayPrevLines();
+        };
+        const togglePrevLevelsAll = () => {
+            const lv = getLvCfg();
+            const newVal = !lv.prevHigh.vis.ob;
+            lv.prevHigh.vis.ob = newVal; lv.prevLow.vis.ob = newVal;
+            try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+            _applyDayPrevLines();
+        };
+        let _athVal = null, _atlVal = null, athLine = null, atlLine = null;
+        const _applyAthAtlLines = () => {
+            if (athLine && candleS) { try { candleS.removePriceLine(athLine); } catch(e) {} athLine = null; }
+            if (atlLine && candleS) { try { candleS.removePriceLine(atlLine); } catch(e) {} atlLine = null; }
+            if (!candleS || nakedChart.value) return;
+            const lv = getLvCfg();
+            if (_athVal != null && lv.ath.vis?.ob !== false) athLine = candleS.createPriceLine({price:_athVal, color:lv.ath.color, lineWidth:lv.ath.width, lineStyle:lv.ath.style, axisLabelVisible:false, title:''});
+            if (_atlVal != null && lv.atl.vis?.ob !== false) atlLine = candleS.createPriceLine({price:_atlVal, color:lv.atl.color, lineWidth:lv.atl.width, lineStyle:lv.atl.style, axisLabelVisible:false, title:''});
+        };
+        const toggleAthAtlAll = () => {
+            const lv = getLvCfg();
+            const newVal = !lv.ath.vis.ob;
+            lv.ath.vis.ob = newVal; lv.atl.vis.ob = newVal;
+            try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+            _applyAthAtlLines();
+        };
+        async function _fetchAthAtl(sym) {
+            try {
+                const r = await fetch(`api/ath-atl?symbol=${sym}`);
+                const j = await r.json();
+                if (j.status === 'pending') { setTimeout(() => { if (symbol.value === sym) _fetchAthAtl(sym); }, 3000); return; }
+                if (j.status !== 'ok' || symbol.value !== sym) return;
+                _athVal = j.ath; _atlVal = j.atl;
+                _applyAthAtlLines();
+            } catch(e) {}
+        }
 
         // ── book state ────────────────────────────────────────────────────────
         const _isPortraitMobile = window.matchMedia('(max-width: 640px), (pointer: coarse)').matches;
@@ -3127,6 +3362,13 @@ createApp({
             _obCandleS = candleS;
             _obChart   = obChart;
             _obSymbol  = symbol.value;
+            _obEmaS    = emaS;
+            _obLastEMA = lastEMA;
+            window.toggleDayLevelsAll  = toggleDayLevelsAll;
+            window.togglePrevLevelsAll = togglePrevLevelsAll;
+            window.toggleAthAtlAll     = toggleAthAtlAll;
+            window.toggleObLines       = toggleObLines;
+            window._obShowLinesValue   = () => showObLines.value;
             if (_obTrendlines.length || _obTrendActive) _obTrendEnsureRAF();
             initSlTpDrag();
         };
@@ -3155,9 +3397,12 @@ createApp({
                 if (_obChActive) _obApplyChannel();
                 if (_obGrabActive) _obApplyGrab();
                 if (_obTbActive) _obApplyTb();
+                if (_obSqzActive) _drawSqzChannel(candleS, _obKlines, _obSqzLines); else _clearSqzChannel(candleS, _obSqzLines);
+                if (_obSrActive) applyTrendlineSRToOb();
                 candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length - 1]?.close) });
 
-                for (const { p } of EMA_CFG) {
+                for (const { p, enabled } of EMA_CFG) {
+                    if (enabled === false) { emaS[p].setData([]); lastEMA[p] = null; continue; }
                     const ema = calcEMA(klines, p);
                     emaS[p].setData(ema);
                     lastEMA[p] = ema[ema.length - 1].value;
@@ -3182,6 +3427,10 @@ createApp({
                 // Day / Prev H/L lines
                 _clearDayLines();
                 _dayHighPrice = _dayLowPrice = _prevHighPrice = _prevLowPrice = null;
+                if (athLine && candleS) { try { candleS.removePriceLine(athLine); } catch(e) {} athLine = null; }
+                if (atlLine && candleS) { try { candleS.removePriceLine(atlLine); } catch(e) {} atlLine = null; }
+                _athVal = _atlVal = null;
+                _fetchAthAtl(symbol.value);
                 try {
                     const jd = await dayPromise;
                     if (jd && jd.success && jd.data && jd.data.length) {
@@ -3272,6 +3521,7 @@ createApp({
                             }
                             _obGrabConfirmPrev(prev);
                             _obTbConfirmPrev(prev);
+                            if (_obSrActive) applyTrendlineSRToOb();
                             lastConfirmedTime = prev.time;
                         }
                         // Live EMA for current forming candle
@@ -3300,7 +3550,12 @@ createApp({
                         }
                         _obChUpdateTail(_obKlines);
                         _obGrabUpdateTail(last, false);
-                        _obTbUpdateTail(last, false);
+                        // NON richiamare _obTbUpdateTail qui: il WS (startKlineWS) aggiorna già
+                        // la banda in tempo reale ad ogni tick sulla candela in formazione. Farlo
+                        // anche qui con il close del polling REST (fino a 3s più vecchio) creava
+                        // un dente di sega — il valore veniva tirato indietro ogni 3s prima che il
+                        // prossimo tick WS lo ricorreggesse. Bug reale segnalato con screenshot.
+                        if (_obSqzActive) _drawSqzChannel(candleS, _obKlines, _obSqzLines);
                     }
                 } catch(e) {}
                 chartPollTimer = setTimeout(poll, 3000);
@@ -4046,3 +4301,55 @@ createApp({
         };
     }
 }).mount('#app');
+
+// ── Indicatori panel (popup unico, stesso pattern di chart.html/mtf.html) ──────
+const _GEAR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+const IND_LIST = [
+    { label: 'EMA 5',   isOn: () => getEmaCfg().find(e=>e.p===5).enabled,   toggle: () => toggleEmaAll(5),   col: 1 },
+    { label: 'EMA 10',  isOn: () => getEmaCfg().find(e=>e.p===10).enabled,  toggle: () => toggleEmaAll(10),  col: 1 },
+    { label: 'EMA 60',  isOn: () => getEmaCfg().find(e=>e.p===60).enabled,  toggle: () => toggleEmaAll(60),  col: 1 },
+    { label: 'EMA 223', isOn: () => getEmaCfg().find(e=>e.p===223).enabled, toggle: () => toggleEmaAll(223), col: 1 },
+    { label: 'Canale SMA 20',   isOn: () => _obChActive,  toggle: toggleObChannel, col: 2 },
+    { label: 'Bollinger Bands', isOn: () => _obBbActive,  toggle: toggleObBB,      col: 2 },
+    { label: 'Trend Band',      isOn: () => _obTbActive,  toggle: toggleObTb,      cfgOpen: openTbCfgPanel,   col: 2 },
+    { label: 'GRaB',            isOn: () => _obGrabActive,toggle: toggleObGrab,    cfgOpen: openGrabCfgPanel, col: 2 },
+    { label: 'Squeeze Channel', isOn: () => _obSqzActive, toggle: toggleObSqueeze, col: 2 },
+    { label: 'Order Book Levels', isOn: () => window._obShowLinesValue ? window._obShowLinesValue() : false, toggle: () => window.toggleObLines && window.toggleObLines(), col: 2 },
+    { label: 'Trendline S/R', isOn: () => _obSrActive, toggle: toggleObTrendlineSR, col: 2 },
+    { label: 'Livelli Daily',          isOn: () => getLvCfg().dayHigh.vis.ob,  toggle: () => window.toggleDayLevelsAll  && window.toggleDayLevelsAll(),  col: 3 },
+    { label: 'Massimi/Minimi Storici', isOn: () => getLvCfg().ath.vis.ob,     toggle: () => window.toggleAthAtlAll     && window.toggleAthAtlAll(),     col: 3 },
+    { label: 'Livelli Giorno Prec.',   isOn: () => getLvCfg().prevHigh.vis.ob,toggle: () => window.togglePrevLevelsAll && window.togglePrevLevelsAll(), col: 3 },
+];
+function renderIndPanel() {
+    const el = document.getElementById('ind-rows');
+    if (!el) return;
+    const renderRow = (it, idx) => {
+        const on = it.isOn();
+        const gear = it.cfgOpen ? `<span data-ind-idx-gear="${idx}" title="Impostazioni" style="margin-right:6px;color:#6B7280;cursor:pointer;display:flex;align-items:center;">${_GEAR_SVG}</span>` : '';
+        return `<div data-ind-idx="${idx}" style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;cursor:pointer;gap:6px;">
+            <span style="font-size:11px;color:#E5E7EB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.label}</span>
+            <span style="display:flex;align-items:center;flex-shrink:0;">
+                ${gear}
+                <span style="width:30px;height:16px;border-radius:8px;background:${on ? '#2563EB' : '#2A2E39'};position:relative;flex-shrink:0;transition:background .15s;">
+                    <span style="position:absolute;top:2px;left:${on ? '16px' : '2px'};width:12px;height:12px;border-radius:50%;background:#fff;transition:left .15s;"></span>
+                </span>
+            </span>
+        </div>`;
+    };
+    const cols = [[], [], []];
+    IND_LIST.forEach((it, idx) => cols[(it.col||1)-1].push(renderRow(it, idx)));
+    el.innerHTML = `<div style="display:flex;">
+        ${cols.map((rows, ci) => `<div style="flex:1;min-width:0;${ci>0?'border-left:1px solid #2A2E39;':''}">${rows.join('')}</div>`).join('')}
+    </div>`;
+    el.onclick = ev => {
+        const gearEl = ev.target.closest('[data-ind-idx-gear]');
+        if (gearEl) { ev.stopPropagation(); IND_LIST[+gearEl.dataset.indIdxGear].cfgOpen(); closeIndPanel(); return; }
+        const row = ev.target.closest('[data-ind-idx]');
+        if (!row) return;
+        IND_LIST[+row.dataset.indIdx].toggle();
+        renderIndPanel();
+    };
+}
+function openIndPanel() { renderIndPanel(); document.getElementById('ind-panel').style.display = 'block'; }
+function closeIndPanel() { document.getElementById('ind-panel').style.display = 'none'; }
+function closeIndPanelOutside(ev) { if (ev.target.id === 'ind-panel') closeIndPanel(); }

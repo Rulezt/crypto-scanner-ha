@@ -705,6 +705,112 @@ def get_bybit_news():
         logger.error(f"❌ News API error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+_coin_info_cache = {}  # base_symbol -> {'data':..., 'ts':...}
+_coin_info_lock = threading.Lock()
+_COIN_INFO_TTL = 6 * 3600  # 6 ore
+_QUOTE_SUFFIXES = ['USDT', 'USDC', 'BUSD', 'FDUSD', 'TUSD', 'DAI', 'PERP', 'USD']
+
+def _coin_base_symbol(symbol):
+    s = symbol.upper()
+    for suf in _QUOTE_SUFFIXES:
+        if s.endswith(suf) and len(s) > len(suf):
+            return s[:-len(suf)]
+    return s
+
+def _google_translate_unofficial(text, target, source='en'):
+    """Endpoint pubblico non ufficiale di Google Translate (nessuna API key/billing
+    richiesta) — usato solo come fallback quando CoinGecko non ha la traduzione nella
+    lingua richiesta. Non garantito da Google, può smettere di funzionare senza preavviso;
+    in quel caso ritorna '' e il chiamante ricade sul testo originale."""
+    if not text:
+        return ''
+    try:
+        import requests as req
+        resp = req.get(
+            'https://translate.googleapis.com/translate_a/single',
+            params={'client': 'gtx', 'sl': source, 'tl': target, 'dt': 't', 'q': text},
+            timeout=8,
+        )
+        data = resp.json()
+        return ''.join(seg[0] for seg in data[0] if seg and seg[0])
+    except Exception as e:
+        logger.warning(f"Google Translate fallback fallito: {e}")
+        return ''
+
+@app.route('/api/coin-info', methods=['GET'])
+def get_coin_info():
+    """Descrizione + dati coin da CoinGecko: /search per trovare l'id (disambigua ticker
+    duplicati per market_cap_rank), poi /coins/{id} per i dettagli. Cache 6h per simbolo+lingua
+    (la descrizione cambia in base a `lang`, quindi entra nella chiave di cache)."""
+    import requests as req
+    symbol = request.args.get('symbol', '').strip().upper()
+    lang = request.args.get('lang', 'it').strip().lower()
+    if lang not in ('it', 'en'):
+        lang = 'it'
+    if not symbol:
+        return jsonify({'success': False, 'error': 'symbol richiesto'}), 400
+    base = _coin_base_symbol(symbol)
+    cache_key = f'{base}:{lang}'
+
+    with _coin_info_lock:
+        cached = _coin_info_cache.get(cache_key)
+        if cached and time.time() - cached['ts'] < _COIN_INFO_TTL:
+            return jsonify(cached['data'])
+
+    try:
+        sresp = req.get('https://api.coingecko.com/api/v3/search', params={'query': base}, timeout=8)
+        sdata = sresp.json()
+        candidates = [c for c in sdata.get('coins', []) if c.get('symbol', '').upper() == base]
+        if not candidates:
+            payload = {'success': False, 'error': 'not_found'}
+            return jsonify(payload), 404
+        candidates.sort(key=lambda c: (c.get('market_cap_rank') is None, c.get('market_cap_rank') or 0))
+        coin_id = candidates[0]['id']
+
+        dresp = req.get(
+            f'https://api.coingecko.com/api/v3/coins/{coin_id}',
+            params={'localization': 'true', 'tickers': 'false', 'market_data': 'true',
+                    'community_data': 'false', 'developer_data': 'false', 'sparkline': 'false'},
+            timeout=10,
+        )
+        d = dresp.json()
+        descs = d.get('description', {}) or {}
+        native_desc = (descs.get(lang) or '').strip()
+        en_desc = (descs.get('en') or '').strip().split('\r\n\r\n')[0].split('\n\n')[0].strip()
+        desc_translated = False
+        if native_desc:
+            desc = native_desc.split('\r\n\r\n')[0].split('\n\n')[0].strip()
+        elif lang != 'en' and en_desc:
+            translated = _google_translate_unofficial(en_desc, target=lang, source='en')
+            desc = translated or en_desc
+            desc_translated = bool(translated)
+        else:
+            desc = en_desc
+        md = d.get('market_data', {}) or {}
+        payload = {
+            'success': True,
+            'id': coin_id,
+            'name': d.get('name'),
+            'symbol': (d.get('symbol') or '').upper(),
+            'description': desc,
+            'desc_translated': desc_translated,
+            'categories': [c for c in (d.get('categories') or []) if c],
+            'market_cap_rank': d.get('market_cap_rank'),
+            'homepage': next((h for h in (d.get('links', {}).get('homepage') or []) if h), ''),
+            'image': (d.get('image', {}) or {}).get('small', ''),
+            'market_cap_usd': (md.get('market_cap') or {}).get('usd'),
+            'ath_usd': (md.get('ath') or {}).get('usd'),
+            'ath_date_usd': (md.get('ath_date') or {}).get('usd'),
+            'circulating_supply': md.get('circulating_supply'),
+            'max_supply': md.get('max_supply'),
+        }
+        with _coin_info_lock:
+            _coin_info_cache[cache_key] = {'data': payload, 'ts': time.time()}
+        return jsonify(payload)
+    except Exception as e:
+        logger.error(f"❌ Coin info API error ({symbol}): {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/top-coins', methods=['GET'])
 def get_top_coins():
     """Return top N coins sorted by 24h change % (gainers or losers), filtered by min volume"""

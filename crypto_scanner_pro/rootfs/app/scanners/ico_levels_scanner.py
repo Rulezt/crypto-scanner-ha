@@ -195,10 +195,11 @@ class ICOLevelsScanner:
             key = f'{symbol}_{side}'
             with self._alerted_lock:
                 last_str = self._alerted.get(key)
-                if last_str:
-                    elapsed = (now - datetime.fromisoformat(last_str)).total_seconds()
-                    if elapsed < self.cooldown_hours * 3600:
-                        continue
+                # Un alert al giorno solare (UTC) per coin+lato, non un cooldown a ore: prima
+                # bastava superare cooldown_hours (2h da config generale) perché la stessa coin
+                # notificasse più volte nello stesso giorno restando vicina al livello.
+                if last_str and datetime.fromisoformat(last_str).date() == now.date():
+                    continue
                 self._alerted[key] = now.isoformat()
 
             # Persist and send asynchronously
@@ -272,10 +273,8 @@ class ICOLevelsScanner:
                     continue
                 key      = f'{sym}_{side}'
                 last_str = alerted.get(key)
-                if last_str:
-                    elapsed = (now - datetime.fromisoformat(last_str)).total_seconds()
-                    if elapsed < self.cooldown_hours * 3600:
-                        continue
+                if last_str and datetime.fromisoformat(last_str).date() == now.date():
+                    continue
                 self._send_alert(sym, side, dist, level, current_price)
                 alerted[key] = now.isoformat()
                 modified = True
