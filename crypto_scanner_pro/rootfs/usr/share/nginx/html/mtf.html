@@ -1543,6 +1543,10 @@ const fsBtn = document.createElement('button');
     try { candleS.attachPrimitive(new _MtfCountdownPrimitive(slots[slots.length-1])); } catch(e) {}
     try { candleS.attachPrimitive(new _ChannelFillPrimitive(slots[slots.length-1], chart)); } catch(e) {}
     try { candleS.attachPrimitive(new _TrendBandFillPrimitive(slots[slots.length-1], chart)); } catch(e) {}
+    DrawTools.attachToolContextMenu(body, {
+      isAnyToolActive: () => { const s = slots[i]; return !!(s && (s.rangeActive || s.hlineActive || s.trendActive)); },
+      onTrend: () => toggleSlotTrend(i), onHline: () => toggleSlotHline(i), onRange: () => toggleSlotRange(i),
+    });
     chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) { s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.cfg.tf), to: s.klineCount + 3 }); s.chart.priceScale('right').applyOptions({ autoScale: true }); } });
   });
 }
@@ -2618,6 +2622,15 @@ function closeFSModal() {
     }
 }
 
+// #fs-modal (con #fs-chart-body) è HTML DOPO questo <script>, non ancora parsato qui:
+// va agganciato dopo DOMContentLoaded, altrimenti getElementById torna null.
+document.addEventListener('DOMContentLoaded', () => {
+  DrawTools.attachToolContextMenu(document.getElementById('fs-chart-body'), {
+    isAnyToolActive: () => fsRangeActive || fsHlineActive || fsTrendActive,
+    onTrend: toggleFsTrend, onHline: toggleFsHline, onRange: toggleFsRange,
+  });
+});
+
 buildGrid();
 loadAll().then(() => {
   // Live polling via backend ws_manager — runs every 5s for 1m and 5m slots.
@@ -3548,7 +3561,7 @@ if (isMobile) {
                 style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;padding:0 4px;line-height:1;transition:color .15s;"
                 onmouseover="this.style.color='#B2B5BE'" onmouseout="this.style.color='#6B7280'">✕</button>
     </div>
-    <div style="flex:1;min-height:0;position:relative;">
+    <div id="fs-chart-body" style="flex:1;min-height:0;position:relative;">
         <div id="fs-chart-el" style="position:absolute;inset:0;"></div>
         <canvas id="fs-range-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;display:none;"></canvas>
         <canvas id="fs-hline-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;"></canvas>

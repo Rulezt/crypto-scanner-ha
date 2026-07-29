@@ -3478,6 +3478,10 @@ createApp({
             _obRestoreDrawings();
             if (_obTrendlines.length || _obTrendActive) _obTrendEnsureRAF();
             initSlTpDrag();
+            DrawTools.attachToolContextMenu(document.getElementById('ob-chart-container'), {
+                isAnyToolActive: () => _obRangeActive || _obHlineActive || _obTrendActive,
+                onTrend: toggleObTrend, onHline: toggleObHline, onRange: toggleObRange,
+            });
         };
 
         const loadChartData = async (tf) => {

@@ -352,7 +352,7 @@
                 if (t != null && p != null) s._trendP1 = { t, p };
             } else {
                 const t2 = s.chart.timeScale().coordinateToTime(px), p2 = s.candleS.coordinateToPrice(py);
-                if (t2 != null && p2 != null) s.trendlines.push({ t1: s._trendP1.t, p1: s._trendP1.p, t2, p2 });
+                if (t2 != null && p2 != null) { s.trendlines.push({ t1: s._trendP1.t, p1: s._trendP1.p, t2, p2 }); opts.onChange?.(); }
                 s._trendP1 = null; s._trendPrev = null;
                 trendDrawAll(s);
             }
@@ -396,13 +396,14 @@
                 s._trendPending = null;
                 return;
             }
-            s._trendDrag = null; canvas.style.cursor = 'crosshair';
+            if (s._trendDrag) { s._trendDrag = null; opts.onChange?.(); }
+            canvas.style.cursor = 'crosshair';
         };
         s._trendCM = e => {
             e.preventDefault();
             if (s._trendP1) { s._trendP1 = null; s._trendPrev = null; trendDrawAll(s); return; }
             const hit = trendNearest(s, e.clientX, e.clientY);
-            if (hit) { s.trendlines = s.trendlines.filter(tl => tl !== hit.tl); trendDrawAll(s); }
+            if (hit) { s.trendlines = s.trendlines.filter(tl => tl !== hit.tl); trendDrawAll(s); opts.onChange?.(); }
             else toggleFsTrend(s, opts);
         };
         canvas.addEventListener('mousedown', s._trendMD);
@@ -411,12 +412,76 @@
         canvas.addEventListener('contextmenu', s._trendCM);
     }
 
+    // ── Menu contestuale (tasto destro nel grafico quando nessun tool è attivo) ────────
+    // Entry point aggiuntivo per attivare Range/Hline/Trendline oltre ai bottoni header
+    // (richiesto su index/chart/mtf/trade, griglia+fullscreen). Quando un tool è già
+    // attivo il tasto destro resta al listener del tool stesso (cancella la riga più
+    // vicina) — qui si esce subito per non sovrapporre le due azioni.
+    let _dtMenu = null;
+    function _dtMenuEsc(e) { if (e.key === 'Escape') closeToolMenu(); }
+    function closeToolMenu() {
+        if (_dtMenu) { try { _dtMenu.remove(); } catch(e) {} _dtMenu = null; }
+        document.removeEventListener('keydown', _dtMenuEsc);
+    }
+    function showToolMenu(clientX, clientY, items) {
+        closeToolMenu();
+        const menu = document.createElement('div');
+        menu.style.cssText = 'position:fixed;z-index:9999;background:#1E222D;border:1px solid #374151;border-radius:6px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.7);min-width:170px;font-family:inherit;';
+        menu.style.left = clientX + 'px';
+        menu.style.top = clientY + 'px';
+        for (const { label, onClick } of items) {
+            if (!onClick) continue;
+            const item = document.createElement('div');
+            item.textContent = label;
+            item.style.cssText = 'padding:8px 14px;font-size:12px;color:#E5E7EB;cursor:pointer;white-space:nowrap;';
+            item.onmouseenter = () => item.style.background = '#2A2E39';
+            item.onmouseleave = () => item.style.background = '';
+            item.onmousedown = e => e.stopPropagation();
+            item.onclick = e => { e.stopPropagation(); closeToolMenu(); onClick(); };
+            menu.appendChild(item);
+        }
+        document.body.appendChild(menu);
+        _dtMenu = menu;
+        requestAnimationFrame(() => {
+            if (!_dtMenu) return;
+            const r = menu.getBoundingClientRect();
+            if (r.right > window.innerWidth) menu.style.left = Math.max(4, window.innerWidth - r.width - 8) + 'px';
+            if (r.bottom > window.innerHeight) menu.style.top = Math.max(4, window.innerHeight - r.height - 8) + 'px';
+        });
+        setTimeout(() => document.addEventListener('click', closeToolMenu, { once: true }), 0);
+        document.addEventListener('keydown', _dtMenuEsc);
+    }
+
+    // container: elemento su cui intercettare il tasto destro (l'intero pannello/grafico).
+    // opts: { isAnyToolActive(): bool, onTrend, onHline, onRange, labels?: {trend,hline,range} }
+    //
+    // Listener in fase di CAPTURE (non bubble): se un tool è già attivo ma il click cade
+    // dove non c'è nessuna riga, il listener del tool stesso (canvas sopra, target
+    // dell'evento) lo interpreta come "annulla/disattiva" — in fase di bubble lo stato
+    // sarebbe già cambiato PRIMA che questo listener lo leggesse (falso negativo:
+    // isAnyToolActive() tornerebbe false e il menu apparirebbe comunque). In capture si
+    // legge lo stato PRIMA che il listener del tool (in fase target/bubble) lo tocchi.
+    function attachToolContextMenu(container, opts) {
+        if (!container || !opts) return;
+        container.addEventListener('contextmenu', e => {
+            if (opts.isAnyToolActive && opts.isAnyToolActive()) return;
+            e.preventDefault();
+            const tt = (k, fb) => (window.t ? window.t(k) : '') || fb;
+            showToolMenu(e.clientX, e.clientY, [
+                { label: (opts.labels && opts.labels.trend) || tt('trend_tool', 'Trendline'), onClick: opts.onTrend },
+                { label: (opts.labels && opts.labels.hline) || tt('hline_tool', 'Linea orizzontale'), onClick: opts.onHline },
+                { label: (opts.labels && opts.labels.range) || tt('price_range', 'Range prezzo'), onClick: opts.onRange },
+            ]);
+        }, true);
+    }
+
     window.DrawTools = {
         TREND_HIT, TREND_CLICK_SLOP, HLINE_HIT,
         trendSync, trendDrawExt, ptSegDist,
         drawRangeCanvas, drawRangeLine,
         toggleRange,
         hlineNearest, toggleHline, clearHlines,
-        toggleFsTrend, trendDrawAll,
+        toggleFsTrend, trendDrawAll, trendEnsureRAF,
+        showToolMenu, closeToolMenu, attachToolContextMenu,
     };
 })();

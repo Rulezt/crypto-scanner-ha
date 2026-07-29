@@ -64,6 +64,7 @@
     <title>Crypto Scanner Pro - Scanner Criptovalute in Tempo Reale | Bybit</title>
     <script src="/prefs-sync.js"></script>
     <script src="/i18n.js"></script>
+    <script src="/draw-tools.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -1602,6 +1603,11 @@
         const _INLINE_TF_LIST = [['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']];
 
         function closeInlinePreview() {
+          // Spegne i tool PRIMA di rimuovere il DOM (le surface leggono i canvas per id).
+          if (_inlineRangeActive) toggleInlineRange();
+          if (_inlineHlineActive) toggleInlineHline();
+          if (_inlineTrendActive) toggleInlineTrend();
+          _inlineHlines = []; _inlineTrendlines = [];
           if (_inlinePreviewChart) { try { _inlinePreviewChart.remove(); } catch(e) {} _inlinePreviewChart = null; }
           if (_inlinePreviewRow && _inlinePreviewRow.parentNode) _inlinePreviewRow.remove();
           _inlinePreviewRow = null; _inlinePreviewSeries = null; _inlinePreviewEmaS = null; _inlinePreviewSymbol = null;
@@ -1621,7 +1627,12 @@
           ).join('');
           tr.innerHTML = `<td colspan="${colspan}" style="padding:8px 12px;background:#0B0E11;">
               <div style="display:flex;gap:1px;margin-bottom:6px;" id="inline-tf-${symbol}">${tfBtns}</div>
-              <div style="width:100%;aspect-ratio:2/1;min-height:150px;max-height:280px;" id="inline-chart-${symbol}"></div>
+              <div style="width:100%;aspect-ratio:2/1;min-height:150px;max-height:280px;position:relative;" id="inline-chart-wrap-${symbol}">
+                <div style="position:absolute;inset:0;" id="inline-chart-${symbol}"></div>
+                <canvas id="inline-range-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;display:none;"></canvas>
+                <canvas id="inline-hline-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;"></canvas>
+                <canvas id="inline-trend-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:7;"></canvas>
+              </div>
             </td>`;
           row.insertAdjacentElement('afterend', tr);
           _inlinePreviewRow = tr;
@@ -1651,7 +1662,126 @@
           const emaS = {};
           for (const { p, color, width } of _TT_EMA) emaS[p] = addS('LineSeries', { ...lb, color, lineWidth: width });
           _inlinePreviewSeries = series; _inlinePreviewEmaS = emaS;
+          DrawTools.attachToolContextMenu(document.getElementById(`inline-chart-wrap-${symbol}`), {
+            isAnyToolActive: () => _inlineRangeActive || _inlineHlineActive || _inlineTrendActive,
+            onTrend: toggleInlineTrend, onHline: toggleInlineHline, onRange: toggleInlineRange,
+          });
+          _inlineRestoreDrawings(symbol);
           await _loadInlineChartData(symbol, 'D');
+        }
+
+        // ── strumenti di disegno (Range/Hline/Trendline), attivabili col tasto destro ──
+        // Un solo inline-preview aperto alla volta (vedi closeInlinePreview) quindi stato
+        // globale singolo va bene, stesso pattern delle surface fullscreen di chart.html.
+        const _inlineNoBtn = { style: {} };
+        let _inlineRangeActive = false, _inlineRangeP1 = null, _inlineRangeMD = null, _inlineRangeMM = null, _inlineRangeMU = null, _inlineRangeCM = null, _inlineRangeHoverLine = null, _inlineRangeHoverML = null;
+        let _inlineHlineActive = false, _inlineHlines = [], _inlineHlineMD = null, _inlineHlineMM = null, _inlineHlineMU = null, _inlineHlineCM = null, _inlineHlineDragging = null, _inlineHlineHoverLine = null, _inlineHlineHoverML = null;
+        let _inlineTrendActive = false, _inlineTrendlines = [], _inlineTrendP1 = null, _inlineTrendPrev = null, _inlineTrendPending = null;
+        let _inlineTrendMD = null, _inlineTrendMM = null, _inlineTrendMU = null, _inlineTrendCM = null, _inlineTrendDrag = null, _inlineTrendRAF = null;
+
+        const _inlineRangeSurface = {
+          get rangeActive() { return _inlineRangeActive; }, set rangeActive(v) { _inlineRangeActive = v; },
+          get rangeP1() { return _inlineRangeP1; }, set rangeP1(v) { _inlineRangeP1 = v; },
+          get rangeCanvas() { return document.getElementById('inline-range-canvas'); },
+          get rangeBtn() { return _inlineNoBtn; },
+          get candleS() { return _inlinePreviewSeries; },
+          get _rangeMD() { return _inlineRangeMD; }, set _rangeMD(v) { _inlineRangeMD = v; },
+          get _rangeMM() { return _inlineRangeMM; }, set _rangeMM(v) { _inlineRangeMM = v; },
+          get _rangeMU() { return _inlineRangeMU; }, set _rangeMU(v) { _inlineRangeMU = v; },
+          get _rangeCM() { return _inlineRangeCM; }, set _rangeCM(v) { _inlineRangeCM = v; },
+          get _rangeHoverLine() { return _inlineRangeHoverLine; }, set _rangeHoverLine(v) { _inlineRangeHoverLine = v; },
+          get _rangeHoverML() { return _inlineRangeHoverML; }, set _rangeHoverML(v) { _inlineRangeHoverML = v; },
+        };
+        function toggleInlineRange() {
+          DrawTools.toggleRange(_inlineRangeSurface, {
+            onDeactivateSiblings: () => { if (_inlineHlineActive) toggleInlineHline(); if (_inlineTrendActive) toggleInlineTrend(); }
+          });
+          const c = document.getElementById('inline-range-canvas'); if (c) c.style.display = _inlineRangeActive ? 'block' : 'none';
+        }
+
+        const _inlineHlineSurface = {
+          get hlineActive() { return _inlineHlineActive; }, set hlineActive(v) { _inlineHlineActive = v; },
+          get hlines() { return _inlineHlines; }, set hlines(v) { _inlineHlines = v; },
+          get hlineCanvas() { return document.getElementById('inline-hline-canvas'); },
+          get hlineBtn() { return _inlineNoBtn; },
+          get candleS() { return _inlinePreviewSeries; },
+          get _hlineMD() { return _inlineHlineMD; }, set _hlineMD(v) { _inlineHlineMD = v; },
+          get _hlineMM() { return _inlineHlineMM; }, set _hlineMM(v) { _inlineHlineMM = v; },
+          get _hlineMU() { return _inlineHlineMU; }, set _hlineMU(v) { _inlineHlineMU = v; },
+          get _hlineCM() { return _inlineHlineCM; }, set _hlineCM(v) { _inlineHlineCM = v; },
+          get _hlineDragging() { return _inlineHlineDragging; }, set _hlineDragging(v) { _inlineHlineDragging = v; },
+          get _hlineHoverLine() { return _inlineHlineHoverLine; }, set _hlineHoverLine(v) { _inlineHlineHoverLine = v; },
+          get _hlineHoverML() { return _inlineHlineHoverML; }, set _hlineHoverML(v) { _inlineHlineHoverML = v; },
+        };
+        function toggleInlineHline() {
+          DrawTools.toggleHline(_inlineHlineSurface, {
+            onDeactivateSiblings: () => { if (_inlineRangeActive) toggleInlineRange(); if (_inlineTrendActive) toggleInlineTrend(); },
+            onChange: _inlineSaveDrawings,
+          });
+        }
+
+        const _inlineTrendSurface = {
+          get trendActive() { return _inlineTrendActive; }, set trendActive(v) { _inlineTrendActive = v; },
+          get trendlines() { return _inlineTrendlines; }, set trendlines(v) { _inlineTrendlines = v; },
+          get trendCanvas() { return document.getElementById('inline-trend-canvas'); },
+          get trendBtn() { return _inlineNoBtn; },
+          get chart() { return _inlinePreviewChart; },
+          get candleS() { return _inlinePreviewSeries; },
+          get _trendP1() { return _inlineTrendP1; }, set _trendP1(v) { _inlineTrendP1 = v; },
+          get _trendPrev() { return _inlineTrendPrev; }, set _trendPrev(v) { _inlineTrendPrev = v; },
+          get _trendPending() { return _inlineTrendPending; }, set _trendPending(v) { _inlineTrendPending = v; },
+          get _trendMD() { return _inlineTrendMD; }, set _trendMD(v) { _inlineTrendMD = v; },
+          get _trendMM() { return _inlineTrendMM; }, set _trendMM(v) { _inlineTrendMM = v; },
+          get _trendMU() { return _inlineTrendMU; }, set _trendMU(v) { _inlineTrendMU = v; },
+          get _trendCM() { return _inlineTrendCM; }, set _trendCM(v) { _inlineTrendCM = v; },
+          get _trendDrag() { return _inlineTrendDrag; }, set _trendDrag(v) { _inlineTrendDrag = v; },
+          get _trendRAF() { return _inlineTrendRAF; }, set _trendRAF(v) { _inlineTrendRAF = v; },
+        };
+        function toggleInlineTrend() {
+          DrawTools.toggleFsTrend(_inlineTrendSurface, {
+            onDeactivateSiblings: () => { if (_inlineRangeActive) toggleInlineRange(); if (_inlineHlineActive) toggleInlineHline(); },
+            onChange: _inlineSaveDrawings,
+          });
+        }
+
+        // Persistenza per simbolo (localStorage + sync server per utenti loggati, stesso
+        // pattern di ob_drawings/mtf_drawings — vedi feedback_localstorage_config_migration).
+        function _inlineLoadDrawings() {
+          try { return JSON.parse(localStorage.getItem('inline_drawings') || '{}'); } catch(e) { return {}; }
+        }
+        function _inlineSaveDrawings() {
+          let json;
+          try {
+            const all = _inlineLoadDrawings();
+            all[_inlinePreviewSymbol] = {
+              trendlines: _inlineTrendlines.map(tl => ({ t1: tl.t1, p1: tl.p1, t2: tl.t2, p2: tl.p2 })),
+              hlines: _inlineHlines.map(h => h.price),
+            };
+            json = JSON.stringify(all);
+            localStorage.setItem('inline_drawings', json);
+          } catch(e) { return; }
+          try {
+            const x = new XMLHttpRequest();
+            x.open('PUT', '/api/prefs/' + encodeURIComponent('inline_drawings'), false);
+            x.setRequestHeader('Content-Type', 'application/json');
+            x.send(JSON.stringify({ value: json }));
+          } catch(e) {}
+        }
+        function _inlineRestoreDrawings(symbol) {
+          const rec = _inlineLoadDrawings()[symbol];
+          if (!rec) return;
+          if (Array.isArray(rec.trendlines) && rec.trendlines.length) {
+            _inlineTrendlines.push(...rec.trendlines);
+            DrawTools.trendEnsureRAF(_inlineTrendSurface);
+          }
+          if (Array.isArray(rec.hlines) && _inlinePreviewSeries) {
+            for (const price of rec.hlines) {
+              try {
+                const pl = _inlinePreviewSeries.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+                _inlineHlines.push({ priceLine: pl, price });
+              } catch(e) {}
+            }
+          }
         }
 
         async function switchInlineTF(symbol, tf) {
