@@ -3011,7 +3011,14 @@ function _trendDrawAll(s) {
     try {
       const pts = _trendLineEdgePts(s, tl);
       if (!pts) continue;
-      if (_trendVisibleXSpan(pts, H) < W * 0.15) continue;
+      // Soglia assoluta (pochi pixel), non percentuale sulla larghezza: x1/x2 sono
+      // SEMPRE i bordi del canvas per costruzione (_trendLineEdgePts valuta la retta
+      // ai bordi della vista temporale) — una soglia al 15% della larghezza (es. 45px
+      // su un pannello griglia da 300px) nascondeva anche linee ampiamente visibili ma
+      // il cui tratto entro il range di prezzo corrente non riempiva quella percentuale,
+      // es. quando il pannello ha uno zoom di prezzo stretto: bug reale, linee sparivano
+      // o sembravano non arrivare più al bordo destro. Nasconde solo la vera "scheggia".
+      if (_trendVisibleXSpan(pts, H) < 6) continue;
       ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(pts.x1, pts.y1); ctx.lineTo(pts.x2, pts.y2); ctx.stroke();
       // marker sui due punti originali, solo se ricadono nella vista di questo pannello
