@@ -17,6 +17,7 @@
     <title>Multi-Chart - Crypto Scanner Pro v4.7.0</title>
     <script src="/prefs-sync.js"></script>
     <script src="/i18n.js"></script>
+    <script src="/draw-tools.js"></script>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxsaW5lIHgxPSIxIiB5MT0iOSIgeDI9IjMxIiB5Mj0iOSIgc3Ryb2tlPSIjMWEzYTRhIiBzdHJva2Utd2lkdGg9IjAuNCIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMTciIHgyPSIzMSIgeTI9IjE3IiBzdHJva2U9IiMxYTNhNGEiIHN0cm9rZS13aWR0aD0iMC40Ii8+CiAgPGxpbmUgeDE9IjEiIHkxPSIyNSIgeDI9IjMxIiB5Mj0iMjUiIHN0cm9rZT0iIzFhM2E0YSIgc3Ryb2tlLXdpZHRoPSIwLjQiLz4KICA8bGluZSB4MT0iNCIgeTE9IjciIHgyPSI0IiB5Mj0iMjkiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyLjUiIHk9IjE0IiB3aWR0aD0iMyIgaGVpZ2h0PSI5IiBmaWxsPSIjMDBDOEZGIi8+CiAgPGxpbmUgeDE9IjEyIiB5MT0iMyIgeDI9IjEyIiB5Mj0iMjYiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIxMC41IiB5PSI3IiB3aWR0aD0iMyIgaGVpZ2h0PSIxMyIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIyMCIgeTE9IjYiIHgyPSIyMCIgeTI9IjI4IiBzdHJva2U9IiMwMEM4RkYiIHN0cm9rZS13aWR0aD0iMC44Ii8+CiAgPHJlY3QgeD0iMTguNSIgeT0iMTMiIHdpZHRoPSIzIiBoZWlnaHQ9IjkiIGZpbGw9IiMwMEM4RkYiLz4KICA8bGluZSB4MT0iMjgiIHkxPSIxMCIgeDI9IjI4IiB5Mj0iMzAiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyNi41IiB5PSIxNiIgd2lkdGg9IjMiIGhlaWdodD0iOCIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMzAiIHgyPSIzMCIgeTI9IjIiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIxLjIiLz4KICA8cG9seWdvbiBwb2ludHM9IjMwLDIgMjQsNS41IDI2LjUsOC41IiBmaWxsPSIjMDBDOEZGIi8+Cjwvc3ZnPgo=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
@@ -47,6 +48,7 @@
         .btn-loss-idle:hover { color: #f87171; background: #450a0a; }
         #btn-mode-loss img { filter: invert(46%) sepia(8%) saturate(472%) hue-rotate(182deg) brightness(96%) contrast(88%); transition: filter 0.2s; }
         #btn-mode-loss.btn-loss-active img, #btn-mode-loss:hover img { filter: invert(57%) sepia(74%) saturate(533%) hue-rotate(312deg) brightness(107%) contrast(96%); }
+        #mode-btn-mobile-icon img { filter: invert(57%) sepia(74%) saturate(533%) hue-rotate(312deg) brightness(107%) contrast(96%); }
         .btn-commodity-active { background: #292524; color: #d6b57a; }
         .btn-commodity-idle   { color: #6B7280; background: #1E222D; }
         .btn-commodity-idle:hover { color: #d6b57a; background: #1c1917; }
@@ -142,6 +144,22 @@
                 background: rgba(22,26,30,0.92) !important;
             }
             #btn-view { display: none !important; }
+            #mkt-sessions-bar { display: none !important; }
+            #mode-btns-group { display: none !important; }
+            #btn-mode-fav { display: none !important; }
+            #mode-btn-mobile { display: inline-flex !important; }
+            #btn-f11 { display: none !important; }
+            #user-menu-wrap { display: none !important; }
+
+            /* Popup Indicatori: larghezza fissa (600px/300px) overflow su schermi portrait */
+            #ind-panel > div, #ind-cfg-panel > div, #stock-lock-panel > div {
+                width: calc(100vw - 24px) !important;
+                max-width: calc(100vw - 24px) !important;
+            }
+            /* Griglia interna a 3 colonne pensata per 600px: su portrait tronca le label, impila in verticale */
+            #ind-rows > div { flex-direction: column !important; }
+            #ind-rows > div > div { border-left: none !important; }
+            #ind-rows > div > div:not(:first-child) { border-top: 1px solid #2A2E39; }
         }
 
         /* Landscape mobile: 1 grafico per volta — SEPARATO da max-width:639px perché in landscape
@@ -157,6 +175,7 @@
             header .flex-1 { flex: 0 0 8px !important; min-width: 8px; }
             #status { display: none; }
             #btn-view { display: none !important; }
+            #user-menu-wrap { display: none !important; }
             #grid {
                 grid-template-columns: 1fr !important;
                 grid-template-rows: 1fr !important;
@@ -204,13 +223,14 @@
 
     <div class="w-px h-5 bg-dark-border"></div>
 
-    <div class="flex gap-1">
+    <div class="flex gap-1" id="mode-btns-group">
         <button id="btn-mode-gain"  onclick="switchMode('gainers')"   class="px-3 py-1 rounded text-xs font-medium transition-colors btn-gain-active" style="display:inline-flex;align-items:center;gap:4px;"><svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29.791 29.791" width="16" height="16" style="width:16px;height:16px;flex-shrink:0;"><g><g><path d="M23.456,9.531c0.722-1.352,2.168-5.081-1.539-8.386c2.429,5.516-3.716,7.132-3.716,7.132l5.35,5.906c0,0,4.848,0.334,6.24-2.341C28.913,11.104,26.094,10.229,23.456,9.531z"/><path d="M7.876,1.146c-3.707,3.305-2.261,7.032-1.54,8.386C3.696,10.229,0.878,11.104,0,11.844c1.394,2.675,6.24,2.341,6.24,2.341l5.35-5.906C11.59,8.277,5.447,6.662,7.876,1.146z"/><path d="M8.024,13.625c-1.783,3.379,2.885,7.521,3.569,8.247c0.685,0.727-2.279,1.086-2.26,2.479c0.012,0.836,0.616,1.684,1.931,2.234c-0.014-0.103-0.04-0.198-0.04-0.304c0-0.206,0.069-0.399,0.125-0.596c-0.294-0.195-0.477-0.458-0.43-0.726c0.075-0.426,0.683-0.676,1.352-0.556c0.672,0.117,1.157,0.56,1.081,0.985c-0.022,0.128-0.103,0.232-0.206,0.324c-0.029,0.082-0.08,0.164-0.08,0.246c0,0.66,0.84,1.22,1.832,1.22c0.992,0,1.833-0.56,1.833-1.22c0-0.082-0.051-0.166-0.08-0.248c-0.104-0.09-0.182-0.194-0.205-0.322c-0.075-0.426,0.41-0.868,1.076-0.985c0.674-0.12,1.281,0.13,1.356,0.556c0.047,0.268-0.138,0.529-0.433,0.728c0.057,0.194,0.125,0.39,0.125,0.594c0,0.109-0.025,0.216-0.043,0.321c1.322-0.539,1.93-1.382,1.93-2.253c0-1.448-3.033-1.699-2.253-2.479c0.78-0.779,5.346-4.865,3.563-8.246l-3.566-5.349h-6.61L8.024,13.625z M9.816,15.591c-0.474-0.33-0.482-1.46-0.482-1.46s0.679,0.083,1.271,0.52c0.594,0.435,0.802,1.604,0.978,2.179C11.104,16.044,10.29,15.921,9.816,15.591z M19.188,14.65c0.592-0.437,1.271-0.52,1.271-0.52s-0.009,1.13-0.481,1.46c-0.475,0.33-1.289,0.453-1.767,1.236C18.385,16.253,18.594,15.085,19.188,14.65z"/><path d="M16.957,25.263c0.137,0.214,0.219,0.449,0.219,0.701c0,0.92-1.019,1.664-2.277,1.664c-1.258,0-2.277-0.744-2.277-1.664c0-0.252,0.082-0.487,0.22-0.701c-0.233-0.104-0.42-0.225-0.56-0.355c-0.381,0.389-0.61,0.862-0.61,1.377c0,1.305,1.443,2.361,3.228,2.361c1.786,0,3.229-1.057,3.229-2.361c0-0.515-0.23-0.988-0.611-1.377C17.375,25.038,17.189,25.161,16.957,25.263z"/></g></g></svg><span class="btn-lbl">Bullish</span></button>
-        <button id="btn-mode-loss"  onclick="switchMode('losers')"    class="px-3 py-1 rounded text-xs font-medium transition-colors btn-loss-idle" style="display:inline-flex;align-items:center;gap:4px;"><img src="data:image/png;base64,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" alt="Bear" width="16" height="16" style="width:16px;height:16px;object-fit:contain;display:block;"><span class="btn-lbl">Bearish</span></button>
+        <button id="btn-mode-loss"  onclick="switchMode('losers')"    class="px-3 py-1 rounded text-xs font-medium transition-colors btn-loss-idle" style="display:inline-flex;align-items:center;gap:4px;"><img src="data:image/png;base64,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" alt="Bear" width="16" height="16" style="width:16px;height:16px;object-fit:contain;display:block;flex-shrink:0;"><span class="btn-lbl">Bearish</span></button>
         <button id="btn-mode-commodity" onclick="switchMode('commodity')" class="px-3 py-1 rounded text-xs font-medium transition-colors btn-commodity-idle"><span style="display:inline-flex;align-items:center;gap:4px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="13" height="13" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path fill-rule="evenodd" clip-rule="evenodd" d="M22.2187 7.37842L33.8868 16.6216L36.1778 23.9998L25.2625 26.0852L12.5889 14.5312L15.281 9.00148L22.2187 7.37842Z"/><path d="M15.2808 9.00146L26.4862 18.6016"/><path d="M25.2625 26.0852L26.4864 18.1324L33.8867 16.6216"/><path d="M24.993 31.0228L27.2792 38.1032L15.601 40.3785L4 29.014L6.57052 22.6253L12.0285 21.3535"/><path d="M6.57056 22.625L17.284 32.7577"/><path d="M15.6011 39.8648L17.4865 32.1324L24.9908 31.0435"/><path fill-rule="evenodd" clip-rule="evenodd" d="M34.8868 29.6077L34 36.7999L43.236 34.9985L41.2813 28.1875L34.8868 29.6077Z"/></svg><span class="btn-lbl"> Commodity</span></span></button>
         <button id="btn-mode-stock"     onclick="switchMode('stock')"     class="px-3 py-1 rounded text-xs font-medium transition-colors btn-stock-idle"><span style="display:inline-flex;align-items:center;gap:4px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 386.651 386.651" width="13" height="13" fill="currentColor" style="flex-shrink:0"><path d="M342.367,135.781c-2.674-1.367-5.889-1.122-8.324,0.635l-138.556,99.968l-89.233-83.725c-3.032-2.844-7.736-2.892-10.826-0.112l-74.395,66.959c-1.685,1.518-2.648,3.679-2.648,5.946v91.451c0,4.418,3.582,8,8,8h312.339c4.418,0,8-3.582,8-8v-174C346.724,139.899,345.041,137.149,342.367,135.781zM53.507,308.903H34.385v-79.889l19.122-17.211V308.903zM88.045,308.903H69.507v-111.5l18.538-16.685V308.903zM122.582,308.903h-18.538V172.526l18.538,17.393V308.903zM157.12,308.903h-18.538V204.931l18.538,17.394V308.903zM192.015,308.903H173.12v-71.565l16.227,15.226c0.791,0.741,1.702,1.288,2.667,1.65V308.903zM226.91,308.903h-18.896v-61.828l18.896-13.634V308.903zM261.806,308.903H242.91v-87.006l18.895-13.633V308.903zM296.701,308.903h-18.896V196.72l18.896-13.634V308.903zM330.724,308.903h-18.022v-137.36l18.022-13.003V308.903z"/><path d="M385.375,65.087c-1.439-2.148-3.904-3.404-6.461-3.337l-50.696,1.368c-3.471,0.094-6.429,2.547-7.161,5.941c-0.732,3.395,0.95,6.85,4.074,8.366l11.846,5.75L196.96,183.012l-95.409-86.504c-4.738-4.296-11.955-4.322-16.723-0.062L4.173,168.491c-5.149,4.599-5.594,12.501-0.995,17.649c4.598,5.148,12.499,5.594,17.649,0.995l72.265-64.55l94.533,85.709c2.369,2.147,5.376,3.239,8.398,3.239c2.532,0,5.074-0.767,7.255-2.322L350.82,104.01l0.701,11.074c0.22,3.464,2.777,6.329,6.193,6.939c0.444,0.079,0.889,0.118,1.328,0.118c2.938,0,5.662-1.724,6.885-4.483l20.077-45.327C387.052,69.968,386.815,67.234,385.375,65.087z"/></svg><span class="btn-lbl"> Stock</span></span></button>
         <button id="btn-mode-ico"   onclick="switchMode('ico')"       class="px-3 py-1 rounded text-xs font-medium transition-colors btn-ico-idle"><span style="display:inline-flex;align-items:center;gap:4px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" style="flex-shrink:0"><path d="M30,52.16c.81-2.07,7.06-17,19.76-19.86a.09.09,0,0,0,0-.18c-2.14-.86-15.22-6.57-19.38-20.26a.09.09,0,0,0-.18,0c-.51,2.27-3.94,14.43-20,20a.1.1,0,0,0,0,.19c2.24.38,13.48,3.14,19.62,20.15A.1.1,0,0,0,30,52.16Z"/><path d="M48.79,25.08c.29-.74,2.52-6.07,7.06-7.09a0,0,0,0,0,0-.07c-.76-.3-5.43-2.34-6.92-7.23a0,0,0,0,0-.07,0c-.18.82-1.4,5.16-7.14,7.13a0,0,0,0,0,0,.07c.8.14,4.81,1.12,7,7.2A0,0,0,0,0,48.79,25.08Z"/></svg><span class="btn-lbl"> ICO</span></span></button>
     </div>
+    <button id="mode-btn-mobile" onclick="toggleModeDropdown(event)" class="px-2 py-1 rounded text-xs font-medium transition-colors" style="display:none;align-items:center;" title="Categoria"><span id="mode-btn-mobile-icon" style="display:flex;align-items:center;"></span></button>
 
     <div class="w-px h-5 bg-dark-border"></div>
 
@@ -218,6 +238,7 @@
     <button id="alerts-btn" onclick="openAlertsPanel()" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Alert attivi" data-i18n-title="nav_alerts"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none" style="display:block"><path fill="currentColor" d="M14 4c2.5 0 3 2.08 3 2.08 2.445 1.18 4 3.767 4 6.479v4.49a2.501 2.501 0 0 1-.244 4.938L20.5 22H17a3 3 0 1 1-6 0H7.5a2.5 2.5 0 0 1-.5-4.95v-4.491c0-2.712 1.554-5.3 4-6.479.002-.01.506-2.08 3-2.08m-2 18a2 2 0 1 0 4 0zm-4.5-4a1.5 1.5 0 0 0 0 3h13a1.5 1.5 0 0 0 0-3zM14 5c-.927 0-1.406.367-1.673.684a2 2 0 0 0-.35.617l-.008.026-.108.447-.426.206C9.35 7.986 8 10.213 8 12.56V17h12v-4.441c0-2.345-1.35-4.573-3.435-5.579l-.427-.206-.108-.448-.008-.025a2 2 0 0 0-.35-.617C15.406 5.367 14.927 5 14 5m-2.031 1.324.002-.003v-.008z"/></svg></button>
     <div class="w-px h-5 bg-dark-border"></div>
 
+    <button id="stock-lock-btn" onclick="openStockLockPanel()" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Coin bloccate" data-i18n-title="locked_stocks_title" style="display:none;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
     <button id="btn-view" onclick="toggleLayoutMenu(event)" class="px-2 py-1 rounded text-xs font-medium transition-colors btn-view-idle" title="Layout grafici" data-i18n-title="nav_layout" style="display:flex;align-items:center;gap:3px;"><span id="layout-btn-icon" style="display:flex;align-items:center;"></span><span id="layout-btn-label" style="font-size:11px;"></span></button>
 <div id="layout-menu" style="display:none;position:fixed;z-index:300;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;padding:6px 0;box-shadow:0 8px 32px rgba(0,0,0,.85);max-height:80vh;overflow-y:auto;"></div>
 
@@ -402,9 +423,6 @@
         <span id="fs-vol"    style="color:#60a5fa;"></span>
         <span style="color:#374151;">|</span>
         <div  id="fs-tf-bar" style="display:flex;gap:3px;align-items:center;"></div>
-        <span style="color:#374151;">|</span>
-        <a id="fs-bybit-link" href="#" target="_blank" rel="noopener noreferrer"
-           style="font-size:10px;color:#f7a600;text-decoration:none;padding:2px 7px;border-radius:3px;background:#1E222D;white-space:nowrap;">Bybit ↗</a>
         <span style="color:#374151;">|</span>
         <button id="fs-trade-btn" onclick="if(fsCoin) window.open('trade?symbol='+fsCoin.symbol,'_blank')"
             style="display:none;padding:4px 10px;font-size:12px;background:#2A2E39;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;"
@@ -698,6 +716,17 @@
     </div>
 </div>
 
+<!-- Stock: elenco coin bloccate (priorità di visualizzazione), riordinabile drag&drop -->
+<div id="stock-lock-panel" style="display:none;position:fixed;inset:0;z-index:260;background:rgba(0,0,0,.55);" onclick="closeStockLockPanelOutside(event)">
+    <div style="position:absolute;top:56px;left:50%;transform:translateX(-50%);width:320px;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);" onclick="event.stopPropagation()">
+        <div style="padding:11px 14px;border-bottom:1px solid #2A2E39;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+            <span style="font-size:13px;font-weight:700;color:#E5E7EB;" data-i18n="locked_stocks_title">Coin bloccate</span>
+            <button onclick="closeStockLockPanel()" style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:6px 0;" id="stock-lock-rows"></div>
+    </div>
+</div>
+
 <!-- Coin Info panel -->
 <div id="coin-info-panel" style="display:none;position:fixed;inset:0;z-index:270;background:rgba(0,0,0,.55);" onclick="closeCoinInfoOutside(event)">
     <div style="position:absolute;top:56px;left:50%;transform:translateX(-50%);width:340px;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);" onclick="event.stopPropagation()">
@@ -834,6 +863,8 @@ let curMode  = 'gainers';
 let curLayout = null;
 let allCoins = [];
 let favoriteSymbols = new Set();
+let lockedStockSymbols = [];
+try { lockedStockSymbols = JSON.parse(localStorage.getItem('lockedStockSymbols') || '[]'); } catch(e) { lockedStockSymbols = []; }
 let slots    = [];       // always 18 slots
 let ws = null, wsTimer = null;
 
@@ -866,6 +897,7 @@ let fsAthLine = null, fsAtlLine = null, _fsAthVal = null, _fsAtlVal = null;
 
 const IS_LANDSCAPE_MOBILE = window.matchMedia('(orientation: landscape) and (pointer: coarse) and (max-height: 700px)').matches;
 const IS_MOBILE = window.innerWidth < 640 || IS_LANDSCAPE_MOBILE;
+const IS_PORTRAIT_MOBILE = IS_MOBILE && !IS_LANDSCAPE_MOBILE;
 let mobileChartIdx = 0;
 
 // price alerts
@@ -1715,9 +1747,23 @@ function detectActiveTrendlines(candles, cfg) {
     return hits;
 }
 function lineSlope(p1, p2) { return (p2.price - p1.price) / (p2.time - p1.time); }
+const TRENDLINE_SR_EXTEND_BARS = 30;
 function lineSeriesFromPts(p1, p2, klines) {
     const slope = lineSlope(p1, p2);
-    return klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
+    const pts = klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
+    // Estende la linea oltre l'ultima candela reale invece di troncarla lì: un raggio
+    // continuo, non un segmento che si interrompe di colpo sull'ultimo dato disponibile.
+    if (pts.length >= 2 && klines.length >= 2) {
+        const step = klines[klines.length - 1].time - klines[klines.length - 2].time;
+        if (step > 0) {
+            const lastT = pts[pts.length - 1].time;
+            for (let i = 1; i <= TRENDLINE_SR_EXTEND_BARS; i++) {
+                const t = lastT + step * i;
+                pts.push({ time: t, value: p1.price + slope * (t - p1.time) });
+            }
+        }
+    }
+    return pts;
 }
 function toggleTrendlineSRAll() {
     srActive = !srActive;
@@ -1777,6 +1823,8 @@ const IND_LIST = [
     { label: 'Livelli Giorno Prec.', isOn: () => getLvCfg().prevHigh.vis.chart, toggle: togglePrevLevelsAll, cfgKey: 'prevLevels', col: 3 },
 ];
 const _GEAR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+const LOCK_ICON_OPEN   = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.75-1.5"/></svg>';
+const LOCK_ICON_CLOSED = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 function renderIndPanel() {
     const el = document.getElementById('ind-rows');
     if (!el) return;
@@ -2116,6 +2164,84 @@ function updateAllStars() {
     });
 }
 
+// ── stock lock (priorità di visualizzazione, solo mercato Stock) ───────────────
+function _applyStockLockOrder(arr) {
+    return [...arr].sort((a, b) => {
+        const ia = lockedStockSymbols.indexOf(a.symbol);
+        const ib = lockedStockSymbols.indexOf(b.symbol);
+        const la = ia === -1 ? Infinity : ia;
+        const lb = ib === -1 ? Infinity : ib;
+        return la - lb;
+    });
+}
+
+function _persistLockedStocks() {
+    localStorage.setItem('lockedStockSymbols', JSON.stringify(lockedStockSymbols));
+}
+
+async function _refreshStockGridOrder() {
+    if (curMode === 'stock') {
+        allCoins = _applyStockLockOrder(allCoins);
+        curPage = 0; mobileChartIdx = 0;
+        await loadPage();
+    }
+}
+
+async function toggleStockLock(idx) {
+    const s = slots[idx];
+    if (!s.symbol) return;
+    const i = lockedStockSymbols.indexOf(s.symbol);
+    if (i >= 0) lockedStockSymbols.splice(i, 1);
+    else lockedStockSymbols.push(s.symbol);
+    _persistLockedStocks();
+    await _refreshStockGridOrder();
+}
+
+// ── popup elenco coin bloccate (riordino drag&drop) ─────────────────────────────
+function openStockLockPanel() {
+    renderStockLockPanel();
+    document.getElementById('stock-lock-panel').style.display = 'block';
+}
+function closeStockLockPanel() {
+    document.getElementById('stock-lock-panel').style.display = 'none';
+}
+function closeStockLockPanelOutside(ev) { if (ev.target.id === 'stock-lock-panel') closeStockLockPanel(); }
+
+let _slDragSymbol = null;
+function renderStockLockPanel() {
+    const el = document.getElementById('stock-lock-rows');
+    if (!el) return;
+    if (!lockedStockSymbols.length) {
+        el.innerHTML = `<div style="padding:24px 14px;text-align:center;font-size:11px;color:#4B5563;">${window.t('no_locked_stocks')}</div>`;
+        return;
+    }
+    el.innerHTML = lockedStockSymbols.map((sym, idx) => `
+        <div draggable="true" data-sl-symbol="${sym}"
+             ondragstart="_slDragStart(event,'${sym}')" ondragover="_slDragOver(event,'${sym}')" ondrop="_slDrop(event,'${sym}')" ondragend="_slDragEnd(event)"
+             ondragenter="this.style.background='#1E222D'" ondragleave="this.style.background='transparent'"
+             style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:grab;border-bottom:1px solid #1E222D;">
+            <span style="font-size:11px;color:#4B5563;width:18px;flex-shrink:0;">${idx + 1}</span>
+            <span style="font-size:13px;font-weight:600;color:#E5E7EB;flex:1;">${INSTRUMENT_NAMES[sym] || sym.replace('USDT','')}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="color:#4B5563;flex-shrink:0;"><circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/></svg>
+        </div>`).join('');
+}
+
+function _slDragStart(e, sym) { _slDragSymbol = sym; e.dataTransfer.effectAllowed = 'move'; }
+function _slDragOver(e) { e.preventDefault(); }
+async function _slDrop(e, targetSym) {
+    e.preventDefault();
+    e.currentTarget.style.background = 'transparent';
+    if (!_slDragSymbol || _slDragSymbol === targetSym) return;
+    const fromIdx = lockedStockSymbols.indexOf(_slDragSymbol);
+    const toIdx = lockedStockSymbols.indexOf(targetSym);
+    if (fromIdx === -1 || toIdx === -1) return;
+    lockedStockSymbols.splice(toIdx, 0, lockedStockSymbols.splice(fromIdx, 1)[0]);
+    _persistLockedStocks();
+    renderStockLockPanel();
+    await _refreshStockGridOrder();
+}
+function _slDragEnd() { _slDragSymbol = null; }
+
 // ── price format helper ───────────────────────────────────────────────────────
 function getPriceFormat(price) {
     const p = Math.abs(price || 0);
@@ -2439,6 +2565,12 @@ function buildGrid() {
         starEl.style.cssText = 'font-size:18px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;flex-shrink:0;';
         starEl.onclick = () => toggleFavorite(i);
 
+        const lockEl = document.createElement('button');
+        lockEl.innerHTML = LOCK_ICON_OPEN;
+        lockEl.title = window.t('lock_stock'); lockEl.dataset.i18nTitle = 'lock_stock';
+        lockEl.style.cssText = 'display:none;align-items:center;color:#4B5563;background:none;border:none;cursor:pointer;padding:0;flex-shrink:0;';
+        lockEl.onclick = () => toggleStockLock(i);
+
         const titleEl  = document.createElement('span');
         titleEl.style.cssText = 'font-size:14px;font-weight:700;color:#E5E7EB;white-space:nowrap;cursor:pointer;';
         titleEl.title = window.t('coin_info_tooltip');
@@ -2465,17 +2597,13 @@ function buildGrid() {
         tfEl.style.cssText = 'display:flex;gap:2px;align-items:center;';
         const tfBtnsEl = document.createElement('div');
         tfBtnsEl.style.cssText = 'display:flex;gap:2px;align-items:center;';
-        tfEl.appendChild(tfBtnsEl);
 
         const sep3 = document.createElement('span');
         sep3.textContent = '|'; sep3.style.cssText = 'font-size:13px;color:#374151;';
+        tfEl.appendChild(tfBtnsEl);
 
-        const bybitEl = document.createElement('a');
-        bybitEl.textContent = 'Bybit ↗';
-        bybitEl.target = '_blank'; bybitEl.rel = 'noopener noreferrer'; bybitEl.href = '#';
-        bybitEl.style.cssText = 'font-size:12px;color:#f7a600;text-decoration:none;padding:1px 5px;border-radius:2px;background:#1E222D;white-space:nowrap;';
-        bybitEl.onmouseenter = () => bybitEl.style.background = '#2A2E39';
-        bybitEl.onmouseleave = () => bybitEl.style.background = '#1E222D';
+        const sep4 = document.createElement('span');
+        sep4.textContent = '|'; sep4.style.cssText = 'font-size:13px;color:#374151;display:none;';
 
         const rightGroup = document.createElement('div');
         rightGroup.className = 'slot-hdr-right';
@@ -2541,9 +2669,9 @@ const mtfEl = document.createElement('button');
         }
         if (IS_MOBILE) {
             tradeEl.style.display = 'none';
-            hdr.append(starEl, titleEl, wsDotEl, changeEl, sep1, volEl, sep2, tfEl, tradeEl, rightGroup);
+            hdr.append(starEl, titleEl, wsDotEl, changeEl, sep1, volEl, sep2, tfEl, sep3, lockEl, sep4, tradeEl, rightGroup);
         } else {
-            hdr.append(starEl, titleEl, wsDotEl, changeEl, sep1, volEl, sep2, tfEl, sep3, bybitEl, tradeEl, rightGroup);
+            hdr.append(starEl, titleEl, wsDotEl, changeEl, sep1, volEl, sep2, tfEl, sep3, lockEl, sep4, tradeEl, rightGroup);
         }
         cell.appendChild(hdr);
 
@@ -2620,7 +2748,7 @@ const mtfEl = document.createElement('button');
             cell, hdr, chart, candleS, emaSeries, chartEl, rangeCanvas, rangeBtn, hlineCanvas, hlineBtn, trendCanvas, trendBtn, clearDrawBtn,
             klineCount: 0,
             lastEMA: {5:null, 10:null, 60:null, 223:null},
-            starEl, titleEl, changeEl, volEl, candlePctEl, tfEl, tfBtnsEl, bybitEl, alertBtn, tradeEl,
+            starEl, lockEl, sep4, titleEl, changeEl, volEl, candlePctEl, tfEl, tfBtnsEl, alertBtn, tradeEl,
             symbol: null, coin: null, curTF, lastPrice: null, lastOpen: null, crosshairPrice: null,
             alertLines: new Map(),
             dayHighLine: null, dayLowLine: null,
@@ -2824,9 +2952,10 @@ async function loadPage() {
         const s = slots[i];
         s.symbol = null; s.coin = null; s.curTF = curTF;
         s.starEl.textContent = '☆'; s.starEl.style.color = '#4B5563';
+        s.lockEl.style.display = 'none'; s.sep4.style.display = 'none';
         s.titleEl.textContent = ''; s.changeEl.textContent = '';
         s.volEl.textContent = '';
-        s.tfBtnsEl.innerHTML = ''; s.bybitEl.href = '#';
+        s.tfBtnsEl.innerHTML = '';
         s.lastPrice = null; s.crosshairPrice = null;
         if (s.alertBtn) s.alertBtn.style.display = 'none';
         for (const pl of s.alertLines.values()) { try { s.candleS.removePriceLine(pl); } catch(e) {} }
@@ -2876,7 +3005,6 @@ async function loadSlot(idx, coin) {
         s.titleEl.textContent  = coin.symbol;
         s.changeEl.textContent = '';
         s.volEl.textContent    = '';
-        s.bybitEl.href         = '#';
     } else {
         s.titleEl.textContent  = (curMode === 'stock' || curMode === 'commodity')
             ? (INSTRUMENT_NAMES[coin.symbol] || coin.symbol.replace('USDT',''))
@@ -2884,11 +3012,18 @@ async function loadSlot(idx, coin) {
         s.changeEl.textContent = '(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)';
         s.changeEl.style.color = pct >= 0 ? '#34d399' : '#f87171';
         s.volEl.textContent    = fmtVol(coin.volume_24h);
-        s.bybitEl.href         = `https://www.bybit.com/trade/usdt/${coin.symbol}`;
     }
     const isFav = favoriteSymbols.has(coin.symbol);
     s.starEl.textContent = isFav ? '★' : '☆';
     s.starEl.style.color = isFav ? '#fbbf24' : '#4B5563';
+    if (curMode === 'stock') {
+        s.lockEl.style.display = 'inline-flex'; s.sep4.style.display = '';
+        const isLocked = lockedStockSymbols.includes(coin.symbol);
+        s.lockEl.innerHTML = isLocked ? LOCK_ICON_CLOSED : LOCK_ICON_OPEN;
+        s.lockEl.style.color = isLocked ? '#f59e0b' : '#4B5563';
+    } else {
+        s.lockEl.style.display = 'none'; s.sep4.style.display = 'none';
+    }
     renderSlotTF(idx);
     await loadSlotData(idx);
     if (curMode !== 'ibkr') {
@@ -3032,7 +3167,6 @@ async function openFullscreen(idx) {
     document.getElementById('fs-change').textContent = '(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)';
     document.getElementById('fs-change').style.color = pct >= 0 ? '#34d399' : '#f87171';
     document.getElementById('fs-vol').textContent    = fmtVol(fsCoin.volume_24h);
-    document.getElementById('fs-bybit-link').href   = `https://www.bybit.com/trade/usdt/${fsCoin.symbol}`;
 
     initFsChart();
     for (const hl of fsHlines) { try { fsCandleS.removePriceLine(hl.priceLine); } catch(ex) {} }
@@ -3383,21 +3517,84 @@ function renderModeButtons() {
     document.getElementById('btn-mode-stock').className     = `px-3 py-1 rounded text-xs font-medium transition-colors ${st?'btn-stock-active':'btn-stock-idle'}`;
     document.getElementById('btn-mode-fav').className       = `px-3 py-1 rounded text-xs font-medium transition-colors ${f?'btn-fav-active':'btn-fav-idle'}`;
     document.getElementById('btn-mode-ico').className       = `px-3 py-1 rounded text-xs font-medium transition-colors ${ic?'btn-ico-active':'btn-ico-idle'}`;
+    const stockLockBtn = document.getElementById('stock-lock-btn');
+    if (stockLockBtn) stockLockBtn.style.display = st ? 'inline-flex' : 'none';
+    if (IS_PORTRAIT_MOBILE) {
+        const activeId = g ? 'btn-mode-gain' : l ? 'btn-mode-loss' : cm ? 'btn-mode-commodity' : st ? 'btn-mode-stock' : ic ? 'btn-mode-ico' : f ? 'btn-mode-fav' : 'btn-mode-gain';
+        const activeClass = g ? 'btn-gain-active' : l ? 'btn-loss-active' : cm ? 'btn-commodity-active' : st ? 'btn-stock-active' : ic ? 'btn-ico-active' : f ? 'btn-fav-active' : 'btn-gain-active';
+        const clone = document.getElementById(activeId).cloneNode(true);
+        clone.querySelectorAll('.btn-lbl').forEach(el => el.remove());
+        document.getElementById('mode-btn-mobile-icon').innerHTML = clone.innerHTML;
+        document.getElementById('mode-btn-mobile').className = `px-2 py-1 rounded text-xs font-medium transition-colors ${activeClass}`;
+    }
     updateSourceToggle();
+}
+
+const MODE_LABELS = { gainers: 'Bullish', losers: 'Bearish', commodity: 'Commodity', stock: 'Stock', ico: 'ICO', favorites: () => window.t('tab_fav').trim() };
+function toggleModeDropdown(e) {
+    e.stopPropagation();
+    document.querySelectorAll('.mode-dd-menu').forEach(m => m.remove());
+    const btn = e.currentTarget;
+    const rect = btn.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'mode-dd-menu';
+    menu.style.cssText = 'position:fixed;z-index:9999;background:#1E222D;border:1px solid #2A2E39;border-radius:6px;padding:4px 0;min-width:110px;box-shadow:0 8px 24px rgba(0,0,0,.6);';
+    menu.style.left = rect.left + 'px';
+    menu.style.top = (rect.bottom + 2) + 'px';
+    Object.keys(MODE_LABELS).forEach(mode => {
+        const item = document.createElement('button');
+        const lbl = MODE_LABELS[mode];
+        item.textContent = typeof lbl === 'function' ? lbl() : lbl;
+        const active = mode === curMode;
+        item.style.cssText = `display:block;width:100%;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${active?'#2563EB':'transparent'};color:${active?'#fff':'#B2B5BE'};text-align:left;`;
+        item.onclick = () => { menu.remove(); document.removeEventListener('click', _modeDdClose); switchMode(mode); };
+        menu.appendChild(item);
+    });
+    document.body.appendChild(menu);
+    const _modeDdClose = ev => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('click', _modeDdClose); } };
+    setTimeout(() => document.addEventListener('click', _modeDdClose), 0);
 }
 
 function renderTFBar() {
     const _CD_TFS = {'1':1,'5':1,'30':1,'60':1,'240':1,'D':1,'W':1,'M':1};
-    document.getElementById('tf-bar').innerHTML =
-        TIMEFRAMES.map(tf => {
-            const cls = tf === curTF ? 'btn-tf-active' : 'btn-tf-idle';
-            const cdTxt = _CD_TFS[tf] ? fmtCountdown(getTFRemaining(tf), tf==='M'||tf==='W'?'days':tf==='D'||tf==='240') : '';
-            return `<button onclick="switchTF('${tf}')" class="px-2 rounded text-xs font-medium transition-colors ${cls}" style="display:flex;flex-direction:column;align-items:center;padding:2px 8px;gap:1px;">
-                <span style="line-height:1.3;">${TF_LABEL[tf]}</span>
-                <span id="tf-cd-${tf}" style="font-size:11px;font-family:monospace;color:#F3F4F6;line-height:1;min-width:28px;text-align:center;">${cdTxt}</span>
-            </button>`;
-        }).join('');
+    const tfBtnHtml = tf => {
+        const cls = tf === curTF ? 'btn-tf-active' : 'btn-tf-idle';
+        const cdTxt = _CD_TFS[tf] ? fmtCountdown(getTFRemaining(tf), tf==='M'||tf==='W'?'days':tf==='D'||tf==='240') : '';
+        return `<button onclick="switchTF('${tf}')" class="px-2 rounded text-xs font-medium transition-colors ${cls}" style="display:flex;flex-direction:column;align-items:center;padding:2px 8px;gap:1px;">
+            <span style="line-height:1.3;">${TF_LABEL[tf]}</span>
+            <span id="tf-cd-${tf}" style="font-size:11px;font-family:monospace;color:#F3F4F6;line-height:1;min-width:28px;text-align:center;">${cdTxt}</span>
+        </button>`;
+    };
+    document.getElementById('tf-bar').innerHTML = IS_PORTRAIT_MOBILE
+        ? `<button onclick="toggleMainTFDropdown(event)" class="px-2 rounded text-xs font-medium transition-colors btn-tf-active" style="display:flex;flex-direction:column;align-items:center;padding:2px 8px;gap:1px;">
+               <span style="line-height:1.3;">${TF_LABEL[curTF]} &#9660;</span>
+               <span id="tf-cd-${curTF}" style="font-size:11px;font-family:monospace;color:#F3F4F6;line-height:1;min-width:28px;text-align:center;"></span>
+           </button>`
+        : TIMEFRAMES.map(tfBtnHtml).join('');
     updateCountdown();
+}
+
+function toggleMainTFDropdown(e) {
+    e.stopPropagation();
+    document.querySelectorAll('.main-tf-dd-menu').forEach(m => m.remove());
+    const btn = e.currentTarget;
+    const rect = btn.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'main-tf-dd-menu';
+    menu.style.cssText = 'position:fixed;z-index:9999;background:#1E222D;border:1px solid #2A2E39;border-radius:6px;padding:4px 0;min-width:70px;box-shadow:0 8px 24px rgba(0,0,0,.6);';
+    menu.style.left = rect.left + 'px';
+    menu.style.top = (rect.bottom + 2) + 'px';
+    TIMEFRAMES.forEach(tf => {
+        const item = document.createElement('button');
+        item.textContent = TF_LABEL[tf];
+        const active = tf === curTF;
+        item.style.cssText = `display:block;width:100%;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${active?'#2563EB':'transparent'};color:${active?'#fff':'#B2B5BE'};text-align:left;`;
+        item.onclick = () => { menu.remove(); document.removeEventListener('click', _mainTfDdClose); switchTF(tf); };
+        menu.appendChild(item);
+    });
+    document.body.appendChild(menu);
+    const _mainTfDdClose = ev => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('click', _mainTfDdClose); } };
+    setTimeout(() => document.addEventListener('click', _mainTfDdClose), 0);
 }
 
 const _CD_WARN_S  = {'1':30, '5':60, '30':300, '60':600, '240':300, 'D':3600, 'W':86400, 'M':86400};
@@ -3531,6 +3728,7 @@ async function fetchCoins() {
                 volume_24h: parseFloat(x.turnover24h),
             }))
             .sort((a, b) => b.volume_24h - a.volume_24h);
+        if (curMode === 'stock') allCoins = _applyStockLockOrder(allCoins);
         await fetchFavoritesList();
     } else if (curMode === 'ibkr') {
         allCoins = getIbkrSymbols().map(s => ({
@@ -3602,6 +3800,13 @@ function onChartSearchInput(raw) {
     _csTimer = setTimeout(() => _csRun(raw.trim().toUpperCase()), 120);
 }
 
+// Alias: permette di trovare azioni/indici/materie prime cercando il nome reale
+// (es. "nasdaq" -> QQQUSDT, "tesla" -> TSLAUSDT) invece del solo ticker.
+function _csNameMatch(symbol, q) {
+    const name = INSTRUMENT_NAMES[symbol];
+    return !!name && name.toUpperCase().includes(q);
+}
+
 async function _csRun(q) {
     const el = document.getElementById('csearch-results');
     if (!q) {
@@ -3610,7 +3815,7 @@ async function _csRun(q) {
     }
     el.innerHTML = '<div style="padding:24px 0;text-align:center;font-size:11px;color:#6B7280;">⏳</div>';
     const coins = await _csLoadCache();
-    const matches = coins.filter(c => c.coin.startsWith(q) || c.coin.includes(q)).slice(0, 25);
+    const matches = coins.filter(c => c.coin.startsWith(q) || c.coin.includes(q) || _csNameMatch(c.symbol, q)).slice(0, 25);
     if (!matches.length) {
         el.innerHTML = `<div style="padding:32px 0;text-align:center;font-size:11px;color:#6B7280;">${window.t('search_no_results')} "<b style="color:#D1D5DB">${q}</b>"</div>`;
         return;
@@ -3625,10 +3830,14 @@ async function _csRun(q) {
         const v    = c.volume >= 1e9 ? '$'+(c.volume/1e9).toFixed(1)+'B'
                    : c.volume >= 1e6 ? '$'+(c.volume/1e6).toFixed(0)+'M'
                    :                   '$'+(c.volume/1e3).toFixed(0)+'K';
+        const navBtns = IS_MOBILE ? '' : `
+            <button onclick="event.stopPropagation();window.open('mtf?symbol=${c.symbol}','_blank')" title="${window.t('mtf_title')}" style="color:#4B5563;background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;transition:color .15s;" onmouseover="this.style.color='#B2B5BE'" onmouseout="this.style.color='#4B5563'"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" style="vertical-align:middle" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1.5"/><rect x="15" y="3" width="10" height="10" rx="1.5"/><rect x="3" y="15" width="10" height="10" rx="1.5"/><rect x="15" y="15" width="10" height="10" rx="1.5"/></svg></button>
+            <button onclick="event.stopPropagation();window.open('trade?symbol=${c.symbol}','_blank')" style="font-size:11px;font-weight:600;color:#60a5fa;background:#1e3a5f;border:none;border-radius:3px;padding:1px 6px;cursor:pointer;flex-shrink:0;transition:background .15s;" onmouseover="this.style.background='#1e4a7a'" onmouseout="this.style.background='#1e3a5f'">Trade</button>`;
         return `<div data-idx="${i}" onclick="csSelectCoin('${c.symbol}')"
             style="display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;border-bottom:1px solid #1E222D;transition:background .1s;"
             onmouseover="this.style.background='#1E222D'" onmouseout="this.style.background='transparent'">
             <span style="font-weight:700;font-size:13px;color:#E5E7EB;width:80px;flex-shrink:0;">${c.coin}<span style="color:#4B5563;font-weight:400;font-size:10px;">/USDT</span></span>
+            ${navBtns}
             <span style="font-family:monospace;font-size:11px;color:#9CA3AF;">${p}</span>
             <span style="font-size:11px;font-weight:600;flex-shrink:0;color:${clr};">${sgn}${c.change.toFixed(2)}%</span>
             <span style="margin-left:auto;font-size:10px;color:#4B5563;flex-shrink:0;">${v}</span>
@@ -3760,6 +3969,18 @@ init();
 if (IS_LANDSCAPE_MOBILE) {
     window.addEventListener('load',   () => setTimeout(forceResizeAllCharts, 500));
     window.addEventListener('resize', () => setTimeout(forceResizeAllCharts, 300));
+    // Auto-fullscreen in landscape: il browser richiede un gesture utente per requestFullscreen,
+    // che il reload post-rotazione perde — primo tentativo silenzioso, poi il primo tap ovunque lo attiva.
+    // Capture phase (non bubble): il canvas del grafico intercetta e ferma la propagazione dei touch
+    // per pan/zoom, quindi un listener in bubble su document non riceverebbe mai il primo tap.
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+    const _autoFsOnTap = () => {
+        if (IS_LANDSCAPE_MOBILE && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+        document.removeEventListener('touchend', _autoFsOnTap, true);
+        document.removeEventListener('click', _autoFsOnTap, true);
+    };
+    document.addEventListener('touchend', _autoFsOnTap, { once: true, capture: true });
+    document.addEventListener('click', _autoFsOnTap, { once: true, capture: true });
 }
 window.addEventListener('orientationchange', () => setTimeout(() => location.reload(), 350));
 
@@ -4001,80 +4222,13 @@ document.addEventListener('mouseup', () => {
     if (ov) ov.remove();
 });
 
-// ── Range Prezzo Tool ─────────────────────────────────────────────────────────
+// ── Range Prezzo Tool (condiviso: vedi draw-tools.js) ───────────────────────────
 
-function _drawRangeCanvas(canvas, series, p1, p2) {
-    canvas.width  = canvas.clientWidth  || canvas.parentElement.clientWidth  || 100;
-    canvas.height = canvas.clientHeight || canvas.parentElement.clientHeight || 100;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (p1 === null || p2 === null) return;
-
-    let y1 = series.priceToCoordinate(p1);
-    let y2 = series.priceToCoordinate(p2);
-    if (y1 === null) y1 = p2 > p1 ? canvas.height : 0;
-    if (y2 === null) y2 = p2 > p1 ? 0 : canvas.height;
-
-    const top    = Math.min(y1, y2);
-    const bottom = Math.max(y1, y2);
-    const h      = Math.max(bottom - top, 1);
-    const isUp   = p2 > p1;
-    const color  = isUp ? '#20B26C' : '#EF454A';
-
-    ctx.fillStyle = isUp ? 'rgba(8,153,129,0.12)' : 'rgba(242,54,69,0.12)';
-    ctx.fillRect(0, top, canvas.width, h);
-
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5, 3]);
-    ctx.beginPath(); ctx.moveTo(0, y1); ctx.lineTo(canvas.width, y1); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, y2); ctx.lineTo(canvas.width, y2); ctx.stroke();
-    ctx.setLineDash([]);
-
-    const delta   = p2 - p1;
-    const pct     = (delta / p1) * 100;
-    const sign    = delta >= 0 ? '+' : '';
-    const absDelta = Math.abs(delta);
-    const dStr    = absDelta >= 100 ? delta.toFixed(1) : absDelta >= 1 ? delta.toFixed(2) : delta.toFixed(4);
-    const label   = `${sign}${dStr}  (${sign}${pct.toFixed(2)}%)`;
-
-    const fs  = Math.max(9, Math.min(12, Math.floor(h * 0.35)));
-    ctx.font  = `bold ${fs}px monospace`;
-    const tw  = ctx.measureText(label).width;
-    const pad = 4;
-    const lx  = canvas.width - tw - pad * 2 - 6;
-    const ly  = top + h / 2;
-
-    ctx.fillStyle = isUp ? 'rgba(8,153,129,0.88)' : 'rgba(242,54,69,0.88)';
-    ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(lx - pad, ly - fs, tw + pad * 2, fs + 6, 3)
-                  : ctx.rect(lx - pad, ly - fs, tw + pad * 2, fs + 6);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(label, lx, ly);
-}
-
-function _drawRangeLine(canvas, series, price) {
-    canvas.width  = canvas.clientWidth  || canvas.parentElement?.clientWidth  || 100;
-    canvas.height = canvas.clientHeight || canvas.parentElement?.clientHeight || 100;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const y = series.priceToCoordinate(price);
-    if (y == null) return;
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5, 3]);
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-    ctx.setLineDash([]);
-    const label = price >= 100 ? price.toFixed(2) : price >= 1 ? price.toFixed(4) : price.toFixed(6);
-    ctx.font = 'bold 10px monospace';
-    const tw = ctx.measureText(label).width;
-    const px = canvas.width - tw - 14;
-    ctx.fillStyle = 'rgba(245,158,11,0.9)';
-    if (ctx.roundRect) ctx.roundRect(px - 4, y - 10, tw + 8, 14, 3); else ctx.rect(px - 4, y - 10, tw + 8, 14);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.fillText(label, px, y);
+function toggleSlotRange(idx) {
+    const s = slots[idx]; if (!s) return;
+    DrawTools.toggleRange(s, {
+        onDeactivateSiblings: () => { if (s.hlineActive) toggleSlotHline(idx); if (s.trendActive) toggleSlotTrend(idx); }
+    });
 }
 
 function _showTradeZone(kind) {
@@ -4145,74 +4299,13 @@ function _syncClearBtn(s) {
 function clearSlotDrawings(idx) {
     const s = slots[idx];
     if (!s) return;
-    for (const hl of s.hlines) { try { s.candleS.removePriceLine(hl.priceLine); } catch(e) {} }
-    s.hlines = [];
+    DrawTools.clearHlines(s);
     for (const tl of s.trendlines) {
         if (tl.pl1) try { s.candleS.removePriceLine(tl.pl1); } catch(e) {}
         if (tl.pl2) try { s.candleS.removePriceLine(tl.pl2); } catch(e) {}
     }
     s.trendlines = [];
     try { _trendDrawAll(s); } catch(e) {}
-}
-
-function toggleSlotRange(idx) {
-    const s = slots[idx];
-    if (!s.rangeActive) { if (s.hlineActive) toggleSlotHline(idx); if (s.trendActive) toggleSlotTrend(idx); }
-    s.rangeActive = !s.rangeActive;
-    s.rangeBtn.style.color = s.rangeActive ? '#f59e0b' : '#4B5563';
-    if (s._rangeMD) { s.rangeCanvas.removeEventListener('mousedown', s._rangeMD); s._rangeMD = null; }
-    if (s._rangeMM) { document.removeEventListener('mousemove', s._rangeMM); s._rangeMM = null; }
-    if (s._rangeMU) { document.removeEventListener('mouseup', s._rangeMU); s._rangeMU = null; }
-    if (s._rangeCM) { s.rangeCanvas.removeEventListener('contextmenu', s._rangeCM); s._rangeCM = null; }
-    if (s._rangeHoverML) { s.rangeCanvas.removeEventListener('mouseleave', s._rangeHoverML); s._rangeHoverML = null; }
-    if (s._rangeHoverLine) { try { s.candleS.removePriceLine(s._rangeHoverLine); } catch(e) {} s._rangeHoverLine = null; }
-    s.rangeP1 = null;
-    try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
-    s.rangeCanvas.style.pointerEvents = s.rangeActive ? 'auto' : 'none';
-    s.rangeCanvas.style.cursor = s.rangeActive ? 'crosshair' : '';
-    if (s.rangeActive) {
-        s._rangeMD = e => {
-            if (e.button !== 0) return;
-            e.preventDefault();
-            const rect = s.rangeCanvas.getBoundingClientRect();
-            const price = s.candleS.coordinateToPrice(e.clientY - rect.top);
-            if (price == null) return;
-            s.rangeP1 = price;
-        };
-        s._rangeMM = e => {
-            const rect = s.rangeCanvas.getBoundingClientRect();
-            const cy = e.clientY - rect.top;
-            const p2 = s.candleS.coordinateToPrice(cy);
-            if (s.rangeP1 === null) {
-                if (cy < 0 || cy > rect.height || p2 == null) {
-                    if (s._rangeHoverLine) { try { s.candleS.removePriceLine(s._rangeHoverLine); } catch(ex) {} s._rangeHoverLine = null; }
-                    try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(ex) {}
-                    return;
-                }
-                if (s._rangeHoverLine) { try { s._rangeHoverLine.applyOptions({ price: p2 }); } catch(ex) {} }
-                else { try { s._rangeHoverLine = s.candleS.createPriceLine({ price: p2, color: '#f59e0b', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
-                _drawRangeLine(s.rangeCanvas, s.candleS, p2);
-                return;
-            }
-            if (!(e.buttons & 1) || p2 == null) return;
-            _drawRangeCanvas(s.rangeCanvas, s.candleS, s.rangeP1, p2);
-        };
-        s._rangeMU = e => {
-            if (e.button !== 0) return;
-            s.rangeP1 = null;
-            try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
-        };
-        s._rangeCM = e => { e.preventDefault(); toggleSlotRange(idx); };
-        s._rangeHoverML = () => {
-            if (s._rangeHoverLine) { try { s.candleS.removePriceLine(s._rangeHoverLine); } catch(e) {} s._rangeHoverLine = null; }
-            try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
-        };
-        s.rangeCanvas.addEventListener('mousedown', s._rangeMD);
-        document.addEventListener('mousemove', s._rangeMM);
-        document.addEventListener('mouseup', s._rangeMU);
-        s.rangeCanvas.addEventListener('contextmenu', s._rangeCM);
-        s.rangeCanvas.addEventListener('mouseleave', s._rangeHoverML);
-    }
 }
 
 function _syncFsClearBtn() {
@@ -4222,239 +4315,68 @@ function _syncFsClearBtn() {
 
 function clearFsDrawings() {
     if (!fsCandleS) return;
-    for (const hl of fsHlines) { try { fsCandleS.removePriceLine(hl.priceLine); } catch(e) {} }
-    fsHlines = [];
+    DrawTools.clearHlines(_fsHlineSurface);
     for (const tl of fsTrendlines) {
         if (tl.pl1) try { fsCandleS.removePriceLine(tl.pl1); } catch(e) {}
         if (tl.pl2) try { fsCandleS.removePriceLine(tl.pl2); } catch(e) {}
     }
     fsTrendlines = [];
-    try { _fsTrendDrawAll(); } catch(e) {}
+    try { DrawTools.trendDrawAll(_fsTrendSurface); } catch(e) {}
 }
 
+const _fsRangeSurface = {
+    get rangeActive() { return fsRangeActive; }, set rangeActive(v) { fsRangeActive = v; },
+    get rangeP1() { return fsRangeP1; }, set rangeP1(v) { fsRangeP1 = v; },
+    get rangeCanvas() { return document.getElementById('fs-range-canvas'); },
+    get rangeBtn() { return document.getElementById('fs-range-btn'); },
+    get candleS() { return fsCandleS; },
+    get _rangeMD() { return _fsRangeMD; }, set _rangeMD(v) { _fsRangeMD = v; },
+    get _rangeMM() { return _fsRangeMM; }, set _rangeMM(v) { _fsRangeMM = v; },
+    get _rangeMU() { return _fsRangeMU; }, set _rangeMU(v) { _fsRangeMU = v; },
+    get _rangeCM() { return _fsRangeCM; }, set _rangeCM(v) { _fsRangeCM = v; },
+    get _rangeHoverLine() { return _fsRangeHoverLine; }, set _rangeHoverLine(v) { _fsRangeHoverLine = v; },
+    get _rangeHoverML() { return _fsRangeHoverML; }, set _rangeHoverML(v) { _fsRangeHoverML = v; },
+};
 function toggleFsRange() {
-    if (!fsRangeActive) { if (fsHlineActive) toggleFsHline(); if (fsTrendActive) toggleFsTrend(); }
-    fsRangeActive = !fsRangeActive;
-    const btn    = document.getElementById('fs-range-btn');
-    const canvas = document.getElementById('fs-range-canvas');
-    btn.style.color      = fsRangeActive ? '#f59e0b' : '#B2B5BE';
-    canvas.style.display = fsRangeActive ? 'block' : 'none';
-    if (_fsRangeMD) { canvas.removeEventListener('mousedown', _fsRangeMD); _fsRangeMD = null; }
-    if (_fsRangeMM) { document.removeEventListener('mousemove', _fsRangeMM); _fsRangeMM = null; }
-    if (_fsRangeMU) { document.removeEventListener('mouseup', _fsRangeMU); _fsRangeMU = null; }
-    if (_fsRangeCM) { canvas.removeEventListener('contextmenu', _fsRangeCM); _fsRangeCM = null; }
-    if (_fsRangeHoverML) { canvas.removeEventListener('mouseleave', _fsRangeHoverML); _fsRangeHoverML = null; }
-    if (_fsRangeHoverLine) { try { fsCandleS.removePriceLine(_fsRangeHoverLine); } catch(e) {} _fsRangeHoverLine = null; }
-    fsRangeP1 = null;
-    try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
-    canvas.style.pointerEvents = fsRangeActive ? 'auto' : 'none';
-    canvas.style.cursor = fsRangeActive ? 'crosshair' : '';
-    if (fsRangeActive) {
-        _fsRangeMD = e => {
-            if (e.button !== 0) return;
-            e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const price = fsCandleS.coordinateToPrice(e.clientY - rect.top);
-            if (price == null) return;
-            fsRangeP1 = price;
-        };
-        _fsRangeMM = e => {
-            const rect = canvas.getBoundingClientRect();
-            const cy = e.clientY - rect.top;
-            const p2 = fsCandleS.coordinateToPrice(cy);
-            if (fsRangeP1 === null) {
-                if (cy < 0 || cy > rect.height || p2 == null) {
-                    if (_fsRangeHoverLine) { try { fsCandleS.removePriceLine(_fsRangeHoverLine); } catch(ex) {} _fsRangeHoverLine = null; }
-                    try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(ex) {}
-                    return;
-                }
-                if (_fsRangeHoverLine) { try { _fsRangeHoverLine.applyOptions({ price: p2 }); } catch(ex) {} }
-                else { try { _fsRangeHoverLine = fsCandleS.createPriceLine({ price: p2, color: '#f59e0b', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
-                _drawRangeLine(canvas, fsCandleS, p2);
-                return;
-            }
-            if (!(e.buttons & 1) || p2 == null) return;
-            _drawRangeCanvas(canvas, fsCandleS, fsRangeP1, p2);
-        };
-        _fsRangeMU = e => {
-            if (e.button !== 0) return;
-            fsRangeP1 = null;
-            try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
-        };
-        _fsRangeCM = e => { e.preventDefault(); toggleFsRange(); };
-        _fsRangeHoverML = () => {
-            if (_fsRangeHoverLine) { try { fsCandleS.removePriceLine(_fsRangeHoverLine); } catch(e) {} _fsRangeHoverLine = null; }
-            try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
-        };
-        canvas.addEventListener('mousedown', _fsRangeMD);
-        document.addEventListener('mousemove', _fsRangeMM);
-        document.addEventListener('mouseup', _fsRangeMU);
-        canvas.addEventListener('contextmenu', _fsRangeCM);
-        canvas.addEventListener('mouseleave', _fsRangeHoverML);
-    }
-}
-
-function _hlineNearest(s, clientY) {
-    const rect = s.hlineCanvas.getBoundingClientRect();
-    const y = clientY - rect.top;
-    let best = null, bestDist = 8;
-    for (const hl of s.hlines) {
-        try { const hy = s.candleS.priceToCoordinate(hl.price); if (hy != null && Math.abs(hy - y) < bestDist) { bestDist = Math.abs(hy - y); best = hl; } } catch(e) {}
-    }
-    return best;
+    DrawTools.toggleRange(_fsRangeSurface, {
+        onDeactivateSiblings: () => { if (fsHlineActive) toggleFsHline(); if (fsTrendActive) toggleFsTrend(); }
+    });
+    document.getElementById('fs-range-canvas').style.display = fsRangeActive ? 'block' : 'none';
 }
 
 function toggleSlotHline(idx) {
-    const s = slots[idx];
-    if (!s) return;
-    if (!s.hlineActive) { if (s.rangeActive) toggleSlotRange(idx); if (s.trendActive) toggleSlotTrend(idx); }
-    s.hlineActive = !s.hlineActive;
-    s.hlineBtn.style.color = s.hlineActive ? '#3b82f6' : '#4B5563';
-    if (s._hlineMD) { s.hlineCanvas.removeEventListener('mousedown', s._hlineMD); s._hlineMD = null; }
-    if (s._hlineMM) { document.removeEventListener('mousemove', s._hlineMM); s._hlineMM = null; }
-    if (s._hlineMU) { document.removeEventListener('mouseup', s._hlineMU); s._hlineMU = null; }
-    if (s._hlineCM) { s.hlineCanvas.removeEventListener('contextmenu', s._hlineCM); s._hlineCM = null; }
-    if (s._hlineHoverML) { s.hlineCanvas.removeEventListener('mouseleave', s._hlineHoverML); s._hlineHoverML = null; }
-    if (s._hlineHoverLine) { try { s.candleS.removePriceLine(s._hlineHoverLine); } catch(e) {} s._hlineHoverLine = null; }
-    s._hlineDragging = null;
-    s.hlineCanvas.style.pointerEvents = s.hlineActive ? 'auto' : 'none';
-    s.hlineCanvas.style.cursor = s.hlineActive ? 'crosshair' : '';
-    if (s.hlineActive) {
-        s._hlineMD = e => {
-            if (e.button !== 0) return;
-            e.preventDefault();
-            const nearest = _hlineNearest(s, e.clientY);
-            if (nearest) { s._hlineDragging = nearest; s.hlineCanvas.style.cursor = 'ns-resize'; }
-            else {
-                const rect = s.hlineCanvas.getBoundingClientRect();
-                const price = s.candleS.coordinateToPrice(e.clientY - rect.top);
-                if (price != null) { const pl = s.candleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' }); s.hlines.push({ priceLine: pl, price }); _syncClearBtn(s); }
-            }
-        };
-        s._hlineMM = e => {
-            if (s._hlineDragging) {
-                const rect = s.hlineCanvas.getBoundingClientRect();
-                const price = s.candleS.coordinateToPrice(e.clientY - rect.top);
-                if (price != null) { s._hlineDragging.price = price; try { s._hlineDragging.priceLine.applyOptions({ price }); } catch(ex) {} }
-            } else {
-                const rect = s.hlineCanvas.getBoundingClientRect();
-                const price = s.candleS.coordinateToPrice(e.clientY - rect.top);
-                if (price != null) {
-                    if (s._hlineHoverLine) { try { s._hlineHoverLine.applyOptions({ price }); } catch(ex) {} }
-                    else { try { s._hlineHoverLine = s.candleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
-                }
-                s.hlineCanvas.style.cursor = _hlineNearest(s, e.clientY) ? 'ns-resize' : 'crosshair';
-            }
-        };
-        s._hlineMU = e => {
-            if (e.button !== 0) return;
-            s._hlineDragging = null;
-            s.hlineCanvas.style.cursor = _hlineNearest(s, e.clientY) ? 'ns-resize' : 'crosshair';
-        };
-        s._hlineCM = e => {
-            e.preventDefault();
-            const nearest = _hlineNearest(s, e.clientY);
-            if (nearest) { try { s.candleS.removePriceLine(nearest.priceLine); } catch(ex) {} s.hlines = s.hlines.filter(h => h !== nearest); _syncClearBtn(s); }
-            else toggleSlotHline(idx);
-        };
-        s._hlineHoverML = () => { if (s._hlineHoverLine) { try { s.candleS.removePriceLine(s._hlineHoverLine); } catch(e) {} s._hlineHoverLine = null; } };
-        s.hlineCanvas.addEventListener('mousedown', s._hlineMD);
-        document.addEventListener('mousemove', s._hlineMM);
-        document.addEventListener('mouseup', s._hlineMU);
-        s.hlineCanvas.addEventListener('contextmenu', s._hlineCM);
-        s.hlineCanvas.addEventListener('mouseleave', s._hlineHoverML);
-    }
+    const s = slots[idx]; if (!s) return;
+    DrawTools.toggleHline(s, {
+        onDeactivateSiblings: () => { if (s.rangeActive) toggleSlotRange(idx); if (s.trendActive) toggleSlotTrend(idx); },
+        onSyncClearBtn: () => _syncClearBtn(s),
+    });
 }
 
-function _fsHlineNearest(clientY) {
-    const canvas = document.getElementById('fs-hline-canvas');
-    const rect = canvas.getBoundingClientRect();
-    const y = clientY - rect.top;
-    let best = null, bestDist = 8;
-    for (const hl of fsHlines) {
-        try { const hy = fsCandleS.priceToCoordinate(hl.price); if (hy != null && Math.abs(hy - y) < bestDist) { bestDist = Math.abs(hy - y); best = hl; } } catch(e) {}
-    }
-    return best;
-}
-
+const _fsHlineSurface = {
+    get hlineActive() { return fsHlineActive; }, set hlineActive(v) { fsHlineActive = v; },
+    get hlines() { return fsHlines; }, set hlines(v) { fsHlines = v; },
+    get hlineCanvas() { return document.getElementById('fs-hline-canvas'); },
+    get hlineBtn() { return document.getElementById('fs-hline-btn'); },
+    get candleS() { return fsCandleS; },
+    get _hlineMD() { return _fsHlineMD; }, set _hlineMD(v) { _fsHlineMD = v; },
+    get _hlineMM() { return _fsHlineMM; }, set _hlineMM(v) { _fsHlineMM = v; },
+    get _hlineMU() { return _fsHlineMU; }, set _hlineMU(v) { _fsHlineMU = v; },
+    get _hlineCM() { return _fsHlineCM; }, set _hlineCM(v) { _fsHlineCM = v; },
+    get _hlineDragging() { return _fsHlineDragging; }, set _hlineDragging(v) { _fsHlineDragging = v; },
+    get _hlineHoverLine() { return _fsHlineHoverLine; }, set _hlineHoverLine(v) { _fsHlineHoverLine = v; },
+    get _hlineHoverML() { return _fsHlineHoverML; }, set _hlineHoverML(v) { _fsHlineHoverML = v; },
+};
 function toggleFsHline() {
-    if (!fsHlineActive) { if (fsRangeActive) toggleFsRange(); if (fsTrendActive) toggleFsTrend(); }
-    fsHlineActive = !fsHlineActive;
-    const btn = document.getElementById('fs-hline-btn');
-    const canvas = document.getElementById('fs-hline-canvas');
-    btn.style.color = fsHlineActive ? '#3b82f6' : '#B2B5BE';
-    if (_fsHlineMD) { canvas.removeEventListener('mousedown', _fsHlineMD); _fsHlineMD = null; }
-    if (_fsHlineMM) { document.removeEventListener('mousemove', _fsHlineMM); _fsHlineMM = null; }
-    if (_fsHlineMU) { document.removeEventListener('mouseup', _fsHlineMU); _fsHlineMU = null; }
-    if (_fsHlineCM) { canvas.removeEventListener('contextmenu', _fsHlineCM); _fsHlineCM = null; }
-    if (_fsHlineHoverML) { canvas.removeEventListener('mouseleave', _fsHlineHoverML); _fsHlineHoverML = null; }
-    if (_fsHlineHoverLine) { try { fsCandleS.removePriceLine(_fsHlineHoverLine); } catch(e) {} _fsHlineHoverLine = null; }
-    _fsHlineDragging = null;
-    canvas.style.pointerEvents = fsHlineActive ? 'auto' : 'none';
-    canvas.style.cursor = fsHlineActive ? 'crosshair' : '';
-    if (fsHlineActive) {
-        _fsHlineMD = e => {
-            if (e.button !== 0) return;
-            e.preventDefault();
-            const nearest = _fsHlineNearest(e.clientY);
-            if (nearest) { _fsHlineDragging = nearest; canvas.style.cursor = 'ns-resize'; }
-            else {
-                const rect = canvas.getBoundingClientRect();
-                const price = fsCandleS.coordinateToPrice(e.clientY - rect.top);
-                if (price != null) { const pl = fsCandleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' }); fsHlines.push({ priceLine: pl, price }); _syncFsClearBtn(); }
-            }
-        };
-        _fsHlineMM = e => {
-            if (_fsHlineDragging) {
-                const rect = canvas.getBoundingClientRect();
-                const price = fsCandleS.coordinateToPrice(e.clientY - rect.top);
-                if (price != null) { _fsHlineDragging.price = price; try { _fsHlineDragging.priceLine.applyOptions({ price }); } catch(ex) {} }
-            } else {
-                const rect = canvas.getBoundingClientRect();
-                const price = fsCandleS.coordinateToPrice(e.clientY - rect.top);
-                if (price != null) {
-                    if (_fsHlineHoverLine) { try { _fsHlineHoverLine.applyOptions({ price }); } catch(ex) {} }
-                    else { try { _fsHlineHoverLine = fsCandleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' }); } catch(ex) {} }
-                }
-                canvas.style.cursor = _fsHlineNearest(e.clientY) ? 'ns-resize' : 'crosshair';
-            }
-        };
-        _fsHlineMU = e => {
-            if (e.button !== 0) return;
-            _fsHlineDragging = null;
-            canvas.style.cursor = _fsHlineNearest(e.clientY) ? 'ns-resize' : 'crosshair';
-        };
-        _fsHlineCM = e => {
-            e.preventDefault();
-            const nearest = _fsHlineNearest(e.clientY);
-            if (nearest) { try { fsCandleS.removePriceLine(nearest.priceLine); } catch(ex) {} fsHlines = fsHlines.filter(h => h !== nearest); _syncFsClearBtn(); }
-            else toggleFsHline();
-        };
-        _fsHlineHoverML = () => { if (_fsHlineHoverLine) { try { fsCandleS.removePriceLine(_fsHlineHoverLine); } catch(e) {} _fsHlineHoverLine = null; } };
-        canvas.addEventListener('mousedown', _fsHlineMD);
-        document.addEventListener('mousemove', _fsHlineMM);
-        document.addEventListener('mouseup', _fsHlineMU);
-        canvas.addEventListener('contextmenu', _fsHlineCM);
-        canvas.addEventListener('mouseleave', _fsHlineHoverML);
-    }
+    DrawTools.toggleHline(_fsHlineSurface, {
+        onDeactivateSiblings: () => { if (fsRangeActive) toggleFsRange(); if (fsTrendActive) toggleFsTrend(); },
+        onSyncClearBtn: _syncFsClearBtn,
+    });
 }
 
-// ── Trendline tool ────────────────────────────────────────────────────────────
-const _TREND_HIT = 8;
-const _TREND_CLICK_SLOP = 4;
-
-function _trendSync(canvas) { const w = canvas.clientWidth, h = canvas.clientHeight; if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; } }
-
-function _trendDrawExt(ctx, x1, y1, x2, y2, W, H, color, lw) {
-    ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath();
-    if (Math.abs(x2 - x1) < 0.5) { ctx.moveTo(x1, 0); ctx.lineTo(x1, H); }
-    else { const m = (y2 - y1) / (x2 - x1); ctx.moveTo(0, y1 + m * -x1); ctx.lineTo(W, y1 + m * (W - x1)); }
-    ctx.stroke();
-}
-
+// ── Trendline pannelli (indipendente per slot — non unificata, vedi draw-tools.js) ──
 function _trendDrawAll(s) {
     _syncClearBtn(s);
-    const canvas = s.trendCanvas; _trendSync(canvas);
+    const canvas = s.trendCanvas; DrawTools.trendSync(canvas);
     const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);
     for (const tl of s.trendlines) {
@@ -4462,7 +4384,7 @@ function _trendDrawAll(s) {
             const x1 = s.chart.timeScale().timeToCoordinate(tl.t1), y1 = s.candleS.priceToCoordinate(tl.p1);
             const x2 = s.chart.timeScale().timeToCoordinate(tl.t2), y2 = s.candleS.priceToCoordinate(tl.p2);
             if (x1==null||y1==null||x2==null||y2==null) continue;
-            _trendDrawExt(ctx, x1, y1, x2, y2, W, H, '#22c55e', 1.5);
+            DrawTools.trendDrawExt(ctx, x1, y1, x2, y2, W, H, '#22c55e', 1.5);
             ctx.fillStyle = '#22c55e';
             ctx.beginPath(); ctx.arc(x1, y1, 4, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(x2, y2, 4, 0, Math.PI*2); ctx.fill();
@@ -4495,25 +4417,18 @@ function _trendEnsureRAF(s) {
     s._trendRAF = requestAnimationFrame(tick);
 }
 
-function _ptSegDist(px, py, x1, y1, x2, y2) {
-    const dx = x2-x1, dy = y2-y1, L2 = dx*dx+dy*dy;
-    if (!L2) return Math.hypot(px-x1, py-y1);
-    const t = Math.max(0, Math.min(1, ((px-x1)*dx+(py-y1)*dy)/L2));
-    return Math.hypot(px-x1-t*dx, py-y1-t*dy);
-}
-
 function _trendNearest(s, cx, cy) {
     const rect = s.trendCanvas.getBoundingClientRect(), mx = cx-rect.left, my = cy-rect.top;
-    let best = null, bestDist = _TREND_HIT, bestPart = 'line';
+    let best = null, bestDist = DrawTools.TREND_HIT, bestPart = 'line';
     for (const tl of s.trendlines) {
         try {
             const x1 = s.chart.timeScale().timeToCoordinate(tl.t1), y1 = s.candleS.priceToCoordinate(tl.p1);
             const x2 = s.chart.timeScale().timeToCoordinate(tl.t2), y2 = s.candleS.priceToCoordinate(tl.p2);
             if (x1==null||y1==null||x2==null||y2==null) continue;
             const d1 = Math.hypot(mx-x1, my-y1), d2 = Math.hypot(mx-x2, my-y2);
-            if (d1 <= _TREND_HIT && d1 < bestDist) { best = tl; bestDist = d1; bestPart = 'p1'; }
-            else if (d2 <= _TREND_HIT && d2 < bestDist) { best = tl; bestDist = d2; bestPart = 'p2'; }
-            else { const dl = _ptSegDist(mx, my, x1, y1, x2, y2); if (dl < bestDist) { best = tl; bestDist = dl; bestPart = 'line'; } }
+            if (d1 <= DrawTools.TREND_HIT && d1 < bestDist) { best = tl; bestDist = d1; bestPart = 'p1'; }
+            else if (d2 <= DrawTools.TREND_HIT && d2 < bestDist) { best = tl; bestDist = d2; bestPart = 'p2'; }
+            else { const dl = DrawTools.ptSegDist(mx, my, x1, y1, x2, y2); if (dl < bestDist) { best = tl; bestDist = dl; bestPart = 'line'; } }
         } catch(ex) {}
     }
     return best ? { tl: best, part: bestPart } : null;
@@ -4556,9 +4471,9 @@ function toggleSlotTrend(idx) {
     s._trendMM = e => {
         const rect = s.trendCanvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
         if (s._trendPending) {
-            if (Math.hypot(px - s._trendPending.px, py - s._trendPending.py) <= _TREND_CLICK_SLOP) return;
+            if (Math.hypot(px - s._trendPending.px, py - s._trendPending.py) <= DrawTools.TREND_CLICK_SLOP) return;
             const { hit, px: dpx0, py: dpy0 } = s._trendPending;
-            if (hit.part !== 'line') { s._trendDrag = { tl: hit.tl, part: hit.part }; s.trendCanvas.style.cursor = 'crosshair'; }
+            if (hit.part !== 'line') { s._trendDrag = { tl: hit.tl, part: hit.part }; s.trendCanvas.style.cursor = 'grabbing'; }
             else {
                 const ox1 = s.chart.timeScale().timeToCoordinate(hit.tl.t1), oy1 = s.candleS.priceToCoordinate(hit.tl.p1);
                 const ox2 = s.chart.timeScale().timeToCoordinate(hit.tl.t2), oy2 = s.candleS.priceToCoordinate(hit.tl.p2);
@@ -4578,7 +4493,7 @@ function toggleSlotTrend(idx) {
             s._trendPrev = { x: px, y: py }; _trendDrawAll(s);
         } else {
             const hit = _trendNearest(s, e.clientX, e.clientY);
-            s.trendCanvas.style.cursor = hit ? (hit.part === 'line' ? 'move' : 'crosshair') : 'crosshair';
+            s.trendCanvas.style.cursor = hit ? (hit.part === 'line' ? 'move' : 'grab') : 'crosshair';
         }
     };
     s._trendMU = e => {
@@ -4609,153 +4524,28 @@ function toggleSlotTrend(idx) {
     s.trendCanvas.addEventListener('contextmenu', s._trendCM);
 }
 
-function _fsTrendDrawAll() {
-    _syncFsClearBtn();
-    const canvas = document.getElementById('fs-trend-canvas'); if (!canvas || !fsCandleS || !fsChart) return;
-    _trendSync(canvas);
-    const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
-    ctx.clearRect(0, 0, W, H);
-    for (const tl of fsTrendlines) {
-        try {
-            const x1 = fsChart.timeScale().timeToCoordinate(tl.t1), y1 = fsCandleS.priceToCoordinate(tl.p1);
-            const x2 = fsChart.timeScale().timeToCoordinate(tl.t2), y2 = fsCandleS.priceToCoordinate(tl.p2);
-            if (x1==null||y1==null||x2==null||y2==null) continue;
-            _trendDrawExt(ctx, x1, y1, x2, y2, W, H, '#22c55e', 1.5);
-            ctx.fillStyle = '#22c55e';
-            ctx.beginPath(); ctx.arc(x1, y1, 4, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(x2, y2, 4, 0, Math.PI*2); ctx.fill();
-        } catch(ex) {}
-    }
-    if (_fsTrendP1 && _fsTrendPrev) {
-        try {
-            const x1 = fsChart.timeScale().timeToCoordinate(_fsTrendP1.t), y1 = fsCandleS.priceToCoordinate(_fsTrendP1.p);
-            if (x1!=null && y1!=null) {
-                ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1; ctx.setLineDash([5,3]);
-                ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(_fsTrendPrev.x, _fsTrendPrev.y); ctx.stroke();
-                ctx.setLineDash([]);
-                ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(x1, y1, 4, 0, Math.PI*2); ctx.fill();
-            }
-        } catch(ex) {}
-    }
-}
-
-function _fsTrendEnsureRAF() {
-    if (_fsTrendRAF) return;
-    const tick = () => {
-        if (!fsChart || !fsCandleS || (!fsTrendlines.length && !fsTrendActive)) { _fsTrendRAF = null; return; }
-        _fsTrendDrawAll();
-        _fsTrendRAF = requestAnimationFrame(tick);
-    };
-    _fsTrendRAF = requestAnimationFrame(tick);
-}
-
-function _fsTrendNearest(cx, cy) {
-    const canvas = document.getElementById('fs-trend-canvas'); if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect(), mx = cx-rect.left, my = cy-rect.top;
-    let best = null, bestDist = _TREND_HIT, bestPart = 'line';
-    for (const tl of fsTrendlines) {
-        try {
-            const x1 = fsChart.timeScale().timeToCoordinate(tl.t1), y1 = fsCandleS.priceToCoordinate(tl.p1);
-            const x2 = fsChart.timeScale().timeToCoordinate(tl.t2), y2 = fsCandleS.priceToCoordinate(tl.p2);
-            if (x1==null||y1==null||x2==null||y2==null) continue;
-            const d1 = Math.hypot(mx-x1, my-y1), d2 = Math.hypot(mx-x2, my-y2);
-            if (d1 <= _TREND_HIT && d1 < bestDist) { best = tl; bestDist = d1; bestPart = 'p1'; }
-            else if (d2 <= _TREND_HIT && d2 < bestDist) { best = tl; bestDist = d2; bestPart = 'p2'; }
-            else { const dl = _ptSegDist(mx, my, x1, y1, x2, y2); if (dl < bestDist) { best = tl; bestDist = dl; bestPart = 'line'; } }
-        } catch(ex) {}
-    }
-    return best ? { tl: best, part: bestPart } : null;
-}
-
+const _fsTrendSurface = {
+    get trendActive() { return fsTrendActive; }, set trendActive(v) { fsTrendActive = v; },
+    get trendlines() { return fsTrendlines; }, set trendlines(v) { fsTrendlines = v; },
+    get trendCanvas() { return document.getElementById('fs-trend-canvas'); },
+    get trendBtn() { return document.getElementById('fs-trend-btn'); },
+    get chart() { return fsChart; },
+    get candleS() { return fsCandleS; },
+    get _trendP1() { return _fsTrendP1; }, set _trendP1(v) { _fsTrendP1 = v; },
+    get _trendPrev() { return _fsTrendPrev; }, set _trendPrev(v) { _fsTrendPrev = v; },
+    get _trendPending() { return _fsTrendPending; }, set _trendPending(v) { _fsTrendPending = v; },
+    get _trendMD() { return _fsTrendMD; }, set _trendMD(v) { _fsTrendMD = v; },
+    get _trendMM() { return _fsTrendMM; }, set _trendMM(v) { _fsTrendMM = v; },
+    get _trendMU() { return _fsTrendMU; }, set _trendMU(v) { _fsTrendMU = v; },
+    get _trendCM() { return _fsTrendCM; }, set _trendCM(v) { _fsTrendCM = v; },
+    get _trendDrag() { return _fsTrendDrag; }, set _trendDrag(v) { _fsTrendDrag = v; },
+    get _trendRAF() { return _fsTrendRAF; }, set _trendRAF(v) { _fsTrendRAF = v; },
+    syncClearBtn: () => _syncFsClearBtn(),
+};
 function toggleFsTrend() {
-    if (!fsTrendActive) { if (fsRangeActive) toggleFsRange(); if (fsHlineActive) toggleFsHline(); }
-    fsTrendActive = !fsTrendActive;
-    const btn = document.getElementById('fs-trend-btn');
-    const canvas = document.getElementById('fs-trend-canvas');
-    btn.style.color = fsTrendActive ? '#22c55e' : '#B2B5BE';
-    if (_fsTrendMD) { canvas.removeEventListener('mousedown', _fsTrendMD); _fsTrendMD = null; }
-    if (_fsTrendMM) { document.removeEventListener('mousemove', _fsTrendMM); _fsTrendMM = null; }
-    if (_fsTrendMU) { document.removeEventListener('mouseup', _fsTrendMU); _fsTrendMU = null; }
-    if (_fsTrendCM) { canvas.removeEventListener('contextmenu', _fsTrendCM); _fsTrendCM = null; }
-    _fsTrendP1 = null; _fsTrendPrev = null; _fsTrendDrag = null; _fsTrendPending = null;
-    canvas.style.pointerEvents = fsTrendActive ? 'auto' : 'none';
-    canvas.style.cursor = fsTrendActive ? 'crosshair' : '';
-    _fsTrendEnsureRAF();
-    _fsTrendDrawAll();
-    if (!fsTrendActive) return;
-    _fsTrendMD = e => {
-        if (e.button !== 0) return; e.preventDefault();
-        const rect = canvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
-        const hit = _fsTrendNearest(e.clientX, e.clientY);
-        if (hit && !_fsTrendP1) {
-            // Non decidere subito se è drag o un click per iniziare una nuova linea:
-            // serve poter piazzare due trendline dallo stesso punto esatto (vedi mousemove/mouseup).
-            _fsTrendPending = { hit, px, py };
-        } else if (!_fsTrendP1) {
-            const t = fsChart.timeScale().coordinateToTime(px), p = fsCandleS.coordinateToPrice(py);
-            if (t != null && p != null) _fsTrendP1 = { t, p };
-        } else {
-            const t2 = fsChart.timeScale().coordinateToTime(px), p2 = fsCandleS.coordinateToPrice(py);
-            if (t2 != null && p2 != null) {
-                fsTrendlines.push({ t1: _fsTrendP1.t, p1: _fsTrendP1.p, t2, p2 });
-            }
-            _fsTrendP1 = null; _fsTrendPrev = null; _fsTrendDrawAll();
-        }
-    };
-    _fsTrendMM = e => {
-        const rect = canvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
-        if (_fsTrendPending) {
-            if (Math.hypot(px - _fsTrendPending.px, py - _fsTrendPending.py) <= _TREND_CLICK_SLOP) return;
-            const { hit, px: dpx0, py: dpy0 } = _fsTrendPending;
-            if (hit.part !== 'line') { _fsTrendDrag = { tl: hit.tl, part: hit.part }; canvas.style.cursor = 'crosshair'; }
-            else {
-                const ox1 = fsChart.timeScale().timeToCoordinate(hit.tl.t1), oy1 = fsCandleS.priceToCoordinate(hit.tl.p1);
-                const ox2 = fsChart.timeScale().timeToCoordinate(hit.tl.t2), oy2 = fsCandleS.priceToCoordinate(hit.tl.p2);
-                _fsTrendDrag = { tl: hit.tl, part: 'line', sx: dpx0, sy: dpy0, ox1, oy1, ox2, oy2 };
-                canvas.style.cursor = 'move';
-            }
-            _fsTrendPending = null;
-        }
-        if (_fsTrendDrag) {
-            if (!(e.buttons & 1)) { _fsTrendDrag = null; return; }
-            const { tl, part } = _fsTrendDrag;
-            if (part === 'p1') { const t=fsChart.timeScale().coordinateToTime(px), p=fsCandleS.coordinateToPrice(py); if (t&&p){tl.t1=t;tl.p1=p;} }
-            else if (part === 'p2') { const t=fsChart.timeScale().coordinateToTime(px), p=fsCandleS.coordinateToPrice(py); if (t&&p){tl.t2=t;tl.p2=p;} }
-            else { const dpx=px-_fsTrendDrag.sx, dpy=py-_fsTrendDrag.sy; const nt1=fsChart.timeScale().coordinateToTime(_fsTrendDrag.ox1+dpx), np1=fsCandleS.coordinateToPrice(_fsTrendDrag.oy1+dpy); const nt2=fsChart.timeScale().coordinateToTime(_fsTrendDrag.ox2+dpx), np2=fsCandleS.coordinateToPrice(_fsTrendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2;} }
-            _fsTrendDrawAll();
-        } else if (_fsTrendP1) {
-            _fsTrendPrev = { x: px, y: py }; _fsTrendDrawAll();
-        } else {
-            const hit = _fsTrendNearest(e.clientX, e.clientY);
-            canvas.style.cursor = hit ? (hit.part === 'line' ? 'move' : 'crosshair') : 'crosshair';
-        }
-    };
-    _fsTrendMU = e => {
-        if (e.button !== 0) return;
-        if (_fsTrendPending) {
-            // Click senza drag su un punto/linea esistente → inizia una nuova trendline da qui.
-            const { px: cpx, py: cpy } = _fsTrendPending;
-            const t = fsChart.timeScale().coordinateToTime(cpx), p = fsCandleS.coordinateToPrice(cpy);
-            if (t != null && p != null) _fsTrendP1 = { t, p };
-            _fsTrendPending = null;
-            return;
-        }
-        _fsTrendDrag = null; canvas.style.cursor = 'crosshair';
-    };
-    _fsTrendCM = e => {
-        e.preventDefault();
-        if (_fsTrendP1) {
-            _fsTrendP1 = null; _fsTrendPrev = null; _fsTrendDrawAll(); return;
-        }
-        const hit = _fsTrendNearest(e.clientX, e.clientY);
-        if (hit) {
-            fsTrendlines = fsTrendlines.filter(tl => tl !== hit.tl); _fsTrendDrawAll();
-        } else toggleFsTrend();
-    };
-    canvas.addEventListener('mousedown', _fsTrendMD);
-    document.addEventListener('mousemove', _fsTrendMM);
-    document.addEventListener('mouseup', _fsTrendMU);
-    canvas.addEventListener('contextmenu', _fsTrendCM);
+    DrawTools.toggleFsTrend(_fsTrendSurface, {
+        onDeactivateSiblings: () => { if (fsRangeActive) toggleFsRange(); if (fsHlineActive) toggleFsHline(); }
+    });
 }
 
 // ── BTC Performance Ticker ────────────────────────────────────────────────────

@@ -977,9 +977,23 @@ createApp({
             return hits;
         };
         const lineSlopeConfl = (p1, p2) => (p2.price - p1.price) / (p2.time - p1.time);
+        const TRENDLINE_SR_EXTEND_BARS = 30;
         const lineSeriesFromPtsConfl = (p1, p2, klines) => {
             const slope = lineSlopeConfl(p1, p2);
-            return klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
+            const pts = klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
+            // Estende la linea oltre l'ultima candela reale invece di troncarla lì: un raggio
+            // continuo, non un segmento che si interrompe di colpo sull'ultimo dato disponibile.
+            if (pts.length >= 2 && klines.length >= 2) {
+                const step = klines[klines.length - 1].time - klines[klines.length - 2].time;
+                if (step > 0) {
+                    const lastT = pts[pts.length - 1].time;
+                    for (let i = 1; i <= TRENDLINE_SR_EXTEND_BARS; i++) {
+                        const t = lastT + step * i;
+                        pts.push({ time: t, value: p1.price + slope * (t - p1.time) });
+                    }
+                }
+            }
+            return pts;
         };
 
         // ── SCAN ───────────────────────────────────────────────────────────────

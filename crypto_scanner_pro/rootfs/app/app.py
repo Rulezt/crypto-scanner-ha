@@ -2638,6 +2638,10 @@ def flush_prefs():
 def serve_prefs_sync():
     return send_file('/usr/share/nginx/html/prefs-sync.js', mimetype='application/javascript')
 
+@app.route('/draw-tools.js')
+def serve_draw_tools():
+    return send_file('/usr/share/nginx/html/draw-tools.js', mimetype='application/javascript')
+
 @app.route('/api/auth/change-password', methods=['POST'])
 @login_required
 def change_password():

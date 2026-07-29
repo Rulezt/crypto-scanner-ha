@@ -703,9 +703,23 @@ function detectActiveTrendlines(candles, cfg) {
     return hits;
 }
 function lineSlope(p1, p2) { return (p2.price - p1.price) / (p2.time - p1.time); }
+const TRENDLINE_SR_EXTEND_BARS = 30;
 function lineSeriesFromPts(p1, p2, klines) {
     const slope = lineSlope(p1, p2);
-    return klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
+    const pts = klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
+    // Estende la linea oltre l'ultima candela reale invece di troncarla lì: un raggio
+    // continuo, non un segmento che si interrompe di colpo sull'ultimo dato disponibile.
+    if (pts.length >= 2 && klines.length >= 2) {
+        const step = klines[klines.length - 1].time - klines[klines.length - 2].time;
+        if (step > 0) {
+            const lastT = pts[pts.length - 1].time;
+            for (let i = 1; i <= TRENDLINE_SR_EXTEND_BARS; i++) {
+                const t = lastT + step * i;
+                pts.push({ time: t, value: p1.price + slope * (t - p1.time) });
+            }
+        }
+    }
+    return pts;
 }
 function applyTrendlineSRToOb() {
     if (_obSrSeries.sup) { try { _obChart.removeSeries(_obSrSeries.sup); } catch(e) {} _obSrSeries.sup = null; }
@@ -917,7 +931,7 @@ function resetTbCfgPanel() {
 let _tradeEnabled = false, _tradePos = null, _tradeSide = null, _hadPosition = false;
 let _tradeBalance = null, _instInfo = null, _tradePollT = null;
 let _tradeSSE = null;
-let _fsOrderType = 'Market', _fsCondExec = 'Market';
+let _fsOrderType = 'Limit', _fsCondExec = 'Market';
 let _fsPendingOrderId = null, _fsPendingOrderFilter = null, _orderSeenInList = false, _pendingOrderSetAt = 0, _lastAmendAt = 0, _orderMissingCount = 0, _posMissingCount = 0;
 let _pricePickTarget = null;
 let _fsSlLine = null, _fsTpLine = null, _fsSlPrice = null, _fsTpPrice = null;
@@ -1946,6 +1960,7 @@ function _createExecLine(long) {
 }
 
 function setFsSide(side) {
+    const prevSide = _tradeSide;
     _tradeSide = side;
     const l = document.getElementById('fs-btn-long'), s = document.getElementById('fs-btn-short');
     if (l) { l.style.background = side === 'Buy' ? '#065f46' : '#0d1a14'; l.style.color = '#10b981'; l.style.borderColor = side === 'Buy' ? '#10b981' : '#1e3d2a'; }
@@ -1953,6 +1968,15 @@ function setFsSide(side) {
     if (!_obCandleS) return;
     const long = side === 'Buy';
     _removeEntryLine();
+    // Cambio Long<->Short: i livelli SL/TP disegnati appartenevano all'ordine bozza nel verso
+    // precedente e non hanno senso nel nuovo verso — azzerati solo qui (client-side, nessuna
+    // chiamata API: se c'è già una posizione reale aperta il suo SL/TP resta invariato sull'exchange).
+    if (prevSide && prevSide !== side) {
+        _removeSlTpLines();
+        const si = document.getElementById('fs-sl-input'); if (si) si.value = '';
+        const ti = document.getElementById('fs-tp-input'); if (ti) ti.value = '';
+        _hideTradeZone();
+    }
     if (_fsOrderType === 'Conditional') {
         const liveP = _obLivePrice || 0;
         if (_fsCondExec === 'Limit') {
@@ -2757,6 +2781,85 @@ let _obHlineHoverLine = null, _obHlineHoverMM = null, _obHlineHoverML = null;
 let _obTrendActive = false, _obTrendlines = [], _obTrendP1 = null, _obTrendPrev = null, _obTrendPending = null;
 let _obTrendMD = null, _obTrendMM = null, _obTrendMU = null, _obTrendCM = null, _obTrendDrag = null, _obTrendRAF = null;
 
+// Come _timeToXRobust in mtf.html: timeToCoordinate torna null se il timestamp non
+// combacia esattamente con una candela dell'asse attuale — cosa che succede sempre
+// dopo un cambio TF (la trendline resta al TF su cui è stata disegnata). Si interpola
+// in pixel fra i due indici logici interi che la racchiudono, così la linea resta
+// visibile e trascinabile anche dopo un cambio TF invece di sparire silenziosamente.
+function _obTimeToXRobust(t) {
+    const direct = _obChart.timeScale().timeToCoordinate(t);
+    if (direct != null) return direct;
+    const kl = _obKlines;
+    if (!kl || kl.length < 2) return null;
+    let loIdx, hiIdx, frac;
+    if (t <= kl[0].time) {
+        loIdx = 0; hiIdx = 1;
+        const dt = kl[1].time - kl[0].time;
+        frac = dt ? (t - kl[0].time) / dt : 0;
+    } else if (t >= kl[kl.length - 1].time) {
+        const n = kl.length;
+        loIdx = n - 2; hiIdx = n - 1;
+        const dt = kl[n-1].time - kl[n-2].time;
+        frac = dt ? 1 + (t - kl[n-1].time) / dt : 1;
+    } else {
+        let lo = 0, hi = kl.length - 1;
+        while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (kl[mid].time <= t) lo = mid; else hi = mid; }
+        loIdx = lo; hiIdx = hi;
+        const dt = kl[hi].time - kl[lo].time;
+        frac = dt ? (t - kl[lo].time) / dt : 0;
+    }
+    try {
+        const xLo = _obChart.timeScale().logicalToCoordinate(loIdx);
+        const xHi = _obChart.timeScale().logicalToCoordinate(hiIdx);
+        if (xLo == null || xHi == null) return null;
+        return xLo + (xHi - xLo) * frac;
+    } catch(e) { return null; }
+}
+
+// Persistenza disegni (hline + trendline) per simbolo, stesso pattern di
+// _mtfSaveDrawings/_mtfRestoreDrawings in mtf.html: senza questo, un refresh della
+// pagina perdeva tutti i disegni (erano solo variabili JS in memoria).
+function _obLoadDrawings() {
+    try { return JSON.parse(localStorage.getItem('ob_drawings') || '{}'); } catch(e) { return {}; }
+}
+function _obSaveDrawings() {
+    let json;
+    try {
+        const all = _obLoadDrawings();
+        all[_obSymbol] = {
+            trendlines: _obTrendlines.map(tl => ({ t1: tl.t1, p1: tl.p1, t2: tl.t2, p2: tl.p2 })),
+            hlines: _obHlines.map(h => h.price),
+        };
+        json = JSON.stringify(all);
+        localStorage.setItem('ob_drawings', json);
+    } catch(e) { return; }
+    // PUT sincrono (non il debounce di prefs-sync.js): un'azione discreta e rara come
+    // completare un disegno non deve rischiare di perderlo a un refresh immediato.
+    try {
+        const x = new XMLHttpRequest();
+        x.open('PUT', '/api/prefs/' + encodeURIComponent('ob_drawings'), false);
+        x.setRequestHeader('Content-Type', 'application/json');
+        x.send(JSON.stringify({ value: json }));
+    } catch(e) {}
+}
+function _obRestoreDrawings() {
+    const rec = _obLoadDrawings()[_obSymbol];
+    if (!rec) return;
+    if (Array.isArray(rec.trendlines) && rec.trendlines.length) {
+        _obTrendlines.push(...rec.trendlines);
+        _obTrendEnsureRAF();
+    }
+    if (Array.isArray(rec.hlines) && _obCandleS) {
+        for (const price of rec.hlines) {
+            try {
+                const pl = _obCandleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+                _obHlines.push({ priceLine: pl, price });
+            } catch(e) {}
+        }
+    }
+    _syncObClearBtn();
+}
+
 function _drawRangeCanvas(canvas, series, p1, p2) {
     canvas.width  = canvas.clientWidth  || canvas.parentElement?.clientWidth  || 100;
     canvas.height = canvas.clientHeight || canvas.parentElement?.clientHeight || 100;
@@ -2806,6 +2909,7 @@ function clearObDrawings() {
     }
     _obTrendlines = [];
     try { _obTrendDrawAll(); } catch(e) {}
+    _obSaveDrawings();
 }
 
 function toggleObRange() {
@@ -2907,7 +3011,7 @@ function toggleObHline() {
             else {
                 const rect = canvas.getBoundingClientRect();
                 const price = _obCandleS?.coordinateToPrice(e.clientY - rect.top);
-                if (price != null) { const pl = _obCandleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' }); _obHlines.push({ priceLine: pl, price }); _syncObClearBtn(); }
+                if (price != null) { const pl = _obCandleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' }); _obHlines.push({ priceLine: pl, price }); _syncObClearBtn(); _obSaveDrawings(); }
             }
         };
         _obHlineMM = e => {
@@ -2921,13 +3025,13 @@ function toggleObHline() {
         };
         _obHlineMU = e => {
             if (e.button !== 0) return;
-            _obHlineDragging = null;
+            if (_obHlineDragging) { _obHlineDragging = null; _obSaveDrawings(); }
             canvas.style.cursor = _obHlineNearest(e.clientY) ? 'ns-resize' : 'crosshair';
         };
         _obHlineCM = e => {
             e.preventDefault();
             const nearest = _obHlineNearest(e.clientY);
-            if (nearest) { try { _obCandleS.removePriceLine(nearest.priceLine); } catch(ex) {} _obHlines = _obHlines.filter(h => h !== nearest); _syncObClearBtn(); }
+            if (nearest) { try { _obCandleS.removePriceLine(nearest.priceLine); } catch(ex) {} _obHlines = _obHlines.filter(h => h !== nearest); _syncObClearBtn(); _obSaveDrawings(); }
             else toggleObHline();
         };
         canvas.addEventListener('mousedown', _obHlineMD);
@@ -2966,8 +3070,8 @@ function _obTrendDrawAll() {
     ctx.clearRect(0, 0, W, H);
     for (const tl of _obTrendlines) {
         try {
-            const x1 = _obChart.timeScale().timeToCoordinate(tl.t1), y1 = _obCandleS.priceToCoordinate(tl.p1);
-            const x2 = _obChart.timeScale().timeToCoordinate(tl.t2), y2 = _obCandleS.priceToCoordinate(tl.p2);
+            const x1 = _obTimeToXRobust(tl.t1), y1 = _obCandleS.priceToCoordinate(tl.p1);
+            const x2 = _obTimeToXRobust(tl.t2), y2 = _obCandleS.priceToCoordinate(tl.p2);
             if (x1==null||y1==null||x2==null||y2==null) continue;
             ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1.5; ctx.beginPath();
             if (Math.abs(x2-x1) < 0.5) { ctx.moveTo(x1,0); ctx.lineTo(x1,H); }
@@ -2998,8 +3102,8 @@ function _obTrendNearest(cx, cy) {
     let best = null, bestDist = _OB_TREND_HIT, bestPart = 'line';
     for (const tl of _obTrendlines) {
         try {
-            const x1 = _obChart.timeScale().timeToCoordinate(tl.t1), y1 = _obCandleS.priceToCoordinate(tl.p1);
-            const x2 = _obChart.timeScale().timeToCoordinate(tl.t2), y2 = _obCandleS.priceToCoordinate(tl.p2);
+            const x1 = _obTimeToXRobust(tl.t1), y1 = _obCandleS.priceToCoordinate(tl.p1);
+            const x2 = _obTimeToXRobust(tl.t2), y2 = _obCandleS.priceToCoordinate(tl.p2);
             if (x1==null||y1==null||x2==null||y2==null) continue;
             const d1=Math.hypot(mx-x1,my-y1), d2=Math.hypot(mx-x2,my-y2);
             const dx=x2-x1, dy=y2-y1, L2=dx*dx+dy*dy;
@@ -3057,6 +3161,7 @@ function toggleObTrend() {
             const t2 = _obChart.timeScale().coordinateToTime(px), p2 = _obCandleS.coordinateToPrice(py);
             if (t2 != null && p2 != null) {
                 _obTrendlines.push({ t1: _obTrendP1.t, p1: _obTrendP1.p, t2, p2 });
+                _obSaveDrawings();
             }
             _obTrendP1 = null; _obTrendPrev = null;
             _obTrendDrawAll();
@@ -3069,8 +3174,8 @@ function toggleObTrend() {
             const { hit, px: dpx0, py: dpy0 } = _obTrendPending;
             if (hit.part !== 'line') { _obTrendDrag = { tl: hit.tl, part: hit.part }; canvas.style.cursor = 'crosshair'; }
             else {
-                const ox1 = _obChart.timeScale().timeToCoordinate(hit.tl.t1), oy1 = _obCandleS.priceToCoordinate(hit.tl.p1);
-                const ox2 = _obChart.timeScale().timeToCoordinate(hit.tl.t2), oy2 = _obCandleS.priceToCoordinate(hit.tl.p2);
+                const ox1 = _obTimeToXRobust(hit.tl.t1), oy1 = _obCandleS.priceToCoordinate(hit.tl.p1);
+                const ox2 = _obTimeToXRobust(hit.tl.t2), oy2 = _obCandleS.priceToCoordinate(hit.tl.p2);
                 _obTrendDrag = { tl: hit.tl, part: 'line', sx: dpx0, sy: dpy0, ox1, oy1, ox2, oy2 };
                 canvas.style.cursor = 'move';
             }
@@ -3101,13 +3206,14 @@ function toggleObTrend() {
             _obTrendPending = null;
             return;
         }
-        _obTrendDrag = null; canvas.style.cursor = 'crosshair';
+        if (_obTrendDrag) { _obTrendDrag = null; _obSaveDrawings(); }
+        canvas.style.cursor = 'crosshair';
     };
     _obTrendCM = e => {
         e.preventDefault();
         if (_obTrendP1) { _obTrendP1 = null; _obTrendPrev = null; _obTrendDrawAll(); return; }
         const hit = _obTrendNearest(e.clientX, e.clientY);
-        if (hit) { _obTrendlines = _obTrendlines.filter(tl => tl !== hit.tl); _obTrendDrawAll(); }
+        if (hit) { _obTrendlines = _obTrendlines.filter(tl => tl !== hit.tl); _obTrendDrawAll(); _obSaveDrawings(); }
         else toggleObTrend();
     };
     canvas.addEventListener('mousedown', _obTrendMD);
@@ -3369,6 +3475,7 @@ createApp({
             window.toggleAthAtlAll     = toggleAthAtlAll;
             window.toggleObLines       = toggleObLines;
             window._obShowLinesValue   = () => showObLines.value;
+            _obRestoreDrawings();
             if (_obTrendlines.length || _obTrendActive) _obTrendEnsureRAF();
             initSlTpDrag();
         };
@@ -3513,7 +3620,8 @@ createApp({
                             try { candleS.update(k); } catch(e) {}
                         }
                         // Update EMAs: if a new candle started, lock in the previous EMA
-                        if (prev && prev.time > lastConfirmedTime) {
+                        const justConfirmed = prev && prev.time > lastConfirmedTime;
+                        if (justConfirmed) {
                             for (const { p } of EMA_CFG) {
                                 if (lastEMA[p] == null) continue;
                                 const ek = 2 / (p + 1);
@@ -3521,7 +3629,6 @@ createApp({
                             }
                             _obGrabConfirmPrev(prev);
                             _obTbConfirmPrev(prev);
-                            if (_obSrActive) applyTrendlineSRToOb();
                             lastConfirmedTime = prev.time;
                         }
                         // Live EMA for current forming candle
@@ -3537,6 +3644,11 @@ createApp({
                             if (lastK.time === last.time) _obKlines[_obKlines.length - 1] = { ...last };
                             else _obKlines.push({ ...last });
                         }
+                        // Deve girare DOPO il sync di _obKlines qui sopra: prima leggeva ancora
+                        // l'array di un poll fa (candela appena chiusa non ancora aggiornata,
+                        // nuova candela non ancora pushata) — la linea restava sempre indietro
+                        // di una candela, mai davvero "aggiornata alla nuova candela".
+                        if (_obSrActive && justConfirmed) applyTrendlineSRToOb();
                         if (_obBbActive && _obBbSeries.upper) {
                             const bbCfg = getBbCfg();
                             if (_obKlines.length >= bbCfg.period) {
