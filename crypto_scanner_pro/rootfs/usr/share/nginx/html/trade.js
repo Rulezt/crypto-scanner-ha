@@ -3067,6 +3067,10 @@ function _obTrendDrawAll() {
     if (!canvas || !_obCandleS || !_obChart) return;
     _obTrendSync(canvas);
     const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
+    // La retta si ferma al bordo del pannello candele, prima della colonna prezzo
+    // (il canvas del tool è largo quanto l'intero container, asse compreso).
+    let paneW = W;
+    try { const aw = _obChart.priceScale('right').width(); if (Number.isFinite(aw)) paneW = Math.max(0, W - aw); } catch(e) {}
     ctx.clearRect(0, 0, W, H);
     for (const tl of _obTrendlines) {
         try {
@@ -3075,7 +3079,7 @@ function _obTrendDrawAll() {
             if (x1==null||y1==null||x2==null||y2==null) continue;
             ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1.5; ctx.beginPath();
             if (Math.abs(x2-x1) < 0.5) { ctx.moveTo(x1,0); ctx.lineTo(x1,H); }
-            else { const m=(y2-y1)/(x2-x1); ctx.moveTo(0,y1+m*-x1); ctx.lineTo(W,y1+m*(W-x1)); }
+            else { const m=(y2-y1)/(x2-x1); ctx.moveTo(0,y1+m*-x1); ctx.lineTo(paneW,y1+m*(paneW-x1)); }
             ctx.stroke();
             ctx.fillStyle = '#22c55e';
             ctx.beginPath(); ctx.arc(x1,y1,4,0,Math.PI*2); ctx.fill();
@@ -3155,12 +3159,12 @@ function toggleObTrend() {
             // serve poter piazzare due trendline dallo stesso punto esatto (vedi mousemove/mouseup).
             _obTrendPending = { hit, px, py };
         } else if (!_obTrendP1) {
-            const t = _obChart.timeScale().coordinateToTime(px), p = _obCandleS.coordinateToPrice(py);
-            if (t != null && p != null) _obTrendP1 = { t, p };
+            const r = DrawTools.trendPickPoint(_obChart, _obCandleS, _obKlines, px, py);
+            if (r) _obTrendP1 = r;
         } else {
-            const t2 = _obChart.timeScale().coordinateToTime(px), p2 = _obCandleS.coordinateToPrice(py);
-            if (t2 != null && p2 != null) {
-                _obTrendlines.push({ t1: _obTrendP1.t, p1: _obTrendP1.p, t2, p2 });
+            const r2 = DrawTools.trendPickPoint(_obChart, _obCandleS, _obKlines, px, py, _obTrendP1.t);
+            if (r2) {
+                _obTrendlines.push({ t1: _obTrendP1.t, p1: _obTrendP1.p, t2: r2.t, p2: r2.p });
                 _obSaveDrawings();
             }
             _obTrendP1 = null; _obTrendPrev = null;
@@ -3184,8 +3188,8 @@ function toggleObTrend() {
         if (_obTrendDrag) {
             if (!(e.buttons & 1)) { _obTrendDrag = null; return; }
             const { tl, part } = _obTrendDrag;
-            if (part === 'p1') { const t=_obChart.timeScale().coordinateToTime(px), p=_obCandleS.coordinateToPrice(py); if(t&&p){tl.t1=t;tl.p1=p;} }
-            else if (part === 'p2') { const t=_obChart.timeScale().coordinateToTime(px), p=_obCandleS.coordinateToPrice(py); if(t&&p){tl.t2=t;tl.p2=p;} }
+            if (part === 'p1') { const r = DrawTools.trendPickPoint(_obChart, _obCandleS, _obKlines, px, py, tl.t2); if (r) { tl.t1=r.t; tl.p1=r.p; } }
+            else if (part === 'p2') { const r = DrawTools.trendPickPoint(_obChart, _obCandleS, _obKlines, px, py, tl.t1); if (r) { tl.t2=r.t; tl.p2=r.p; } }
             else { const dpx=px-_obTrendDrag.sx, dpy=py-_obTrendDrag.sy; const nt1=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox1+dpx), np1=_obCandleS.coordinateToPrice(_obTrendDrag.oy1+dpy); const nt2=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox2+dpx), np2=_obCandleS.coordinateToPrice(_obTrendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2;} }
             _obTrendDrawAll();
         } else if (_obTrendP1) {
@@ -3201,8 +3205,8 @@ function toggleObTrend() {
         if (_obTrendPending) {
             // Click senza drag su un punto/linea esistente → inizia una nuova trendline da qui.
             const { px: cpx, py: cpy } = _obTrendPending;
-            const t = _obChart.timeScale().coordinateToTime(cpx), p = _obCandleS.coordinateToPrice(cpy);
-            if (t != null && p != null) _obTrendP1 = { t, p };
+            const r = DrawTools.trendPickPoint(_obChart, _obCandleS, _obKlines, cpx, cpy);
+            if (r) _obTrendP1 = r;
             _obTrendPending = null;
             return;
         }
@@ -3481,6 +3485,8 @@ createApp({
             DrawTools.attachToolContextMenu(document.getElementById('ob-chart-container'), {
                 isAnyToolActive: () => _obRangeActive || _obHlineActive || _obTrendActive,
                 onTrend: toggleObTrend, onHline: toggleObHline, onRange: toggleObRange,
+                onClear: clearObDrawings,
+                hasDrawings: () => !!(_obHlines.length || _obTrendlines.length),
             });
         };
 

@@ -869,12 +869,13 @@ let slots    = [];       // always 18 slots
 let ws = null, wsTimer = null;
 
 // fullscreen
-let fsChart = null, fsCandleS = null, fsEmaS = {}, fsLastEMA = {}, fsKlineCount = 0;
+let fsChart = null, fsCandleS = null, fsEmaS = {}, fsLastEMA = {}, fsKlineCount = 0, fsKlines = [];
 let fsRangeActive = false, fsRangeP1 = null, _fsRangeMD = null, _fsRangeMM = null, _fsRangeMU = null, _fsRangeCM = null, _fsRangeHoverLine = null, _fsRangeHoverML = null;
 let fsHlineActive = false, fsHlines = [], _fsHlineMD = null, _fsHlineMM = null, _fsHlineMU = null, _fsHlineCM = null, _fsHlineDragging = null, _fsHlineHoverLine = null, _fsHlineHoverML = null;
 let fsTrendActive = false, fsTrendlines = [], _fsTrendP1 = null, _fsTrendPrev = null, _fsTrendPending = null;
 let _fsTrendMD = null, _fsTrendMM = null, _fsTrendMU = null, _fsTrendCM = null, _fsTrendDrag = null, _fsTrendRAF = null;
 let fsTF = '30', fsCoin = null;
+let _fsSlotIdx = null; // slot d'origine, per riportare i disegni al mini-chart alla chiusura
 let _fsLastPrice = null, _fsLastOpen = null;
 let fsWs = null, fsWsTimer = null;
 let fsDayHighLine = null, fsDayLowLine = null;
@@ -2665,7 +2666,7 @@ const mtfEl = document.createElement('button');
         if (IS_MOBILE) {
             rightGroup.append(candlePctEl, clearDrawBtn, rangeBtn, hlineBtn, trendBtn);
         } else {
-            rightGroup.append(candlePctEl, clearDrawBtn, rangeBtn, hlineBtn, trendBtn, sep(), mtfEl, expandEl);
+            rightGroup.append(candlePctEl, clearDrawBtn, sep(), mtfEl, expandEl);
         }
         if (IS_MOBILE) {
             tradeEl.style.display = 'none';
@@ -2774,6 +2775,8 @@ const mtfEl = document.createElement('button');
         DrawTools.attachToolContextMenu(body, {
             isAnyToolActive: () => _s.rangeActive || _s.hlineActive || _s.trendActive,
             onTrend: () => toggleSlotTrend(i), onHline: () => toggleSlotHline(i), onRange: () => toggleSlotRange(i),
+            onClear: () => clearSlotDrawings(i),
+            hasDrawings: () => !!(_s.hlines.length || _s.trendlines.length),
         });
         chart.timeScale().subscribeVisibleTimeRangeChange(() => {});
         chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) { const n = TF_DEFAULT_N[s.curTF]||80; s.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, s.klineCount-n), to: s.klineCount+3 }); s.chart.priceScale('right').applyOptions({ autoScale: true }); } });
@@ -3030,6 +3033,7 @@ async function loadSlot(idx, coin) {
     }
     renderSlotTF(idx);
     await loadSlotData(idx);
+    _chartRestoreDrawings(idx);
     if (curMode !== 'ibkr') {
         if (obLevelsActive) {
             clearInterval(s.obTimer); s.obTimer = null;
@@ -3162,6 +3166,7 @@ async function openFullscreenWithTrade(idx) {
 async function openFullscreen(idx) {
     const s = slots[idx];
     if (!s.coin) return;
+    _fsSlotIdx = idx;
     fsCoin = s.coin; fsTF = s.curTF;
     _instInfo = null;
 
@@ -3173,12 +3178,22 @@ async function openFullscreen(idx) {
     document.getElementById('fs-vol').textContent    = fmtVol(fsCoin.volume_24h);
 
     initFsChart();
+    // Riparte dai disegni già presenti sul mini-chart d'origine (prima si azzerava
+    // sempre: aprendo il grafico a schermo intero le linee sparivano).
     for (const hl of fsHlines) { try { fsCandleS.removePriceLine(hl.priceLine); } catch(ex) {} }
     fsHlines = [];
+    for (const { price } of s.hlines) {
+        try {
+            const pl = fsCandleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+            fsHlines.push({ priceLine: pl, price });
+        } catch(ex) {}
+    }
     if (_fsTrendRAF) { cancelAnimationFrame(_fsTrendRAF); _fsTrendRAF = null; }
     if (fsTrendActive) { fsTrendActive = false; const _fb = document.getElementById('fs-trend-btn'); if (_fb) _fb.style.color = '#B2B5BE'; }
-    fsTrendlines = []; _fsTrendP1 = null; _fsTrendPrev = null; _fsTrendDrag = null;
+    fsTrendlines = s.trendlines.map(tl => ({ t1: tl.t1, p1: tl.p1, t2: tl.t2, p2: tl.p2 }));
+    _fsTrendP1 = null; _fsTrendPrev = null; _fsTrendDrag = null;
     try { const _ftc = document.getElementById('fs-trend-canvas'); if (_ftc) { const ctx = _ftc.getContext('2d'); ctx.clearRect(0,0,_ftc.width,_ftc.height); _ftc.style.pointerEvents = 'none'; _ftc.style.cursor = ''; } } catch(ex) {}
+    if (fsTrendlines.length) DrawTools.trendEnsureRAF(_fsTrendSurface);
     _syncFsClearBtn();
     renderFsTFBar();
     // ATH/ATL dalla slot d'origine — cachati qui perché tf-switch successivi non hanno accesso alla slot,
@@ -3209,6 +3224,7 @@ function closeFullscreen() {
     if (fsRangeActive) toggleFsRange();
     if (fsHlineActive) toggleFsHline();
     if (fsTrendActive) toggleFsTrend();
+    _syncFsDrawingsBackToSlot();
     document.getElementById('fs-overlay').style.display = 'none';
     // trade cleanup
     clearInterval(_tradePollT); _tradePollT = null;
@@ -3238,6 +3254,27 @@ function closeFullscreen() {
     }
     _fsAthVal = null; _fsAtlVal = null;
     fsCoin = null;
+    _fsSlotIdx = null;
+}
+
+// Riporta hline/trendline correnti del fullscreen sul mini-chart d'origine, così le
+// modifiche fatte a schermo intero non si perdono chiudendo (va chiamata PRIMA di
+// azzerare fsHlines/fsTrendlines/_fsSlotIdx più sotto).
+function _syncFsDrawingsBackToSlot() {
+    const s = slots[_fsSlotIdx];
+    if (!s || !s.candleS) return;
+    for (const hl of s.hlines) { try { s.candleS.removePriceLine(hl.priceLine); } catch(ex) {} }
+    s.hlines = [];
+    for (const { price } of fsHlines) {
+        try {
+            const pl = s.candleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+            s.hlines.push({ priceLine: pl, price });
+        } catch(ex) {}
+    }
+    s.trendlines = fsTrendlines.map(tl => ({ t1: tl.t1, p1: tl.p1, t2: tl.t2, p2: tl.p2 }));
+    _trendDrawAll(s);
+    if (s.trendlines.length) _trendEnsureRAF(s);
+    _syncClearBtn(s);
 }
 
 function renderFsTFBar() {
@@ -3280,6 +3317,7 @@ async function loadFsData() {
         if (!j.success) return;
         const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
         fsCandleS.setData(klines);
+        fsKlines = klines;
         if (klines.length) { _fsLastPrice = klines[klines.length-1].close; _fsLastOpen = klines[klines.length-1].open; }
         fsDayPrimitive = attachDayLines(fsCandleS, fsChart, klines, fsTF, fsDayPrimitive);
         fsCandleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
@@ -3875,6 +3913,8 @@ setInterval(updateMarketSessions, 1000);
 DrawTools.attachToolContextMenu(document.getElementById('fs-chart-body'), {
     isAnyToolActive: () => fsRangeActive || fsHlineActive || fsTrendActive,
     onTrend: toggleFsTrend, onHline: toggleFsHline, onRange: toggleFsRange,
+    onClear: clearFsDrawings,
+    hasDrawings: () => !!(fsHlines.length || fsTrendlines.length),
 });
 
 // ── bootstrap ──────────────────────────────────────────────────────────────────
@@ -4305,6 +4345,56 @@ function _syncClearBtn(s) {
     if (s && s.clearDrawBtn) s.clearDrawBtn.style.display = (s.hlines.length || s.trendlines.length) ? '' : 'none';
 }
 
+// Persistenza hline/trendline per simbolo (localStorage + sync server per utenti
+// loggati, stesso pattern di mtf_drawings/ob_drawings/inline_drawings — vedi
+// feedback_localstorage_config_migration). Copre sia i mini-chart in griglia
+// (chiamata da toggleSlotHline/toggleSlotTrend/clearSlotDrawings) sia il fullscreen
+// in-page (toggleFsHline/toggleFsTrend/clearFsDrawings) — entrambi scrivono sotto
+// la stessa chiave per simbolo, così "apri a schermo intero" in una NUOVA scheda
+// (bottone ⤢, che fa window.open su una pagina chart.html completamente separata,
+// senza stato JS condiviso) ritrova comunque i disegni leggendoli da qui.
+function _chartLoadDrawings() {
+    try { return JSON.parse(localStorage.getItem('chart_grid_drawings') || '{}'); } catch(e) { return {}; }
+}
+function _chartSaveDrawings(symbol, hlines, trendlines) {
+    if (!symbol) return;
+    let json;
+    try {
+        const all = _chartLoadDrawings();
+        all[symbol] = {
+            hlines: (hlines || []).map(h => h.price),
+            trendlines: (trendlines || []).map(tl => ({ t1: tl.t1, p1: tl.p1, t2: tl.t2, p2: tl.p2 })),
+        };
+        json = JSON.stringify(all);
+        localStorage.setItem('chart_grid_drawings', json);
+    } catch(e) { return; }
+    try {
+        const x = new XMLHttpRequest();
+        x.open('PUT', '/api/prefs/' + encodeURIComponent('chart_grid_drawings'), false);
+        x.setRequestHeader('Content-Type', 'application/json');
+        x.send(JSON.stringify({ value: json }));
+    } catch(e) {}
+}
+function _chartRestoreDrawings(idx) {
+    const s = slots[idx];
+    if (!s || !s.symbol) return;
+    const rec = _chartLoadDrawings()[s.symbol];
+    if (!rec) return;
+    if (Array.isArray(rec.hlines)) {
+        for (const price of rec.hlines) {
+            try {
+                const pl = s.candleS.createPriceLine({ price, color: '#3b82f6', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
+                s.hlines.push({ priceLine: pl, price });
+            } catch(e) {}
+        }
+    }
+    if (Array.isArray(rec.trendlines) && rec.trendlines.length) {
+        s.trendlines.push(...rec.trendlines);
+        _trendEnsureRAF(s);
+    }
+    _syncClearBtn(s);
+}
+
 function clearSlotDrawings(idx) {
     const s = slots[idx];
     if (!s) return;
@@ -4315,6 +4405,7 @@ function clearSlotDrawings(idx) {
     }
     s.trendlines = [];
     try { _trendDrawAll(s); } catch(e) {}
+    _chartSaveDrawings(s.symbol, s.hlines, s.trendlines);
 }
 
 function _syncFsClearBtn() {
@@ -4331,6 +4422,7 @@ function clearFsDrawings() {
     }
     fsTrendlines = [];
     try { DrawTools.trendDrawAll(_fsTrendSurface); } catch(e) {}
+    _chartSaveDrawings(fsCoin?.symbol, fsHlines, fsTrendlines);
 }
 
 const _fsRangeSurface = {
@@ -4358,6 +4450,7 @@ function toggleSlotHline(idx) {
     DrawTools.toggleHline(s, {
         onDeactivateSiblings: () => { if (s.rangeActive) toggleSlotRange(idx); if (s.trendActive) toggleSlotTrend(idx); },
         onSyncClearBtn: () => _syncClearBtn(s),
+        onChange: () => _chartSaveDrawings(s.symbol, s.hlines, s.trendlines),
     });
 }
 
@@ -4379,21 +4472,60 @@ function toggleFsHline() {
     DrawTools.toggleHline(_fsHlineSurface, {
         onDeactivateSiblings: () => { if (fsRangeActive) toggleFsRange(); if (fsTrendActive) toggleFsTrend(); },
         onSyncClearBtn: _syncFsClearBtn,
+        onChange: () => _chartSaveDrawings(fsCoin?.symbol, fsHlines, fsTrendlines),
     });
 }
 
 // ── Trendline pannelli (indipendente per slot — non unificata, vedi draw-tools.js) ──
+// timeToCoordinate() nativo torna null se tl.t1/t2 (timestamp esatti delle candele del
+// TF con cui la linea è stata tracciata) non combaciano con nessuna candela del TF
+// corrente dello slot (es. minuto preciso tracciato a 1m, poi lo slot passa a 5m) —
+// la trendline spariva cambiando TF sullo STESSO mini-chart pur restando in s.trendlines.
+// Fallback: interpola tra le due candele più vicine del TF corrente (stessa logica di
+// _timeToXRobust in mtf.html).
+function _timeToXRobust(s, t) {
+    const direct = s.chart.timeScale().timeToCoordinate(t);
+    if (direct != null) return direct;
+    const kl = s.klines;
+    if (!kl || kl.length < 2) return null;
+    let loIdx, hiIdx, frac;
+    if (t <= kl[0].time) {
+        loIdx = 0; hiIdx = 1;
+        const dt = kl[1].time - kl[0].time;
+        frac = dt ? (t - kl[0].time) / dt : 0;
+    } else if (t >= kl[kl.length - 1].time) {
+        const n = kl.length;
+        loIdx = n - 2; hiIdx = n - 1;
+        const dt = kl[n-1].time - kl[n-2].time;
+        frac = dt ? 1 + (t - kl[n-1].time) / dt : 1;
+    } else {
+        let lo = 0, hi = kl.length - 1;
+        while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (kl[mid].time <= t) lo = mid; else hi = mid; }
+        loIdx = lo; hiIdx = hi;
+        const dt = kl[hi].time - kl[lo].time;
+        frac = dt ? (t - kl[lo].time) / dt : 0;
+    }
+    try {
+        const xLo = s.chart.timeScale().logicalToCoordinate(loIdx);
+        const xHi = s.chart.timeScale().logicalToCoordinate(hiIdx);
+        if (xLo == null || xHi == null) return null;
+        return xLo + (xHi - xLo) * frac;
+    } catch(e) { return null; }
+}
+
 function _trendDrawAll(s) {
     _syncClearBtn(s);
     const canvas = s.trendCanvas; DrawTools.trendSync(canvas);
     const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
+    let paneW = W;
+    try { const aw = s.chart.priceScale('right').width(); if (Number.isFinite(aw)) paneW = Math.max(0, W - aw); } catch(e) {}
     ctx.clearRect(0, 0, W, H);
     for (const tl of s.trendlines) {
         try {
-            const x1 = s.chart.timeScale().timeToCoordinate(tl.t1), y1 = s.candleS.priceToCoordinate(tl.p1);
-            const x2 = s.chart.timeScale().timeToCoordinate(tl.t2), y2 = s.candleS.priceToCoordinate(tl.p2);
+            const x1 = _timeToXRobust(s, tl.t1), y1 = s.candleS.priceToCoordinate(tl.p1);
+            const x2 = _timeToXRobust(s, tl.t2), y2 = s.candleS.priceToCoordinate(tl.p2);
             if (x1==null||y1==null||x2==null||y2==null) continue;
-            DrawTools.trendDrawExt(ctx, x1, y1, x2, y2, W, H, '#22c55e', 1.5);
+            DrawTools.trendDrawExt(ctx, x1, y1, x2, y2, paneW, H, '#22c55e', 1.5);
             ctx.fillStyle = '#22c55e';
             ctx.beginPath(); ctx.arc(x1, y1, 4, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(x2, y2, 4, 0, Math.PI*2); ctx.fill();
@@ -4431,8 +4563,8 @@ function _trendNearest(s, cx, cy) {
     let best = null, bestDist = DrawTools.TREND_HIT, bestPart = 'line';
     for (const tl of s.trendlines) {
         try {
-            const x1 = s.chart.timeScale().timeToCoordinate(tl.t1), y1 = s.candleS.priceToCoordinate(tl.p1);
-            const x2 = s.chart.timeScale().timeToCoordinate(tl.t2), y2 = s.candleS.priceToCoordinate(tl.p2);
+            const x1 = _timeToXRobust(s, tl.t1), y1 = s.candleS.priceToCoordinate(tl.p1);
+            const x2 = _timeToXRobust(s, tl.t2), y2 = s.candleS.priceToCoordinate(tl.p2);
             if (x1==null||y1==null||x2==null||y2==null) continue;
             const d1 = Math.hypot(mx-x1, my-y1), d2 = Math.hypot(mx-x2, my-y2);
             if (d1 <= DrawTools.TREND_HIT && d1 < bestDist) { best = tl; bestDist = d1; bestPart = 'p1'; }
@@ -4467,12 +4599,13 @@ function toggleSlotTrend(idx) {
             // serve poter piazzare due trendline dallo stesso punto esatto (vedi mousemove/mouseup).
             s._trendPending = { hit, px, py };
         } else if (!s._trendP1) {
-            const t = s.chart.timeScale().coordinateToTime(px), p = s.candleS.coordinateToPrice(py);
-            if (t != null && p != null) s._trendP1 = { t, p };
+            const r = DrawTools.trendPickPoint(s.chart, s.candleS, s.klines, px, py);
+            if (r) s._trendP1 = r;
         } else {
-            const t2 = s.chart.timeScale().coordinateToTime(px), p2 = s.candleS.coordinateToPrice(py);
-            if (t2 != null && p2 != null) {
-                s.trendlines.push({ t1: s._trendP1.t, p1: s._trendP1.p, t2, p2 });
+            const r2 = DrawTools.trendPickPoint(s.chart, s.candleS, s.klines, px, py, s._trendP1.t);
+            if (r2) {
+                s.trendlines.push({ t1: s._trendP1.t, p1: s._trendP1.p, t2: r2.t, p2: r2.p });
+                _chartSaveDrawings(s.symbol, s.hlines, s.trendlines);
             }
             s._trendP1 = null; s._trendPrev = null; _trendDrawAll(s);
         }
@@ -4484,8 +4617,8 @@ function toggleSlotTrend(idx) {
             const { hit, px: dpx0, py: dpy0 } = s._trendPending;
             if (hit.part !== 'line') { s._trendDrag = { tl: hit.tl, part: hit.part }; s.trendCanvas.style.cursor = 'grabbing'; }
             else {
-                const ox1 = s.chart.timeScale().timeToCoordinate(hit.tl.t1), oy1 = s.candleS.priceToCoordinate(hit.tl.p1);
-                const ox2 = s.chart.timeScale().timeToCoordinate(hit.tl.t2), oy2 = s.candleS.priceToCoordinate(hit.tl.p2);
+                const ox1 = _timeToXRobust(s, hit.tl.t1), oy1 = s.candleS.priceToCoordinate(hit.tl.p1);
+                const ox2 = _timeToXRobust(s, hit.tl.t2), oy2 = s.candleS.priceToCoordinate(hit.tl.p2);
                 s._trendDrag = { tl: hit.tl, part: 'line', sx: dpx0, sy: dpy0, ox1, oy1, ox2, oy2 };
                 s.trendCanvas.style.cursor = 'move';
             }
@@ -4494,8 +4627,8 @@ function toggleSlotTrend(idx) {
         if (s._trendDrag) {
             if (!(e.buttons & 1)) { s._trendDrag = null; return; }
             const { tl, part } = s._trendDrag;
-            if (part === 'p1') { const t = s.chart.timeScale().coordinateToTime(px), p = s.candleS.coordinateToPrice(py); if (t&&p) { tl.t1=t; tl.p1=p; } }
-            else if (part === 'p2') { const t = s.chart.timeScale().coordinateToTime(px), p = s.candleS.coordinateToPrice(py); if (t&&p) { tl.t2=t; tl.p2=p; } }
+            if (part === 'p1') { const r = DrawTools.trendPickPoint(s.chart, s.candleS, s.klines, px, py, tl.t2); if (r) { tl.t1=r.t; tl.p1=r.p; } }
+            else if (part === 'p2') { const r = DrawTools.trendPickPoint(s.chart, s.candleS, s.klines, px, py, tl.t1); if (r) { tl.t2=r.t; tl.p2=r.p; } }
             else { const dpx=px-s._trendDrag.sx, dpy=py-s._trendDrag.sy; const nt1=s.chart.timeScale().coordinateToTime(s._trendDrag.ox1+dpx), np1=s.candleS.coordinateToPrice(s._trendDrag.oy1+dpy); const nt2=s.chart.timeScale().coordinateToTime(s._trendDrag.ox2+dpx), np2=s.candleS.coordinateToPrice(s._trendDrag.oy2+dpy); if (nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2;} }
             _trendDrawAll(s);
         } else if (s._trendP1) {
@@ -4510,11 +4643,12 @@ function toggleSlotTrend(idx) {
         if (s._trendPending) {
             // Click senza drag su un punto/linea esistente → inizia una nuova trendline da qui.
             const { px: cpx, py: cpy } = s._trendPending;
-            const t = s.chart.timeScale().coordinateToTime(cpx), p = s.candleS.coordinateToPrice(cpy);
-            if (t != null && p != null) s._trendP1 = { t, p };
+            const r = DrawTools.trendPickPoint(s.chart, s.candleS, s.klines, cpx, cpy);
+            if (r) s._trendP1 = r;
             s._trendPending = null;
             return;
         }
+        if (s._trendDrag) _chartSaveDrawings(s.symbol, s.hlines, s.trendlines);
         s._trendDrag = null; s.trendCanvas.style.cursor = 'crosshair';
     };
     s._trendCM = e => {
@@ -4525,6 +4659,7 @@ function toggleSlotTrend(idx) {
         const hit = _trendNearest(s, e.clientX, e.clientY);
         if (hit) {
             s.trendlines = s.trendlines.filter(tl => tl !== hit.tl); _trendDrawAll(s);
+            _chartSaveDrawings(s.symbol, s.hlines, s.trendlines);
         } else toggleSlotTrend(idx);
     };
     s.trendCanvas.addEventListener('mousedown', s._trendMD);
@@ -4540,6 +4675,7 @@ const _fsTrendSurface = {
     get trendBtn() { return document.getElementById('fs-trend-btn'); },
     get chart() { return fsChart; },
     get candleS() { return fsCandleS; },
+    get klines() { return fsKlines; },
     get _trendP1() { return _fsTrendP1; }, set _trendP1(v) { _fsTrendP1 = v; },
     get _trendPrev() { return _fsTrendPrev; }, set _trendPrev(v) { _fsTrendPrev = v; },
     get _trendPending() { return _fsTrendPending; }, set _trendPending(v) { _fsTrendPending = v; },
@@ -4553,7 +4689,8 @@ const _fsTrendSurface = {
 };
 function toggleFsTrend() {
     DrawTools.toggleFsTrend(_fsTrendSurface, {
-        onDeactivateSiblings: () => { if (fsRangeActive) toggleFsRange(); if (fsHlineActive) toggleFsHline(); }
+        onDeactivateSiblings: () => { if (fsRangeActive) toggleFsRange(); if (fsHlineActive) toggleFsHline(); },
+        onChange: () => _chartSaveDrawings(fsCoin?.symbol, fsHlines, fsTrendlines),
     });
 }
 

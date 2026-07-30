@@ -1598,7 +1598,7 @@
           return bars.map((b,i) => { if(i>0) v=b.close*k+v*(1-k); return {time:b.time,value:v}; });
         }
 
-        let _inlinePreviewRow = null, _inlinePreviewChart = null, _inlinePreviewSeries = null, _inlinePreviewEmaS = null;
+        let _inlinePreviewRow = null, _inlinePreviewChart = null, _inlinePreviewSeries = null, _inlinePreviewEmaS = null, _inlinePreviewKlines = [];
         let _inlinePreviewSymbol = null, _inlinePreviewTF = 'D';
         const _INLINE_TF_LIST = [['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']];
 
@@ -1665,6 +1665,8 @@
           DrawTools.attachToolContextMenu(document.getElementById(`inline-chart-wrap-${symbol}`), {
             isAnyToolActive: () => _inlineRangeActive || _inlineHlineActive || _inlineTrendActive,
             onTrend: toggleInlineTrend, onHline: toggleInlineHline, onRange: toggleInlineRange,
+            onClear: _inlineClearDrawings,
+            hasDrawings: () => !!(_inlineHlines.length || _inlineTrendlines.length),
           });
           _inlineRestoreDrawings(symbol);
           await _loadInlineChartData(symbol, 'D');
@@ -1727,6 +1729,7 @@
           get trendBtn() { return _inlineNoBtn; },
           get chart() { return _inlinePreviewChart; },
           get candleS() { return _inlinePreviewSeries; },
+          get klines() { return _inlinePreviewKlines; },
           get _trendP1() { return _inlineTrendP1; }, set _trendP1(v) { _inlineTrendP1 = v; },
           get _trendPrev() { return _inlineTrendPrev; }, set _trendPrev(v) { _inlineTrendPrev = v; },
           get _trendPending() { return _inlineTrendPending; }, set _trendPending(v) { _inlineTrendPending = v; },
@@ -1767,6 +1770,18 @@
             x.send(JSON.stringify({ value: json }));
           } catch(e) {}
         }
+        function _inlineClearDrawings() {
+          if (!_inlinePreviewSeries) return;
+          DrawTools.clearHlines(_inlineHlineSurface);
+          for (const tl of _inlineTrendlines) {
+            if (tl.pl1) try { _inlinePreviewSeries.removePriceLine(tl.pl1); } catch(e) {}
+            if (tl.pl2) try { _inlinePreviewSeries.removePriceLine(tl.pl2); } catch(e) {}
+          }
+          _inlineTrendlines = [];
+          try { DrawTools.trendDrawAll(_inlineTrendSurface); } catch(e) {}
+          _inlineSaveDrawings();
+        }
+
         function _inlineRestoreDrawings(symbol) {
           const rec = _inlineLoadDrawings()[symbol];
           if (!rec) return;
@@ -1808,6 +1823,7 @@
               klines = j.data; _ttCache[cacheKey] = klines;
             }
             if (_inlinePreviewChart !== chart) return;
+            _inlinePreviewKlines = klines;
             series.setData(klines);
             for (const { p } of _TT_EMA) emaS[p].setData(_calcEmaT(klines, p));
             chart.timeScale().setVisibleLogicalRange({ from: klines.length - 60, to: klines.length + 1 });

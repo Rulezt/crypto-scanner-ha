@@ -40,6 +40,47 @@
         return Math.hypot(px - x1 - t * dx, py - y1 - t * dy);
     }
 
+    // ── Magnete OHLC per gli endpoint della trendline ───────────────────────────────
+    // Se il cursore è entro TREND_SNAP_PX da open/high/low/close di una delle candele
+    // vicine (in orizzontale, sulle coordinate pixel), il punto si aggancia lì invece
+    // che al prezzo/tempo grezzo sotto il cursore. Usato sia per piazzare un nuovo
+    // punto sia per trascinare un endpoint esistente (non per il trascinamento
+    // dell'intera linea, che resta una traslazione libera).
+    //
+    // excludeTime: quando si piazza/trascina il SECONDO estremo, esclude la candela
+    // già usata dal primo. Senza questo, il magnete tende ad agganciare entrambi i
+    // punti alla stessa candela (es. minimo→massimo) — pendenza assurda in tempo/prezzo
+    // che su un pannello con TF molto più ampio (es. Weekly) si estrapola fuori da
+    // qualsiasi prezzo visibile: la retta esiste ma non è MAI visibile sugli altri
+    // pannelli (bug reale riprodotto: trendline 1m invisibile su tutti gli altri TF).
+    const TREND_SNAP_PX = 10;
+    function trendSnapPoint(chart, candleS, klines, px, py, excludeTime) {
+        if (!klines || !klines.length) return null;
+        let logical;
+        try { logical = chart.timeScale().coordinateToLogical(px); } catch(e) { return null; }
+        if (logical == null) return null;
+        const idx = Math.round(logical);
+        let best = null, bestDist = TREND_SNAP_PX;
+        for (let i = idx - 1; i <= idx + 1; i++) {
+            const k = klines[i];
+            if (!k || k.time === excludeTime) continue;
+            for (const price of [k.open, k.high, k.low, k.close]) {
+                let y; try { y = candleS.priceToCoordinate(price); } catch(e) { continue; }
+                if (y == null) continue;
+                const d = Math.abs(y - py);
+                if (d < bestDist) { bestDist = d; best = { price, time: k.time }; }
+            }
+        }
+        return best;
+    }
+    // Punto trendline con fallback al prezzo/tempo grezzo se nessun OHLC è abbastanza vicino.
+    function trendPickPoint(chart, candleS, klines, px, py, excludeTime) {
+        const snap = trendSnapPoint(chart, candleS, klines, px, py, excludeTime);
+        if (snap) return { t: snap.time, p: snap.price };
+        const t = chart.timeScale().coordinateToTime(px), p = candleS.coordinateToPrice(py);
+        return (t != null && p != null) ? { t, p } : null;
+    }
+
     // ── Range (tool di misura, mai persistito) ──────────────────────────────────────
     function drawRangeCanvas(canvas, series, p1, p2) {
         canvas.width  = canvas.clientWidth  || canvas.parentElement.clientWidth  || 100;
@@ -264,19 +305,58 @@
         opts.onChange?.();
     }
 
+    // timeToCoordinate() nativo torna null se tl.t1/t2 (timestamp esatti delle candele
+    // del TF con cui la linea è stata tracciata) non combaciano con nessuna candela del
+    // TF corrente (es. minuto preciso tracciato a 1m, poi il fullscreen passa a 5m) — la
+    // trendline spariva cambiando TF pur restando in s.trendlines. Fallback: interpola
+    // tra le due candele più vicine del TF corrente (richiede s.klines sulla surface).
+    function timeToXRobust(s, t) {
+        const direct = s.chart.timeScale().timeToCoordinate(t);
+        if (direct != null) return direct;
+        const kl = s.klines;
+        if (!kl || kl.length < 2) return null;
+        let loIdx, hiIdx, frac;
+        if (t <= kl[0].time) {
+            loIdx = 0; hiIdx = 1;
+            const dt = kl[1].time - kl[0].time;
+            frac = dt ? (t - kl[0].time) / dt : 0;
+        } else if (t >= kl[kl.length - 1].time) {
+            const n = kl.length;
+            loIdx = n - 2; hiIdx = n - 1;
+            const dt = kl[n-1].time - kl[n-2].time;
+            frac = dt ? 1 + (t - kl[n-1].time) / dt : 1;
+        } else {
+            let lo = 0, hi = kl.length - 1;
+            while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (kl[mid].time <= t) lo = mid; else hi = mid; }
+            loIdx = lo; hiIdx = hi;
+            const dt = kl[hi].time - kl[lo].time;
+            frac = dt ? (t - kl[lo].time) / dt : 0;
+        }
+        try {
+            const xLo = s.chart.timeScale().logicalToCoordinate(loIdx);
+            const xHi = s.chart.timeScale().logicalToCoordinate(hiIdx);
+            if (xLo == null || xHi == null) return null;
+            return xLo + (xHi - xLo) * frac;
+        } catch(e) { return null; }
+    }
+
     // ── Trendline — SOLO fullscreen (i pannelli in griglia restano non unificati) ────
     function trendDrawAll(s) {
         s.syncClearBtn?.();
         const canvas = s.trendCanvas; if (!canvas || !s.candleS || !s.chart) return;
         trendSync(canvas);
         const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
+        // La retta estesa si ferma al bordo del pannello candele, PRIMA della colonna
+        // prezzo (il canvas del tool è largo quanto l'intero container, asse compreso).
+        let paneW = W;
+        try { const aw = s.chart.priceScale('right').width(); if (Number.isFinite(aw)) paneW = Math.max(0, W - aw); } catch(e) {}
         ctx.clearRect(0, 0, W, H);
         for (const tl of s.trendlines) {
             try {
-                const x1 = s.chart.timeScale().timeToCoordinate(tl.t1), y1 = s.candleS.priceToCoordinate(tl.p1);
-                const x2 = s.chart.timeScale().timeToCoordinate(tl.t2), y2 = s.candleS.priceToCoordinate(tl.p2);
+                const x1 = timeToXRobust(s, tl.t1), y1 = s.candleS.priceToCoordinate(tl.p1);
+                const x2 = timeToXRobust(s, tl.t2), y2 = s.candleS.priceToCoordinate(tl.p2);
                 if (x1==null||y1==null||x2==null||y2==null) continue;
-                trendDrawExt(ctx, x1, y1, x2, y2, W, H, '#22c55e', 1.5);
+                trendDrawExt(ctx, x1, y1, x2, y2, paneW, H, '#22c55e', 1.5);
                 ctx.fillStyle = '#22c55e';
                 ctx.beginPath(); ctx.arc(x1, y1, 4, 0, Math.PI*2); ctx.fill();
                 ctx.beginPath(); ctx.arc(x2, y2, 4, 0, Math.PI*2); ctx.fill();
@@ -311,8 +391,8 @@
         let best = null, bestDist = TREND_HIT, bestPart = 'line';
         for (const tl of s.trendlines) {
             try {
-                const x1 = s.chart.timeScale().timeToCoordinate(tl.t1), y1 = s.candleS.priceToCoordinate(tl.p1);
-                const x2 = s.chart.timeScale().timeToCoordinate(tl.t2), y2 = s.candleS.priceToCoordinate(tl.p2);
+                const x1 = timeToXRobust(s, tl.t1), y1 = s.candleS.priceToCoordinate(tl.p1);
+                const x2 = timeToXRobust(s, tl.t2), y2 = s.candleS.priceToCoordinate(tl.p2);
                 if (x1==null||y1==null||x2==null||y2==null) continue;
                 const d1 = Math.hypot(mx-x1, my-y1), d2 = Math.hypot(mx-x2, my-y2);
                 if (d1 <= TREND_HIT && d1 < bestDist) { best = tl; bestDist = d1; bestPart = 'p1'; }
@@ -348,11 +428,11 @@
                 // serve poter piazzare due trendline dallo stesso punto esatto (vedi mousemove/mouseup).
                 s._trendPending = { hit, px, py };
             } else if (!s._trendP1) {
-                const t = s.chart.timeScale().coordinateToTime(px), p = s.candleS.coordinateToPrice(py);
-                if (t != null && p != null) s._trendP1 = { t, p };
+                const r = trendPickPoint(s.chart, s.candleS, s.klines, px, py);
+                if (r) s._trendP1 = r;
             } else {
-                const t2 = s.chart.timeScale().coordinateToTime(px), p2 = s.candleS.coordinateToPrice(py);
-                if (t2 != null && p2 != null) { s.trendlines.push({ t1: s._trendP1.t, p1: s._trendP1.p, t2, p2 }); opts.onChange?.(); }
+                const r2 = trendPickPoint(s.chart, s.candleS, s.klines, px, py, s._trendP1.t);
+                if (r2) { s.trendlines.push({ t1: s._trendP1.t, p1: s._trendP1.p, t2: r2.t, p2: r2.p }); opts.onChange?.(); }
                 s._trendP1 = null; s._trendPrev = null;
                 trendDrawAll(s);
             }
@@ -364,8 +444,8 @@
                 const { hit, px: dpx0, py: dpy0 } = s._trendPending;
                 if (hit.part !== 'line') { s._trendDrag = { tl: hit.tl, part: hit.part }; canvas.style.cursor = 'grabbing'; }
                 else {
-                    const ox1 = s.chart.timeScale().timeToCoordinate(hit.tl.t1), oy1 = s.candleS.priceToCoordinate(hit.tl.p1);
-                    const ox2 = s.chart.timeScale().timeToCoordinate(hit.tl.t2), oy2 = s.candleS.priceToCoordinate(hit.tl.p2);
+                    const ox1 = timeToXRobust(s, hit.tl.t1), oy1 = s.candleS.priceToCoordinate(hit.tl.p1);
+                    const ox2 = timeToXRobust(s, hit.tl.t2), oy2 = s.candleS.priceToCoordinate(hit.tl.p2);
                     s._trendDrag = { tl: hit.tl, part: 'line', sx: dpx0, sy: dpy0, ox1, oy1, ox2, oy2 };
                     canvas.style.cursor = 'move';
                 }
@@ -374,8 +454,8 @@
             if (s._trendDrag) {
                 if (!(e.buttons & 1)) { s._trendDrag = null; return; }
                 const { tl, part } = s._trendDrag;
-                if (part === 'p1') { const t=s.chart.timeScale().coordinateToTime(px),p=s.candleS.coordinateToPrice(py); if(t&&p){tl.t1=t;tl.p1=p;} }
-                else if (part === 'p2') { const t=s.chart.timeScale().coordinateToTime(px),p=s.candleS.coordinateToPrice(py); if(t&&p){tl.t2=t;tl.p2=p;} }
+                if (part === 'p1') { const r = trendPickPoint(s.chart, s.candleS, s.klines, px, py, tl.t2); if(r){tl.t1=r.t;tl.p1=r.p;} }
+                else if (part === 'p2') { const r = trendPickPoint(s.chart, s.candleS, s.klines, px, py, tl.t1); if(r){tl.t2=r.t;tl.p2=r.p;} }
                 else { const dpx=px-s._trendDrag.sx, dpy=py-s._trendDrag.sy; const nt1=s.chart.timeScale().coordinateToTime(s._trendDrag.ox1+dpx), np1=s.candleS.coordinateToPrice(s._trendDrag.oy1+dpy); const nt2=s.chart.timeScale().coordinateToTime(s._trendDrag.ox2+dpx), np2=s.candleS.coordinateToPrice(s._trendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2;} }
                 trendDrawAll(s);
             } else if (s._trendP1) {
@@ -391,8 +471,8 @@
             if (s._trendPending) {
                 // Click senza drag su un punto/linea esistente → inizia una nuova trendline da qui.
                 const { px: cpx, py: cpy } = s._trendPending;
-                const t = s.chart.timeScale().coordinateToTime(cpx), p = s.candleS.coordinateToPrice(cpy);
-                if (t != null && p != null) s._trendP1 = { t, p };
+                const r = trendPickPoint(s.chart, s.candleS, s.klines, cpx, cpy);
+                if (r) s._trendP1 = r;
                 s._trendPending = null;
                 return;
             }
@@ -429,11 +509,11 @@
         menu.style.cssText = 'position:fixed;z-index:9999;background:#1E222D;border:1px solid #374151;border-radius:6px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.7);min-width:170px;font-family:inherit;';
         menu.style.left = clientX + 'px';
         menu.style.top = clientY + 'px';
-        for (const { label, onClick } of items) {
+        for (const { label, icon, onClick } of items) {
             if (!onClick) continue;
             const item = document.createElement('div');
-            item.textContent = label;
-            item.style.cssText = 'padding:8px 14px;font-size:12px;color:#E5E7EB;cursor:pointer;white-space:nowrap;';
+            item.innerHTML = (icon || '') + '<span>' + label + '</span>';
+            item.style.cssText = 'padding:8px 14px;font-size:12px;color:#E5E7EB;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:8px;';
             item.onmouseenter = () => item.style.background = '#2A2E39';
             item.onmouseleave = () => item.style.background = '';
             item.onmousedown = e => e.stopPropagation();
@@ -453,7 +533,6 @@
     }
 
     // container: elemento su cui intercettare il tasto destro (l'intero pannello/grafico).
-    // opts: { isAnyToolActive(): bool, onTrend, onHline, onRange, labels?: {trend,hline,range} }
     //
     // Listener in fase di CAPTURE (non bubble): se un tool è già attivo ma il click cade
     // dove non c'è nessuna riga, il listener del tool stesso (canvas sopra, target
@@ -461,23 +540,33 @@
     // sarebbe già cambiato PRIMA che questo listener lo leggesse (falso negativo:
     // isAnyToolActive() tornerebbe false e il menu apparirebbe comunque). In capture si
     // legge lo stato PRIMA che il listener del tool (in fase target/bubble) lo tocchi.
+    const ICON_TREND = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="15" height="15" style="flex-shrink:0"><path d="M5 22 L23 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="5" cy="22" r="2.5" fill="currentColor"/><circle cx="23" cy="6" r="2.5" fill="currentColor"/></svg>';
+    const ICON_HLINE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="15" height="15" fill="currentColor" style="flex-shrink:0"><rect x="2" y="13" width="7" height="2" rx="1"/><circle cx="13" cy="14" r="3"/><rect x="19" y="13" width="7" height="2" rx="1"/></svg>';
+    const ICON_RANGE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="15" height="15" style="flex-shrink:0"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg>';
+    const ICON_CLEAR = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" style="flex-shrink:0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>';
+
+    // opts: { isAnyToolActive(): bool, onTrend, onHline, onRange, onClear?, hasDrawings()?: bool,
+    //         labels?: {trend,hline,range,clear} }
+    // "Cancella disegni" compare solo se hasDrawings() torna true (se omesso, voce sempre visibile).
     function attachToolContextMenu(container, opts) {
         if (!container || !opts) return;
         container.addEventListener('contextmenu', e => {
             if (opts.isAnyToolActive && opts.isAnyToolActive()) return;
             e.preventDefault();
             const tt = (k, fb) => (window.t ? window.t(k) : '') || fb;
+            const showClear = opts.onClear && (!opts.hasDrawings || opts.hasDrawings());
             showToolMenu(e.clientX, e.clientY, [
-                { label: (opts.labels && opts.labels.trend) || tt('trend_tool', 'Trendline'), onClick: opts.onTrend },
-                { label: (opts.labels && opts.labels.hline) || tt('hline_tool', 'Linea orizzontale'), onClick: opts.onHline },
-                { label: (opts.labels && opts.labels.range) || tt('price_range', 'Range prezzo'), onClick: opts.onRange },
+                { label: (opts.labels && opts.labels.trend) || tt('trend_tool', 'Trendline'), icon: ICON_TREND, onClick: opts.onTrend },
+                { label: (opts.labels && opts.labels.hline) || tt('hline_tool', 'Linea orizzontale'), icon: ICON_HLINE, onClick: opts.onHline },
+                { label: (opts.labels && opts.labels.range) || tt('price_range', 'Range prezzo'), icon: ICON_RANGE, onClick: opts.onRange },
+                { label: (opts.labels && opts.labels.clear) || tt('clear_drawings', 'Cancella disegni'), icon: ICON_CLEAR, onClick: showClear ? opts.onClear : null },
             ]);
         }, true);
     }
 
     window.DrawTools = {
         TREND_HIT, TREND_CLICK_SLOP, HLINE_HIT,
-        trendSync, trendDrawExt, ptSegDist,
+        trendSync, trendDrawExt, ptSegDist, trendSnapPoint, trendPickPoint,
         drawRangeCanvas, drawRangeLine,
         toggleRange,
         hlineNearest, toggleHline, clearHlines,
