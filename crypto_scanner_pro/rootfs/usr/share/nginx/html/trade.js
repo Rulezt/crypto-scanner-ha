@@ -3176,7 +3176,7 @@ function toggleObTrend() {
         if (_obTrendPending) {
             if (Math.hypot(px - _obTrendPending.px, py - _obTrendPending.py) <= _OB_TREND_CLICK_SLOP) return;
             const { hit, px: dpx0, py: dpy0 } = _obTrendPending;
-            if (hit.part !== 'line') { _obTrendDrag = { tl: hit.tl, part: hit.part }; canvas.style.cursor = 'crosshair'; }
+            if (hit.part !== 'line') { _obTrendDrag = { tl: hit.tl, part: hit.part }; canvas.style.cursor = 'grabbing'; }
             else {
                 const ox1 = _obTimeToXRobust(hit.tl.t1), oy1 = _obCandleS.priceToCoordinate(hit.tl.p1);
                 const ox2 = _obTimeToXRobust(hit.tl.t2), oy2 = _obCandleS.priceToCoordinate(hit.tl.p2);
@@ -3197,7 +3197,7 @@ function toggleObTrend() {
             _obTrendDrawAll();
         } else {
             const hit = _obTrendNearest(e.clientX, e.clientY);
-            canvas.style.cursor = hit ? (hit.part === 'line' ? 'move' : 'crosshair') : 'crosshair';
+            canvas.style.cursor = hit ? (hit.part === 'line' ? 'move' : 'grab') : 'crosshair';
         }
     };
     _obTrendMU = e => {
