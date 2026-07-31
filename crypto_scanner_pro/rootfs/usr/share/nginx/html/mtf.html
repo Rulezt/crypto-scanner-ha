@@ -59,10 +59,16 @@
     }
     #hdr > div[style*="flex:1"] { flex: 0 0 6px !important; min-width: 6px; }
     #mtf-label { display: none; }
-    #bb-btn    { display: none; }
-    #bb-sep    { display: none; }
-    #channel-btn { display: none; }
-    #sqz-btn     { display: none; }
+    /* !important: questi bottoni hanno display:flex inline (specificità più alta
+       di un selettore #id), va sovrascritto esplicitamente per nasconderli davvero */
+    #bb-btn    { display: none !important; }
+    #ind-sep   { display: none; }
+    #channel-btn { display: none !important; }
+    #tb-btn      { display: none !important; }
+    #grab-btn    { display: none !important; }
+    #sqz-btn     { display: none !important; }
+    #ob-lvl-btn  { display: none !important; }
+    #sr-btn      { display: none !important; }
     #naked-btn   { display: none; }
     /* OB modal verticale */
     #ob-modal { flex-direction: column !important; }
@@ -104,6 +110,41 @@
   <button id="global-clear-btn" onclick="clearAllDrawings()" class="hdr-btn"
     style="display:none;font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;align-items:center;"
     data-i18n-title="clear_drawings" title="Cancella disegni"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg></button>
+  <button id="channel-btn" onclick="toggleChannel()" class="hdr-btn"
+    style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    data-i18n-title="channel_tool" title="Canale SMA 20">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>
+  </button>
+  <button id="bb-btn" onclick="toggleBB()" class="hdr-btn"
+    style="font-size:14px;font-weight:700;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    title="Bollinger Bands (20,2)" data-i18n="mtf_bb">BB</button>
+  <button id="tb-btn" onclick="toggleTrendBand()" class="hdr-btn"
+    style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    title="Trend Band (EMA 5/10)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16c2 1 4 2 6-1s3-6 6-7 5 2 8 1"/><path d="M2 19c2 1 4 2 6-1s3-6 6-7 5 2 8 1"/></svg>
+  </button>
+  <button id="grab-btn" onclick="toggleGrab()" class="hdr-btn"
+    style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    title="GRaB — Buy green Sell Red (Murrey Math + EMA wave)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="4" height="8"/><rect x="10" y="5" width="4" height="13"/><rect x="17" y="8" width="4" height="10"/></svg>
+  </button>
+  <button id="sqz-btn" onclick="toggleSqueeze()" class="hdr-btn"
+    style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    data-i18n-title="squeeze_osc_tool" title="Canale Squeeze">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h3l2-7 4 14 3-10 2 5h6"/></svg>
+  </button>
+  <button id="ob-lvl-btn" onclick="toggleOBLevelsAll()" class="hdr-btn"
+    style="font-size:14px;font-weight:700;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    title="Order Book Levels (bid/ask wall)">OB</button>
+  <button id="sr-btn" onclick="toggleTrendlineSRAll()" class="hdr-btn"
+    style="font-size:14px;font-weight:700;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    title="Trendline S/R">SR</button>
+  <button id="ind-btn" onclick="openIndPanel()" class="hdr-btn"
+    style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    title="Indicatori">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
+  <span id="ind-sep" style="color:#374151;font-size:14px;margin:0 2px;">|</span>
   <button id="global-range-btn" onclick="toggleGlobalRange()" class="hdr-btn"
     style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;"
     data-i18n-title="price_range" title="Range prezzo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" style="vertical-align:middle"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg></button>
@@ -113,12 +154,6 @@
   <button id="global-trend-btn" onclick="toggleGlobalTrend()" class="hdr-btn"
     style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;"
     data-i18n-title="trend_tool" title="Trendline"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" style="vertical-align:middle"><path d="M5 22 L23 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="5" cy="22" r="2.5" fill="currentColor"/><circle cx="23" cy="6" r="2.5" fill="currentColor"/></svg></button>
-  <span id="bb-sep" style="color:#374151;font-size:14px;margin:0 2px;">|</span>
-  <button id="ind-btn" onclick="openIndPanel()" class="hdr-btn"
-    style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
-    title="Indicatori">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="none"><path stroke="currentColor" stroke-width="1.4" d="M6 12l4.8-4.8a1 1 0 0 1 1.4 0l2.7 2.7a1 1 0 0 0 1.3.1L23 5"></path><path fill="currentColor" fill-rule="evenodd" d="M19 12a1 1 0 0 0-1 1v4h-3v-1a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v2H7a1 1 0 0 0-1 1v4h17V13a1 1 0 0 0-1-1h-3zm0 10h3v-9h-3v9zm-1 0v-4h-3v4h3zm-4-4.5V22h-3v-6h3v1.5zM10 22v-3H7v3h3z"></path></svg>
-  </button>
   <button id="naked-btn" onclick="toggleNakedChart()" class="hdr-btn"
     style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
     data-i18n-title="ob_tt_hide_ind" title="Nascondi indicatori">
@@ -1249,6 +1284,8 @@ function applyTrendlineSRToSlot(s) {
 }
 function toggleTrendlineSRAll() {
   srActive = !srActive;
+  const btn = document.getElementById('sr-btn');
+  if (btn) btn.style.color = srActive ? '#60a5fa' : '#B2B5BE';
   slots.forEach(applyTrendlineSRToSlot);
   if (fsChart) applyFsTrendlineSR();
 }
@@ -1271,6 +1308,8 @@ function applyFsTrendlineSR() {
 
 function toggleOBLevelsAll() {
   obLevelsActive = !obLevelsActive;
+  const btn = document.getElementById('ob-lvl-btn');
+  if (btn) btn.style.color = obLevelsActive ? '#3b82f6' : '#B2B5BE';
   clearInterval(_obLevelsTimer); _obLevelsTimer = null;
   if (obLevelsActive) {
     _refreshObLevelsAll();
