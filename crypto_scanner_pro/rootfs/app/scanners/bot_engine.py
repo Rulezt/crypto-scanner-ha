@@ -18,9 +18,14 @@ Il segnale è sulla candela CHIUSA (mai intrabar, a differenza del vecchio ORB):
 un EMA cross non ha bisogno di precisione intrabar e aspettare la chiusura evita
 falsi flip su un tick che poi rientra prima che la candela finisca.
 
-TF: a differenza del vecchio ORB (sempre 1m, self.tf solo un'etichetta), qui il
-TF scelto in UI (self.tf) governa DIRETTAMENTE il calcolo — nessuna necessità di
-precisione intrabar da preservare, quindi niente più bisogno di forzare 1m.
+TF: due concetti separati, come "Calcola su TF" dell'indicatore visuale.
+`self.tf` è il TF operativo/mostrato (candele del grafico bot.html, WS pubblico
+lato frontend). `self.calc_tf` (opzionale, '' = stesso di `self.tf`) è il TF su
+cui gira DAVVERO la strategia — se diverso da `self.tf`, il replay/live gira
+sulle candele CHIUSE di `calc_tf` (mai su quelle di `self.tf`): un flip esiste
+solo quando chiude una candela di `calc_tf`, indipendentemente da quante
+candele di `self.tf` nel frattempo si chiudono. `_strategy_tf()` ritorna
+`calc_tf or tf` ed è quello che conta per subscribe/_on_kline/run_engine.
 
 `run_engine()` è l'unica funzione che replica lo stato bar-by-bar: il backtest la
 chiama una volta su tutta la history (accumulando i trade chiusi), il motore live
@@ -287,7 +292,7 @@ def run_backtest(candles, params, initial_capital=1000.0, sizing=None, taker_fee
 
 class BotEngine:
     def __init__(self, telegram_config=None, ws_manager=None, live_config=None,
-                 trade_client=None, symbol='', tf='60', mode='signal', sizing=None,
+                 trade_client=None, symbol='', tf='60', calc_tf='', mode='signal', sizing=None,
                  leverage=1, **params_cfg):
         telegram_config = telegram_config or {}
         self.telegram_token   = telegram_config.get('token', '')
@@ -296,8 +301,9 @@ class BotEngine:
         self._live_config = live_config
         self._trade_client = trade_client
 
-        self.symbol = (symbol or '').upper()
-        self.tf     = str(tf or '60')  # ora governa DIRETTAMENTE il calcolo — vedi docstring modulo
+        self.symbol  = (symbol or '').upper()
+        self.tf      = str(tf or '60')       # TF operativo/mostrato (grafico) — vedi docstring modulo
+        self.calc_tf = str(calc_tf or '')    # '' = stesso di tf; vedi _strategy_tf()
         self.mode   = mode if mode in ('signal', 'execution') else 'signal'
         self.sizing = sizing or {'type': 'fixed', 'value': 50.0}
         self.leverage = int(leverage or 1)
@@ -346,10 +352,14 @@ class BotEngine:
         if ws_manager is not None:
             ws_manager.add_kline_callback(self._on_kline)
             if self.running and self.symbol:
-                ws_manager.subscribe_klines([self.symbol], intervals=[self.tf])
+                ws_manager.subscribe_klines([self.symbol], intervals=[self._strategy_tf()])
 
-        print(f'🤖 BOT init — symbol={self.symbol or "-"} tf={self.tf} mode={self.mode} '
-              f'running={self.running}')
+        print(f'🤖 BOT init — symbol={self.symbol or "-"} tf={self.tf} calc_tf={self.calc_tf or "(stesso)"} '
+              f'mode={self.mode} running={self.running}')
+
+    def _strategy_tf(self):
+        """TF su cui gira davvero la strategia — vedi docstring modulo."""
+        return self.calc_tf or self.tf
 
     # ── State persistence ────────────────────────────────────────────────────
 
@@ -396,7 +406,7 @@ class BotEngine:
             self.signals = []
             self._save_state()
         if self._ws_manager:
-            self._ws_manager.subscribe_klines([self.symbol], intervals=[self.tf])
+            self._ws_manager.subscribe_klines([self.symbol], intervals=[self._strategy_tf()])
         return True, None
 
     def clear_signals(self):
@@ -432,7 +442,7 @@ class BotEngine:
             }
         return {
             'running': self.running, 'mode': self.mode, 'symbol': self.symbol, 'tf': self.tf,
-            'position': position, 'exchange_position': live_pos,
+            'calc_tf': self.calc_tf, 'position': position, 'exchange_position': live_pos,
             'last_signal_time': self.signals[-1]['time'] if self.signals else None,
         }
 
@@ -484,7 +494,7 @@ class BotEngine:
             return
         if not self.running:
             return
-        if symbol != self.symbol or interval != self.tf:
+        if symbol != self.symbol or interval != self._strategy_tf():
             return
         if not self._ws_manager:
             return
@@ -626,8 +636,11 @@ class BotEngine:
             from alert_utils import send_text, log_alert
         except ImportError:
             return
+        # TF di calcolo (non quello mostrato in grafico se diverso) — è quello che
+        # ha davvero generato il segnale, vedi _strategy_tf().
+        strategy_tf = self._strategy_tf()
         tf_label = {'D': '1D', '240': '4h', '60': '1h', '30': '30m', '15': '15m',
-                    '5': '5m', '1': '1m', 'W': '1W', 'M': '1M'}.get(self.tf, self.tf)
+                    '5': '5m', '1': '1m', 'W': '1W', 'M': '1M'}.get(strategy_tf, strategy_tf)
         mode_label = 'ESECUZIONE REALE' if rec.get('mode') == 'execution' else 'Solo Segnale'
 
         if rec['type'] == 'entry':

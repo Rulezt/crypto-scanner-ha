@@ -229,6 +229,7 @@ DEFAULT_CONFIG = {
     'bot': {
         'symbol': '',
         'tf': '60',
+        'calc_tf': '',
         'mode': 'signal',
         'sizing': {'type': 'fixed', 'value': 50.0},
         'leverage': 1,
@@ -2282,13 +2283,20 @@ def bot_backtest():
     data     = request.get_json() or {}
     symbol   = (data.get('symbol') or '').upper()
     interval = str(data.get('tf', '60'))
+    # calc_tf: TF su cui gira DAVVERO la strategia se diverso dal TF mostrato
+    # ('' = stesso di interval) — vedi bot_engine.py _strategy_tf().
+    calc_tf  = str(data.get('calc_tf') or '')
 
     if not re.match(r'^[A-Z0-9]{3,20}$', symbol) or not symbol.endswith('USDT'):
         return jsonify({'error': 'Simbolo non valido'}), 400
-    is_native_symbolic = interval in {'D', 'W', 'M'}
-    is_native_minutes  = interval.isdigit() and int(interval) in _BYBIT_NATIVE_MINUTES
-    if not (is_native_symbolic or is_native_minutes):
+
+    def _valid_tf(iv):
+        return iv in {'D', 'W', 'M'} or (iv.isdigit() and int(iv) in _BYBIT_NATIVE_MINUTES)
+    if not _valid_tf(interval):
         return jsonify({'error': 'TF non valido'}), 400
+    if calc_tf and not _valid_tf(calc_tf):
+        return jsonify({'error': 'TF calcolo non valido'}), 400
+    strategy_tf = calc_tf or interval
 
     try:
         lookback_days = float(data.get('lookback_days', 365))
@@ -2297,16 +2305,29 @@ def bot_backtest():
     lookback_days = max(1.0, min(lookback_days, 1095.0))  # cap 3 anni (richiesto dall'utente)
 
     tf_seconds = TF_SECONDS.get(interval) or (int(interval) * 60 if interval.isdigit() else 3600)
-    strategy_max_lookback_days = (_STRATEGY_MAX_PAGES * _STRATEGY_MAX_CANDLES_PER_PAGE * tf_seconds) / 86400.0
-    strategy_lookback_days = min(lookback_days, strategy_max_lookback_days)
-    lookback_truncated = lookback_days > strategy_max_lookback_days
+    strategy_tf_seconds = TF_SECONDS.get(strategy_tf) or (int(strategy_tf) * 60 if strategy_tf.isdigit() else 3600)
+    # Il lookback effettivo è vincolato dal fetch PIÙ granulare fra i due TF
+    # (mostrato e di calcolo, se diversi) — entrambi vanno scaricati sulla
+    # stessa finestra temporale perché i marker dei trade si posizionano sulle
+    # candele mostrate.
+    display_max_lookback_days  = (_STRATEGY_MAX_PAGES * _STRATEGY_MAX_CANDLES_PER_PAGE * tf_seconds) / 86400.0
+    strategy_max_lookback_days = (_STRATEGY_MAX_PAGES * _STRATEGY_MAX_CANDLES_PER_PAGE * strategy_tf_seconds) / 86400.0
+    effective_lookback_days = min(lookback_days, display_max_lookback_days, strategy_max_lookback_days)
+    lookback_truncated = lookback_days > effective_lookback_days
 
     params = normalize_params(data)
 
-    try:
-        candles_needed = int(strategy_lookback_days * 86400 / tf_seconds) + 5
+    def _fetch_for(iv, iv_seconds):
+        candles_needed = int(effective_lookback_days * 86400 / iv_seconds) + 5
         max_pages = max(1, min(_STRATEGY_MAX_PAGES, -(-candles_needed // 1000)))  # ceil
-        candles, tz_s = _fetch_klines_bybit(symbol, interval, max_pages)
+        return _fetch_klines_bybit(symbol, iv, max_pages)
+
+    try:
+        strategy_candles, tz_s = _fetch_for(strategy_tf, strategy_tf_seconds)
+        if strategy_tf == interval:
+            display_candles = strategy_candles
+        else:
+            display_candles, _ = _fetch_for(interval, tf_seconds)
     except Exception as e:
         return jsonify({'error': str(e)}), 502
 
@@ -2315,7 +2336,7 @@ def bot_backtest():
     taker_fee_rate = _bybit_taker_fee_rate(session.get('username', ''), symbol)
 
     try:
-        result = run_backtest(candles, params, initial_capital, sizing, taker_fee_rate)
+        result = run_backtest(strategy_candles, params, initial_capital, sizing, taker_fee_rate)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     result['taker_fee_rate'] = taker_fee_rate
@@ -2323,12 +2344,13 @@ def bot_backtest():
     # delle candele restituite sotto).
     result['utc_offset_s'] = tz_s
     result['lookback_truncated'] = lookback_truncated
-    result['effective_lookback_days'] = round(strategy_lookback_days, 2)
+    result['effective_lookback_days'] = round(effective_lookback_days, 2)
 
-    # Il grafico mostra esattamente le candele su cui ha girato la strategia
-    # (stesso TF, nessuna aggregazione: TF di calcolo e TF mostrato coincidono ora).
+    # Il grafico mostra le candele al TF SCELTO (interval) — se diverso dal TF
+    # di calcolo, i prezzi/orari dei trade restano quelli reali di strategy_tf,
+    # solo l'overlay Trend Band nel frontend le ricalcola "a gradini".
     result['candles'] = [{'time': c['time'], 'open': c['open'], 'high': c['high'],
-                          'low': c['low'], 'close': c['close']} for c in candles]
+                          'low': c['low'], 'close': c['close']} for c in display_candles]
 
     return jsonify({'success': True, **result})
 

@@ -178,7 +178,7 @@
                     <label>Capitale iniziale (USDT)</label>
                     <input type="number" v-model.number="btCapital" min="1" step="10">
                     <label>Storico (giorni)</label>
-                    <input type="number" v-model.number="btLookbackDays" min="1" max="1095" step="1" title="La strategia gira sul TF selezionato sopra: con TF piccoli (es. 1m) lo storico usato per il backtest viene troncato oltre un certo limite (vedi avviso nei risultati), dovuto al numero massimo di candele recuperabili da Bybit in un'unica richiesta.">
+                    <input type="number" v-model.number="btLookbackDays" min="1" max="1095" step="1" title="La strategia gira sul TF di calcolo (Impostazioni → Calcola su TF, o il TF operativo se vuoto): con TF piccoli (es. 1m) lo storico usato per il backtest viene troncato oltre un certo limite (vedi avviso nei risultati), dovuto al numero massimo di candele recuperabili da Bybit in un'unica richiesta.">
                     <button class="btn primary" @click="runBacktest" :disabled="!cfg.symbol || btRunning">
                         {{ btRunning ? 'Esecuzione… (può richiedere qualche secondo con storici lunghi)' : 'Esegui Backtest' }}
                     </button>
@@ -271,6 +271,13 @@
                 <div class="row"><label>EMA veloce</label><input type="number" step="1" v-model.number="cfg.fast_len" min="2" max="200" :disabled="status.running"></div>
                 <div class="row"><label>EMA lenta</label><input type="number" step="1" v-model.number="cfg.slow_len" min="2" max="400" :disabled="status.running"></div>
                 <div class="row"><label title="Soglia flat come multiplo dell'ATR(14): |EMA veloce - EMA lenta| sotto questa soglia = nessun segnale">Soglia flat (xATR)</label><input type="number" step="0.05" v-model.number="cfg.flat_mult" min="0" max="5" :disabled="status.running"></div>
+                <div class="row" title="Calcola la banda su un TF diverso da quello operativo/mostrato: un flip esiste solo quando chiude una candela di questo TF, indipendentemente dal TF scelto sopra">
+                    <label>Calcola su TF</label>
+                    <select v-model="cfg.calc_tf" :disabled="status.running">
+                        <option value="">Stesso del TF operativo</option>
+                        <option v-for="t in TF_LIST" :key="t" :value="t">{{ TF_LABEL[t] }}</option>
+                    </select>
+                </div>
                 <div class="row"><label>Mostra Trend Band su grafico</label><input type="checkbox" v-model="showChannel"></div>
             </div>
             <div class="group">
@@ -465,6 +472,7 @@ createApp({
             fast_len: 5,
             slow_len: 10,
             flat_mult: 0.25,
+            calc_tf: '', // '' = stessa del TF operativo; vedi bot_engine.py _strategy_tf()
         };
 
         const cfg = reactive(JSON.parse(JSON.stringify(DEFAULT_CFG)));
@@ -745,6 +753,32 @@ createApp({
             return { fast, slow };
         };
 
+        // "Calcola su TF" (cfg.calc_tf diverso da cfg.tf) — stesso pattern "a gradini"
+        // di chart.html/mtf.html/trade.js: la banda è calcolata sulle candele CHIUSE
+        // del TF di calcolo, il valore resta fermo per tutta la durata della candela
+        // del TF mostrato finché non chiude la prossima candela del TF di calcolo.
+        // Qui è SOLO visuale — lo stato reale del bot (posizione/trade) usa sempre
+        // quello autoritativo del backend, calcolato su calc_tf server-side.
+        const _fetchCalcTfCandles = async (symbol, tf) => {
+            try {
+                const r = await fetch(`api/klines?symbol=${symbol}&interval=${tf}`);
+                const j = await r.json();
+                return (j.success && j.data) ? j.data : [];
+            } catch(e) { return []; }
+        };
+        const _tbReindexStep = (htf, displayCandles) => {
+            const fast = [], slow = [];
+            if (!htf.fast.length) return { fast, slow };
+            let j = 0;
+            for (const k of displayCandles) {
+                if (htf.fast[0].time > k.time) continue;
+                while (j + 1 < htf.fast.length && htf.fast[j + 1].time <= k.time) j++;
+                fast.push({ time: k.time, value: htf.fast[j].value });
+                slow.push({ time: k.time, value: htf.slow[j].value });
+            }
+            return { fast, slow };
+        };
+
         const computeBollinger = (candles, period = 20, mult = 2) => {
             if (candles.length < period) return { upper: [], middle: [], lower: [] };
             const closes = candles.map(c => c.close);
@@ -834,8 +868,19 @@ createApp({
         // Disegna le bande upper/lower dell'opening range giornaliero sul grafico
         // indicato, ricalcolandole client-side dalle klines fornite — solo visuale
         // (il trigger/trade reali usano lo stato autoritativo del backend).
-        const drawChannelLines = (chart, klines, cfgP, which) => {
-            const { fast, slow } = calcTrendBandJS(klines, cfgP.fast_len, cfgP.slow_len);
+        const drawChannelLines = async (chart, klines, cfgP, which) => {
+            let fast, slow;
+            if (cfgP.calc_tf && cfgP.calc_tf !== cfgP.tf) {
+                const calcCandles = await _fetchCalcTfCandles(cfgP.symbol, cfgP.calc_tf);
+                if (calcCandles.length) {
+                    const htf = calcTrendBandJS(calcCandles, cfgP.fast_len, cfgP.slow_len);
+                    ({ fast, slow } = _tbReindexStep(htf, klines));
+                } else {
+                    fast = []; slow = [];
+                }
+            } else {
+                ({ fast, slow } = calcTrendBandJS(klines, cfgP.fast_len, cfgP.slow_len));
+            }
             const baseOpts = { lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: showChannel.value, autoscaleInfoProvider: btExcludeFromAutoscale };
             const fastSeries = addS(chart, 'LineSeries', { ...baseOpts, color: '#ffe082' });
             const slowSeries = addS(chart, 'LineSeries', { ...baseOpts, color: '#e0e0e0' });
@@ -878,7 +923,7 @@ createApp({
                 candleSeries.setData(klines);
                 mainKlines = klines;
 
-                try { drawChannelLines(mainChart, klines, cfg, 'live'); } catch(e) { console.error('trend band lines error', e); }
+                try { await drawChannelLines(mainChart, klines, cfg, 'live'); } catch(e) { console.error('trend band lines error', e); }
                 drawPositionLines();
                 drawLiveSignalMarkers();
                 mainChart.timeScale().setVisibleLogicalRange({ from: klines.length - 100, to: klines.length + 5 });
@@ -1050,7 +1095,7 @@ createApp({
             // Linee EMA fast/slow del Trend Band — solo visuale, i prezzi esatti di
             // ogni trade vengono dai dati restituiti dal backend (vedi markers e
             // focusTrade sotto).
-            try { drawChannelLines(btChart, candles, cfg, 'backtest'); } catch(e) { console.error('trend band lines error', e); }
+            try { await drawChannelLines(btChart, candles, cfg, 'backtest'); } catch(e) { console.error('trend band lines error', e); }
 
             // Marker ▲ entrata / ▼ uscita per ogni trade — LWC richiede i marker
             // ordinati per tempo crescente.
