@@ -403,6 +403,19 @@ let grabActive = false;
 let tbActive = false;
 let obLevelsActive = false;
 let srActive = false;
+// Ogni toggleXxx() persiste il proprio stato on/off in localStorage (mtf_xxx_active).
+// Richiamata dopo il caricamento iniziale delle candele di tutti gli slot: gli xxxActive
+// sopra partono sempre false, toggleXxx() li flippa a true e applica l'indicatore —
+// così un indicatore selezionato resta attivo dopo un refresh della pagina.
+function _restorePersistedIndicators() {
+  if (localStorage.getItem('mtf_channel_active') === '1') toggleChannel();
+  if (localStorage.getItem('mtf_bb_active') === '1') toggleBB();
+  if (localStorage.getItem('mtf_tb_active') === '1') toggleTrendBand();
+  if (localStorage.getItem('mtf_grab_active') === '1') toggleGrab();
+  if (localStorage.getItem('mtf_sqz_active') === '1') toggleSqueeze();
+  if (localStorage.getItem('mtf_ob_levels_active') === '1') toggleOBLevelsAll();
+  if (localStorage.getItem('mtf_sr_active') === '1') toggleTrendlineSRAll();
+}
 let _obLevelsTimer = null, _obLevelsBidVal = null, _obLevelsAskVal = null;
 let fsObLevBidLine = null, fsObLevAskLine = null;
 let nakedChart = false;
@@ -503,6 +516,7 @@ function calcBB(klines, period=20, mult=2) {
 
 function toggleBB() {
   bbActive = !bbActive;
+  try { localStorage.setItem('mtf_bb_active', bbActive ? '1' : '0'); } catch(e) {}
   const btn = document.getElementById('bb-btn');
   if (btn) btn.style.color = bbActive ? '#60a5fa' : '#B2B5BE';
   const _bbCfg = getBbCfg();
@@ -551,6 +565,7 @@ function calcChannel(klines, period) {
 }
 function toggleChannel() {
   channelActive = !channelActive;
+  try { localStorage.setItem('mtf_channel_active', channelActive ? '1' : '0'); } catch(e) {}
   const btn = document.getElementById('channel-btn');
   if (btn) btn.style.color = channelActive ? '#ffffff' : '#B2B5BE';
   const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
@@ -665,6 +680,7 @@ function grabBarColor(close, open, eHigh, eLow, cfg) {
 
 function toggleGrab() {
   grabActive = !grabActive;
+  try { localStorage.setItem('mtf_grab_active', grabActive ? '1' : '0'); } catch(e) {}
   const btn = document.getElementById('grab-btn');
   if (btn) btn.style.color = grabActive ? '#f59e0b' : '#B2B5BE';
   const cfgBtn = document.getElementById('grab-cfg-btn');
@@ -890,6 +906,7 @@ function calcTrendBand(klines, cfg) {
 }
 function toggleTrendBand() {
   tbActive = !tbActive;
+  try { localStorage.setItem('mtf_tb_active', tbActive ? '1' : '0'); } catch(e) {}
   const btn = document.getElementById('tb-btn');
   if (btn) btn.style.color = tbActive ? '#8a9a5b' : '#B2B5BE';
   const cfgBtn = document.getElementById('tb-cfg-btn');
@@ -1146,6 +1163,7 @@ function closeIndPanelOutside(ev) { if (ev.target.id === 'ind-panel') closeIndPa
 
 function toggleSqueeze() {
   sqzActive = !sqzActive;
+  try { localStorage.setItem('mtf_sqz_active', sqzActive ? '1' : '0'); } catch(e) {}
   const btn = document.getElementById('sqz-btn');
   if (btn) btn.style.color = sqzActive ? '#22d3ee' : '#B2B5BE';
   slots.forEach(s => {
@@ -1284,6 +1302,7 @@ function applyTrendlineSRToSlot(s) {
 }
 function toggleTrendlineSRAll() {
   srActive = !srActive;
+  try { localStorage.setItem('mtf_sr_active', srActive ? '1' : '0'); } catch(e) {}
   const btn = document.getElementById('sr-btn');
   if (btn) btn.style.color = srActive ? '#60a5fa' : '#B2B5BE';
   slots.forEach(applyTrendlineSRToSlot);
@@ -1308,6 +1327,7 @@ function applyFsTrendlineSR() {
 
 function toggleOBLevelsAll() {
   obLevelsActive = !obLevelsActive;
+  try { localStorage.setItem('mtf_ob_levels_active', obLevelsActive ? '1' : '0'); } catch(e) {}
   const btn = document.getElementById('ob-lvl-btn');
   if (btn) btn.style.color = obLevelsActive ? '#3b82f6' : '#B2B5BE';
   clearInterval(_obLevelsTimer); _obLevelsTimer = null;
@@ -1806,6 +1826,7 @@ async function loadAll() {
 
   // Load all slots in parallel
   await Promise.all(slots.map((_, i) => loadSlot(i, dailyData)));
+  _restorePersistedIndicators();
   _mtfRestoreDrawings();
   fetchMTFATHATL();
   openWS();
