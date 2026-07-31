@@ -830,13 +830,19 @@ function tbBandColor(spread, atr, cfg) {
   if (atr != null && Math.abs(spread) < atr * cfg.flatMult) return cfg.flatColor;
   return spread > 0 ? cfg.bullColor : cfg.bearColor;
 }
-// Freccia di ingresso long/short: solo sulla transizione VERSO bull/bear (non su ogni
-// candela dello stesso stato), verde sotto la candela per long, rossa sopra per short.
-function _tbArrowMarker(time, color, prevColor, cfg) {
-  if (color === prevColor) return null;
+// Freccia di ingresso long/short: solo quando il colore cambia rispetto all'ULTIMO
+// segnale non-flat (lastSignal) — una candela flat in mezzo a due tratti dello stesso
+// colore non fa ridisegnare la freccia, per non ripetere lo stesso segnale long/short.
+function _tbArrowMarker(time, color, lastSignal, cfg) {
+  if (color === lastSignal) return null;
   if (color === cfg.bullColor) return { time, position: 'belowBar', color: cfg.bullColor, shape: 'arrowUp', text: '' };
   if (color === cfg.bearColor) return { time, position: 'aboveBar', color: cfg.bearColor, shape: 'arrowDown', text: '' };
   return null;
+}
+function _tbLastSignal(colors, cfg) {
+  let ls = null;
+  for (const c of colors) if (c === cfg.bullColor || c === cfg.bearColor) ls = c;
+  return ls;
 }
 function calcTrendBand(klines, cfg) {
   const ef = calcEMAField(klines, cfg.fastLen, 'close');
@@ -894,9 +900,11 @@ function applyTbToSlot(s, cfg) {
     };
     s.tbMarkersData = [];
     if (cfg.showFlatArrow) {
+      let ls = _tbLastSignal([step.color[0]], cfg);
       for (let i = 1; i < step.color.length; i++) {
-        const m = _tbArrowMarker(step.fast[i].time, step.color[i], step.color[i-1], cfg);
+        const m = _tbArrowMarker(step.fast[i].time, step.color[i], ls, cfg);
         if (m) s.tbMarkersData.push(m);
+        if (step.color[i] === cfg.bullColor || step.color[i] === cfg.bearColor) ls = step.color[i];
       }
     }
     if (s.tbMarkersHandle) s.tbMarkersHandle.setMarkers(s.tbMarkersData);
@@ -910,13 +918,15 @@ function applyTbToSlot(s, cfg) {
   s.tbState = {
     emaFast: tb.fast[tb.fast.length-1].value, emaSlow: tb.slow[tb.slow.length-1].value,
     atr: tb.lastAtr, prevClose: s.klines[s.klines.length-2] ? s.klines[s.klines.length-2].close : s.klines[s.klines.length-1].close,
-    prevColor: tb.color[tb.color.length-1],
+    lastSignal: _tbLastSignal(tb.color, cfg),
   };
   s.tbMarkersData = [];
   if (cfg.showFlatArrow) {
+    let ls = _tbLastSignal([tb.color[0]], cfg);
     for (let i = 1; i < tb.color.length; i++) {
-      const m = _tbArrowMarker(tb.fast[i].time, tb.color[i], tb.color[i-1], cfg);
+      const m = _tbArrowMarker(tb.fast[i].time, tb.color[i], ls, cfg);
       if (m) s.tbMarkersData.push(m);
+      if (tb.color[i] === cfg.bullColor || tb.color[i] === cfg.bearColor) ls = tb.color[i];
     }
   }
   if (s.tbMarkersHandle) s.tbMarkersHandle.setMarkers(s.tbMarkersData);
@@ -977,11 +987,11 @@ function _tbLiveUpdate(s, candle, confirmed, cfg) {
   }
   if (confirmed) {
     if (cfg.showFlatArrow && s.tbMarkersHandle) {
-      const m = _tbArrowMarker(candle.time, color, s.tbState.prevColor, cfg);
+      const m = _tbArrowMarker(candle.time, color, s.tbState.lastSignal, cfg);
       if (m) { s.tbMarkersData = s.tbMarkersData || []; s.tbMarkersData.push(m); s.tbMarkersHandle.setMarkers(s.tbMarkersData); }
     }
+    if (color === cfg.bullColor || color === cfg.bearColor) s.tbState.lastSignal = color;
     s.tbState.emaFast = liveEmaFast; s.tbState.emaSlow = liveEmaSlow; s.tbState.atr = liveAtr; s.tbState.prevClose = candle.close;
-    s.tbState.prevColor = color;
   }
 }
 // Trend Band con TF di calcolo diverso ("a gradini"): il valore scatta solo alla
@@ -2588,9 +2598,11 @@ function applyFsTb() {
         };
         fsTbMarkersData = [];
         if (cfg.showFlatArrow) {
+            let ls = _tbLastSignal([step.color[0]], cfg);
             for (let i = 1; i < step.color.length; i++) {
-                const m = _tbArrowMarker(step.fast[i].time, step.color[i], step.color[i-1], cfg);
+                const m = _tbArrowMarker(step.fast[i].time, step.color[i], ls, cfg);
                 if (m) fsTbMarkersData.push(m);
+                if (step.color[i] === cfg.bullColor || step.color[i] === cfg.bearColor) ls = step.color[i];
             }
         }
         if (fsTbMarkersHandle) fsTbMarkersHandle.setMarkers(fsTbMarkersData);
@@ -2604,13 +2616,15 @@ function applyFsTb() {
     fsTbState = {
         emaFast: tb.fast[tb.fast.length-1].value, emaSlow: tb.slow[tb.slow.length-1].value,
         atr: tb.lastAtr, prevClose: fsKlines[fsKlines.length-2] ? fsKlines[fsKlines.length-2].close : fsKlines[fsKlines.length-1].close,
-        prevColor: tb.color[tb.color.length-1],
+        lastSignal: _tbLastSignal(tb.color, cfg),
     };
     fsTbMarkersData = [];
     if (cfg.showFlatArrow) {
+        let ls = _tbLastSignal([tb.color[0]], cfg);
         for (let i = 1; i < tb.color.length; i++) {
-            const m = _tbArrowMarker(tb.fast[i].time, tb.color[i], tb.color[i-1], cfg);
+            const m = _tbArrowMarker(tb.fast[i].time, tb.color[i], ls, cfg);
             if (m) fsTbMarkersData.push(m);
+            if (tb.color[i] === cfg.bullColor || tb.color[i] === cfg.bearColor) ls = tb.color[i];
         }
     }
     if (fsTbMarkersHandle) fsTbMarkersHandle.setMarkers(fsTbMarkersData);

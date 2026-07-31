@@ -185,13 +185,19 @@ function tbBandColor(spread, atr, cfg) {
     if (atr != null && Math.abs(spread) < atr * cfg.flatMult) return cfg.flatColor;
     return spread > 0 ? cfg.bullColor : cfg.bearColor;
 }
-// Freccia di ingresso long/short: solo sulla transizione VERSO bull/bear (non su ogni
-// candela dello stesso stato), verde sotto la candela per long, rossa sopra per short.
-function _tbArrowMarker(time, color, prevColor, cfg) {
-    if (color === prevColor) return null;
+// Freccia di ingresso long/short: solo quando il colore cambia rispetto all'ULTIMO
+// segnale non-flat (lastSignal) — una candela flat in mezzo a due tratti dello stesso
+// colore non fa ridisegnare la freccia, per non ripetere lo stesso segnale long/short.
+function _tbArrowMarker(time, color, lastSignal, cfg) {
+    if (color === lastSignal) return null;
     if (color === cfg.bullColor) return { time, position: 'belowBar', color: cfg.bullColor, shape: 'arrowUp', text: '' };
     if (color === cfg.bearColor) return { time, position: 'aboveBar', color: cfg.bearColor, shape: 'arrowDown', text: '' };
     return null;
+}
+function _tbLastSignal(colors, cfg) {
+    let ls = null;
+    for (const c of colors) if (c === cfg.bullColor || c === cfg.bearColor) ls = c;
+    return ls;
 }
 function calcTrendBand(klines, cfg) {
     const ef = calcEMAField(klines, cfg.fastLen, 'close');
@@ -878,9 +884,11 @@ function _obApplyTb() {
         };
         _obTbMarkersData = [];
         if (cfg.showFlatArrow) {
+            let ls = _tbLastSignal([step.color[0]], cfg);
             for (let i = 1; i < step.color.length; i++) {
-                const m = _tbArrowMarker(step.fast[i].time, step.color[i], step.color[i-1], cfg);
+                const m = _tbArrowMarker(step.fast[i].time, step.color[i], ls, cfg);
                 if (m) _obTbMarkersData.push(m);
+                if (step.color[i] === cfg.bullColor || step.color[i] === cfg.bearColor) ls = step.color[i];
             }
         }
         if (_obTbMarkersHandle) _obTbMarkersHandle.setMarkers(_obTbMarkersData);
@@ -894,13 +902,15 @@ function _obApplyTb() {
     _obTbState = {
         emaFast: tb.fast[tb.fast.length-1].value, emaSlow: tb.slow[tb.slow.length-1].value,
         atr: tb.lastAtr, prevClose: _obKlines[_obKlines.length-2] ? _obKlines[_obKlines.length-2].close : _obKlines[_obKlines.length-1].close,
-        prevColor: tb.color[tb.color.length-1],
+        lastSignal: _tbLastSignal(tb.color, cfg),
     };
     _obTbMarkersData = [];
     if (cfg.showFlatArrow) {
+        let ls = _tbLastSignal([tb.color[0]], cfg);
         for (let i = 1; i < tb.color.length; i++) {
-            const m = _tbArrowMarker(tb.fast[i].time, tb.color[i], tb.color[i-1], cfg);
+            const m = _tbArrowMarker(tb.fast[i].time, tb.color[i], ls, cfg);
             if (m) _obTbMarkersData.push(m);
+            if (tb.color[i] === cfg.bullColor || tb.color[i] === cfg.bearColor) ls = tb.color[i];
         }
     }
     if (_obTbMarkersHandle) _obTbMarkersHandle.setMarkers(_obTbMarkersData);
@@ -990,10 +1000,10 @@ function _obTbConfirmPrev(prevCandle) {
     _obTbState.prevClose = prevCandle.close;
     const color = tbBandColor(_obTbState.emaFast - _obTbState.emaSlow, _obTbState.atr, cfg);
     if (cfg.showFlatArrow && _obTbMarkersHandle) {
-        const m = _tbArrowMarker(prevCandle.time, color, _obTbState.prevColor, cfg);
+        const m = _tbArrowMarker(prevCandle.time, color, _obTbState.lastSignal, cfg);
         if (m) { _obTbMarkersData = _obTbMarkersData || []; _obTbMarkersData.push(m); _obTbMarkersHandle.setMarkers(_obTbMarkersData); }
     }
-    _obTbState.prevColor = color;
+    if (color === cfg.bullColor || color === cfg.bearColor) _obTbState.lastSignal = color;
 }
 
 // ── Pannello impostazioni Trend Band ────────────────────────────────────────────
