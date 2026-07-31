@@ -959,7 +959,7 @@ function applyTbToSlot(s, cfg) {
   if (s.tbHtfMode) {
     const key = `${SYM}|${cfg.calcTf}`;
     if (s.tbHtfKey !== key) {
-      s.tbHtfKey = key; s.tbHtfKlines = []; s.tbHtfLastPoint = null;
+      s.tbHtfKey = key; s.tbHtfKlines = []; s.tbHtfLastPoint = null; s.tbHtfLiveAgg = null;
       _tbFetchHtf(s, SYM, cfg.calcTf).then(() => { if (tbActive) applyTbToSlot(s, getTbCfg()); });
       return; // si ridisegna da sola al termine del fetch
     }
@@ -974,6 +974,8 @@ function applyTbToSlot(s, cfg) {
       fastV: htfTb.fast[htfTb.fast.length - 1].value,
       slowV: htfTb.slow[htfTb.slow.length - 1].value,
       color: htfTb.color[htfTb.color.length - 1],
+      atr: htfTb.lastAtr,
+      closeV: s.tbHtfKlines[s.tbHtfKlines.length - 1].close,
     };
     _tbApplyCandleColors(s, cfg, step.color);
     s.tbMarkersData = [];
@@ -1015,26 +1017,43 @@ function applyTbToSlot(s, cfg) {
 function _tbLiveUpdate(s, candle, confirmed, cfg) {
   if (!tbActive) return;
   if (s.tbHtfMode) {
-    // Nessun EMA "live" sulla candela del pannello: il valore resta quello
-    // dell'ultimo TF di calcolo chiuso, si estende solo la coda della serie
-    // fino alla candela corrente (altrimenti la banda smette di avanzare).
+    // La banda si aggiorna in tempo reale anche prima che il TF di calcolo chiuda
+    // (richiesta esplicita utente: tradando su 1m con calcolo a 5m non si può
+    // aspettare 5 minuti). Si ricostruisce un EMA "un passo avanti" a partire dallo
+    // stato dell'ultima candela CHIUSA del TF di calcolo (pt), usando il prezzo live
+    // come close e l'high/low aggregato di tutte le candele viste finora nel bucket
+    // corrente del TF di calcolo (non solo quella del pannello in formazione).
     if (!s.tbData || !s.tbHtfLastPoint) return;
     const pt = s.tbHtfLastPoint;
+    const curBucket = _tbHtfBucketNow(cfg.calcTf);
+    if (!s.tbHtfLiveAgg || s.tbHtfLiveAgg.bucket !== curBucket) {
+      s.tbHtfLiveAgg = { bucket: curBucket, high: candle.high, low: candle.low };
+    } else {
+      s.tbHtfLiveAgg.high = Math.max(s.tbHtfLiveAgg.high, candle.high);
+      s.tbHtfLiveAgg.low  = Math.min(s.tbHtfLiveAgg.low, candle.low);
+    }
+    const agg = s.tbHtfLiveAgg;
+    const kf = 2/(cfg.fastLen+1), ks = 2/(cfg.slowLen+1);
+    const liveFastV = candle.close * kf + pt.fastV * (1-kf);
+    const liveSlowV = candle.close * ks + pt.slowV * (1-ks);
+    const tr = pt.closeV != null ? Math.max(agg.high - agg.low, Math.abs(agg.high - pt.closeV), Math.abs(agg.low - pt.closeV)) : (agg.high - agg.low);
+    const liveAtr = pt.atr != null ? (tr - pt.atr) / 14 + pt.atr : null;
+    const color = tbBandColor(liveFastV - liveSlowV, liveAtr, cfg);
     if (cfg.colorCandles && s.candleS) {
-      try { s.candleS.update({ ...candle, color: pt.color, wickColor: pt.color, borderColor: pt.color }); } catch(e) {}
+      try { s.candleS.update({ ...candle, color, wickColor: color, borderColor: color }); } catch(e) {}
     }
     if (s.tbSeries.fast) {
-      try { s.tbSeries.fast.update({time:candle.time, value:pt.fastV}); s.tbSeries.slow.update({time:candle.time, value:pt.slowV}); } catch(e) {}
+      try { s.tbSeries.fast.update({time:candle.time, value:liveFastV}); s.tbSeries.slow.update({time:candle.time, value:liveSlowV}); } catch(e) {}
     }
     const lastPt = s.tbData.fast[s.tbData.fast.length-1];
     if (lastPt && lastPt.time === candle.time) {
-      s.tbData.fast[s.tbData.fast.length-1]  = {time:candle.time, value:pt.fastV};
-      s.tbData.slow[s.tbData.slow.length-1]  = {time:candle.time, value:pt.slowV};
-      s.tbData.color[s.tbData.color.length-1] = pt.color;
+      s.tbData.fast[s.tbData.fast.length-1]  = {time:candle.time, value:liveFastV};
+      s.tbData.slow[s.tbData.slow.length-1]  = {time:candle.time, value:liveSlowV};
+      s.tbData.color[s.tbData.color.length-1] = color;
     } else {
-      s.tbData.fast.push({time:candle.time, value:pt.fastV});
-      s.tbData.slow.push({time:candle.time, value:pt.slowV});
-      s.tbData.color.push(pt.color);
+      s.tbData.fast.push({time:candle.time, value:liveFastV});
+      s.tbData.slow.push({time:candle.time, value:liveSlowV});
+      s.tbData.color.push(color);
       const MAX_TB_POINTS = 1500;
       if (s.tbData.fast.length > MAX_TB_POINTS) { s.tbData.fast.shift(); s.tbData.slow.shift(); s.tbData.color.shift(); }
     }
@@ -1788,7 +1807,7 @@ const fsBtn = document.createElement('button');
       grabState: null,
       tbSeries: {fast:null, slow:null}, tbData: null, tbState: null,
       tbMarkersHandle: null, tbMarkersData: [],
-      tbHtfMode: false, tbHtfKlines: [], tbHtfKey: '', tbHtfBucket: null, tbHtfLastPoint: null,
+      tbHtfMode: false, tbHtfKlines: [], tbHtfKey: '', tbHtfBucket: null, tbHtfLastPoint: null, tbHtfLiveAgg: null,
       obLevBidLine: null, obLevAskLine: null,
       srSeries: { sup: null, res: null },
       klines: [],
@@ -2458,7 +2477,7 @@ let fsGrabWaveS = { high: null, low: null, close: null };
 let fsGrabMurreyS = { mid: null, lo: null, hi: null };
 let fsGrabState = null;
 let fsTbSeries = { fast: null, slow: null }, fsTbData = null, fsTbState = null;
-let fsTbHtfMode = false, fsTbHtfKlines = [], fsTbHtfKey = '', fsTbHtfBucket = null, fsTbHtfLastPoint = null;
+let fsTbHtfMode = false, fsTbHtfKlines = [], fsTbHtfKey = '', fsTbHtfBucket = null, fsTbHtfLastPoint = null, fsTbHtfLiveAgg = null;
 const fsChannelSlot = { get channelData() { return fsChannelData; } };
 // Adapter per riusare _grabLiveUpdate/_grabLiveColor (scritte per un oggetto "slot"
 // della grid) anche sulle variabili globali fs* del fullscreen — stesso pattern di
@@ -2487,6 +2506,8 @@ const fsTbSlot = {
   set tbHtfBucket(v) { fsTbHtfBucket = v; },
   get tbHtfLastPoint() { return fsTbHtfLastPoint; },
   set tbHtfLastPoint(v) { fsTbHtfLastPoint = v; },
+  get tbHtfLiveAgg() { return fsTbHtfLiveAgg; },
+  set tbHtfLiveAgg(v) { fsTbHtfLiveAgg = v; },
 };
 let fsDayPrimitive = null, obDayPrimitive = null;
 let fsLastPrice = null, fsLastOpen = null;
@@ -2709,7 +2730,7 @@ function applyFsTb() {
     if (fsTbHtfMode) {
         const key = `${SYM}|${cfg.calcTf}`;
         if (fsTbHtfKey !== key) {
-            fsTbHtfKey = key; fsTbHtfKlines = []; fsTbHtfLastPoint = null;
+            fsTbHtfKey = key; fsTbHtfKlines = []; fsTbHtfLastPoint = null; fsTbHtfLiveAgg = null;
             _tbFetchHtf(fsTbSlot, SYM, cfg.calcTf).then(() => { if (tbActive && fsChart) applyFsTb(); });
             return; // si ridisegna da sola al termine del fetch
         }
@@ -2724,6 +2745,8 @@ function applyFsTb() {
             fastV: htfTb.fast[htfTb.fast.length - 1].value,
             slowV: htfTb.slow[htfTb.slow.length - 1].value,
             color: htfTb.color[htfTb.color.length - 1],
+            atr: htfTb.lastAtr,
+            closeV: fsTbHtfKlines[fsTbHtfKlines.length - 1].close,
         };
         _tbApplyCandleColors(fsTbSlot, cfg, step.color);
         fsTbMarkersData = [];

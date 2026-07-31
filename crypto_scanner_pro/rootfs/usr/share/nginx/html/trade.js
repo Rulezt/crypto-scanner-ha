@@ -801,7 +801,7 @@ let _obTbSeries = { fast: null, slow: null }, _obTbData = null, _obTbState = nul
 // candele CHIUSE di cfg.calcTf, il valore resta fermo fino alla chiusura della
 // prossima candela di quel TF (nessun aggiornamento incrementale sulla candela
 // in formazione del TF di calcolo, per scelta esplicita dell'utente).
-let _obTbHtfMode = false, _obTbHtfKlines = [], _obTbHtfKey = '', _obTbHtfBucket = null, _obTbHtfLastPoint = null;
+let _obTbHtfMode = false, _obTbHtfKlines = [], _obTbHtfKey = '', _obTbHtfBucket = null, _obTbHtfLastPoint = null, _obTbHtfLiveAgg = null;
 
 function _tbHtfBucketNow(tf) {
     const secs = _TB_TF_SECONDS[tf];
@@ -937,7 +937,7 @@ function _obApplyTb() {
     if (_obTbHtfMode) {
         const key = `${_obSymbol}|${cfg.calcTf}`;
         if (_obTbHtfKey !== key) {
-            _obTbHtfKey = key; _obTbHtfKlines = []; _obTbHtfLastPoint = null;
+            _obTbHtfKey = key; _obTbHtfKlines = []; _obTbHtfLastPoint = null; _obTbHtfLiveAgg = null;
             _obTbFetchHtf(_obSymbol, cfg.calcTf).then(() => { if (_obTbActive) _obApplyTb(); });
             return; // si ridisegna da sola al termine del fetch
         }
@@ -952,6 +952,8 @@ function _obApplyTb() {
             fastV: htfTb.fast[htfTb.fast.length - 1].value,
             slowV: htfTb.slow[htfTb.slow.length - 1].value,
             color: htfTb.color[htfTb.color.length - 1],
+            atr: htfTb.lastAtr,
+            closeV: _obTbHtfKlines[_obTbHtfKlines.length - 1].close,
         };
         _tbApplyCandleColors(cfg, step.color);
         _obTbMarkersData = [];
@@ -1004,26 +1006,44 @@ function toggleObTb() {
 function _obTbUpdateTail(candle, confirmed) {
     if (!_obTbActive) return;
     if (_obTbHtfMode) {
-        // Nessun EMA "live" sulla candela del grafico: il valore resta quello
-        // dell'ultimo TF di calcolo chiuso, si estende solo la coda della serie
-        // fino alla candela corrente (altrimenti la banda smette di avanzare).
+        // La banda si aggiorna in tempo reale anche prima che il TF di calcolo chiuda
+        // (richiesta esplicita utente: tradando su 1m con calcolo a 5m non si può
+        // aspettare 5 minuti). Si ricostruisce un EMA "un passo avanti" a partire dallo
+        // stato dell'ultima candela CHIUSA del TF di calcolo (pt), usando il prezzo live
+        // come close e l'high/low aggregato di tutte le candele viste finora nel bucket
+        // corrente del TF di calcolo (non solo quella del grafico in formazione).
         if (!_obTbData || !_obTbHtfLastPoint) return;
         const pt = _obTbHtfLastPoint;
-        if (getTbCfg().colorCandles) {
-            try { _obCandleS.update({ ...candle, color: pt.color, wickColor: pt.color, borderColor: pt.color }); } catch(e) {}
+        const cfg = getTbCfg();
+        const curBucket = _tbHtfBucketNow(cfg.calcTf);
+        if (!_obTbHtfLiveAgg || _obTbHtfLiveAgg.bucket !== curBucket) {
+            _obTbHtfLiveAgg = { bucket: curBucket, high: candle.high, low: candle.low };
+        } else {
+            _obTbHtfLiveAgg.high = Math.max(_obTbHtfLiveAgg.high, candle.high);
+            _obTbHtfLiveAgg.low  = Math.min(_obTbHtfLiveAgg.low, candle.low);
+        }
+        const agg = _obTbHtfLiveAgg;
+        const kf = 2/(cfg.fastLen+1), ks = 2/(cfg.slowLen+1);
+        const liveFastV = candle.close * kf + pt.fastV * (1-kf);
+        const liveSlowV = candle.close * ks + pt.slowV * (1-ks);
+        const tr = pt.closeV != null ? Math.max(agg.high - agg.low, Math.abs(agg.high - pt.closeV), Math.abs(agg.low - pt.closeV)) : (agg.high - agg.low);
+        const liveAtr = pt.atr != null ? (tr - pt.atr) / 14 + pt.atr : null;
+        const color = tbBandColor(liveFastV - liveSlowV, liveAtr, cfg);
+        if (cfg.colorCandles) {
+            try { _obCandleS.update({ ...candle, color, wickColor: color, borderColor: color }); } catch(e) {}
         }
         if (_obTbSeries.fast) {
-            try { _obTbSeries.fast.update({time:candle.time, value:pt.fastV}); _obTbSeries.slow.update({time:candle.time, value:pt.slowV}); } catch(e) {}
+            try { _obTbSeries.fast.update({time:candle.time, value:liveFastV}); _obTbSeries.slow.update({time:candle.time, value:liveSlowV}); } catch(e) {}
         }
         const lastPt = _obTbData.fast[_obTbData.fast.length-1];
         if (lastPt && lastPt.time === candle.time) {
-            _obTbData.fast[_obTbData.fast.length-1]  = {time:candle.time, value:pt.fastV};
-            _obTbData.slow[_obTbData.slow.length-1]  = {time:candle.time, value:pt.slowV};
-            _obTbData.color[_obTbData.color.length-1] = pt.color;
+            _obTbData.fast[_obTbData.fast.length-1]  = {time:candle.time, value:liveFastV};
+            _obTbData.slow[_obTbData.slow.length-1]  = {time:candle.time, value:liveSlowV};
+            _obTbData.color[_obTbData.color.length-1] = color;
         } else {
-            _obTbData.fast.push({time:candle.time, value:pt.fastV});
-            _obTbData.slow.push({time:candle.time, value:pt.slowV});
-            _obTbData.color.push(pt.color);
+            _obTbData.fast.push({time:candle.time, value:liveFastV});
+            _obTbData.slow.push({time:candle.time, value:liveSlowV});
+            _obTbData.color.push(color);
             const MAX_TB_POINTS = 1500;
             if (_obTbData.fast.length > MAX_TB_POINTS) { _obTbData.fast.shift(); _obTbData.slow.shift(); _obTbData.color.shift(); }
         }
