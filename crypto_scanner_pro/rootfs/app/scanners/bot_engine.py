@@ -8,11 +8,21 @@ una candela flat isolata fra due tratti dello stesso colore non genera un nuovo
 segnale, esattamente come le frecce dell'indicatore visuale (vedi chart.html
 _tbArrowMarker/_tbLastSignal, stessa logica portata qui 1:1).
 
-Entrata/uscita — nessun SL/TP fisso: il bot è SEMPRE in mercato una volta partito
-(tranne prima del primo flip), e ogni flip chiude la posizione corrente e ne apre
-una opposta nello stesso momento (reverse). Una candela FLAT con posizione aperta
-non fa nulla: si resta in posizione finché non arriva un vero flip di direzione
-opposta (scelta esplicita dell'utente, stesso comportamento delle frecce).
+Entrata: su un vero flip (ignora i gap flat, stesso identico filtro delle frecce),
+SOLO se non c'è già una posizione aperta — un flip mentre si è in posizione viene
+comunque tracciato in `last_signal` ma NON genera un'azione: il bot resta nel
+trade corrente. Uscita: SEMPRE e SOLO a Stop Loss o Take Profit fissi (% dal
+prezzo di entrata, configurabili) — MAI su un segnale opposto (scelta esplicita
+dell'utente: niente reverse). Dopo un'uscita SL/TP il bot resta flat finché non
+arriva un vero NUOVO flip (non rientra subito nella stessa direzione solo perché
+la banda in quel momento è già dal lato giusto — deve cambiare rispetto a
+`last_signal`, che intanto ha continuato ad aggiornarsi anche durante il trade).
+SL/TP vengono controllati candela per candela (high/low, non solo il close) a
+partire dalla barra SUCCESSIVA a quella di entrata — l'entrata avviene al prezzo
+di chiusura della barra del flip, quindi il suo high/low non è rilevante per
+l'uscita. Se nella stessa barra sia SL sia TP sarebbero teoricamente raggiunti,
+vince SL (stessa assunzione dichiarata già usata nel vecchio motore ORB, non
+derivabile da OHLC puro).
 
 Il segnale è sulla candela CHIUSA (mai intrabar, a differenza del vecchio ORB):
 un EMA cross non ha bisogno di precisione intrabar e aspettare la chiusura evita
@@ -31,7 +41,7 @@ candele di `self.tf` nel frattempo si chiudono. `_strategy_tf()` ritorna
 chiama una volta su tutta la history (accumulando i trade chiusi), il motore live
 la richiama da zero sull'intera finestra di kline in cache ad ogni nuova candela
 CHIUSA e confronta lo stato risultante con quello della chiamata precedente per
-rilevare le transizioni (entrata, chiusura/reverse).
+rilevare le transizioni (entrata, chiusura a SL/TP).
 """
 import json
 import math
@@ -81,11 +91,13 @@ DEFAULT_PARAMS = {
     'fast_len': 5,    # stessi default dell'indicatore visuale (_DEFAULT_TB_CFG)
     'slow_len': 10,
     'flat_mult': 0.25,
+    'sl_pct': 1.0,    # % fissa dal prezzo di entrata
+    'tp_pct': 2.0,
 }
 
 _EMPTY_ENGINE_STATE = {
     'direction': 0,  # 0 nessuna posizione, 1 long, -1 short
-    'entry_bar': 0, 'entry_price': 0.0, 'trade_open': False,
+    'entry_bar': 0, 'entry_price': 0.0, 'sl_price': 0.0, 'tp_price': 0.0, 'trade_open': False,
     'closed_bar': None, 'closed_reason': None, 'closed_dir': 0, 'closed_price': None,
 }
 
@@ -99,6 +111,8 @@ def normalize_params(cfg):
     p['fast_len'] = max(2, min(200, int(p['fast_len'])))
     p['slow_len'] = max(2, min(400, int(p['slow_len'])))
     p['flat_mult'] = max(0.0, min(5.0, float(p['flat_mult'])))
+    p['sl_pct'] = max(0.05, min(20.0, float(p['sl_pct'])))
+    p['tp_pct'] = max(0.05, min(50.0, float(p['tp_pct'])))
     return p
 
 
@@ -166,9 +180,8 @@ def run_engine(candles, params, taker_fee_rate=0.00055):
     """Ritorna (stato_finale, trades). `trades` è la lista di tutti i trade
     chiusi durante il replay (per il backtest); `stato_finale` è lo stato "adesso"
     (per il motore live, che lo confronta con la chiamata precedente).
-    `taker_fee_rate` non è usato dal motore stesso (nessun breakeven fee-aware
-    con questa strategia) — resta nella firma solo per compatibilità con
-    run_backtest/BotEngine, che lo passano sempre esplicitamente."""
+    `taker_fee_rate` non è usato dal motore stesso — resta nella firma solo per
+    compatibilità con run_backtest/BotEngine, che lo passano sempre esplicitamente."""
     n = len(candles)
     st = dict(_EMPTY_ENGINE_STATE)
     trades = []
@@ -178,7 +191,8 @@ def run_engine(candles, params, taker_fee_rate=0.00055):
     colors = _calc_trend_band_colors(candles, params)
     warmup = warmup_bars_for(params)
     pending = None       # dettagli del trade attualmente aperto — costruisce il record alla chiusura
-    last_signal = None   # ultimo colore NON-flat confermato — vedi docstring modulo
+    last_signal = None   # ultimo colore NON-flat confermato — vedi docstring modulo,
+                          # continua ad aggiornarsi anche mentre una posizione è aperta
 
     for i in range(n):
         if i < warmup:
@@ -189,31 +203,56 @@ def run_engine(candles, params, taker_fee_rate=0.00055):
         color = colors[i]
         is_flip = color in ('bull', 'bear') and color != last_signal
 
-        if is_flip:
+        # Entrata: solo su un vero flip E solo se non c'è già una posizione aperta
+        # — un flip mentre si è in trade viene comunque assorbito in last_signal
+        # (aggiornato sotto) ma non genera un'azione, vedi docstring modulo.
+        if is_flip and not st['trade_open']:
             new_dir = 1 if color == 'bull' else -1
             entry_price = candles[i]['close']
-
-            # Reverse: chiude la posizione opposta eventualmente aperta SULLA
-            # STESSA barra in cui si apre la nuova — un flip, per costruzione
-            # (last_signal si aggiorna solo sui colori non-flat), è sempre nella
-            # direzione opposta a quella corrente, mai una ripetizione.
-            if st['trade_open']:
-                st['closed_dir'] = st['direction']
-                st['closed_reason'] = 'reverse'
-                st['closed_bar'] = i
-                st['closed_price'] = entry_price
-                if pending is not None:
-                    trades.append({**pending, 'exit_time': candles[i]['time'],
-                                   'exit_price': entry_price, 'exit_reason': 'reverse'})
-                    pending = None
-                st['trade_open'] = False
-
-            side = 'long' if new_dir == 1 else 'short'
+            sl_frac = params['sl_pct'] / 100.0
+            tp_frac = params['tp_pct'] / 100.0
+            if new_dir == 1:
+                sl_price = entry_price * (1.0 - sl_frac)
+                tp_price = entry_price * (1.0 + tp_frac)
+                side = 'long'
+            else:
+                sl_price = entry_price * (1.0 + sl_frac)
+                tp_price = entry_price * (1.0 - tp_frac)
+                side = 'short'
             st['direction'] = new_dir
             st['entry_bar'] = i
             st['entry_price'] = entry_price
+            st['sl_price'] = sl_price
+            st['tp_price'] = tp_price
             st['trade_open'] = True
-            pending = {'side': side, 'entry_time': candles[i]['time'], 'entry_price': entry_price}
+            pending = {'side': side, 'entry_time': candles[i]['time'], 'entry_price': entry_price,
+                       'sl_price': sl_price, 'tp_price': tp_price}
+
+        # SL/TP — controllo intrabar (high/low, non solo il close) a partire dalla
+        # barra SUCCESSIVA a quella di entrata: l'entrata avviene al prezzo di
+        # chiusura della barra del flip, il suo high/low non è rilevante per l'uscita.
+        if st['trade_open'] and i > st['entry_bar']:
+            hi, lo = candles[i]['high'], candles[i]['low']
+            if st['direction'] == 1:
+                sl_hit = lo <= st['sl_price']
+                tp_hit = hi >= st['tp_price']
+            else:
+                sl_hit = hi >= st['sl_price']
+                tp_hit = lo <= st['tp_price']
+            if sl_hit or tp_hit:
+                # Tie-break stessa candela SL+TP: vince SL (assunzione dichiarata,
+                # non derivabile da OHLC puro — stessa convenzione del vecchio ORB).
+                reason = 'sl' if sl_hit else 'tp'
+                exit_price = st['sl_price'] if sl_hit else st['tp_price']
+                st['closed_dir'] = st['direction']
+                st['closed_reason'] = reason
+                st['closed_bar'] = i
+                st['closed_price'] = exit_price
+                if pending is not None:
+                    trades.append({**pending, 'exit_time': candles[i]['time'],
+                                   'exit_price': exit_price, 'exit_reason': reason})
+                    pending = None
+                st['trade_open'] = False
 
         if color in ('bull', 'bear'):
             last_signal = color
@@ -260,6 +299,7 @@ def run_backtest(candles, params, initial_capital=1000.0, sizing=None, taker_fee
         trades.append({
             'side': side, 'entry_time': rt['entry_time'], 'entry_price': entry_price,
             'exit_time': rt['exit_time'], 'exit_price': exit_price, 'exit_reason': rt['exit_reason'],
+            'sl_price': rt['sl_price'], 'tp_price': rt['tp_price'],
             'pnl_pct': round(pnl_pct, 4), 'pnl_usdt': round(pnl_usdt, 4), 'fee_usdt': round(fee_usdt, 4),
             'notional': round(notional, 2),
         })
@@ -439,6 +479,7 @@ class BotEngine:
             position = {
                 'side': 'long' if self.state['direction'] == 1 else 'short',
                 'entry_price': self.state['entry_price'],
+                'stop': self.state['sl_price'], 'target': self.state['tp_price'],
             }
         return {
             'running': self.running, 'mode': self.mode, 'symbol': self.symbol, 'tf': self.tf,
@@ -461,12 +502,12 @@ class BotEngine:
 
     def _diff_events(self, prev, new, klines, i):
         """Confronta lo stato del motore tra due chiamate consecutive (una candela
-        chiusa in più) e ne deriva gli eventi: uscita (reverse) ed entrata. A
-        differenza del vecchio ORB, un reverse chiude la posizione precedente e ne
-        apre una nuova SULLA STESSA barra — 'trade_open' resta True nello stato
-        nuovo anche quando è appena avvenuta una chiusura, quindi le due condizioni
-        vanno controllate in modo indipendente (closed_bar per l'uscita, entry_bar
-        per l'entrata), non con un early-return come nel motore precedente."""
+        chiusa in più) e ne deriva gli eventi: uscita (SL/TP) ed entrata. Le due
+        condizioni sono controllate in modo indipendente (closed_bar per l'uscita,
+        entry_bar per l'entrata) — con questo motore non possono più coincidere
+        sulla stessa barra (l'entrata è sempre gated su 'non già in posizione',
+        controllato prima del check SL/TP), ma non c'è motivo di reintrodurre un
+        early-return: la versione indipendente resta corretta in entrambi i casi."""
         events = []
         t = klines[i]['time']
 
@@ -482,6 +523,7 @@ class BotEngine:
             # trend già in corso) — vedi _execute_entry, che in quel caso rifiuta
             # di piazzare un ordine reale su un prezzo ormai superato dal mercato.
             events.append({'type': 'entry', 'side': side, 'time': t, 'price': new['entry_price'],
+                            'stop': new['sl_price'], 'target': new['tp_price'],
                             'fresh': new['entry_bar'] == i})
 
         return events
@@ -549,9 +591,9 @@ class BotEngine:
                 self._execute_entry(ev)
             elif ev['type'] == 'exit':
                 self._execute_exit(ev)
-                # Registrato SEMPRE (anche se _execute_exit non ha dovuto inviare
-                # un ordine perché era già stata chiusa da un reverse precedente)
-                # — questo evento rappresenta comunque la chiusura reale della
+                # Registrato SEMPRE (anche se _execute_exit non ha dovuto inviare un
+                # ordine perché Bybit aveva già chiuso da solo via SL/TP nativo) —
+                # questo evento rappresenta comunque la chiusura reale della
                 # posizione del bot, candela in cui il nostro replay l'ha rilevata.
                 _append_bot_ledger({'symbol': self.symbol, 'side': ev.get('side', ''),
                                      'exit_time': ev['time'], 'reason': ev.get('reason', '')})
@@ -582,9 +624,13 @@ class BotEngine:
             return
 
         side = 'Buy' if ev['side'] == 'long' else 'Sell'
-        # Nessun SL/TP fisso (trend-following puro, esce solo sul flip opposto).
+        # SL/TP nativi Bybit: chiudono la posizione automaticamente lato exchange
+        # quando il prezzo li tocca — il bot non deve inviare un ordine di chiusura,
+        # _execute_exit(vedi sotto) resta comunque un fallback difensivo (no-op se
+        # la posizione è già stata chiusa da Bybit).
         ok, order_id, err = self._trade_client.place_order(
-            symbol=symbol, side=side, qty=qty, leverage=self.leverage)
+            symbol=symbol, side=side, qty=qty, leverage=self.leverage,
+            stop_loss=ev['stop'], take_profit=ev['target'])
         if not ok:
             print(f'❌ BOT order failed: {err}')
             # Nessuna posizione reale aperta — marca questo trade come "fantasma"
@@ -652,17 +698,21 @@ class BotEngine:
                 f'- Coin: {self.symbol}',
                 f'- Modalità: {mode_label}',
                 f'- Prezzo entrata: {rec["price"]}',
+                f'- Stop Loss: {rec["stop"]:.6f}',
+                f'- Take Profit: {rec["target"]:.6f}',
                 '------------------------------------------------',
                 '',
                 f'<a href="https://www.bybit.com/trade/usdt/{self.symbol}">- View Bybit</a>',
             ]
         else:
+            reason_label = {'sl': 'Stop Loss', 'tp': 'Take Profit (target)'}.get(rec['reason'], rec['reason'])
             lines = [
-                f'🤖 BOT Trend Band {tf_label} — CHIUSURA (reverse)',
+                f'🤖 BOT Trend Band {tf_label} — CHIUSURA',
                 '',
                 '------------------------------------------------',
                 f'- Coin: {self.symbol}',
                 f'- Modalità: {mode_label}',
+                f'- Motivo: {reason_label}',
                 f'- Prezzo uscita: {rec["price"]}',
                 '------------------------------------------------',
             ]

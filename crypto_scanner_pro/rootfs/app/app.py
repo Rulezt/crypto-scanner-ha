@@ -236,6 +236,8 @@ DEFAULT_CONFIG = {
         'fast_len': 5,
         'slow_len': 10,
         'flat_mult': 0.25,
+        'sl_pct': 1.0,
+        'tp_pct': 2.0,
     },
     'general': {
         'min_volume_24h': 10000000,

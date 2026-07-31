@@ -134,6 +134,13 @@
                         <div class="lbl">Entrata</div>
                         <div class="val">{{ fmtPrice(status.position.entry_price) }}</div>
                     </div>
+                    <div class="stat-card" v-if="status.position">
+                        <div class="lbl">SL / TP</div>
+                        <div class="val" style="font-size:0.8rem">
+                            <span class="negative">{{ fmtPrice(status.position.stop) }}</span> /
+                            <span class="positive">{{ fmtPrice(status.position.target) }}</span>
+                        </div>
+                    </div>
                     <div class="stat-card" v-if="status.exchange_position">
                         <div class="lbl">PnL non realizzato</div>
                         <div class="val" :class="(status.exchange_position.unrealizedPnl||0)>=0 ? 'positive':'negative'">
@@ -164,7 +171,7 @@
                     <div class="t">{{ fmtTime(s.time) }} — {{ s.mode==='execution' ? 'Esecuzione' : 'Segnale' }}</div>
                     <span v-if="s.type==='entry'">
                         Entrata <b :class="s.side==='long'?'positive':'negative'">{{ s.side==='long'?'LONG':'SHORT' }}</b>
-                        @ {{ fmtPrice(s.price) }}
+                        @ {{ fmtPrice(s.price) }} — SL {{ fmtPrice(s.stop) }} / TP {{ fmtPrice(s.target) }}
                     </span>
                     <span v-else>
                         Uscita ({{ REASON_LABEL[s.reason] || s.reason }}) @ {{ fmtPrice(s.price) }}
@@ -279,6 +286,17 @@
                     </select>
                 </div>
                 <div class="row"><label>Mostra Trend Band su grafico</label><input type="checkbox" v-model="showChannel"></div>
+            </div>
+            <div class="group">
+                <div class="group-title">Stop Loss / Take Profit</div>
+                <div class="row" title="Uscita SEMPRE e SOLO a SL o TP fisso dal prezzo di entrata — mai su un segnale opposto">
+                    <label>Stop Loss (%)</label>
+                    <input type="number" step="0.05" v-model.number="cfg.sl_pct" min="0.05" max="20" :disabled="status.running">
+                </div>
+                <div class="row">
+                    <label>Take Profit (%)</label>
+                    <input type="number" step="0.05" v-model.number="cfg.tp_pct" min="0.05" max="50" :disabled="status.running">
+                </div>
             </div>
             <div class="group">
                 <div class="group-title">Modalità</div>
@@ -461,7 +479,7 @@ const { createApp, ref, reactive, computed, watch, onMounted, onUnmounted, nextT
 
 const TF_LIST  = ['1','5','15','30','60','240','D','W','M'];
 const TF_LABEL = { '1':'1m','5':'5m','15':'15m','30':'30m','60':'1h','240':'4h','D':'1D','W':'1W','M':'1M' };
-const REASON_LABEL = { reverse:'Reverse' };
+const REASON_LABEL = { sl:'Stop Loss', tp:'Take Profit (target)' };
 const CFG_KEY = 'bot_cfg_draft';
 
 createApp({
@@ -473,6 +491,8 @@ createApp({
             slow_len: 10,
             flat_mult: 0.25,
             calc_tf: '', // '' = stessa del TF operativo; vedi bot_engine.py _strategy_tf()
+            sl_pct: 1.0,
+            tp_pct: 2.0,
         };
 
         const cfg = reactive(JSON.parse(JSON.stringify(DEFAULT_CFG)));
@@ -677,7 +697,7 @@ createApp({
             const m = { CandlestickSeries: 'addCandlestickSeries', LineSeries: 'addLineSeries' };
             return chart[m[type]](opts);
         };
-        let mainChart = null, candleSeries = null, entryLine = null, liveMarkers = null;
+        let mainChart = null, candleSeries = null, entryLine = null, slLine = null, tpLine = null, liveMarkers = null;
         let mainKlines = null;
         let liveWS = null, liveWSTimer = null, TZ_OFFSET_S = 0;
         let chHiLineSeries = null, chLoLineSeries = null;
@@ -685,6 +705,7 @@ createApp({
         let equityChart = null;
         let btChart = null, btMarkers = null, btCandles = null, bbSeries = [], btCandleSeries = null;
         let btFocusEntryLine = null, btFocusExitLine = null, btFocusRevert = null;
+        let btFocusSlLine = null, btFocusTpLine = null;
         let btFocusOverrideActive = false, btFocusOverrideRange = null;
         // Solo le candele determinano l'asse prezzo del pannello Backtest — SMA e BB
         // sono escluse dall'autoscale (vedi btExcludeFromAutoscale sotto).
@@ -859,7 +880,7 @@ createApp({
         const destroyMainChart = () => {
             closeLiveWS();
             if (mainChart) { try { mainChart.remove(); } catch(e) {} mainChart = null; }
-            candleSeries = null; entryLine = null; liveMarkers = null;
+            candleSeries = null; entryLine = null; slLine = null; tpLine = null; liveMarkers = null;
             chHiLineSeries = null; chLoLineSeries = null; mainKlines = null;
             const el = document.getElementById('chart-box');
             if (el) el.innerHTML = '';
@@ -934,9 +955,13 @@ createApp({
         const drawPositionLines = () => {
             if (!candleSeries) return;
             if (entryLine) { try { candleSeries.removePriceLine(entryLine); } catch(e) {} entryLine = null; }
+            if (slLine) { try { candleSeries.removePriceLine(slLine); } catch(e) {} slLine = null; }
+            if (tpLine) { try { candleSeries.removePriceLine(tpLine); } catch(e) {} tpLine = null; }
             const pos = status.position;
             if (!pos) return;
             entryLine = candleSeries.createPriceLine({ price: pos.entry_price, color: pos.side==='long'?'#10b981':'#ef4444', lineWidth:1, lineStyle:0, title:'Entrata' });
+            slLine = candleSeries.createPriceLine({ price: pos.stop, color:'#ef4444', lineWidth:1, lineStyle:2, title:'SL' });
+            tpLine = candleSeries.createPriceLine({ price: pos.target, color:'#10b981', lineWidth:2, lineStyle:2, title:'TP' });
         };
 
         // Marker ▲/▼ per lo storico segnali (entrate/uscite già eseguite) sul grafico
@@ -1064,7 +1089,7 @@ createApp({
             btChHiLineSeries = null; btChLoLineSeries = null;
             btCandleSeries = null;
             if (btFocusRevert) { try { btFocusRevert(); } catch(e) {} btFocusRevert = null; }
-            btFocusEntryLine = null; btFocusExitLine = null;
+            btFocusEntryLine = null; btFocusExitLine = null; btFocusSlLine = null; btFocusTpLine = null;
             btCandles = candles;
             container.innerHTML = '';
 
@@ -1141,6 +1166,8 @@ createApp({
             // visivamente il trade cliccato, non solo lo zoom sull'intervallo temporale.
             if (btFocusEntryLine) { try { btCandleSeries.removePriceLine(btFocusEntryLine); } catch(e) {} }
             if (btFocusExitLine) { try { btCandleSeries.removePriceLine(btFocusExitLine); } catch(e) {} }
+            if (btFocusSlLine)  { try { btCandleSeries.removePriceLine(btFocusSlLine);  } catch(e) {} }
+            if (btFocusTpLine)  { try { btCandleSeries.removePriceLine(btFocusTpLine);  } catch(e) {} }
             btFocusEntryLine = btCandleSeries.createPriceLine({
                 price: tr.entry_price, color: tr.side === 'long' ? '#10b981' : '#ef4444',
                 lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Entrata',
@@ -1149,13 +1176,15 @@ createApp({
                 price: tr.exit_price, color: tr.pnl_pct >= 0 ? '#10b981' : '#ef4444',
                 lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Uscita',
             });
+            btFocusSlLine = btCandleSeries.createPriceLine({ price: tr.sl_price, color: '#ef4444', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'SL' });
+            btFocusTpLine = btCandleSeries.createPriceLine({ price: tr.tp_price, color: '#10b981', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'TP' });
             // Forza la scala prezzo a centrarsi sul range entrata/uscita: l'autoscale
             // normale guarda TUTTE le candele nel margine di 15 barre, quindi uno spike
             // estraneo in quel margine comprimeva visivamente il trade cliccato verso
             // il bordo del grafico anche se tecnicamente "in vista". Overriding
             // temporaneo, rimosso al primo scroll/drag manuale dell'utente sul grafico.
             if (btFocusRevert) { btFocusRevert(); btFocusRevert = null; }
-            const levels = [tr.entry_price, tr.exit_price];
+            const levels = [tr.entry_price, tr.exit_price, tr.sl_price, tr.tp_price];
             const lo = Math.min(...levels);
             const hi = Math.max(...levels);
             const pad = (hi - lo) * 0.15 || lo * 0.02;
@@ -1202,7 +1231,7 @@ createApp({
             btCandleSeries = null; btMarkers = null; bbSeries = [];
             btChHiLineSeries = null; btChLoLineSeries = null;
             if (btFocusRevert) { try { btFocusRevert(); } catch(e) {} btFocusRevert = null; }
-            btFocusEntryLine = null; btFocusExitLine = null;
+            btFocusEntryLine = null; btFocusExitLine = null; btFocusSlLine = null; btFocusTpLine = null;
             disableBtRangeTool();
         };
 
