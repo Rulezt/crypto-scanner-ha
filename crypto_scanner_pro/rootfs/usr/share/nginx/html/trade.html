@@ -740,6 +740,16 @@
       <input type="number" id="tb-cfg-slowLen" min="1" max="500" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
     <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Nascondi linee EMA (solo banda)
       <input type="checkbox" id="tb-cfg-hideLines"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;" title="Calcola la banda su un TF diverso da quello visualizzato: il valore resta fermo per tutta la candela del TF scelto e scatta solo alla sua chiusura">Calcola su TF
+      <select id="tb-cfg-calcTf" style="width:100px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;">
+        <option value="">Stesso del grafico</option>
+        <option value="1">1m</option>
+        <option value="5">5m</option>
+        <option value="30">30m</option>
+        <option value="60">1h</option>
+        <option value="240">4h</option>
+        <option value="D">D</option>
+      </select></label>
 
     <div style="font-weight:700;color:#9CA3AF;margin:12px 0 4px;">Banda</div>
     <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore rialzo (bull)
@@ -752,7 +762,7 @@
       <input type="number" id="tb-cfg-bandTransp" min="0" max="95" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
     <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Sensibilità transizione
       <input type="number" id="tb-cfg-flatMult" min="0.05" step="0.05" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
-    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Freccia ingresso flat
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Freccia ingresso Long/Short
       <input type="checkbox" id="tb-cfg-showFlatArrow"></label>
 
     <div style="display:flex;gap:8px;margin-top:14px;">

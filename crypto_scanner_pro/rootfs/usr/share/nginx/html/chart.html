@@ -1389,7 +1389,44 @@ const _DEFAULT_TB_CFG = {
     bullColor: '#22c55e', bearColor: '#ef4444', flatColor: '#eab308',
     bandTransp: 22, flatMult: 0.25, hideLines: true,
     showFlatArrow: false,
+    calcTf: '', // '' = stesso TF dello slot; altrimenti banda calcolata su un TF diverso e mostrata a gradini
 };
+const _TB_TF_SECONDS = { '1':60, '5':300, '30':1800, '60':3600, '240':14400, 'D':86400 };
+function _tbHtfBucketNow(tf) {
+    const secs = _TB_TF_SECONDS[tf];
+    if (!secs) return null;
+    return Math.floor((Math.floor(Date.now() / 1000) + TZ_OFFSET_S) / secs);
+}
+async function _tbFetchHtf(s, symbol, tf) {
+    try {
+        const r = await fetch(`api/klines?symbol=${symbol}&interval=${tf}`);
+        const j = await r.json();
+        if (!j.success || !j.data || !j.data.length) { s.tbHtfKlines = []; return; }
+        const secs = _TB_TF_SECONDS[tf];
+        const nowBucketStart = secs ? Math.floor((Math.floor(Date.now() / 1000) + TZ_OFFSET_S) / secs) * secs : Infinity;
+        const data = j.data;
+        const last = data[data.length - 1];
+        // Scarta l'ultima candela se ancora in formazione: la banda deve riflettere
+        // solo TF chiusi ("scatta solo alla chiusura", comportamento scelto dall'utente).
+        s.tbHtfKlines = (last && last.time >= nowBucketStart) ? data.slice(0, -1) : data.slice();
+        s.tbHtfBucket = _tbHtfBucketNow(tf);
+    } catch (e) { s.tbHtfKlines = []; }
+}
+// Merge a gradini: per ogni candela dello slot usa il valore dell'ultima candela
+// CHIUSA del TF di calcolo con time <= a quella candela.
+function _tbReindexStep(htfTb, displayKlines) {
+    const fast = [], slow = [], color = [];
+    if (!htfTb.fast.length) return { fast, slow, color };
+    let j = 0;
+    for (const k of displayKlines) {
+        if (htfTb.fast[0].time > k.time) continue;
+        while (j + 1 < htfTb.fast.length && htfTb.fast[j + 1].time <= k.time) j++;
+        fast.push({ time: k.time, value: htfTb.fast[j].value });
+        slow.push({ time: k.time, value: htfTb.slow[j].value });
+        color.push(htfTb.color[j]);
+    }
+    return { fast, slow, color };
+}
 function getTbCfg() {
     try { const s = JSON.parse(localStorage.getItem('chart_tb_cfg')); if (s) return { ..._DEFAULT_TB_CFG, ...s }; } catch(e) {}
     return { ..._DEFAULT_TB_CFG };
@@ -1414,6 +1451,14 @@ function tbBandColor(spread, atr, cfg) {
     if (atr != null && Math.abs(spread) < atr * cfg.flatMult) return cfg.flatColor;
     return spread > 0 ? cfg.bullColor : cfg.bearColor;
 }
+// Freccia di ingresso long/short: solo sulla transizione VERSO bull/bear (non su ogni
+// candela dello stesso stato), verde sotto la candela per long, rossa sopra per short.
+function _tbArrowMarker(time, color, prevColor, cfg) {
+    if (color === prevColor) return null;
+    if (color === cfg.bullColor) return { time, position: 'belowBar', color: cfg.bullColor, shape: 'arrowUp', text: '' };
+    if (color === cfg.bearColor) return { time, position: 'aboveBar', color: cfg.bearColor, shape: 'arrowDown', text: '' };
+    return null;
+}
 function calcTrendBand(klines, cfg) {
     const ef = calcEMAField(klines, cfg.fastLen, 'close');
     const es = calcEMAField(klines, cfg.slowLen, 'close');
@@ -1436,6 +1481,7 @@ function applyTbToSlot(s, cfg) {
     s.tbData = null; s.tbState = null;
     if (!s.tbMarkersHandle && LC.createSeriesMarkers) { try { s.tbMarkersHandle = LC.createSeriesMarkers(s.candleS, []); } catch(e) {} }
     if (!tbActive || !s.klines.length) {
+        s.tbHtfMode = false;
         s.tbMarkersData = [];
         if (s.tbMarkersHandle) s.tbMarkersHandle.setMarkers([]);
         return;
@@ -1443,6 +1489,38 @@ function applyTbToSlot(s, cfg) {
     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: !cfg.hideLines };
     s.tbSeries.fast = addSeries(s.chart, 'LineSeries', { ...lb, color: '#ffe082', lineWidth: 1 });
     s.tbSeries.slow = addSeries(s.chart, 'LineSeries', { ...lb, color: '#e0e0e0', lineWidth: 1 });
+
+    s.tbHtfMode = !!(cfg.calcTf && cfg.calcTf !== s.curTF);
+    if (s.tbHtfMode) {
+        const key = `${s.symbol}|${cfg.calcTf}`;
+        if (s.tbHtfKey !== key) {
+            s.tbHtfKey = key; s.tbHtfKlines = []; s.tbHtfLastPoint = null;
+            _tbFetchHtf(s, s.symbol, cfg.calcTf).then(() => { if (tbActive) applyTbToSlot(s, getTbCfg()); });
+            return; // si ridisegna da sola al termine del fetch
+        }
+        if (!s.tbHtfKlines.length) return; // fetch in corso/fallito
+        const htfTb = calcTrendBand(s.tbHtfKlines, cfg);
+        const step = _tbReindexStep(htfTb, s.klines);
+        if (!step.fast.length) return;
+        s.tbSeries.fast.setData(step.fast);
+        s.tbSeries.slow.setData(step.slow);
+        s.tbData = { fast: step.fast, slow: step.slow, color: step.color };
+        s.tbHtfLastPoint = {
+            fastV: htfTb.fast[htfTb.fast.length - 1].value,
+            slowV: htfTb.slow[htfTb.slow.length - 1].value,
+            color: htfTb.color[htfTb.color.length - 1],
+        };
+        s.tbMarkersData = [];
+        if (cfg.showFlatArrow) {
+            for (let i = 1; i < step.color.length; i++) {
+                const m = _tbArrowMarker(step.fast[i].time, step.color[i], step.color[i-1], cfg);
+                if (m) s.tbMarkersData.push(m);
+            }
+        }
+        if (s.tbMarkersHandle) s.tbMarkersHandle.setMarkers(s.tbMarkersData);
+        return;
+    }
+
     const tb = calcTrendBand(s.klines, cfg);
     s.tbSeries.fast.setData(tb.fast);
     s.tbSeries.slow.setData(tb.slow);
@@ -1452,20 +1530,43 @@ function applyTbToSlot(s, cfg) {
         atr: tb.lastAtr, prevClose: s.klines[s.klines.length-2] ? s.klines[s.klines.length-2].close : s.klines[s.klines.length-1].close,
         prevColor: tb.color[tb.color.length-1],
     };
-    // Freccia solo sulla candela CHIUSA che entra in flat (transizione da bull/bear a flat),
-    // non su ogni candela flat successiva — richiesta esplicita utente.
+    // Freccia solo sulla candela CHIUSA che entra in long/short (transizione di stato),
+    // non su ogni candela successiva dello stesso stato — richiesta esplicita utente.
     s.tbMarkersData = [];
     if (cfg.showFlatArrow) {
         for (let i = 1; i < tb.color.length; i++) {
-            if (tb.color[i] === cfg.flatColor && tb.color[i-1] !== cfg.flatColor) {
-                s.tbMarkersData.push({ time: tb.fast[i].time, position: 'aboveBar', color: cfg.flatColor, shape: 'arrowDown', text: '' });
-            }
+            const m = _tbArrowMarker(tb.fast[i].time, tb.color[i], tb.color[i-1], cfg);
+            if (m) s.tbMarkersData.push(m);
         }
     }
     if (s.tbMarkersHandle) s.tbMarkersHandle.setMarkers(s.tbMarkersData);
 }
 function _tbLiveUpdate(s, candle, confirmed, cfg) {
-    if (!tbActive || !s.tbState) return;
+    if (!tbActive) return;
+    if (s.tbHtfMode) {
+        // Nessun EMA "live" sulla candela dello slot: il valore resta quello
+        // dell'ultimo TF di calcolo chiuso, si estende solo la coda della serie
+        // fino alla candela corrente (altrimenti la banda smette di avanzare).
+        if (!s.tbData || !s.tbHtfLastPoint) return;
+        const pt = s.tbHtfLastPoint;
+        if (s.tbSeries.fast) {
+            try { s.tbSeries.fast.update({time:candle.time, value:pt.fastV}); s.tbSeries.slow.update({time:candle.time, value:pt.slowV}); } catch(e) {}
+        }
+        const lastPt = s.tbData.fast[s.tbData.fast.length-1];
+        if (lastPt && lastPt.time === candle.time) {
+            s.tbData.fast[s.tbData.fast.length-1]  = {time:candle.time, value:pt.fastV};
+            s.tbData.slow[s.tbData.slow.length-1]  = {time:candle.time, value:pt.slowV};
+            s.tbData.color[s.tbData.color.length-1] = pt.color;
+        } else {
+            s.tbData.fast.push({time:candle.time, value:pt.fastV});
+            s.tbData.slow.push({time:candle.time, value:pt.slowV});
+            s.tbData.color.push(pt.color);
+            const MAX_TB_POINTS = 1500;
+            if (s.tbData.fast.length > MAX_TB_POINTS) { s.tbData.fast.shift(); s.tbData.slow.shift(); s.tbData.color.shift(); }
+        }
+        return;
+    }
+    if (!s.tbState) return;
     const kf = 2/(cfg.fastLen+1), ks = 2/(cfg.slowLen+1);
     const liveEmaFast = candle.close * kf + s.tbState.emaFast * (1-kf);
     const liveEmaSlow = candle.close * ks + s.tbState.emaSlow * (1-ks);
@@ -1493,15 +1594,28 @@ function _tbLiveUpdate(s, candle, confirmed, cfg) {
         }
     }
     if (confirmed) {
-        if (cfg.showFlatArrow && s.tbMarkersHandle && color === cfg.flatColor && s.tbState.prevColor !== cfg.flatColor) {
-            s.tbMarkersData = s.tbMarkersData || [];
-            s.tbMarkersData.push({ time: candle.time, position: 'aboveBar', color: cfg.flatColor, shape: 'arrowDown', text: '' });
-            s.tbMarkersHandle.setMarkers(s.tbMarkersData);
+        if (cfg.showFlatArrow && s.tbMarkersHandle) {
+            const m = _tbArrowMarker(candle.time, color, s.tbState.prevColor, cfg);
+            if (m) { s.tbMarkersData = s.tbMarkersData || []; s.tbMarkersData.push(m); s.tbMarkersHandle.setMarkers(s.tbMarkersData); }
         }
         s.tbState.emaFast = liveEmaFast; s.tbState.emaSlow = liveEmaSlow; s.tbState.atr = liveAtr; s.tbState.prevClose = candle.close;
         s.tbState.prevColor = color;
     }
 }
+// Trend Band con TF di calcolo diverso ("a gradini"): il valore scatta solo alla
+// chiusura della candela del TF scelto, non a quella del TF visualizzato — qui
+// basta controllare (ogni 3s) se il bucket del TF di calcolo è avanzato.
+setInterval(() => {
+    if (!tbActive || typeof slots === 'undefined') return;
+    const cfg = getTbCfg();
+    if (!cfg.calcTf) return;
+    const nowB = _tbHtfBucketNow(cfg.calcTf);
+    if (nowB == null) return;
+    for (const s of slots) {
+        if (!s.tbHtfMode || s.tbHtfBucket == null || nowB === s.tbHtfBucket) continue;
+        _tbFetchHtf(s, s.symbol, cfg.calcTf).then(() => { if (tbActive) applyTbToSlot(s, getTbCfg()); });
+    }
+}, 3000);
 class _TrendBandFillPrimitive {
     constructor(slot, chart) {
         this._slot = slot;
@@ -1922,7 +2036,8 @@ const IND_CFG_SCHEMAS = {
             { key:'bandTransp', label:'Trasparenza banda %', type:'number', min:0, max:100, step:1 },
             { key:'flatMult', label:'Soglia flat (xATR)', type:'number', min:0, max:2, step:0.05 },
             { key:'hideLines', label:'Nascondi linee EMA', type:'checkbox' },
-            { key:'showFlatArrow', label:'Freccia ingresso flat', type:'checkbox' },
+            { key:'showFlatArrow', label:'Freccia ingresso Long/Short', type:'checkbox' },
+            { key:'calcTf', label:'Calcola su TF', type:'select', raw:true, options:[['','Stesso del grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D']] },
         ],
         apply: cfg => { try { localStorage.setItem('chart_tb_cfg', JSON.stringify(cfg)); } catch(e) {} slots.forEach(s => applyTbToSlot(s, cfg)); },
     },
@@ -2066,7 +2181,7 @@ function saveIndCfgPanel() {
         const field = schema.fields.find(f => f.key === key);
         let v;
         if (field.type === 'checkbox') v = input.checked;
-        else if (field.type === 'select') v = parseInt(input.value, 10);
+        else if (field.type === 'select') v = field.raw ? input.value : parseInt(input.value, 10);
         else if (field.type === 'number') v = parseFloat(input.value);
         else v = input.value;
         _indCfgWorking[key] = v;
@@ -2763,6 +2878,7 @@ const mtfEl = document.createElement('button');
             channelSeries: { upper: null, mid: null, lower: null }, channelData: null,
             tbSeries: { fast: null, slow: null }, tbData: null, tbState: null,
             tbMarkersHandle: null, tbMarkersData: [],
+            tbHtfMode: false, tbHtfKlines: [], tbHtfKey: '', tbHtfBucket: null, tbHtfLastPoint: null,
             grabWaveS: { high: null, low: null, close: null }, grabMurreyS: { mid: null, lo: null, hi: null }, grabState: null,
             sqzLines: { hi: null, lo: null },
             srSeries: { sup: null, res: null },

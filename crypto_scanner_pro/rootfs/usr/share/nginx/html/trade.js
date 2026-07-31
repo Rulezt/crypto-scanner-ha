@@ -157,7 +157,9 @@ const _DEFAULT_TB_CFG = {
     bullColor: '#22c55e', bearColor: '#ef4444', flatColor: '#eab308',
     bandTransp: 22, flatMult: 0.25, hideLines: true,
     showFlatArrow: false,
+    calcTf: '', // '' = stesso TF del grafico; altrimenti banda calcolata su un TF diverso e mostrata a gradini
 };
+const _TB_TF_SECONDS = { '1':60, '5':300, '30':1800, '60':3600, '240':14400, 'D':86400 };
 function getTbCfg() {
     try { const s = JSON.parse(localStorage.getItem('chart_tb_cfg')); if (s) return { ..._DEFAULT_TB_CFG, ...s }; } catch(e) {}
     return { ..._DEFAULT_TB_CFG };
@@ -182,6 +184,14 @@ function calcRMA(values, length) {
 function tbBandColor(spread, atr, cfg) {
     if (atr != null && Math.abs(spread) < atr * cfg.flatMult) return cfg.flatColor;
     return spread > 0 ? cfg.bullColor : cfg.bearColor;
+}
+// Freccia di ingresso long/short: solo sulla transizione VERSO bull/bear (non su ogni
+// candela dello stesso stato), verde sotto la candela per long, rossa sopra per short.
+function _tbArrowMarker(time, color, prevColor, cfg) {
+    if (color === prevColor) return null;
+    if (color === cfg.bullColor) return { time, position: 'belowBar', color: cfg.bullColor, shape: 'arrowUp', text: '' };
+    if (color === cfg.bearColor) return { time, position: 'aboveBar', color: cfg.bearColor, shape: 'arrowDown', text: '' };
+    return null;
 }
 function calcTrendBand(klines, cfg) {
     const ef = calcEMAField(klines, cfg.fastLen, 'close');
@@ -325,7 +335,7 @@ function fmtVol(v) {
 // ── TRADE MODULE (module-level, accessible from HTML onclick handlers) ────────
 // Variables and functions copied verbatim from chart.html with 4 substitutions:
 // fsCandleS→_obCandleS, fsChart→_obChart, fsCoin.symbol→_obSymbol, _livePrice[...]→_obLivePrice
-let _obCandleS = null, _obChart = null, _obSymbol = '', _obLivePrice = 0;
+let _obCandleS = null, _obChart = null, _obSymbol = '', _obLivePrice = 0, _obChartTF = '', _obTzOffsetG = 0;
 let _isLoggedIn = false;
 
 // ── Bollinger Bands (BB) ───────────────────────────────────────────────────────
@@ -744,6 +754,49 @@ function toggleObTrendlineSR() {
 // ── Trend Band (banda EMA fast/slow) ───────────────────────────────────────────
 let _obTbActive = false;
 let _obTbSeries = { fast: null, slow: null }, _obTbData = null, _obTbState = null;
+// TF di calcolo diverso dal TF visualizzato ("a gradini"): banda calcolata sulle
+// candele CHIUSE di cfg.calcTf, il valore resta fermo fino alla chiusura della
+// prossima candela di quel TF (nessun aggiornamento incrementale sulla candela
+// in formazione del TF di calcolo, per scelta esplicita dell'utente).
+let _obTbHtfMode = false, _obTbHtfKlines = [], _obTbHtfKey = '', _obTbHtfBucket = null, _obTbHtfLastPoint = null;
+
+function _tbHtfBucketNow(tf) {
+    const secs = _TB_TF_SECONDS[tf];
+    if (!secs) return null;
+    return Math.floor((Math.floor(Date.now() / 1000) + _obTzOffsetG) / secs);
+}
+
+async function _obTbFetchHtf(symbol, tf) {
+    try {
+        const r = await fetch(`api/klines?symbol=${symbol}&interval=${tf}`);
+        const j = await r.json();
+        if (!j.success || !j.data || !j.data.length) { _obTbHtfKlines = []; return; }
+        const secs = _TB_TF_SECONDS[tf];
+        const nowBucketStart = secs ? Math.floor((Math.floor(Date.now() / 1000) + _obTzOffsetG) / secs) * secs : Infinity;
+        const data = j.data;
+        const last = data[data.length - 1];
+        // Scarta l'ultima candela se ancora in formazione: la banda deve riflettere
+        // solo TF chiusi ("scatta solo alla chiusura", comportamento scelto dall'utente).
+        _obTbHtfKlines = (last && last.time >= nowBucketStart) ? data.slice(0, -1) : data.slice();
+        _obTbHtfBucket = _tbHtfBucketNow(tf);
+    } catch (e) { _obTbHtfKlines = []; }
+}
+
+// Merge a gradini: per ogni candela del grafico visualizzato usa il valore
+// dell'ultima candela CHIUSA del TF di calcolo con time <= a quella candela.
+function _obTbReindexStep(htfTb, displayKlines) {
+    const fast = [], slow = [], color = [];
+    if (!htfTb.fast.length) return { fast, slow, color };
+    let j = 0;
+    for (const k of displayKlines) {
+        if (htfTb.fast[0].time > k.time) continue;
+        while (j + 1 < htfTb.fast.length && htfTb.fast[j + 1].time <= k.time) j++;
+        fast.push({ time: k.time, value: htfTb.fast[j].value });
+        slow.push({ time: k.time, value: htfTb.slow[j].value });
+        color.push(htfTb.color[j]);
+    }
+    return { fast, slow, color };
+}
 
 class _TrendBandFillPrimitive {
     constructor() {
@@ -793,6 +846,7 @@ function _obApplyTb() {
     _obTbData = null; _obTbState = null;
     if (!_obTbMarkersHandle && _obChart && _obCandleS && LC.createSeriesMarkers) { try { _obTbMarkersHandle = LC.createSeriesMarkers(_obCandleS, []); } catch(e) {} }
     if (!_obTbActive || !_obChart || !_obKlines.length) {
+        _obTbHtfMode = false;
         _obTbMarkersData = [];
         if (_obTbMarkersHandle) _obTbMarkersHandle.setMarkers([]);
         return;
@@ -801,6 +855,38 @@ function _obApplyTb() {
     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: !cfg.hideLines };
     _obTbSeries.fast = addSeries(_obChart, 'LineSeries', { ...lb, color: '#ffe082', lineWidth: 1 });
     _obTbSeries.slow = addSeries(_obChart, 'LineSeries', { ...lb, color: '#e0e0e0', lineWidth: 1 });
+
+    _obTbHtfMode = !!(cfg.calcTf && cfg.calcTf !== _obChartTF);
+    if (_obTbHtfMode) {
+        const key = `${_obSymbol}|${cfg.calcTf}`;
+        if (_obTbHtfKey !== key) {
+            _obTbHtfKey = key; _obTbHtfKlines = []; _obTbHtfLastPoint = null;
+            _obTbFetchHtf(_obSymbol, cfg.calcTf).then(() => { if (_obTbActive) _obApplyTb(); });
+            return; // si ridisegna da sola al termine del fetch
+        }
+        if (!_obTbHtfKlines.length) return; // fetch in corso/fallito, niente da mostrare
+        const htfTb = calcTrendBand(_obTbHtfKlines, cfg);
+        const step = _obTbReindexStep(htfTb, _obKlines);
+        if (!step.fast.length) return;
+        _obTbSeries.fast.setData(step.fast);
+        _obTbSeries.slow.setData(step.slow);
+        _obTbData = { fast: step.fast, slow: step.slow, color: step.color };
+        _obTbHtfLastPoint = {
+            fastV: htfTb.fast[htfTb.fast.length - 1].value,
+            slowV: htfTb.slow[htfTb.slow.length - 1].value,
+            color: htfTb.color[htfTb.color.length - 1],
+        };
+        _obTbMarkersData = [];
+        if (cfg.showFlatArrow) {
+            for (let i = 1; i < step.color.length; i++) {
+                const m = _tbArrowMarker(step.fast[i].time, step.color[i], step.color[i-1], cfg);
+                if (m) _obTbMarkersData.push(m);
+            }
+        }
+        if (_obTbMarkersHandle) _obTbMarkersHandle.setMarkers(_obTbMarkersData);
+        return;
+    }
+
     const tb = calcTrendBand(_obKlines, cfg);
     _obTbSeries.fast.setData(tb.fast);
     _obTbSeries.slow.setData(tb.slow);
@@ -813,9 +899,8 @@ function _obApplyTb() {
     _obTbMarkersData = [];
     if (cfg.showFlatArrow) {
         for (let i = 1; i < tb.color.length; i++) {
-            if (tb.color[i] === cfg.flatColor && tb.color[i-1] !== cfg.flatColor) {
-                _obTbMarkersData.push({ time: tb.fast[i].time, position: 'aboveBar', color: cfg.flatColor, shape: 'arrowDown', text: '' });
-            }
+            const m = _tbArrowMarker(tb.fast[i].time, tb.color[i], tb.color[i-1], cfg);
+            if (m) _obTbMarkersData.push(m);
         }
     }
     if (_obTbMarkersHandle) _obTbMarkersHandle.setMarkers(_obTbMarkersData);
@@ -833,7 +918,31 @@ function toggleObTb() {
 // Live update (tick non confermato) — mirror di _obGrabUpdateTail: ricalcola EMA
 // fast/slow + ATR "in corso" e ridisegna linee/banda, senza committare lo stato.
 function _obTbUpdateTail(candle, confirmed) {
-    if (!_obTbActive || !_obTbState) return;
+    if (!_obTbActive) return;
+    if (_obTbHtfMode) {
+        // Nessun EMA "live" sulla candela del grafico: il valore resta quello
+        // dell'ultimo TF di calcolo chiuso, si estende solo la coda della serie
+        // fino alla candela corrente (altrimenti la banda smette di avanzare).
+        if (!_obTbData || !_obTbHtfLastPoint) return;
+        const pt = _obTbHtfLastPoint;
+        if (_obTbSeries.fast) {
+            try { _obTbSeries.fast.update({time:candle.time, value:pt.fastV}); _obTbSeries.slow.update({time:candle.time, value:pt.slowV}); } catch(e) {}
+        }
+        const lastPt = _obTbData.fast[_obTbData.fast.length-1];
+        if (lastPt && lastPt.time === candle.time) {
+            _obTbData.fast[_obTbData.fast.length-1]  = {time:candle.time, value:pt.fastV};
+            _obTbData.slow[_obTbData.slow.length-1]  = {time:candle.time, value:pt.slowV};
+            _obTbData.color[_obTbData.color.length-1] = pt.color;
+        } else {
+            _obTbData.fast.push({time:candle.time, value:pt.fastV});
+            _obTbData.slow.push({time:candle.time, value:pt.slowV});
+            _obTbData.color.push(pt.color);
+            const MAX_TB_POINTS = 1500;
+            if (_obTbData.fast.length > MAX_TB_POINTS) { _obTbData.fast.shift(); _obTbData.slow.shift(); _obTbData.color.shift(); }
+        }
+        return;
+    }
+    if (!_obTbState) return;
     const cfg = getTbCfg();
     const kf = 2/(cfg.fastLen+1), ks = 2/(cfg.slowLen+1);
     const liveEmaFast = candle.close * kf + _obTbState.emaFast * (1-kf);
@@ -880,10 +989,9 @@ function _obTbConfirmPrev(prevCandle) {
     _obTbState.emaSlow   = prevCandle.close * ks + _obTbState.emaSlow * (1 - ks);
     _obTbState.prevClose = prevCandle.close;
     const color = tbBandColor(_obTbState.emaFast - _obTbState.emaSlow, _obTbState.atr, cfg);
-    if (cfg.showFlatArrow && _obTbMarkersHandle && color === cfg.flatColor && _obTbState.prevColor !== cfg.flatColor) {
-        _obTbMarkersData = _obTbMarkersData || [];
-        _obTbMarkersData.push({ time: prevCandle.time, position: 'aboveBar', color: cfg.flatColor, shape: 'arrowDown', text: '' });
-        _obTbMarkersHandle.setMarkers(_obTbMarkersData);
+    if (cfg.showFlatArrow && _obTbMarkersHandle) {
+        const m = _tbArrowMarker(prevCandle.time, color, _obTbState.prevColor, cfg);
+        if (m) { _obTbMarkersData = _obTbMarkersData || []; _obTbMarkersData.push(m); _obTbMarkersHandle.setMarkers(_obTbMarkersData); }
     }
     _obTbState.prevColor = color;
 }
@@ -3492,6 +3600,7 @@ createApp({
 
         const loadChartData = async (tf) => {
             if (!candleS) return;
+            _obChartTF = tf;
             try {
                 // Le linee Day/Prev H/L usano solo le ultime 2 candele D: partite in parallelo
                 // al fetch principale, e su /api/klines/live (una sola chiamata Bybit, cache
@@ -3504,7 +3613,7 @@ createApp({
                 const j = await r.json();
                 if (!j.success || !j.data || !j.data.length) return;
                 const klines = j.data;
-                if (j.utc_offset_s != null) _obTzOffset = j.utc_offset_s;
+                if (j.utc_offset_s != null) { _obTzOffset = j.utc_offset_s; _obTzOffsetG = j.utc_offset_s; }
 
                 candleS.setData(klines);
                 if (klines.length) { _cdLastPrice = klines[klines.length-1].close; _cdLastOpen = klines[klines.length-1].open; _obLiveCandle = { ...klines[klines.length-1] }; }
@@ -3678,6 +3787,18 @@ createApp({
                         // un dente di sega — il valore veniva tirato indietro ogni 3s prima che il
                         // prossimo tick WS lo ricorreggesse. Bug reale segnalato con screenshot.
                         if (_obSqzActive) _drawSqzChannel(candleS, _obKlines, _obSqzLines);
+                        // Trend Band con TF di calcolo diverso ("a gradini"): il valore scatta solo
+                        // alla chiusura della candela del TF scelto, non a quella del TF visualizzato
+                        // — qui basta controllare (ogni 3s) se il bucket del TF di calcolo è avanzato.
+                        if (_obTbActive && _obTbHtfMode) {
+                            const tbCfg = getTbCfg();
+                            if (tbCfg.calcTf) {
+                                const nowB = _tbHtfBucketNow(tbCfg.calcTf);
+                                if (nowB != null && _obTbHtfBucket != null && nowB !== _obTbHtfBucket) {
+                                    _obTbFetchHtf(_obSymbol, tbCfg.calcTf).then(() => { if (_obTbActive) _obApplyTb(); });
+                                }
+                            }
+                        }
                     }
                 } catch(e) {}
                 chartPollTimer = setTimeout(poll, 3000);
