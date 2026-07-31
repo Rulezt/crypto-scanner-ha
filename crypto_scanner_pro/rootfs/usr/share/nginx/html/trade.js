@@ -156,6 +156,7 @@ const _DEFAULT_TB_CFG = {
     fastLen: 5, slowLen: 10,
     bullColor: '#22c55e', bearColor: '#ef4444', flatColor: '#eab308',
     bandTransp: 22, flatMult: 0.25, hideLines: true,
+    hideBand: false, // nasconde anche il riempimento colorato — con hideLines si vedono solo le frecce
     showFlatArrow: false,
     calcTf: '', // '' = stesso TF del grafico; altrimenti banda calcolata su un TF diverso e mostrata a gradini
 };
@@ -811,11 +812,12 @@ class _TrendBandFillPrimitive {
             draw: target => target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio, verticalPixelRatio }) => {
                 const series = this._series;
                 if (!series || !_obTbActive || !_obTbData || !_obChart) return;
+                const cfg = getTbCfg();
+                if (cfg.hideBand) return;
                 const { fast, slow, color } = _obTbData;
                 if (fast.length < 2) return;
                 const ts = _obChart.timeScale();
                 ctx.save();
-                const cfg = getTbCfg();
                 const alpha = (100 - (cfg.bandTransp ?? 22)) / 100;
                 for (let i = 0; i < fast.length - 1; i++) {
                     const x0 = ts.timeToCoordinate(fast[i].time), x1 = ts.timeToCoordinate(fast[i+1].time);

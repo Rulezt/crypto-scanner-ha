@@ -1388,6 +1388,7 @@ const _DEFAULT_TB_CFG = {
     enabled: false, fastLen: 5, slowLen: 10,
     bullColor: '#22c55e', bearColor: '#ef4444', flatColor: '#eab308',
     bandTransp: 22, flatMult: 0.25, hideLines: true,
+    hideBand: false, // nasconde anche il riempimento colorato — con hideLines si vedono solo le frecce
     showFlatArrow: false,
     calcTf: '', // '' = stesso TF dello slot; altrimenti banda calcolata su un TF diverso e mostrata a gradini
 };
@@ -1634,11 +1635,12 @@ class _TrendBandFillPrimitive {
             draw: target => target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio, verticalPixelRatio }) => {
                 const s = this._slot, series = this._series;
                 if (!series || !tbActive || !s.tbData) return;
+                const _cfg = getTbCfg();
+                if (_cfg.hideBand) return;
                 const { fast, slow, color } = s.tbData;
                 if (fast.length < 2) return;
                 const ts = chart.timeScale();
                 ctx.save();
-                const _cfg = getTbCfg();
                 const alpha = (100 - (_cfg.bandTransp ?? 35)) / 100;
                 for (let i = 0; i < fast.length - 1; i++) {
                     const x0 = ts.timeToCoordinate(fast[i].time), x1 = ts.timeToCoordinate(fast[i+1].time);
@@ -2046,6 +2048,7 @@ const IND_CFG_SCHEMAS = {
             { key:'bandTransp', label:'Trasparenza banda %', type:'number', min:0, max:100, step:1 },
             { key:'flatMult', label:'Soglia flat (xATR)', type:'number', min:0, max:2, step:0.05 },
             { key:'hideLines', label:'Nascondi linee EMA', type:'checkbox' },
+            { key:'hideBand', label:'Nascondi banda (solo frecce)', type:'checkbox' },
             { key:'showFlatArrow', label:'Freccia ingresso Long/Short', type:'checkbox' },
             { key:'calcTf', label:'Calcola su TF', type:'select', raw:true, options:[['','Stesso del grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D']] },
         ],

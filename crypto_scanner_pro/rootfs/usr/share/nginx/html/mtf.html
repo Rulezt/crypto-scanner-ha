@@ -765,6 +765,7 @@ const _DEFAULT_TB_CFG = {
   // sfondo scuro. Trasparenza abbassata per far "pop" la banda.
   bullColor: '#22c55e', bearColor: '#ef4444', flatColor: '#eab308',
   bandTransp: 22, flatMult: 0.25, hideLines: true,
+  hideBand: false, // nasconde anche il riempimento colorato — con hideLines si vedono solo le frecce
   showFlatArrow: false,
   calcTf: '', // '' = stesso TF del pannello; altrimenti banda calcolata su un TF diverso e mostrata a gradini
 };
@@ -1352,11 +1353,12 @@ class _TrendBandFillPrimitive {
       draw: target => target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio, verticalPixelRatio }) => {
         const s = this._slot, series = this._series;
         if (!series || !tbActive || !s.tbData) return;
+        const _cfg = getTbCfg();
+        if (_cfg.hideBand) return;
         const { fast, slow, color } = s.tbData;
         if (fast.length < 2) return;
         const ts = chart.timeScale();
         ctx.save();
-        const _cfg = getTbCfg();
         const alpha = (100 - (_cfg.bandTransp ?? 35)) / 100;
         for (let i = 0; i < fast.length - 1; i++) {
           const x0 = ts.timeToCoordinate(fast[i].time), x1 = ts.timeToCoordinate(fast[i+1].time);
@@ -3871,6 +3873,8 @@ if (isMobile) {
       <input type="number" id="tb-cfg-slowLen" min="1" max="500" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
     <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Nascondi linee EMA (solo banda)
       <input type="checkbox" id="tb-cfg-hideLines"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Nascondi banda (solo frecce)
+      <input type="checkbox" id="tb-cfg-hideBand"></label>
     <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;" title="Calcola la banda su un TF diverso da quello del pannello: il valore resta fermo per tutta la candela del TF scelto e scatta solo alla sua chiusura">Calcola su TF
       <select id="tb-cfg-calcTf" style="width:100px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;">
         <option value="">Stesso del pannello</option>
