@@ -1997,7 +1997,7 @@ function setFsSide(side) {
         const price = _getEntryPrice();
         const liveP = _obLivePrice || 0;
         if (_fsOrderType === 'Limit') {
-            const drawP = price > 0 ? price : (liveP > 0 ? parseFloat((long ? liveP * 0.995 : liveP * 1.005).toPrecision(6)) : 0);
+            const drawP = price > 0 ? price : liveP;
             _fsEntryPrice = drawP;
             if (drawP > 0) {
                 _fsEntryLine = _obCandleS.createPriceLine({ price: drawP, color: long ? '#10b981' : '#ef4444', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: '' });
