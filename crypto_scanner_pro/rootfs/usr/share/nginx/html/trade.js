@@ -159,6 +159,7 @@ const _DEFAULT_TB_CFG = {
     hideBand: false, // nasconde anche il riempimento colorato — con hideLines si vedono solo le frecce
     showFlatArrow: false,
     calcTf: '', // '' = stesso TF del grafico; altrimenti banda calcolata su un TF diverso e mostrata a gradini
+    colorCandles: false, // ricolora le candele con lo stesso colore della banda (bull/bear/flat)
 };
 const _TB_TF_SECONDS = { '1':60, '5':300, '30':1800, '60':3600, '240':14400, 'D':86400 };
 function getTbCfg() {
@@ -202,6 +203,38 @@ function _tbLastSignal(colors, cfg) {
     let ls = null;
     for (const c of colors) if (c === cfg.bullColor || c === cfg.bearColor) ls = c;
     return ls;
+}
+let _obTbCandlesColored = false, _obTbLastColor = null;
+// Ricolora la candela riusando l'ultimo colore noto (no recompute) — stesso motivo
+// di _obGrabColorCandle: per i punti ad alta frequenza (WS kline raw, patch
+// mid-price book) dove basta evitare che l'update "spoglio" (senza color) faccia
+// sfarfallare via il colore del Trend Band.
+function _obTbColorCandle(candle) {
+    if (!_obTbActive || !_obCandleS) return;
+    const cfg = getTbCfg();
+    if (!cfg.colorCandles) return;
+    const color = _obTbHtfMode ? (_obTbHtfLastPoint && _obTbHtfLastPoint.color) : _obTbLastColor;
+    if (!color) return;
+    try { _obCandleS.update({ ...candle, color, wickColor: color, borderColor: color }); } catch(e) {}
+}
+// Ricolora le candele con lo stesso colore della banda (stesso pattern di GRaB,
+// vedi _obApplyGrab) — colors[k] allineato a _obKlines[k+offset] (offset>0 in
+// modalità "Calcola su TF": step.color può essere più corto di _obKlines perché
+// _tbReindexStep scarta il prefisso senza ancora un dato del TF di calcolo).
+function _tbApplyCandleColors(cfg, colors) {
+    if (!_obCandleS || !_obKlines.length) return;
+    if (!cfg.colorCandles) {
+        if (_obTbCandlesColored) { _obCandleS.setData(_obKlines); _obTbCandlesColored = false; }
+        return;
+    }
+    const offset = _obKlines.length - colors.length;
+    const colored = _obKlines.map((k, i) => {
+        if (i < offset) return k;
+        const c = colors[i - offset];
+        return { ...k, color: c, wickColor: c, borderColor: c };
+    });
+    _obCandleS.setData(colored);
+    _obTbCandlesColored = true;
 }
 function calcTrendBand(klines, cfg) {
     const ef = calcEMAField(klines, cfg.fastLen, 'close');
@@ -892,6 +925,7 @@ function _obApplyTb() {
         _obTbHtfMode = false;
         _obTbMarkersData = [];
         if (_obTbMarkersHandle) _obTbMarkersHandle.setMarkers([]);
+        _tbApplyCandleColors({ colorCandles: false }, []);
         return;
     }
     const cfg = getTbCfg();
@@ -919,6 +953,7 @@ function _obApplyTb() {
             slowV: htfTb.slow[htfTb.slow.length - 1].value,
             color: htfTb.color[htfTb.color.length - 1],
         };
+        _tbApplyCandleColors(cfg, step.color);
         _obTbMarkersData = [];
         if (cfg.showFlatArrow) {
             let ls = _tbLastSignal([step.color[0]], cfg);
@@ -941,6 +976,8 @@ function _obApplyTb() {
         atr: tb.lastAtr, prevClose: _obKlines[_obKlines.length-2] ? _obKlines[_obKlines.length-2].close : _obKlines[_obKlines.length-1].close,
         lastSignal: _tbLastSignal(tb.color, cfg),
     };
+    _obTbLastColor = tb.color[tb.color.length - 1];
+    _tbApplyCandleColors(cfg, tb.color);
     _obTbMarkersData = [];
     if (cfg.showFlatArrow) {
         let ls = _tbLastSignal([tb.color[0]], cfg);
@@ -972,6 +1009,9 @@ function _obTbUpdateTail(candle, confirmed) {
         // fino alla candela corrente (altrimenti la banda smette di avanzare).
         if (!_obTbData || !_obTbHtfLastPoint) return;
         const pt = _obTbHtfLastPoint;
+        if (getTbCfg().colorCandles) {
+            try { _obCandleS.update({ ...candle, color: pt.color, wickColor: pt.color, borderColor: pt.color }); } catch(e) {}
+        }
         if (_obTbSeries.fast) {
             try { _obTbSeries.fast.update({time:candle.time, value:pt.fastV}); _obTbSeries.slow.update({time:candle.time, value:pt.slowV}); } catch(e) {}
         }
@@ -998,6 +1038,10 @@ function _obTbUpdateTail(candle, confirmed) {
     const tr = Math.max(candle.high - candle.low, Math.abs(candle.high - pc), Math.abs(candle.low - pc));
     const liveAtr = _obTbState.atr != null ? (tr - _obTbState.atr) / 14 + _obTbState.atr : null;
     const color = tbBandColor(liveEmaFast - liveEmaSlow, liveAtr, cfg);
+    _obTbLastColor = color;
+    if (cfg.colorCandles) {
+        try { _obCandleS.update({ ...candle, color, wickColor: color, borderColor: color }); } catch(e) {}
+    }
     if (_obTbSeries.fast) {
         try { _obTbSeries.fast.update({time:candle.time, value:liveEmaFast}); _obTbSeries.slow.update({time:candle.time, value:liveEmaSlow}); } catch(e) {}
     }
@@ -4233,6 +4277,7 @@ createApp({
                     if (midPrice < _obLiveCandle.low)  _obLiveCandle.low  = midPrice;
                     if (_obGrabActive) _obGrabColorCandle(_obLiveCandle);
                     else try { candleS.update({ ..._obLiveCandle }); } catch(e) {}
+                    if (_obTbActive) _obTbColorCandle(_obLiveCandle);
                     _cdLastPrice = _obLiveCandle.close;
                 }
             }

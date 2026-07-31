@@ -819,6 +819,7 @@ const _DEFAULT_TB_CFG = {
   hideBand: false, // nasconde anche il riempimento colorato — con hideLines si vedono solo le frecce
   showFlatArrow: false,
   calcTf: '', // '' = stesso TF del pannello; altrimenti banda calcolata su un TF diverso e mostrata a gradini
+  colorCandles: false, // ricolora le candele con lo stesso colore della banda (bull/bear/flat)
 };
 const _TB_TF_SECONDS = { '1':60, '5':300, '30':1800, '60':3600, '240':14400, 'D':86400 };
 function _tbHtfBucketNow(tf) {
@@ -899,6 +900,25 @@ function _tbLastSignal(colors, cfg) {
   for (const c of colors) if (c === cfg.bullColor || c === cfg.bearColor) ls = c;
   return ls;
 }
+// Ricolora le candele con lo stesso colore della banda (stesso pattern di GRaB,
+// vedi applyGrabToSlot) — colors[k] allineato a s.klines[k+offset] (offset>0 in
+// modalità "Calcola su TF": step.color può essere più corto di s.klines perché
+// _tbReindexStep scarta il prefisso senza ancora un dato del TF di calcolo).
+function _tbApplyCandleColors(s, cfg, colors) {
+  if (!s.candleS || !s.klines.length) return;
+  if (!cfg.colorCandles) {
+    if (s._tbCandlesColored) { s.candleS.setData(s.klines); s._tbCandlesColored = false; }
+    return;
+  }
+  const offset = s.klines.length - colors.length;
+  const colored = s.klines.map((k, i) => {
+    if (i < offset) return k;
+    const c = colors[i - offset];
+    return { ...k, color: c, wickColor: c, borderColor: c };
+  });
+  s.candleS.setData(colored);
+  s._tbCandlesColored = true;
+}
 function calcTrendBand(klines, cfg) {
   const ef = calcEMAField(klines, cfg.fastLen, 'close');
   const es = calcEMAField(klines, cfg.slowLen, 'close');
@@ -928,6 +948,7 @@ function applyTbToSlot(s, cfg) {
     s.tbHtfMode = false;
     s.tbMarkersData = [];
     if (s.tbMarkersHandle) s.tbMarkersHandle.setMarkers([]);
+    _tbApplyCandleColors(s, { ...cfg, colorCandles: false }, []);
     return;
   }
   const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, visible:!cfg.hideLines};
@@ -954,6 +975,7 @@ function applyTbToSlot(s, cfg) {
       slowV: htfTb.slow[htfTb.slow.length - 1].value,
       color: htfTb.color[htfTb.color.length - 1],
     };
+    _tbApplyCandleColors(s, cfg, step.color);
     s.tbMarkersData = [];
     if (cfg.showFlatArrow) {
       let ls = _tbLastSignal([step.color[0]], cfg);
@@ -976,6 +998,7 @@ function applyTbToSlot(s, cfg) {
     atr: tb.lastAtr, prevClose: s.klines[s.klines.length-2] ? s.klines[s.klines.length-2].close : s.klines[s.klines.length-1].close,
     lastSignal: _tbLastSignal(tb.color, cfg),
   };
+  _tbApplyCandleColors(s, cfg, tb.color);
   s.tbMarkersData = [];
   if (cfg.showFlatArrow) {
     let ls = _tbLastSignal([tb.color[0]], cfg);
@@ -997,6 +1020,9 @@ function _tbLiveUpdate(s, candle, confirmed, cfg) {
     // fino alla candela corrente (altrimenti la banda smette di avanzare).
     if (!s.tbData || !s.tbHtfLastPoint) return;
     const pt = s.tbHtfLastPoint;
+    if (cfg.colorCandles && s.candleS) {
+      try { s.candleS.update({ ...candle, color: pt.color, wickColor: pt.color, borderColor: pt.color }); } catch(e) {}
+    }
     if (s.tbSeries.fast) {
       try { s.tbSeries.fast.update({time:candle.time, value:pt.fastV}); s.tbSeries.slow.update({time:candle.time, value:pt.slowV}); } catch(e) {}
     }
@@ -1022,6 +1048,9 @@ function _tbLiveUpdate(s, candle, confirmed, cfg) {
   const tr = Math.max(candle.high - candle.low, Math.abs(candle.high - pc), Math.abs(candle.low - pc));
   const liveAtr = s.tbState.atr != null ? (tr - s.tbState.atr) / 14 + s.tbState.atr : null;
   const color = tbBandColor(liveEmaFast - liveEmaSlow, liveAtr, cfg);
+  if (cfg.colorCandles && s.candleS) {
+    try { s.candleS.update({ ...candle, color, wickColor: color, borderColor: color }); } catch(e) {}
+  }
   if (s.tbSeries.fast) {
     try { s.tbSeries.fast.update({time:candle.time, value:liveEmaFast}); s.tbSeries.slow.update({time:candle.time, value:liveEmaSlow}); } catch(e) {}
   }
@@ -2442,6 +2471,8 @@ const fsGrabSlot = {
   get grabMurreyS() { return fsGrabMurreyS; },
 };
 const fsTbSlot = {
+  get candleS() { return fsCandleS; },
+  get klines() { return fsKlines; },
   get tbSeries() { return fsTbSeries; },
   get tbData() { return fsTbData; },
   get tbState() { return fsTbState; },
@@ -2666,6 +2697,7 @@ function applyFsTb() {
         fsTbHtfMode = false;
         fsTbMarkersData = [];
         if (fsTbMarkersHandle) fsTbMarkersHandle.setMarkers([]);
+        _tbApplyCandleColors(fsTbSlot, { ...getTbCfg(), colorCandles: false }, []);
         return;
     }
     const cfg = getTbCfg();
@@ -2693,6 +2725,7 @@ function applyFsTb() {
             slowV: htfTb.slow[htfTb.slow.length - 1].value,
             color: htfTb.color[htfTb.color.length - 1],
         };
+        _tbApplyCandleColors(fsTbSlot, cfg, step.color);
         fsTbMarkersData = [];
         if (cfg.showFlatArrow) {
             let ls = _tbLastSignal([step.color[0]], cfg);
@@ -2715,6 +2748,7 @@ function applyFsTb() {
         atr: tb.lastAtr, prevClose: fsKlines[fsKlines.length-2] ? fsKlines[fsKlines.length-2].close : fsKlines[fsKlines.length-1].close,
         lastSignal: _tbLastSignal(tb.color, cfg),
     };
+    _tbApplyCandleColors(fsTbSlot, cfg, tb.color);
     fsTbMarkersData = [];
     if (cfg.showFlatArrow) {
         let ls = _tbLastSignal([tb.color[0]], cfg);
@@ -3980,6 +4014,8 @@ if (isMobile) {
         <option value="240">4h</option>
         <option value="D">D</option>
       </select></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colora candele come la banda
+      <input type="checkbox" id="tb-cfg-colorCandles"></label>
 
     <div style="font-weight:700;color:#9CA3AF;margin:12px 0 4px;">Banda</div>
     <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore rialzo (bull)
