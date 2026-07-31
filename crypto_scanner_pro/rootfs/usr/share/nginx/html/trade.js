@@ -191,8 +191,11 @@ function tbBandColor(spread, atr, cfg) {
 // colore non fa ridisegnare la freccia, per non ripetere lo stesso segnale long/short.
 function _tbArrowMarker(time, color, lastSignal, cfg) {
     if (color === lastSignal) return null;
-    if (color === cfg.bullColor) return { time, position: 'belowBar', color: cfg.bullColor, shape: 'arrowUp', text: '' };
-    if (color === cfg.bearColor) return { time, position: 'aboveBar', color: cfg.bearColor, shape: 'arrowDown', text: '' };
+    // size 1.8 (default 1): oltre a ingrandire la freccia, LWC scosta il marker
+    // più lontano dalla candela in proporzione alla dimensione — meno rischio
+    // che si confonda con lo stoppino.
+    if (color === cfg.bullColor) return { time, position: 'belowBar', color: cfg.bullColor, shape: 'arrowUp', text: '', size: 1.8 };
+    if (color === cfg.bearColor) return { time, position: 'aboveBar', color: cfg.bearColor, shape: 'arrowDown', text: '', size: 1.8 };
     return null;
 }
 function _tbLastSignal(colors, cfg) {
