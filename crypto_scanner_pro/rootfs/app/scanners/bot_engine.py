@@ -1,51 +1,32 @@
-"""BOT — Opening Range Breakout (ORB), versione semplice senza filtri
+"""BOT — Trend Band (EMA fast/slow, stessa formula dell'indicatore visuale in
+chart.html/mtf.html/trade.js), strategia trend-following pura.
 
-Ogni giorno UTC (00:00→24:00) i primi `orb_minutes` minuti definiscono
-l'opening range (massimo/minimo di quella finestra). Una volta chiusa la
-finestra il range resta BLOCCATO per il resto della giornata. Il trigger è IN
-TEMPO REALE (rottura intrabar, non alla chiusura candela — vedi
-_detect_orb_signal):
-  - STRONG: il livello era già superato in apertura (gap/continuazione) —
-    entry al prezzo di apertura.
-  - NORMAL: la candela apre dentro il range e lo rompe durante il suo
-    svolgimento (high/low) — entry al livello stesso, nel momento esatto
-    della rottura, senza aspettare che la candela chiuda.
-Un solo segnale per giorno per range (il primo che rompe, in una direzione o
-nell'altra — dopo non si ri-segnala più finché non parte il range del giorno
-successivo). Il PRIMO giorno della history fornita viene sempre scartato
-(range potenzialmente incompleto, la history potrebbe iniziare a metà finestra).
+Segnale: spread = EMA(fast_len) - EMA(slow_len) sul close. |spread| < ATR(14)*flat_mult
+→ stato FLAT (nessun segnale). Altrimenti BULL (spread>0) o BEAR (spread<0).
+Un flip è un cambio di stato rispetto all'ULTIMO stato non-flat visto (lastSignal) —
+una candela flat isolata fra due tratti dello stesso colore non genera un nuovo
+segnale, esattamente come le frecce dell'indicatore visuale (vedi chart.html
+_tbArrowMarker/_tbLastSignal, stessa logica portata qui 1:1).
 
-Entry/SL/TP — un solo livello ciascuno, nessuna milestone TP1/TP2/TP3:
-  - Entry = vedi trigger sopra (livello o apertura, mai la chiusura).
-  - SL = percentuale fissa dal prezzo di entrata (`sl_pct`, configurabile,
-    default 1%) — NON più l'estremo opposto del range: un range molto stretto
-    o molto largo non deve più determinare un rischio imprevedibile per trade.
-  - TP = percentuale fissa dal prezzo di entrata (`tp_pct`, configurabile,
-    default 2%) — NON più il range ribaltato/geometrico, stessa logica dello SL.
-Poiché il trigger è intrabar, la STESSA candela che apre il trade può, nel
-resto del suo svolgimento, raggiungere già TP/SL/breakeven — viene controllata
-anche lei, non solo le candele successive (altrimenti un movimento intero
-dentro un'unica candela, dopo la rottura, andrebbe perso).
-Chiusura in un colpo solo, a SL o a TP — nessun trailing, nessun filtro
-trend/ampiezza/volatilità. Unica eccezione: quando il prezzo raggiunge
-`be_trigger_pct` (configurabile, default 25%) della distanza entry→TP, lo SL
-si sposta UNA VOLTA SOLA a breakeven (prezzo di entrata, fee-aware) — non
-toglie la possibilità di chiudere a TP pieno, protegge solo da un'inversione
-dopo aver raggiunto quel punto.
+Entrata/uscita — nessun SL/TP fisso: il bot è SEMPRE in mercato una volta partito
+(tranne prima del primo flip), e ogni flip chiude la posizione corrente e ne apre
+una opposta nello stesso momento (reverse). Una candela FLAT con posizione aperta
+non fa nulla: si resta in posizione finché non arriva un vero flip di direzione
+opposta (scelta esplicita dell'utente, stesso comportamento delle frecce).
 
-I timestamp delle candele possono arrivare in due convenzioni diverse a
-seconda della fonte (vedi app.py): il motore live (ws_manager) usa epoch UTC
-puro, mentre le candele del backtest (/api/klines-style fetch) sono shiftate
-dell'offset UTC configurato dall'utente. `tz_offset_s` (per-chiamata, MAI un
-parametro di configurazione della strategia) dice a `run_engine`/`run_backtest`
-di quanto sono shiftate le candele ricevute, così il confine "00:00 UTC" del
-giorno viene individuato correttamente in entrambi i casi.
+Il segnale è sulla candela CHIUSA (mai intrabar, a differenza del vecchio ORB):
+un EMA cross non ha bisogno di precisione intrabar e aspettare la chiusura evita
+falsi flip su un tick che poi rientra prima che la candela finisca.
 
-`run_engine()` è l'unica funzione che replica lo stato bar-by-bar: il backtest
-la chiama una volta su tutta la history (accumulando i trade chiusi), il motore
-live la richiama da zero sull'intera finestra di kline in cache ad ogni nuova
-candela chiusa e confronta lo stato risultante con quello della chiamata
-precedente per rilevare le transizioni (entrata, chiusura).
+TF: a differenza del vecchio ORB (sempre 1m, self.tf solo un'etichetta), qui il
+TF scelto in UI (self.tf) governa DIRETTAMENTE il calcolo — nessuna necessità di
+precisione intrabar da preservare, quindi niente più bisogno di forzare 1m.
+
+`run_engine()` è l'unica funzione che replica lo stato bar-by-bar: il backtest la
+chiama una volta su tutta la history (accumulando i trade chiusi), il motore live
+la richiama da zero sull'intera finestra di kline in cache ad ogni nuova candela
+CHIUSA e confronta lo stato risultante con quello della chiamata precedente per
+rilevare le transizioni (entrata, chiusura/reverse).
 """
 import json
 import math
@@ -89,31 +70,17 @@ TF_SECONDS = {
     '240': 14400, 'D': 86400, 'W': 604800, 'M': 2592000,  # M: approssimato a 30gg
 }
 
-DAY_SECONDS = 86400
-
-# Il TF scelto in UI (self.tf) NON governa più range/trigger/SL-TP — governava
-# solo la granularità delle candele usate dal motore, e con TF larghi questo
-# rendeva sia il range (vedi _calc_orb_ranges: finestra individuata su candele
-# intere, non sui minuti esatti) sia il controllo SL/TP (ambiguità quando
-# entrambi cadono nella stessa candela) dipendenti dal TF, cosa non voluta.
-# Range/trigger/SL-TP girano quindi SEMPRE su kline 1m (STRATEGY_TF), sia in
-# backtest (vedi app.py bot_backtest) sia dal vivo (vedi BotEngine._on_kline).
-# self.tf resta solo per l'etichetta negli alert Telegram e per il grafico.
-STRATEGY_TF = '1'
-STRATEGY_TF_SECONDS = 60
+TB_ATR_LEN = 14  # stesso periodo ATR fisso dell'indicatore visuale (calcTrendBand)
 
 DEFAULT_PARAMS = {
-    'orb_minutes': 30,
-    'sl_pct': 1.0,           # % fissa dal prezzo di entrata (non più l'estremo del range)
-    'tp_pct': 2.0,           # % fissa dal prezzo di entrata (non più il range ribaltato)
-    'be_trigger_pct': 25.0,  # % della distanza entry->TP a cui lo SL si sposta a breakeven
+    'fast_len': 5,    # stessi default dell'indicatore visuale (_DEFAULT_TB_CFG)
+    'slow_len': 10,
+    'flat_mult': 0.25,
 }
 
 _EMPTY_ENGINE_STATE = {
-    'breakout_dir': 0, 'breakout_bar': 0, 'break_strength': '—',
-    'entry_price': 0.0, 'sl_price': 0.0, 'sl_price_orig': 0.0, 'tp_price': 0.0,
-    'be_target_price': 0.0,
-    'sl_hit': False, 'tp_hit': False, 'be_hit': False, 'trade_open': False,
+    'direction': 0,  # 0 nessuna posizione, 1 long, -1 short
+    'entry_bar': 0, 'entry_price': 0.0, 'trade_open': False,
     'closed_bar': None, 'closed_reason': None, 'closed_dir': 0, 'closed_price': None,
 }
 
@@ -124,204 +91,127 @@ def normalize_params(cfg):
     for k in DEFAULT_PARAMS:
         if k in cfg:
             p[k] = cfg[k]
-    p['orb_minutes'] = max(1, min(1440, int(p['orb_minutes'])))
-    p['sl_pct'] = max(0.05, min(20.0, float(p['sl_pct'])))
-    p['tp_pct'] = max(0.05, min(50.0, float(p['tp_pct'])))
-    p['be_trigger_pct'] = max(0.0, min(100.0, float(p['be_trigger_pct'])))
+    p['fast_len'] = max(2, min(200, int(p['fast_len'])))
+    p['slow_len'] = max(2, min(400, int(p['slow_len'])))
+    p['flat_mult'] = max(0.0, min(5.0, float(p['flat_mult'])))
     return p
 
 
-def warmup_bars_for(params, tf_seconds=None):
-    """L'ORB non ha bisogno di N barre come una SMA: serve solo aver superato
-    il PRIMO giorno (potenzialmente incompleto, scartato sempre — vedi
-    run_engine) della history fornita. Senza il TF della candela non possiamo
-    convertire "1.5 giorni" in barre, quindi usiamo un minimo conservativo."""
-    if not tf_seconds:
-        return 5
-    return max(5, int(DAY_SECONDS * 1.5 / tf_seconds))
+def warmup_bars_for(params):
+    """Barre necessarie prima che EMA/ATR siano affidabili — non più legato ai
+    giorni come l'ORB (nessun concetto di 'giorno' per un EMA cross)."""
+    return max(params['fast_len'], params['slow_len'], TB_ATR_LEN) + 2
 
 
-# ── Opening Range giornaliero (UTC) ───────────────────────────────────────────
+# ── Trend Band — stessa formula di calcTrendBand (chart.html/mtf.html/trade.js) ──
 
-def _day_bucket(t, tz_offset_s):
-    """Inizio del giorno UTC contenente il timestamp t, espresso nella STESSA
-    convenzione oraria di t (t può già includere l'offset UTC configurato,
-    vedi docstring modulo — tz_offset_s dice di quanto)."""
-    true_utc = t - tz_offset_s
-    return true_utc - (true_utc % DAY_SECONDS) + tz_offset_s
-
-
-def _calc_orb_ranges(candles, orb_minutes, tz_offset_s):
-    """Per ogni candela: (upper, lower) = opening range BLOCCATO della sua
-    giornata, o None finché la finestra di apertura è ancora in formazione
-    (o se il giorno non ha avuto candele nella finestra, es. gap di history)."""
-    n = len(candles)
-    upper = [None] * n
-    lower = [None] * n
-    window_s = orb_minutes * 60
-
-    day_bucket = None
-    window_end = None
-    day_high = day_low = None
-    orb_high = orb_low = None
-
-    for i in range(n):
-        t = candles[i]['time']
-        db = _day_bucket(t, tz_offset_s)
-        if db != day_bucket:
-            day_bucket = db
-            window_end = day_bucket + window_s
-            day_high = day_low = None
-            orb_high = orb_low = None
-
-        if t < window_end:
-            day_high = candles[i]['high'] if day_high is None else max(day_high, candles[i]['high'])
-            day_low  = candles[i]['low']  if day_low  is None else min(day_low,  candles[i]['low'])
-        elif orb_high is None and day_high is not None:
-            orb_high, orb_low = day_high, day_low
-
-        upper[i], lower[i] = orb_high, orb_low
-
-    return upper, lower
+def _ema_series(values, period):
+    """EMA ricorsiva seminata dal primo valore (non SMA) — identica a calcEMAField."""
+    k = 2.0 / (period + 1)
+    v = values[0]
+    out = [v]
+    for i in range(1, len(values)):
+        v = values[i] * k + v * (1.0 - k)
+        out.append(v)
+    return out
 
 
-def _detect_orb_signal(candles, upper, lower, i):
-    """Segnale sulla candela i vs. l'opening range BLOCCATO della sua stessa
-    giornata (fisso per tutto il giorno). Trigger IN TEMPO REALE: non aspetta
-    la chiusura della candela, scatta alla rottura del livello non appena
-    accade (high/low), esattamente come accadrebbe seguendo il prezzo tick per
-    tick — non a un prezzo "confermato" dalla chiusura.
-      - STRONG: il livello era già superato in apertura (gap/continuazione) —
-        entry al prezzo di apertura (il primo prezzo disponibile quella candela).
-      - NORMAL: la candela apre dentro il range e lo rompe durante il suo
-        svolgimento (high/low) — entry al livello stesso (il prezzo esatto
-        della rottura).
-    Ritorna None oppure {'type', 'dir', 'entry'}."""
-    o_hi, o_lo = upper[i], lower[i]
-    if o_hi is None or o_lo is None:
-        return None
-    o, h, l = candles[i]['open'], candles[i]['high'], candles[i]['low']
-    if o > o_hi:
-        return {'type': 'strong', 'dir': 'bull', 'entry': o}
-    if o < o_lo:
-        return {'type': 'strong', 'dir': 'bear', 'entry': o}
-    if h >= o_hi:
-        return {'type': 'normal', 'dir': 'bull', 'entry': o_hi}
-    if l <= o_lo:
-        return {'type': 'normal', 'dir': 'bear', 'entry': o_lo}
-    return None
+def _true_range_series(candles):
+    out = []
+    for i, c in enumerate(candles):
+        if i == 0:
+            out.append(c['high'] - c['low'])
+        else:
+            pc = candles[i - 1]['close']
+            out.append(max(c['high'] - c['low'], abs(c['high'] - pc), abs(c['low'] - pc)))
+    return out
 
 
-# ── Motore breakout — replay bar-by-bar ──────────────────────────────────────
+def _rma_series(values, length):
+    """Wilder's smoothing seminato da una SMA sui primi `length` valori — identica a calcRMA."""
+    n = len(values)
+    out = [None] * n
+    if n < length:
+        return out
+    s = sum(values[:length])
+    out[length - 1] = s / length
+    for i in range(length, n):
+        out[i] = (values[i] - out[i - 1]) / length + out[i - 1]
+    return out
 
-def run_engine(candles, params, tz_offset_s=0, taker_fee_rate=0.00055):
+
+def _tb_color(spread, atr, flat_mult):
+    if atr is not None and abs(spread) < atr * flat_mult:
+        return 'flat'
+    return 'bull' if spread > 0 else 'bear'
+
+
+def _calc_trend_band_colors(candles, params):
+    closes = [c['close'] for c in candles]
+    ema_fast = _ema_series(closes, params['fast_len'])
+    ema_slow = _ema_series(closes, params['slow_len'])
+    tr = _true_range_series(candles)
+    atr = _rma_series(tr, TB_ATR_LEN)
+    return [_tb_color(ema_fast[i] - ema_slow[i], atr[i], params['flat_mult']) for i in range(len(candles))]
+
+
+# ── Motore — replay bar-by-bar ───────────────────────────────────────────────
+
+def run_engine(candles, params, taker_fee_rate=0.00055):
     """Ritorna (stato_finale, trades). `trades` è la lista di tutti i trade
     chiusi durante il replay (per il backtest); `stato_finale` è lo stato "adesso"
     (per il motore live, che lo confronta con la chiamata precedente).
-    `tz_offset_s`: di quanto le candele sono shiftate rispetto a UTC puro (vedi
-    docstring modulo) — SEMPRE passato esplicitamente dal chiamante, mai una
-    strategia-param persistita. `taker_fee_rate`: fee taker per lato (round-trip
-    = 2x), usata per il breakeven fee-aware — anch'essa sempre esterna, mai
-    parte di `params` (dipende dall'account/VIP tier, non dalla strategia)."""
+    `taker_fee_rate` non è usato dal motore stesso (nessun breakeven fee-aware
+    con questa strategia) — resta nella firma solo per compatibilità con
+    run_backtest/BotEngine, che lo passano sempre esplicitamente."""
     n = len(candles)
-    upper_arr, lower_arr = _calc_orb_ranges(candles, params['orb_minutes'], tz_offset_s)
-
     st = dict(_EMPTY_ENGINE_STATE)
     trades = []
-    pending = None  # dettagli del trade attualmente aperto — costruisce il record alla chiusura
+    if n == 0:
+        return st, trades
 
-    first_day_bucket = None   # il primo giorno della history è sempre scartato (range forse incompleto)
-    triggered_bucket = None   # giorno per cui è già scattato un segnale (max 1 trade/giorno)
+    colors = _calc_trend_band_colors(candles, params)
+    warmup = warmup_bars_for(params)
+    pending = None       # dettagli del trade attualmente aperto — costruisce il record alla chiusura
+    last_signal = None   # ultimo colore NON-flat confermato — vedi docstring modulo
 
     for i in range(n):
-        day_bucket = _day_bucket(candles[i]['time'], tz_offset_s)
-        if first_day_bucket is None:
-            first_day_bucket = day_bucket
-        # A differenza di una SMA, l'ORB non ha bisogno di un numero minimo di
-        # barre: basta essere oltre il primo giorno (range potenzialmente
-        # incompleto) — nessun altro warmup serve.
-        is_warmed_up = day_bucket != first_day_bucket
+        if i < warmup:
+            if colors[i] in ('bull', 'bear'):
+                last_signal = colors[i]
+            continue
 
-        # trigger — opening range giornaliero UTC, vedi _detect_orb_signal
-        sig = None
-        if (not st['trade_open'] and is_warmed_up and triggered_bucket != day_bucket):
-            sig = _detect_orb_signal(candles, upper_arr, lower_arr, i)
-            if sig is not None:
-                triggered_bucket = day_bucket
+        color = colors[i]
+        is_flip = color in ('bull', 'bear') and color != last_signal
 
-        # Entry/SL/TP — un solo livello ciascuno, entrambi a percentuale fissa
-        # dal prezzo di entrata (`sl_pct`/`tp_pct`), non più dalla geometria
-        # del range (che serve solo a individuare il trigger, non più i livelli).
-        if sig is not None:
-            entry = sig['entry']
-            st['entry_price'] = entry
-            st['break_strength'] = 'Strong' if sig['type'] == 'strong' else 'Normal'
-            sl_frac = params['sl_pct'] / 100.0
-            tp_frac = params['tp_pct'] / 100.0
-            if sig['dir'] == 'bull':
-                breakout_dir = 1
-                sl_price = entry * (1.0 - sl_frac)
-                tp_price = entry * (1.0 + tp_frac)
-                side = 'long'
-            else:
-                breakout_dir = -1
-                sl_price = entry * (1.0 + sl_frac)
-                tp_price = entry * (1.0 - tp_frac)
-                side = 'short'
-            st['breakout_dir'], st['breakout_bar'] = breakout_dir, i
-            st['sl_price'] = sl_price
-            st['sl_price_orig'] = sl_price
-            st['tp_price'] = tp_price
-            st['sl_hit'] = st['tp_hit'] = st['be_hit'] = False
+        if is_flip:
+            new_dir = 1 if color == 'bull' else -1
+            entry_price = candles[i]['close']
+
+            # Reverse: chiude la posizione opposta eventualmente aperta SULLA
+            # STESSA barra in cui si apre la nuova — un flip, per costruzione
+            # (last_signal si aggiorna solo sui colori non-flat), è sempre nella
+            # direzione opposta a quella corrente, mai una ripetizione.
+            if st['trade_open']:
+                st['closed_dir'] = st['direction']
+                st['closed_reason'] = 'reverse'
+                st['closed_bar'] = i
+                st['closed_price'] = entry_price
+                if pending is not None:
+                    trades.append({**pending, 'exit_time': candles[i]['time'],
+                                   'exit_price': entry_price, 'exit_reason': 'reverse'})
+                    pending = None
+                st['trade_open'] = False
+
+            side = 'long' if new_dir == 1 else 'short'
+            st['direction'] = new_dir
+            st['entry_bar'] = i
+            st['entry_price'] = entry_price
             st['trade_open'] = True
-            # Breakeven "vero" = recupera anche le fee di andata+ritorno (entrambe
-            # taker su Bybit derivati), non il puro prezzo di entrata — altrimenti
-            # dopo le fee sarebbe comunque una piccola perdita.
-            round_trip_fee = 2.0 * taker_fee_rate
-            st['be_target_price'] = entry * (1.0 + round_trip_fee if breakout_dir == 1 else 1.0 - round_trip_fee)
-            pending = {
-                'side': side, 'entry_time': candles[i]['time'], 'entry_price': st['entry_price'],
-                'sl_price_orig': st['sl_price_orig'], 'tp_price': st['tp_price'], 'strength': st['break_strength'],
-            }
+            pending = {'side': side, 'entry_time': candles[i]['time'], 'entry_price': entry_price}
 
-        # TP/SL hit detection — chiusura in un colpo solo. Unica eccezione: al 25%
-        # della distanza entry->TP lo SL si sposta una volta a breakeven (vedi
-        # docstring modulo), ma la chiusura resta comunque solo a SL o TP pieno.
-        # i >= breakout_bar (non solo >): il trigger è ora intrabar, quindi la
-        # STESSA candela che apre il trade può, nel resto del suo svolgimento,
-        # anche già raggiungere TP/SL/breakeven — non va ignorata.
-        if st['trade_open'] and st['breakout_dir'] != 0 and i >= st['breakout_bar']:
-            hi, lo = candles[i]['high'], candles[i]['low']
-            tp_side = (hi >= st['tp_price']) if st['breakout_dir'] == 1 else (lo <= st['tp_price'])
-            sl_side = (lo <= st['sl_price']) if st['breakout_dir'] == 1 else (hi >= st['sl_price'])
-            if sl_side:
-                st['sl_hit'] = True
-            elif tp_side:
-                st['tp_hit'] = True
-            elif not st['be_hit']:
-                be_trigger_price = st['entry_price'] + (st['tp_price'] - st['entry_price']) * (params['be_trigger_pct'] / 100.0)
-                be_trigger_side = (hi >= be_trigger_price) if st['breakout_dir'] == 1 else (lo <= be_trigger_price)
-                if be_trigger_side:
-                    st['be_hit'] = True
-                    st['sl_price'] = st['be_target_price']
-
-        # close trade (a SL o TP — chiusura unica; 'be' = SL colpito dopo essere
-        # stato spostato a breakeven, distinto da 'sl' = SL originale mai raggiunto il 25%)
-        if st['trade_open'] and (st['tp_hit'] or st['sl_hit']):
-            reason = ('be' if st['be_hit'] else 'sl') if st['sl_hit'] else 'tp'
-            exit_price = st['tp_price'] if reason == 'tp' else st['sl_price']
-            st['closed_dir'] = st['breakout_dir']
-            st['closed_reason'] = reason
-            st['closed_bar'] = i
-            st['closed_price'] = exit_price
-            if pending is not None:
-                trades.append({
-                    **pending,
-                    'exit_time': candles[i]['time'], 'exit_price': exit_price, 'exit_reason': reason,
-                })
-                pending = None
-            st['trade_open'] = False
-            st['breakout_dir'] = 0
+        if color in ('bull', 'bear'):
+            last_signal = color
 
     return st, trades
 
@@ -338,9 +228,9 @@ def _max_drawdown_pct(curve):
     return round(max_dd, 2)
 
 
-def run_backtest(candles, params, initial_capital=1000.0, sizing=None, taker_fee_rate=0.00055, tz_offset_s=0):
+def run_backtest(candles, params, initial_capital=1000.0, sizing=None, taker_fee_rate=0.00055):
     sizing = sizing or {'type': 'fixed', 'value': 50.0}
-    _, raw_trades = run_engine(candles, params, tz_offset_s, taker_fee_rate)
+    _, raw_trades = run_engine(candles, params, taker_fee_rate)
 
     trades = []
     equity = float(initial_capital)
@@ -367,7 +257,6 @@ def run_backtest(candles, params, initial_capital=1000.0, sizing=None, taker_fee
             'exit_time': rt['exit_time'], 'exit_price': exit_price, 'exit_reason': rt['exit_reason'],
             'pnl_pct': round(pnl_pct, 4), 'pnl_usdt': round(pnl_usdt, 4), 'fee_usdt': round(fee_usdt, 4),
             'notional': round(notional, 2),
-            'sl_price_orig': rt['sl_price_orig'], 'tp_price': rt['tp_price'], 'strength': rt['strength'],
         })
         equity_curve.append({'time': rt['exit_time'], 'equity': round(equity, 4)})
 
@@ -408,17 +297,15 @@ class BotEngine:
         self._trade_client = trade_client
 
         self.symbol = (symbol or '').upper()
-        self.tf     = str(tf or '60')
+        self.tf     = str(tf or '60')  # ora governa DIRETTAMENTE il calcolo — vedi docstring modulo
         self.mode   = mode if mode in ('signal', 'execution') else 'signal'
         self.sizing = sizing or {'type': 'fixed', 'value': 50.0}
         self.leverage = int(leverage or 1)
         self.params = normalize_params(params_cfg)
 
-        # Fee reale dell'account (VIP tier incluso) — usata per il breakeven
-        # fee-aware del motore (vedi run_engine). Un solo fetch qui: la reinit
-        # avviene ad ogni salvataggio config di un qualsiasi scanner, non serve
-        # richiamarla ad ogni candela (rischio rate-limit + fee tier non cambia
-        # praticamente mai durante una sessione).
+        # Fee reale dell'account (VIP tier incluso), usata dal backtest per stimare
+        # le fee round-trip. Un solo fetch qui: la reinit avviene ad ogni salvataggio
+        # config di un qualsiasi scanner, non serve richiamarla ad ogni candela.
         self.taker_fee_rate = 0.00055
         if trade_client and self.symbol:
             try:
@@ -430,7 +317,7 @@ class BotEngine:
         self._alert_queue = queue.Queue(maxsize=50)
         threading.Thread(target=self._alert_worker, daemon=True).start()
 
-        # breakout_bar del trade la cui apertura reale è fallita su Bybit — finché
+        # entry_bar del trade la cui apertura reale è fallita su Bybit — finché
         # vale, il replay bar-by-bar continua a "riconoscerlo" (run_engine è
         # stateless), ma va ignorato come fantasma invece di ritentare l'ordine o
         # segnalarne una falsa chiusura. Resettato quando quel trade si chiude da
@@ -441,13 +328,13 @@ class BotEngine:
         self.running = bool(st.get('running', False))
         loaded_state = st.get('position_state') or {}
         self.state = dict(_EMPTY_ENGINE_STATE)
-        if isinstance(loaded_state, dict) and 'trade_open' in loaded_state and 'tp_price' in loaded_state:
+        if isinstance(loaded_state, dict) and 'trade_open' in loaded_state and 'direction' in loaded_state:
             self.state.update(loaded_state)
             self.signals = st.get('signals', [])
         else:
             # Stato persistito da una strategia precedente (forma incompatibile,
-            # es. TP1/TP2/TP3) — riparte da zero invece di crashare o mescolare
-            # segnali di due strategie diverse.
+            # es. il vecchio ORB con sl_price/tp_price) — riparte da zero invece
+            # di crashare o mescolare segnali di due strategie diverse.
             self.signals = []
 
         # Sicurezza: la modalità esecuzione reale non riprende mai da sola dopo
@@ -459,8 +346,7 @@ class BotEngine:
         if ws_manager is not None:
             ws_manager.add_kline_callback(self._on_kline)
             if self.running and self.symbol:
-                # Il motore gira sempre su kline 1m — vedi STRATEGY_TF / _on_kline.
-                ws_manager.subscribe_klines([self.symbol], intervals=[STRATEGY_TF])
+                ws_manager.subscribe_klines([self.symbol], intervals=[self.tf])
 
         print(f'🤖 BOT init — symbol={self.symbol or "-"} tf={self.tf} mode={self.mode} '
               f'running={self.running}')
@@ -510,7 +396,7 @@ class BotEngine:
             self.signals = []
             self._save_state()
         if self._ws_manager:
-            self._ws_manager.subscribe_klines([self.symbol], intervals=[STRATEGY_TF])
+            self._ws_manager.subscribe_klines([self.symbol], intervals=[self.tf])
         return True, None
 
     def clear_signals(self):
@@ -541,9 +427,8 @@ class BotEngine:
         position = None
         if self.state.get('trade_open'):
             position = {
-                'side': 'long' if self.state['breakout_dir'] == 1 else 'short',
-                'entry_price': self.state['entry_price'], 'stop': self.state['sl_price'],
-                'target': self.state['tp_price'], 'strength': self.state['break_strength'],
+                'side': 'long' if self.state['direction'] == 1 else 'short',
+                'entry_price': self.state['entry_price'],
             }
         return {
             'running': self.running, 'mode': self.mode, 'symbol': self.symbol, 'tf': self.tf,
@@ -566,61 +451,51 @@ class BotEngine:
 
     def _diff_events(self, prev, new, klines, i):
         """Confronta lo stato del motore tra due chiamate consecutive (una candela
-        chiusa in più) e ne deriva gli eventi: entrata, spostamento a breakeven
-        (25% verso il TP) e chiusura."""
+        chiusa in più) e ne deriva gli eventi: uscita (reverse) ed entrata. A
+        differenza del vecchio ORB, un reverse chiude la posizione precedente e ne
+        apre una nuova SULLA STESSA barra — 'trade_open' resta True nello stato
+        nuovo anche quando è appena avvenuta una chiusura, quindi le due condizioni
+        vanno controllate in modo indipendente (closed_bar per l'uscita, entry_bar
+        per l'entrata), non con un early-return come nel motore precedente."""
         events = []
         t = klines[i]['time']
 
-        if new['trade_open'] and (not prev.get('trade_open') or new['breakout_bar'] != prev.get('breakout_bar')):
-            side = 'long' if new['breakout_dir'] == 1 else 'short'
-            # 'fresh' = il breakout è avvenuto proprio su questa candela (i), non
-            # ereditato dal replay dello storico (es. subito dopo uno Start con un
-            # segnale già a metà strada) — vedi _execute_entry, che rifiuta di
-            # piazzare un ordine reale con Entry/SL/TP calcolati su un prezzo ormai
-            # superato dal mercato.
-            events.append({'type': 'entry', 'side': side, 'time': t, 'price': new['entry_price'],
-                            'stop': new['sl_price_orig'], 'target': new['tp_price'], 'strength': new['break_strength'],
-                            'fresh': new['breakout_bar'] == i})
-            return events
-
-        if prev.get('trade_open') and new['trade_open'] and new['be_hit'] and not prev.get('be_hit'):
-            side = 'long' if new['breakout_dir'] == 1 else 'short'
-            events.append({'type': 'breakeven', 'side': side, 'time': t,
-                            'price': new['entry_price'], 'new_stop': new['sl_price']})
-
-        if prev.get('trade_open') and not new['trade_open'] and new['closed_bar'] == i:
+        if new.get('closed_bar') == i and prev.get('closed_bar') != i:
             side = 'long' if new['closed_dir'] == 1 else 'short'
             events.append({'type': 'exit', 'reason': new['closed_reason'], 'side': side,
                             'time': t, 'price': new['closed_price']})
 
+        if new['trade_open'] and (not prev.get('trade_open') or new['entry_bar'] != prev.get('entry_bar')):
+            side = 'long' if new['direction'] == 1 else 'short'
+            # 'fresh' = il flip è avvenuto proprio su questa candela (i), non
+            # ereditato dal replay dello storico (es. subito dopo uno Start con un
+            # trend già in corso) — vedi _execute_entry, che in quel caso rifiuta
+            # di piazzare un ordine reale su un prezzo ormai superato dal mercato.
+            events.append({'type': 'entry', 'side': side, 'time': t, 'price': new['entry_price'],
+                            'fresh': new['entry_bar'] == i})
+
         return events
 
     def _on_kline(self, symbol, interval, candle, is_closed):
-        # Trigger intrabar (vedi _detect_orb_signal): reagisce anche alla candela
-        # ANCORA IN FORMAZIONE, non solo a quella chiusa — altrimenti il segnale
-        # scatterebbe comunque solo alla chiusura, vanificando il senso di un
-        # trigger "in tempo reale". ws_manager aggiorna in-place l'ultima candela
-        # del buffer ad ogni tick (vedi ws_manager._handle_kline), quindi
-        # get_klines() riflette già il prezzo più recente anche a candela aperta.
+        # Il segnale (EMA cross) è sulla candela CHIUSA — a differenza del vecchio
+        # ORB non serve precisione intrabar, anzi reagire a un tick in corso
+        # esporrebbe a falsi flip che rientrano prima della chiusura.
+        if not is_closed:
+            return
         if not self.running:
             return
-        # Il motore gira sempre su kline 1m (STRATEGY_TF) — self.tf è solo l'etichetta
-        # scelta in UI (alert Telegram/grafico), non governa più range/trigger/SL-TP.
-        if symbol != self.symbol or interval != STRATEGY_TF:
+        if symbol != self.symbol or interval != self.tf:
             return
         if not self._ws_manager:
             return
 
         klines = self._ws_manager.get_klines(symbol, interval)
-        needed = warmup_bars_for(self.params, STRATEGY_TF_SECONDS) + 5
+        needed = warmup_bars_for(self.params) + 5
         if len(klines) < needed:
             return
 
         with self._lock:
-            # ws_manager fornisce sempre epoch UTC puro (nessuno shift di
-            # timezone), a differenza delle candele del backtest — vedi
-            # docstring modulo su tz_offset_s.
-            new_state, _ = run_engine(klines, self.params, tz_offset_s=0, taker_fee_rate=self.taker_fee_rate)
+            new_state, _ = run_engine(klines, self.params, taker_fee_rate=self.taker_fee_rate)
             i = len(klines) - 1
 
             # Trade la cui apertura reale è fallita su Bybit (vedi _execute_entry):
@@ -628,7 +503,7 @@ class BotEngine:
             # finché non si chiude da solo — va ignorato come fantasma (niente
             # ri-tentativi, niente falsa entrata/chiusura) finché non si risolve.
             if (self._exec_fail_bar is not None and new_state.get('trade_open')
-                    and new_state.get('breakout_bar') == self._exec_fail_bar):
+                    and new_state.get('entry_bar') == self._exec_fail_bar):
                 new_state = dict(_EMPTY_ENGINE_STATE)
             elif self._exec_fail_bar is not None and not new_state.get('trade_open'):
                 self._exec_fail_bar = None
@@ -654,20 +529,18 @@ class BotEngine:
             if ev['type'] == 'entry':
                 if not ev.get('fresh', True):
                     print(f'⚠️ BOT: segnale non fresco (ereditato dallo storico) su {self.symbol}, '
-                          f'entrata reale saltata — Entry/SL/TP sarebbero calcolati su un prezzo ormai superato')
+                          f'entrata reale saltata — il prezzo sarebbe ormai superato dal mercato')
                     # Nessuna posizione reale aperta di proposito — marca come
                     # "fantasma" (stesso _on_kline che gestisce gli ordini falliti)
                     # così quando questo trade si chiude da solo nel replay non
                     # parte un falso alert di chiusura.
-                    self._exec_fail_bar = self.state.get('breakout_bar')
+                    self._exec_fail_bar = self.state.get('entry_bar')
                     return
                 self._execute_entry(ev)
-            elif ev['type'] == 'breakeven':
-                self._execute_breakeven(ev)
             elif ev['type'] == 'exit':
                 self._execute_exit(ev)
                 # Registrato SEMPRE (anche se _execute_exit non ha dovuto inviare
-                # un ordine perché Bybit aveva già chiuso da solo via SL/TP nativo)
+                # un ordine perché era già stata chiusa da un reverse precedente)
                 # — questo evento rappresenta comunque la chiusura reale della
                 # posizione del bot, candela in cui il nostro replay l'ha rilevata.
                 _append_bot_ledger({'symbol': self.symbol, 'side': ev.get('side', ''),
@@ -695,27 +568,19 @@ class BotEngine:
         qty = self._round_qty(notional / price if price else 0, instr)
         if qty <= 0:
             print(f'⚠️ BOT: qty calcolata 0 per {symbol}, entrata saltata')
-            self._exec_fail_bar = self.state.get('breakout_bar')
+            self._exec_fail_bar = self.state.get('entry_bar')
             return
 
         side = 'Buy' if ev['side'] == 'long' else 'Sell'
+        # Nessun SL/TP fisso (trend-following puro, esce solo sul flip opposto).
         ok, order_id, err = self._trade_client.place_order(
-            symbol=symbol, side=side, qty=qty, leverage=self.leverage,
-            stop_loss=ev['stop'], take_profit=ev['target'])
+            symbol=symbol, side=side, qty=qty, leverage=self.leverage)
         if not ok:
             print(f'❌ BOT order failed: {err}')
             # Nessuna posizione reale aperta — marca questo trade come "fantasma"
-            # (stesso breakout_bar) così _on_kline non lo ritratta come nuova
+            # (stesso entry_bar) così _on_kline non lo ritratta come nuova
             # entrata né segnala una falsa chiusura quando si risolve da solo.
-            self._exec_fail_bar = self.state.get('breakout_bar')
-
-    def _execute_breakeven(self, ev):
-        pos = self._trade_client.get_position(self.symbol)
-        if not pos:
-            return
-        ok, err = self._trade_client.modify_stop_loss(self.symbol, ev['new_stop'], pos.get('positionIdx', 0))
-        if not ok:
-            print(f'❌ BOT breakeven SL move failed: {err}')
+            self._exec_fail_bar = self.state.get('entry_bar')
 
     def _execute_exit(self, ev):
         pos = self._trade_client.get_position(self.symbol)
@@ -768,37 +633,23 @@ class BotEngine:
         if rec['type'] == 'entry':
             side_label = 'LONG' if rec['side'] == 'long' else 'SHORT'
             lines = [
-                f'🤖 BOT ORB {tf_label} — {side_label} [{rec.get("strength", "—")}]',
+                f'🤖 BOT Trend Band {tf_label} — {side_label}',
                 '',
                 '------------------------------------------------',
                 f'- Coin: {self.symbol}',
                 f'- Modalità: {mode_label}',
                 f'- Prezzo entrata: {rec["price"]}',
-                f'- Stop Loss: {rec["stop"]:.6f}',
-                f'- Take Profit: {rec["target"]:.6f}',
                 '------------------------------------------------',
                 '',
                 f'<a href="https://www.bybit.com/trade/usdt/{self.symbol}">- View Bybit</a>',
             ]
-        elif rec['type'] == 'breakeven':
-            lines = [
-                f'🤖 BOT ORB {tf_label} — Breakeven (25% verso TP)',
-                '',
-                '------------------------------------------------',
-                f'- Coin: {self.symbol}',
-                f'- Modalità: {mode_label}',
-                f'- SL spostato a: {rec["new_stop"]:.6f}',
-                '------------------------------------------------',
-            ]
         else:
-            reason_label = {'sl': 'Stop Loss', 'be': 'Breakeven', 'tp': 'Take Profit (target)'}.get(rec['reason'], rec['reason'])
             lines = [
-                f'🤖 BOT ORB {tf_label} — CHIUSURA',
+                f'🤖 BOT Trend Band {tf_label} — CHIUSURA (reverse)',
                 '',
                 '------------------------------------------------',
                 f'- Coin: {self.symbol}',
                 f'- Modalità: {mode_label}',
-                f'- Motivo: {reason_label}',
                 f'- Prezzo uscita: {rec["price"]}',
                 '------------------------------------------------',
             ]

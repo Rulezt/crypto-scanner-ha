@@ -232,7 +232,9 @@ DEFAULT_CONFIG = {
         'mode': 'signal',
         'sizing': {'type': 'fixed', 'value': 50.0},
         'leverage': 1,
-        'period': 20,
+        'fast_len': 5,
+        'slow_len': 10,
+        'flat_mult': 0.25,
     },
     'general': {
         'min_volume_24h': 10000000,
@@ -2258,14 +2260,15 @@ def bot_exchange_alerts():
     return jsonify({'alerts': bot.get_exchange_alerts()})
 
 
-# Range/trigger/SL-TP dell'ORB girano SEMPRE su candele 1m, indipendentemente
-# dal TF scelto in UI (vedi STRATEGY_TF in bot_engine.py per il perché — un TF
-# più largo rendeva sia il range sia l'esito SL/TP dipendenti dalla granularità
-# della candela, non voluto). Bybit pagina 1000 candele/richiesta con un cap di
-# 100 pagine: a 1m sono ~69 giorni, quindi il lookback usato per la strategia è
-# limitato a STRATEGY_MAX_LOOKBACK_DAYS — se l'utente ne chiede di più il
-# risultato è segnalato come troncato invece di fallire silenziosamente.
-_STRATEGY_MAX_LOOKBACK_DAYS = 60
+# Il Trend Band gira DIRETTAMENTE sul TF scelto in UI (self.tf, vedi bot_engine.py
+# — a differenza del vecchio ORB non serve più forzare 1m: un EMA cross non ha
+# bisogno di precisione intrabar). Bybit pagina 1000 candele/richiesta con un cap
+# di 100 pagine: il lookback massimo utile dipende quindi dal TF scelto (a 1m
+# sono ~69 giorni, a 1h già ~4100 giorni cioè oltre il cap di 3 anni) — se
+# l'utente ne chiede di più il risultato è segnalato come troncato invece di
+# fallire silenziosamente.
+_STRATEGY_MAX_PAGES = 100
+_STRATEGY_MAX_CANDLES_PER_PAGE = 1000
 
 
 @app.route('/api/bot/backtest', methods=['POST'])
@@ -2274,12 +2277,10 @@ def bot_backtest():
     err = _bot_admin_gate()
     if err: return err
     import re
-    from scanners.bot_engine import normalize_params, run_backtest, TF_SECONDS, STRATEGY_TF
+    from scanners.bot_engine import normalize_params, run_backtest, TF_SECONDS
 
     data     = request.get_json() or {}
     symbol   = (data.get('symbol') or '').upper()
-    # interval: solo per l'aggregazione del grafico mostrato — non influenza più
-    # la strategia (vedi _STRATEGY_MAX_LOOKBACK_DAYS sopra).
     interval = str(data.get('tf', '60'))
 
     if not re.match(r'^[A-Z0-9]{3,20}$', symbol) or not symbol.endswith('USDT'):
@@ -2294,15 +2295,18 @@ def bot_backtest():
     except (TypeError, ValueError):
         lookback_days = 365.0
     lookback_days = max(1.0, min(lookback_days, 1095.0))  # cap 3 anni (richiesto dall'utente)
-    strategy_lookback_days = min(lookback_days, _STRATEGY_MAX_LOOKBACK_DAYS)
-    lookback_truncated = lookback_days > _STRATEGY_MAX_LOOKBACK_DAYS
+
+    tf_seconds = TF_SECONDS.get(interval) or (int(interval) * 60 if interval.isdigit() else 3600)
+    strategy_max_lookback_days = (_STRATEGY_MAX_PAGES * _STRATEGY_MAX_CANDLES_PER_PAGE * tf_seconds) / 86400.0
+    strategy_lookback_days = min(lookback_days, strategy_max_lookback_days)
+    lookback_truncated = lookback_days > strategy_max_lookback_days
 
     params = normalize_params(data)
 
     try:
-        candles_needed = int(strategy_lookback_days * 86400 / 60) + 5
-        max_pages = max(1, min(100, -(-candles_needed // 1000)))  # ceil, cap 100 pagine (100k candele)
-        candles_1m, tz_s = _fetch_klines_bybit(symbol, STRATEGY_TF, max_pages)
+        candles_needed = int(strategy_lookback_days * 86400 / tf_seconds) + 5
+        max_pages = max(1, min(_STRATEGY_MAX_PAGES, -(-candles_needed // 1000)))  # ceil
+        candles, tz_s = _fetch_klines_bybit(symbol, interval, max_pages)
     except Exception as e:
         return jsonify({'error': str(e)}), 502
 
@@ -2311,25 +2315,20 @@ def bot_backtest():
     taker_fee_rate = _bybit_taker_fee_rate(session.get('username', ''), symbol)
 
     try:
-        # tz_s: le candele di _fetch_klines_bybit hanno 'time' shiftato dell'offset
-        # UTC configurato — il motore ORB deve saperlo per individuare correttamente
-        # il confine "00:00 UTC" del giorno (vedi bot_engine.py, tz_offset_s).
-        result = run_backtest(candles_1m, params, initial_capital, sizing, taker_fee_rate, tz_offset_s=tz_s)
+        result = run_backtest(candles, params, initial_capital, sizing, taker_fee_rate)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     result['taker_fee_rate'] = taker_fee_rate
-    # Il frontend ne ha bisogno per ricalcolare client-side le bande dell'opening
-    # range (stessa convenzione oraria delle candele restituite sotto).
+    # Il frontend ne ha bisogno per la formattazione oraria (stessa convenzione
+    # delle candele restituite sotto).
     result['utc_offset_s'] = tz_s
     result['lookback_truncated'] = lookback_truncated
-    result['effective_lookback_days'] = strategy_lookback_days
+    result['effective_lookback_days'] = round(strategy_lookback_days, 2)
 
-    # Grafico: le candele mostrate sono aggregate dal 1m nativo al TF scelto in
-    # UI (solo display — la strategia sopra ha già girato sui dati 1m).
-    display_iv_s = TF_SECONDS.get(interval) or (int(interval) * 60 if interval.isdigit() else 3600)
-    display_candles = candles_1m if display_iv_s <= 60 else _aggregate_candles(candles_1m, display_iv_s, tz_s)
+    # Il grafico mostra esattamente le candele su cui ha girato la strategia
+    # (stesso TF, nessuna aggregazione: TF di calcolo e TF mostrato coincidono ora).
     result['candles'] = [{'time': c['time'], 'open': c['open'], 'high': c['high'],
-                          'low': c['low'], 'close': c['close']} for c in display_candles]
+                          'low': c['low'], 'close': c['close']} for c in candles]
 
     return jsonify({'success': True, **result})
 
