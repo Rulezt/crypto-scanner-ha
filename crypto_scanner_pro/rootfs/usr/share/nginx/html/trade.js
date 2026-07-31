@@ -805,6 +805,20 @@ function _obTbReindexStep(htfTb, displayKlines) {
     return { fast, slow, color };
 }
 
+// Traccia curve attraverso i punti medi (tecnica standard "smooth line" su canvas):
+// dalla posizione corrente (pts[0], già raggiunta con moveTo/lineTo) passa per
+// pts[1..] con quadraticCurveTo, terminando ESATTAMENTE su pts[last] — così i
+// confini fra run di colore diverso restano allineati senza spazi vuoti.
+function _tbSmoothCurveThrough(ctx, pts) {
+    const n = pts.length;
+    if (n < 2) return;
+    if (n === 2) { ctx.lineTo(pts[1].x, pts[1].y); return; }
+    for (let i = 1; i < n - 1; i++) {
+        const mx = (pts[i].x + pts[i+1].x) / 2, my = (pts[i].y + pts[i+1].y) / 2;
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+    }
+    ctx.quadraticCurveTo(pts[n-2].x, pts[n-2].y, pts[n-1].x, pts[n-1].y);
+}
 class _TrendBandFillPrimitive {
     constructor() {
         this._series = null;
@@ -815,25 +829,43 @@ class _TrendBandFillPrimitive {
                 const cfg = getTbCfg();
                 if (cfg.hideBand) return;
                 const { fast, slow, color } = _obTbData;
-                if (fast.length < 2) return;
+                const n = fast.length;
+                if (n < 2) return;
                 const ts = _obChart.timeScale();
                 ctx.save();
                 const alpha = (100 - (cfg.bandTransp ?? 22)) / 100;
-                for (let i = 0; i < fast.length - 1; i++) {
-                    const x0 = ts.timeToCoordinate(fast[i].time), x1 = ts.timeToCoordinate(fast[i+1].time);
-                    if (x0 == null || x1 == null) continue;
-                    const yf0 = series.priceToCoordinate(fast[i].value),   yf1 = series.priceToCoordinate(fast[i+1].value);
-                    const ys0 = series.priceToCoordinate(slow[i].value),   ys1 = series.priceToCoordinate(slow[i+1].value);
-                    if (yf0 == null || yf1 == null || ys0 == null || ys1 == null) continue;
-                    const xp0 = x0 * horizontalPixelRatio, xp1 = x1 * horizontalPixelRatio;
+
+                const fx = new Array(n), fy = new Array(n), sy = new Array(n), valid = new Array(n);
+                for (let k = 0; k < n; k++) {
+                    const x = ts.timeToCoordinate(fast[k].time);
+                    const yf = series.priceToCoordinate(fast[k].value);
+                    const ysv = series.priceToCoordinate(slow[k].value);
+                    valid[k] = x != null && yf != null && ysv != null;
+                    if (valid[k]) { fx[k] = x * horizontalPixelRatio; fy[k] = yf * verticalPixelRatio; sy[k] = ysv * verticalPixelRatio; }
+                }
+
+                // Raggruppa segmenti CONSECUTIVI dello stesso colore in un'unica forma
+                // con bordi curvi (invece di un poligono dritto per ogni singola
+                // candela) — bordo netto solo dove il colore cambia davvero.
+                let i = 0;
+                while (i < n - 1) {
+                    if (!valid[i] || !valid[i+1]) { i++; continue; }
+                    let j = i;
+                    while (j + 1 < n - 1 && valid[j+2] && color[j+1] === color[i]) j++;
+                    const fastPts = [], slowPtsRev = [];
+                    for (let k = i; k <= j+1; k++) fastPts.push({ x: fx[k], y: fy[k] });
+                    for (let k = j+1; k >= i; k--) slowPtsRev.push({ x: fx[k], y: sy[k] });
+
                     ctx.beginPath();
-                    ctx.moveTo(xp0, yf0 * verticalPixelRatio);
-                    ctx.lineTo(xp1, yf1 * verticalPixelRatio);
-                    ctx.lineTo(xp1, ys1 * verticalPixelRatio);
-                    ctx.lineTo(xp0, ys0 * verticalPixelRatio);
+                    ctx.moveTo(fastPts[0].x, fastPts[0].y);
+                    _tbSmoothCurveThrough(ctx, fastPts);
+                    ctx.lineTo(slowPtsRev[0].x, slowPtsRev[0].y);
+                    _tbSmoothCurveThrough(ctx, slowPtsRev);
                     ctx.closePath();
                     ctx.fillStyle = _hexToRgba(color[i], alpha);
                     ctx.fill();
+
+                    i = j + 1;
                 }
                 ctx.restore();
             })
