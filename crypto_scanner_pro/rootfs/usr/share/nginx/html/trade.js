@@ -149,6 +149,23 @@ function grabBarColor(close, open, eHigh, eLow, cfg) {
     if (close > eHigh) return close > open ? cfg.colorAboveBull : cfg.colorAboveBear;
     return close > open ? cfg.colorMidBull : cfg.colorMidBear;
 }
+// Stato semantico GRaB (per tooltip strip TF): stessa logica di grabBarColor, ma
+// restituisce una chiave testuale invece del colore, per poter mostrare all'utente
+// cosa indica il colore (posizione rispetto alla wave + direzione della candela).
+function grabBarState(close, open, eHigh, eLow) {
+    const bull = close > open;
+    if (close < eLow)  return bull ? 'belowBull' : 'belowBear';
+    if (close > eHigh) return bull ? 'aboveBull' : 'aboveBear';
+    return bull ? 'midBull' : 'midBear';
+}
+const GRAB_STATE_LABEL = {
+    aboveBull: 'Trend rialzista forte',
+    aboveBear: 'Trend rialzista in pausa',
+    belowBull: 'Trend ribassista in pausa',
+    belowBear: 'Trend ribassista forte',
+    midBull:   'Laterale, spinta rialzista',
+    midBear:   'Laterale, spinta ribassista',
+};
 
 // ── Trend Band — banda tra EMA fast/slow, colorata bull/bear/flat (flat quando
 // |spread EMA| < ATR(14)*flatMult). Stessa logica/default di mtf.html (EMA 5/10).
@@ -3499,6 +3516,10 @@ createApp({
         // indipendente dal bottone GRaB (che controlla solo la ricolorazione delle
         // candele sul grafico) — richiesta esplicita dell'utente 2026-07-24.
         const grabTfColors = ref({});
+        const grabTfTitle = (tf) => {
+            const g = grabTfColors.value[tf.v];
+            return g ? GRAB_STATE_LABEL[g.state] : '';
+        };
         let _grabTfTick = 0;
         const _updateGrabTfStrip = async () => {
             const cfg = getGrabCfg();
@@ -3515,7 +3536,11 @@ createApp({
                     const eh = calcEMAField(candles, period, 'high');
                     const el = calcEMAField(candles, period, 'low');
                     const last = candles[candles.length - 1];
-                    results[tf.v] = grabBarColor(last.close, last.open, eh[eh.length - 1].value, el[el.length - 1].value, cfg);
+                    const eHigh = eh[eh.length - 1].value, eLow = el[el.length - 1].value;
+                    results[tf.v] = {
+                        color: grabBarColor(last.close, last.open, eHigh, eLow, cfg),
+                        state: grabBarState(last.close, last.open, eHigh, eLow),
+                    };
                 } catch(e) { /* skip tf */ }
             }));
             if (sym === symbol.value) grabTfColors.value = results;
@@ -4638,7 +4663,7 @@ createApp({
         return {
             t,
             symbol, symBase, symQuote, isStandalone,
-            ticker, TF_OPTIONS, chartTF, ohlc, chartContainerEl, grabTfColors,
+            ticker, TF_OPTIONS, chartTF, ohlc, chartContainerEl, grabTfColors, grabTfTitle,
             displayLevels, grouping, groupingOptions,
             levelsDdOpen, groupingDdOpen, selectLevels, selectGrouping,
             displayAsks, displayBids, pressure,
