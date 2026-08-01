@@ -81,7 +81,8 @@
         .cfg-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .cfg-row label { font-size: 0.76rem; color: #9CA3AF; }
         .cfg-row input[type="number"] { width: 76px; background: #1f2937; color: #f9fafb; border: 1px solid #374151; border-radius: 4px; padding: 5px 8px; font-size: 0.8rem; }
-        .cfg-tf-row input[type="number"] { width: 56px; background: #1f2937; color: #f9fafb; border: 1px solid #374151; border-radius: 4px; padding: 5px 6px; font-size: 0.78rem; }
+        .cfg-tf-row input[type="number"] { width: 50px; background: #1f2937; color: #f9fafb; border: 1px solid #374151; border-radius: 4px; padding: 5px 6px; font-size: 0.78rem; }
+        .cfg-tf-row select { width: 64px; background: #1f2937; color: #f9fafb; border: 1px solid #374151; border-radius: 4px; padding: 4px 4px; font-size: 0.72rem; }
         @media (max-width: 639px) and (orientation: portrait) {
             [data-col="mtf"] { display: none !important; }
         }
@@ -269,15 +270,20 @@
             <button @click="cfgOpen=false" style="position:absolute;top:10px;right:14px;background:none;border:none;color:#6B7280;cursor:pointer;font-size:20px;line-height:1;">×</button>
             <div style="font-size:0.85rem;font-weight:700;color:#E5E7EB;margin-bottom:14px;">⚙ {{ t('tbscan_cfg_title') }}</div>
             <div class="cfg-scroll" style="display:flex;flex-direction:column;gap:9px;">
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <span style="width:32px;"></span>
-                    <span style="width:56px;font-size:0.65rem;color:#6B7280;text-align:center;">{{ t('tbscan_ema_fast') }}</span>
-                    <span style="width:56px;font-size:0.65rem;color:#6B7280;text-align:center;">{{ t('tbscan_ema_slow') }}</span>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="width:28px;"></span>
+                    <span style="width:50px;font-size:0.62rem;color:#6B7280;text-align:center;">{{ t('tbscan_ema_fast') }}</span>
+                    <span style="width:50px;font-size:0.62rem;color:#6B7280;text-align:center;">{{ t('tbscan_ema_slow') }}</span>
+                    <span style="width:64px;font-size:0.62rem;color:#6B7280;text-align:center;">{{ t('tbscan_calc_tf') }}</span>
                 </div>
-                <div v-for="tf in ALL_TFS" :key="tf" class="cfg-tf-row" style="display:flex;align-items:center;gap:8px;">
-                    <span style="width:32px;font-size:0.76rem;color:#9CA3AF;font-weight:600;">{{ TF_LABEL[tf] }}</span>
+                <div v-for="tf in ALL_TFS" :key="tf" class="cfg-tf-row" style="display:flex;align-items:center;gap:6px;">
+                    <span style="width:28px;font-size:0.76rem;color:#9CA3AF;font-weight:600;">{{ TF_LABEL[tf] }}</span>
                     <input type="number" v-model.number="emaByTf[tf].fast" min="2" max="500" step="1">
                     <input type="number" v-model.number="emaByTf[tf].slow" min="2" max="500" step="1">
+                    <select v-model="emaByTf[tf].calcTf">
+                        <option value="">{{ t('tbscan_calc_tf_same') }}</option>
+                        <option v-for="ctf in CALC_TF_OPTIONS" :key="ctf" :value="ctf">{{ TF_LABEL[ctf] }}</option>
+                    </select>
                 </div>
                 <div class="cfg-row" style="margin-top:6px;"><label :title="t('tbscan_flat_mult_hint')">{{ t('tbscan_flat_mult') }}</label><input type="number" v-model.number="flatMult" min="0" max="5" step="0.05"></div>
                 <div class="cfg-row"><label>{{ t('tbscan_lookback') }}</label><input type="number" v-model.number="lookbackBars" min="1" max="100" step="1"></div>
@@ -301,6 +307,9 @@ createApp({
     setup() {
         const ALL_TFS  = ['240','60','30','5','1'];
         const TF_LABEL = { '1':'1m','5':'5m','30':'30m','60':'1h','240':'4h','D':'D' };
+        // Opzioni del selettore "Calcola su TF" per riga — include 'D', non presente
+        // in ALL_TFS (che governa solo i TF scansionati), stessa lista di chart.html.
+        const CALC_TF_OPTIONS = ['1','5','30','60','240','D'];
 
         const t = (key) => { _appLang.value; return window.T[key] || key; };
 
@@ -311,7 +320,7 @@ createApp({
         // personalizzati singolarmente dal pannello impostazioni.
         const emaByTf = ref((() => {
             const out = {};
-            for (const tf of ALL_TFS) out[tf] = { fast: 5, slow: 10, ..._cfgB.emaByTf?.[tf] };
+            for (const tf of ALL_TFS) out[tf] = { fast: 5, slow: 10, calcTf: '', ..._cfgB.emaByTf?.[tf] };
             return out;
         })());
         const flatMult     = ref(_cfgB.flatMult     ?? 0.25);
@@ -457,6 +466,21 @@ createApp({
             const atr = calcRMAArr(calcTRArr(candles), 14);
             return candles.map((_, i) => tbBandColor(ef[i] - es[i], atr[i], fm));
         };
+        // Merge a gradini: per ogni candela display usa il colore dell'ultima candela
+        // CHIUSA del TF di calcolo con time <= a quella candela (stessa tecnica di
+        // _tbReindexStep in chart.html, qui semplificata al solo colore).
+        const reindexColorsStep = (calcCandles, calcColors, displayCandles) => {
+            const out = new Array(displayCandles.length).fill(null);
+            if (!calcCandles.length) return out;
+            let j = 0;
+            for (let i = 0; i < displayCandles.length; i++) {
+                const t = displayCandles[i].time;
+                if (calcCandles[0].time > t) continue;
+                while (j + 1 < calcCandles.length && calcCandles[j + 1].time <= t) j++;
+                out[i] = calcColors[j];
+            }
+            return out;
+        };
         const detectTrendBandFlip = (candles, colors, cfg) => {
             const n = candles.length;
             const warmup = Math.max(cfg.fastLen, cfg.slowLen, 14) + 2;
@@ -535,27 +559,48 @@ createApp({
                     const batch = tickers.slice(i, i + BATCH);
                     await Promise.all(batch.map(async (ticker) => {
                         try {
+                            // Cache per-ticker delle candele del TF di calcolo, per non rifare
+                            // la stessa fetch quando più righe condividono lo stesso calcTf.
+                            const calcCache = new Map();
+                            const fetchBybitCandles = async (tfToFetch) => {
+                                const url = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${ticker.symbol}&interval=${tfToFetch}&limit=${KLIMIT}`;
+                                const res  = await fetch(url);
+                                const json = await res.json();
+                                if (json.retCode !== 0 || !json.result?.list?.length) return null;
+                                return json.result.list.slice(1).reverse().map(c => ({
+                                    time:  Math.floor(parseInt(c[0]) / 1000),
+                                    open:  parseFloat(c[1]),
+                                    high:  parseFloat(c[2]),
+                                    low:   parseFloat(c[3]),
+                                    close: parseFloat(c[4]),
+                                    volume: parseFloat(c[5]),
+                                })).filter(c => isFinite(c.close) && c.close > 0);
+                            };
+                            const fetchCalcCandles = (tfToFetch) => {
+                                if (!calcCache.has(tfToFetch)) calcCache.set(tfToFetch, fetchBybitCandles(tfToFetch));
+                                return calcCache.get(tfToFetch);
+                            };
+
                             await Promise.all(ALL_TFS.map(async (tf) => {
                                 try {
                                     const emaCfg = emaByTf.value[tf];
-                                    const url = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${ticker.symbol}&interval=${tf}&limit=${KLIMIT}`;
-                                    const res  = await fetch(url);
-                                    const json = await res.json();
-                                    if (json.retCode !== 0 || !json.result?.list?.length) return;
-
-                                    const candles = json.result.list.slice(1).reverse().map(c => ({
-                                        time:  Math.floor(parseInt(c[0]) / 1000),
-                                        open:  parseFloat(c[1]),
-                                        high:  parseFloat(c[2]),
-                                        low:   parseFloat(c[3]),
-                                        close: parseFloat(c[4]),
-                                        volume: parseFloat(c[5]),
-                                    })).filter(c => isFinite(c.close) && c.close > 0);
+                                    const candles = await fetchBybitCandles(tf);
+                                    if (!candles) return;
 
                                     const warmup = Math.max(emaCfg.fast, emaCfg.slow, 14) + 10;
                                     if (candles.length < warmup) return;
 
-                                    const colors = calcTrendBandColors(candles, emaCfg.fast, emaCfg.slow, flatMult.value);
+                                    const calcTf = emaCfg.calcTf || tf;
+                                    let colors;
+                                    if (calcTf === tf) {
+                                        colors = calcTrendBandColors(candles, emaCfg.fast, emaCfg.slow, flatMult.value);
+                                    } else {
+                                        const calcCandles = await fetchCalcCandles(calcTf);
+                                        if (!calcCandles || calcCandles.length < warmup) return;
+                                        const calcColors = calcTrendBandColors(calcCandles, emaCfg.fast, emaCfg.slow, flatMult.value);
+                                        colors = reindexColorsStep(calcCandles, calcColors, candles);
+                                    }
+
                                     const sig = detectTrendBandFlip(candles, colors, { fastLen: emaCfg.fast, slowLen: emaCfg.slow, lookbackBars: lookbackBars.value });
                                     if (sig) {
                                         const row = buildRow(ticker, tf, candles, sig);
@@ -621,29 +666,48 @@ createApp({
         };
 
         // Ricolora le candele (verde/rosso/giallo) esattamente come l'opzione "Colora
-        // candele" dell'indicatore Trend Band, usando l'EMA veloce/lenta del TF di riga.
+        // candele" dell'indicatore Trend Band, usando l'EMA veloce/lenta del TF di riga
+        // (o, se configurato, la banda del "Calcola su TF" tramite getRowColors).
         const TB_COLORS = { bull: '#22c55e', bear: '#ef4444', flat: '#eab308' };
-        const buildTrendBandColoredData = (klines, fastLen, slowLen) => {
-            const colors = calcTrendBandColors(klines, fastLen, slowLen, flatMult.value);
+        const buildTrendBandColoredData = (klines, colors) => {
             return klines.map((k, i) => {
                 const c = TB_COLORS[colors[i]];
-                return { ...k, color: c, wickColor: c, borderColor: c };
+                return c ? { ...k, color: c, wickColor: c, borderColor: c } : k;
             });
         };
 
-        const buildPriceChart = async (container, row, visibleBarsOverride) => {
-            const res  = await fetch(`api/klines?symbol=${row.symbol}&interval=${row.tf}`);
+        const fetchLocalKlines = async (symbol, tf) => {
+            const res = await fetch(`api/klines?symbol=${symbol}&interval=${tf}`);
             if (!res.ok) return null;
             const data = await res.json();
             if (!data.success || !data.data?.length) return null;
-
             const seen = new Set();
             const klines = data.data.filter(c => {
                 if (seen.has(c.time)) return false;
                 seen.add(c.time);
                 return isFinite(c.open) && isFinite(c.close) && c.high >= c.low;
             });
-            if (!klines.length) return null;
+            return klines.length ? { klines, utcOffsetS: data.utc_offset_s || 0 } : null;
+        };
+
+        // Colori Trend Band per le candele display: se emaCfg.calcTf è impostato e
+        // diverso dal proprio TF, calcola la banda sul TF di calcolo e la riporta "a
+        // gradini" (stessa logica dello scan, vedi reindexColorsStep). Nessuno scarto
+        // esplicito della candela in formazione sul TF di calcolo: api/klines locale
+        // la aggiorna già live, coerente con l'enhancement "banda live" dell'indicatore.
+        const getRowColors = async (symbol, tf, displayKlines, emaCfg) => {
+            const calcTf = emaCfg.calcTf || tf;
+            if (calcTf === tf) return calcTrendBandColors(displayKlines, emaCfg.fast, emaCfg.slow, flatMult.value);
+            const calcRes = await fetchLocalKlines(symbol, calcTf);
+            if (!calcRes) return calcTrendBandColors(displayKlines, emaCfg.fast, emaCfg.slow, flatMult.value);
+            const calcColors = calcTrendBandColors(calcRes.klines, emaCfg.fast, emaCfg.slow, flatMult.value);
+            return reindexColorsStep(calcRes.klines, calcColors, displayKlines);
+        };
+
+        const buildPriceChart = async (container, row, visibleBarsOverride) => {
+            const localRes = await fetchLocalKlines(row.symbol, row.tf);
+            if (!localRes) return null;
+            const { klines, utcOffsetS } = localRes;
 
             const chart = LC.createChart(container, {
                 autoSize: true,
@@ -659,8 +723,9 @@ createApp({
                 upColor: '#089981', downColor: '#F23645',
                 borderVisible: false, wickUpColor: '#089981', wickDownColor: '#F23645',
             });
-            const emaCfg = emaByTf.value[row.tf] || { fast: 5, slow: 10 };
-            candleSeries.setData(buildTrendBandColoredData(klines, emaCfg.fast, emaCfg.slow));
+            const emaCfg = emaByTf.value[row.tf] || { fast: 5, slow: 10, calcTf: '' };
+            const rowColors = await getRowColors(row.symbol, row.tf, klines, emaCfg);
+            candleSeries.setData(buildTrendBandColoredData(klines, rowColors));
 
             chart.subscribeCrosshairMove(param => {
                 const pctEl = document.getElementById('lwc-popup-candle-pct');
@@ -692,7 +757,7 @@ createApp({
             // le sue wave EMA-high/low) — solo le candele colorate + marker restano
             // come indicazione visiva, per non affollare il grafico.
 
-            const _sigTimeAdj = row.sigTime != null ? row.sigTime + (data.utc_offset_s || 0) : null;
+            const _sigTimeAdj = row.sigTime != null ? row.sigTime + utcOffsetS : null;
             if (_sigTimeAdj && LC.createSeriesMarkers) {
                 try {
                     LC.createSeriesMarkers(candleSeries, [{
@@ -789,12 +854,9 @@ createApp({
             }, { rootMargin: '150px' });
             return thumbObserver;
         }
-        function prepThumbData(klines, tf) {
+        function prepThumbData(klines, colorsFull) {
             const bars = klines.slice(-THUMB_BARS);
             if (!bars.length) return null;
-            const emaCfg = emaByTf.value[tf] || { fast: 5, slow: 10 };
-            const warmup = Math.max(emaCfg.fast, emaCfg.slow, 14) + 2;
-            const colorsFull = klines.length >= warmup ? calcTrendBandColors(klines, emaCfg.fast, emaCfg.slow, flatMult.value) : null;
             const offset = klines.length - bars.length;
             const coloredBars = bars.map((b, i) => {
                 const c = colorsFull ? colorsFull[offset + i] : null;
@@ -840,10 +902,11 @@ createApp({
             if (!row) return;
             const key = row.symbol + row.tf;
             try {
-                const res  = await fetch(`api/klines?symbol=${row.symbol}&interval=${row.tf}`);
-                const data = await res.json();
-                if (!data.success || !data.data?.length) return;
-                const bundle = prepThumbData(data.data, row.tf);
+                const localRes = await fetchLocalKlines(row.symbol, row.tf);
+                if (!localRes) return;
+                const emaCfg = emaByTf.value[row.tf] || { fast: 5, slow: 10, calcTf: '' };
+                const colors = await getRowColors(row.symbol, row.tf, localRes.klines, emaCfg);
+                const bundle = prepThumbData(localRes.klines, colors);
                 if (!bundle) return;
                 thumbCache.set(key, bundle);
                 if (document.body.contains(canvas)) drawThumb(canvas, bundle);
@@ -955,7 +1018,7 @@ createApp({
         };
 
         return {
-            ALL_TFS, TF_LABEL, t,
+            ALL_TFS, TF_LABEL, CALC_TF_OPTIONS, t,
             favoriteSymbols, isFav, toggleFav,
             emaByTf, flatMult, lookbackBars, historyBars, minVolM, minVarPct,
             columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
