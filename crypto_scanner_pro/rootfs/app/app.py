@@ -16,6 +16,7 @@ import logging
 import uuid
 import sqlite3
 import re
+import requests
 from scanners.ema_touch import EMAScanner
 from scanners.ath_atl_scanner import ATHATLScanner
 from scanners.ico_levels_scanner import ICOLevelsScanner
@@ -1622,6 +1623,17 @@ def save_settings():
 import hmac as _hmac, hashlib as _hashlib
 from cryptography.fernet import Fernet
 _BYB = 'https://api.bybit.com'
+# Sessione HTTP riusata (keep-alive) per tutte le chiamate REST a Bybit di questo modulo:
+# prima ogni chiamata (rq.get/rq.post con `import requests as rq` locale) apriva una nuova
+# connessione TCP+TLS, pagando l'handshake ad ogni singola richiesta — con più chiamate
+# sequenziali per ordine (es. set-leverage + order/create) il costo si sommava e basta.
+_byb_session = requests.Session()
+_byb_session.mount('https://', requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=10))
+
+_last_leverage = {}  # (username, symbol) -> (leverage_str, ts): evita di richiamare
+_LEVERAGE_CACHE_TTL = 30  # set-leverage ad ogni ordine se già impostata di recente; TTL basso
+                          # per limitare la finestra in cui una leva cambiata fuori dal
+                          # pannello (es. da app Bybit) non verrebbe rilevata.
 
 # ── FERNET ENCRYPTION ─────────────────────────────────────────────────────────
 _fernet_key_file = '/data/.fernet_key'
@@ -1691,11 +1703,10 @@ def trade_config():
 @app.route('/api/trade/balance')
 @login_required
 def trade_balance():
-    import requests as rq
     k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     qs = 'accountType=UNIFIED'
-    d = rq.get(f'{_BYB}/v5/account/wallet-balance?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+    d = _byb_session.get(f'{_BYB}/v5/account/wallet-balance?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     for acc in d['result']['list']:
         for c in acc.get('coin', []):
@@ -1708,12 +1719,11 @@ def trade_balance():
 @app.route('/api/trade/position')
 @login_required
 def trade_position():
-    import requests as rq
     k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     sym = request.args.get('symbol', '').upper()
     qs = f'category=linear&symbol={sym}'
-    d = rq.get(f'{_BYB}/v5/position/list?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+    d = _byb_session.get(f'{_BYB}/v5/position/list?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     lst = d['result']['list']
     if not lst or float(lst[0].get('size', 0)) == 0: return jsonify({'position': None})
@@ -1768,12 +1778,11 @@ def _fetch_taker_fee_rate(k, s, en, symbol):
     Richiede una API key configurata — altrimenti ricade sul valore standard Bybit.
     Condivisa da _bybit_taker_fee_rate (utente di /api/trade/*) e
     _BotTradeClient.get_taker_fee_rate (account globale del BOT)."""
-    import requests as rq
     if not en:
         return _DEFAULT_TAKER_FEE
     try:
         qs = f'category=linear&symbol={symbol}'
-        d = rq.get(f'{_BYB}/v5/account/fee-rate?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+        d = _byb_session.get(f'{_BYB}/v5/account/fee-rate?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
         if d.get('retCode') != 0:
             return _DEFAULT_TAKER_FEE
         lst = d['result']['list']
@@ -1791,9 +1800,8 @@ def _bybit_taker_fee_rate(username, symbol):
 @app.route('/api/trade/instrument')
 @login_required
 def trade_instrument():
-    import requests as rq
     sym = request.args.get('symbol', '').upper()
-    d = rq.get(f'{_BYB}/v5/market/instruments-info',
+    d = _byb_session.get(f'{_BYB}/v5/market/instruments-info',
                params={'category': 'linear', 'symbol': sym}, timeout=6).json()
     if d.get('retCode') != 0 or not d['result']['list']: return jsonify({'error': 'not found'}), 404
     info = d['result']['list'][0]
@@ -1805,7 +1813,6 @@ def trade_instrument():
 @app.route('/api/trade/orders')
 @login_required
 def trade_orders():
-    import requests as rq
     k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     sym = request.args.get('symbol', '').upper()
@@ -1813,7 +1820,7 @@ def trade_orders():
     for flt in ['Order', 'StopOrder']:
         qs = f'category=linear&symbol={sym}&openOnly=0&orderFilter={flt}&limit=50'
         try:
-            d = rq.get(f'{_BYB}/v5/order/realtime?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+            d = _byb_session.get(f'{_BYB}/v5/order/realtime?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
         except Exception:
             continue
         if d.get('retCode') != 0:
@@ -1840,7 +1847,6 @@ def trade_orders():
 @app.route('/api/trade/cancel', methods=['POST'])
 @login_required
 def trade_cancel():
-    import requests as rq
     k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     data = request.get_json() or {}
@@ -1849,14 +1855,13 @@ def trade_cancel():
     order_filter = data.get('orderFilter', 'Order')
     if not sym or not order_id: return jsonify({'error': 'missing params'}), 400
     body = json.dumps({'category': 'linear', 'symbol': sym, 'orderId': order_id, 'orderFilter': order_filter})
-    d = rq.post(f'{_BYB}/v5/order/cancel', headers=_bsign(k, s, body), data=body, timeout=10).json()
+    d = _byb_session.post(f'{_BYB}/v5/order/cancel', headers=_bsign(k, s, body), data=body, timeout=10).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     return jsonify({'success': True})
 
 @app.route('/api/trade/amend', methods=['POST'])
 @login_required
 def trade_amend():
-    import requests as rq
     k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     data = request.get_json() or {}
@@ -1883,14 +1888,13 @@ def trade_amend():
                 if data['tpOrderType'] == 'Limit' and data.get('tpLimitPrice') is not None:
                     body['tpLimitPrice'] = str(data['tpLimitPrice'])
     b = json.dumps(body)
-    d = rq.post(f'{_BYB}/v5/order/amend', headers=_bsign(k, s, b), data=b, timeout=10).json()
+    d = _byb_session.post(f'{_BYB}/v5/order/amend', headers=_bsign(k, s, b), data=b, timeout=10).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     return jsonify({'success': True})
 
 @app.route('/api/trade/order', methods=['POST'])
 @login_required
 def trade_order():
-    import requests as rq
     k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     data = request.get_json() or {}
@@ -1900,8 +1904,15 @@ def trade_order():
     order_filter = data.get('orderFilter', 'Order')
     trigger_price = data.get('triggerPrice')
     if not all([sym, side, qty]): return jsonify({'error': 'missing params'}), 400
-    lb = json.dumps({'category': 'linear', 'symbol': sym, 'buyLeverage': lev, 'sellLeverage': lev})
-    rq.post(f'{_BYB}/v5/position/set-leverage', headers=_bsign(k, s, lb), data=lb, timeout=6)
+    # set-leverage saltato se già impostata di recente (stessa leva, entro _LEVERAGE_CACHE_TTL):
+    # prima veniva richiamata ad ogni ordine anche a leva invariata, aggiungendo una chiamata
+    # Bybit sequenziale extra sul path critico click→ordine eseguito.
+    lev_key = (session.get('username', ''), sym)
+    cached = _last_leverage.get(lev_key)
+    if not cached or cached[0] != lev or (time.time() - cached[1]) > _LEVERAGE_CACHE_TTL:
+        lb = json.dumps({'category': 'linear', 'symbol': sym, 'buyLeverage': lev, 'sellLeverage': lev})
+        _byb_session.post(f'{_BYB}/v5/position/set-leverage', headers=_bsign(k, s, lb), data=lb, timeout=6)
+        _last_leverage[lev_key] = (lev, time.time())
     order = {'category': 'linear', 'symbol': sym, 'side': side, 'orderType': otype, 'qty': qty,
              'timeInForce': 'GTC' if otype == 'Limit' else 'IOC'}
     if order_filter == 'StopOrder':
@@ -1921,21 +1932,20 @@ def trade_order():
             if data['tpOrderType'] == 'Limit' and data.get('tpLimitPrice') is not None:
                 order['tpLimitPrice'] = str(data['tpLimitPrice'])
     body = json.dumps(order)
-    d = rq.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
+    d = _byb_session.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg', 'Order failed')}), 400
     return jsonify({'success': True, 'orderId': d['result'].get('orderId')})
 
 @app.route('/api/trade/close', methods=['POST'])
 @login_required
 def trade_close_pos():
-    import requests as rq
     k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     data = request.get_json() or {}
     body = json.dumps({'category': 'linear', 'symbol': data.get('symbol', '').upper(),
                        'side': data.get('side'), 'orderType': 'Market',
                        'qty': str(data.get('qty', '')), 'reduceOnly': True, 'timeInForce': 'IOC'})
-    d = rq.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
+    d = _byb_session.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     return jsonify({'success': True})
 
@@ -1948,7 +1958,6 @@ def trade_reverse_pos():
     viene rilettera da Bybit qui (non dal client) per sicurezza, così l'ordine
     riflette sempre la posizione reale al momento del click, non un valore
     potenzialmente stantio mostrato in UI."""
-    import requests as rq
     from decimal import Decimal
     k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
@@ -1956,7 +1965,7 @@ def trade_reverse_pos():
     sym = data.get('symbol', '').upper()
     if not sym: return jsonify({'error': 'missing symbol'}), 400
     qs = f'category=linear&symbol={sym}'
-    d = rq.get(f'{_BYB}/v5/position/list?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+    d = _byb_session.get(f'{_BYB}/v5/position/list?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     lst = d['result']['list']
     if not lst or float(lst[0].get('size', 0)) == 0:
@@ -1966,14 +1975,13 @@ def trade_reverse_pos():
     new_qty = str(Decimal(p['size']) * 2)
     body = json.dumps({'category': 'linear', 'symbol': sym, 'side': opp_side, 'orderType': 'Market',
                         'qty': new_qty, 'reduceOnly': False, 'timeInForce': 'IOC'})
-    dd = rq.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
+    dd = _byb_session.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
     if dd.get('retCode') != 0: return jsonify({'error': dd.get('retMsg'), 'code': dd.get('retCode')}), 400
     return jsonify({'success': True, 'newSide': opp_side, 'newSize': str(Decimal(p['size']))})
 
 @app.route('/api/trade/set-sltp', methods=['POST'])
 @login_required
 def trade_set_sltp():
-    import requests as rq
     k, s, en = _tcfg_user(session.get("username", ""))
     if not en: return jsonify({'error': 'not configured'}), 403
     data = request.get_json() or {}
@@ -1994,7 +2002,7 @@ def trade_set_sltp():
                 if data['tpOrderType'] == 'Limit' and data.get('tpLimitPrice') is not None:
                     body['tpLimitPrice'] = str(data['tpLimitPrice'])
     b = json.dumps(body)
-    d = rq.post(f'{_BYB}/v5/position/trading-stop', headers=_bsign(k, s, b), data=b, timeout=6).json()
+    d = _byb_session.post(f'{_BYB}/v5/position/trading-stop', headers=_bsign(k, s, b), data=b, timeout=6).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
     return jsonify({'success': True})
 

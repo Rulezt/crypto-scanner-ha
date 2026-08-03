@@ -2209,6 +2209,26 @@ function _mtfBookPatchSlot(s, midPrice) {
   if (midPrice > last.high) last.high = midPrice;
   if (midPrice < last.low)  last.low  = midPrice;
   s.lastPrice = last.close;
+  // Il book (orderbook.1) aggiorna candela/TB/GRaB ad ogni tick, ma prima il Canale
+  // veniva ricalcolato SOLO dal kline WS (throttlato da Bybit a ~1/s): la banda restava
+  // ferma per secondi e poi "scattava" di colpo al valore corretto — il salto ripetuto
+  // è quello che sembrava un disegno seghettato sulle ultime candele. Stessa formula già
+  // usata in _mtfRollSlotIfNeeded/kline WS, solo estesa anche a questo path più frequente.
+  if (channelActive && s.channelSeries.upper && klines.length >= getChannelCfg().period) {
+    const _cper = getChannelCfg().period;
+    const csl = klines.slice(-_cper);
+    let sumC=0, sumH=0, sumL=0;
+    for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
+    const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
+    s.channelSeries.mid.update(  {time:last.time, value:liveC});
+    s.channelSeries.upper.update({time:last.time, value:liveH});
+    s.channelSeries.lower.update({time:last.time, value:liveL});
+    if (s.channelData) {
+      const _cdUpd = (arr, val) => { const lastP = arr[arr.length-1], pt = {time:last.time, value:val}; if (lastP && lastP.time === last.time) arr[arr.length-1] = pt; else arr.push(pt); };
+      _cdUpd(s.channelData.upper, liveH);
+      _cdUpd(s.channelData.lower, liveL);
+    }
+  }
   if (grabActive) _grabLiveColor(s, last, getGrabCfg());
   else try { s.candleS.update({ ...last }); } catch(e) {}
   if (tbActive) _tbLiveUpdate(s, last, false, getTbCfg());
@@ -2297,6 +2317,22 @@ function _mtfBookPatchFS(midPrice) {
   if (midPrice > last.high) last.high = midPrice;
   if (midPrice < last.low)  last.low  = midPrice;
   fsLastPrice = last.close;
+  // Vedi commento in _mtfBookPatchSlot: stesso fix, versione fullscreen.
+  if (channelActive && fsChannelSeries.upper && fsKlines.length >= getChannelCfg().period) {
+    const _cper = getChannelCfg().period;
+    const csl = fsKlines.slice(-_cper);
+    let sumC=0, sumH=0, sumL=0;
+    for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
+    const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
+    fsChannelSeries.mid.update(  {time:last.time, value:liveC});
+    fsChannelSeries.upper.update({time:last.time, value:liveH});
+    fsChannelSeries.lower.update({time:last.time, value:liveL});
+    if (fsChannelData) {
+      const _cdUpd = (arr, val) => { const lastP = arr[arr.length-1], pt = {time:last.time, value:val}; if (lastP && lastP.time === last.time) arr[arr.length-1] = pt; else arr.push(pt); };
+      _cdUpd(fsChannelData.upper, liveH);
+      _cdUpd(fsChannelData.lower, liveL);
+    }
+  }
   if (tbActive) _tbLiveUpdate(fsTbSlot, last, false, getTbCfg());
   if (grabActive) { _grabLiveColor(fsGrabSlot, last, getGrabCfg()); return; }
   try { fsCandleS.update({ ...last }); } catch(e) {}

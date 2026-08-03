@@ -3642,6 +3642,23 @@ createApp({
         let bookWS = null;
         let reconnectTimer = null;
 
+        // Coalesce updateDisplay()/renderMaxSafeSize() (sort O(200) + rebuild array
+        // reattivi Vue + calcPressure) a 1 per frame invece che 1 per messaggio WS:
+        // su un book liquido i messaggi orderbook.200 arrivano molto più spesso di
+        // 60/s, e il rendering non serve più frequente di quanto l'occhio percepisca.
+        // asksMap/bidsMap restano aggiornate in modo sincrono ad ogni messaggio
+        // (processOrderBook) — solo il render pesante viene rimandato al prossimo frame.
+        let _obRenderPending = false;
+        const _obScheduleRender = () => {
+            if (_obRenderPending) return;
+            _obRenderPending = true;
+            requestAnimationFrame(() => {
+                _obRenderPending = false;
+                updateDisplay();
+                renderMaxSafeSize();
+            });
+        };
+
         // ============================
         //  TICKER
         // ============================
@@ -3846,6 +3863,12 @@ createApp({
                 if (_obGrabActive) _obGrabColorCandle(candle);
                 else try { candleS.update(candle); } catch(e) {}
                 if (_obTbActive) _obTbUpdateTail(candle, false);
+                // Canale SMA20: prima veniva aggiornato SOLO dal polling REST ogni 3s (sotto),
+                // mai da qui — quindi la banda restava ferma per secondi mentre candela/prezzo
+                // si muovevano col book (più frequente), poi "scattava" di colpo al valore
+                // corretto: il salto ripetuto è il disegno seghettato segnalato sulle ultime
+                // candele. Stesso principio già applicato a Trend Band sopra.
+                if (_obChActive) _obChUpdateTail([..._obKlines, candle]);
                 _cdLastPrice = candle.close; _cdLastOpen = candle.open;
                 _obLiveCandle = { ...candle };
             };
@@ -3915,13 +3938,14 @@ createApp({
                                 _obBbSeries.lower.update({ time: last.time, value: mean - bbCfg.mult * std });
                             }
                         }
-                        _obChUpdateTail(_obKlines);
                         _obGrabUpdateTail(last, false);
-                        // NON richiamare _obTbUpdateTail qui: il WS (startKlineWS) aggiorna già
-                        // la banda in tempo reale ad ogni tick sulla candela in formazione. Farlo
-                        // anche qui con il close del polling REST (fino a 3s più vecchio) creava
-                        // un dente di sega — il valore veniva tirato indietro ogni 3s prima che il
-                        // prossimo tick WS lo ricorreggesse. Bug reale segnalato con screenshot.
+                        // NON richiamare _obTbUpdateTail/_obChUpdateTail qui: il WS (startKlineWS)
+                        // aggiorna già banda/canale in tempo reale ad ogni tick sulla candela in
+                        // formazione. Farlo anche qui con il close del polling REST (fino a 3s più
+                        // vecchio) creava un dente di sega — il valore veniva tirato indietro ogni
+                        // 3s prima che il prossimo tick WS lo ricorreggesse. Bug reale segnalato
+                        // con screenshot per Trend Band, stesso identico bug trovato in seguito
+                        // (mai fixato) sul Canale SMA20 — vedi _obChUpdateTail in startKlineWS.
                         if (_obSqzActive) _drawSqzChannel(candleS, _obKlines, _obSqzLines);
                         // Trend Band con TF di calcolo diverso ("a gradini"): il valore scatta solo
                         // alla chiusura della candela del TF scelto, non a quella del TF visualizzato
@@ -4327,8 +4351,7 @@ createApp({
                 }
             }
 
-            updateDisplay();
-            renderMaxSafeSize();
+            _obScheduleRender();
         };
 
         const setWSDot = (state) => {

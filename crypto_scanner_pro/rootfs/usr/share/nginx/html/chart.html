@@ -3904,19 +3904,22 @@ function getMarketSession(cfg, nowMs) {
         if (dow >= 1 && dow <= 5) {
             const offMin = _tzOffsetMin(refMs, parts);
             const y = +parts.year, m = +parts.month - 1, d = +parts.day;
+            const first = cfg.sessions[0], last = cfg.sessions[cfg.sessions.length - 1];
+            const dayOpenTs  = Date.UTC(y, m, d, first.sh, first.sm, 0) - offMin * 60000;
+            const dayCloseTs = Date.UTC(y, m, d, last.eh, last.em, 0) - offMin * 60000;
             for (const s of cfg.sessions) {
                 const openTs  = Date.UTC(y, m, d, s.sh, s.sm, 0) - offMin * 60000;
                 const closeTs = Date.UTC(y, m, d, s.eh, s.em, 0) - offMin * 60000;
                 if (i === 0 && nowMs >= openTs && nowMs < closeTs) {
-                    return { active: true, secs: Math.round((closeTs - nowMs) / 1000), targetTs: closeTs };
+                    return { active: true, secs: Math.round((closeTs - nowMs) / 1000), targetTs: closeTs, dayOpenTs, dayCloseTs };
                 }
                 if (openTs > nowMs) {
-                    return { active: false, secs: Math.round((openTs - nowMs) / 1000), targetTs: openTs };
+                    return { active: false, secs: Math.round((openTs - nowMs) / 1000), targetTs: openTs, dayOpenTs, dayCloseTs };
                 }
             }
         }
     }
-    return { active: false, secs: 0, targetTs: nowMs };
+    return { active: false, secs: 0, targetTs: nowMs, dayOpenTs: nowMs, dayCloseTs: nowMs };
 }
 function fmtLocalClock(ts) {
     return new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
@@ -3945,11 +3948,10 @@ function updateMarketSessions() {
         if (btnEl) {
             // arrotondato al minuto: scrivere il title ogni secondo (coi secondi) farebbe
             // sparire/ricomparire il tooltip nativo del browser ad ogni tick (flicker)
-            const localTxt = fmtLocalClock(st.targetTs) + ' ' + window.t('market_local_time');
+            const rangeTxt = fmtLocalClock(st.dayOpenTs) + ' - ' + fmtLocalClock(st.dayCloseTs);
             const minsTxt = fmtCountdown(Math.ceil(st.secs / 60) * 60, true);
-            const newTitle = st.active
-                ? window.t('market_session_prefix') + ' ' + window.t(cfg.nameKey) + ' ' + window.t('market_ends_in') + ' ' + minsTxt
-                : window.t(cfg.nameKey) + ': ' + window.t('market_opens_in') + ' ' + minsTxt + ' (' + localTxt + ')';
+            const newTitle = window.t(cfg.nameKey) + ' ' + rangeTxt + ' — ' +
+                (st.active ? window.t('market_ends_in') : window.t('market_opens_in')) + ' ' + minsTxt;
             if (btnEl.title !== newTitle) btnEl.title = newTitle;
         }
     });
