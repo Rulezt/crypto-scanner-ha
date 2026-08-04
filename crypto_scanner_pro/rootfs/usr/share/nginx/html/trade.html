@@ -168,11 +168,39 @@
                             <span :style="{color: ohlc.color}" style="font-weight:700;margin-left:4px;">{{ ohlc.pct }}</span>
                         </div>
                         <div style="display:flex;align-items:center;gap:2px;margin-left:auto;">
+                            <button id="ob-ch-btn" onclick="toggleObChannel()"
+                                style="padding:4px 6px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;line-height:1;display:flex;align-items:center;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
+                                title="Canale SMA 20">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>
+                            </button>
+                            <button id="ob-bb-btn" onclick="toggleObBB()"
+                                style="padding:4px 6px;font-size:12px;font-weight:700;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;line-height:1;display:flex;align-items:center;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
+                                title="Bollinger Bands (20,2)">BB</button>
+                            <button id="ob-tb-btn" onclick="toggleObTb()"
+                                style="padding:4px 6px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;line-height:1;display:flex;align-items:center;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
+                                title="Trend Band (EMA 5/10)">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16c2 1 4 2 6-1s3-6 6-7 5 2 8 1"/><path d="M2 19c2 1 4 2 6-1s3-6 6-7 5 2 8 1"/></svg>
+                            </button>
+                            <button id="ob-grab-btn" onclick="toggleObGrab()"
+                                style="padding:4px 6px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;line-height:1;display:flex;align-items:center;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
+                                title="GRaB — Buy green Sell Red (Murrey Math + EMA wave)">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="4" height="8"/><rect x="10" y="5" width="4" height="13"/><rect x="17" y="8" width="4" height="10"/></svg>
+                            </button>
+                            <button id="ob-smc-btn" onclick="toggleObSmc()"
+                                style="padding:4px 6px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;line-height:1;display:flex;align-items:center;"
+                                onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
+                                title="SMC / ICT — Market Structure, Order Block, FVG, Fibonacci, Liquidity Sweep, Sessioni">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l4-6 4 3 4-8 6 5"/><rect x="14" y="13" width="6" height="5" fill="currentColor" stroke="none" opacity="0.45"/></svg>
+                            </button>
                             <button id="ind-btn" onclick="openIndPanel()"
                                 style="padding:4px 8px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
                                 onmouseenter="this.style.background='#2A2E39'" onmouseleave="this.style.background='none'"
                                 title="Indicatori">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="23" height="23" fill="none" style="vertical-align:middle"><path stroke="currentColor" stroke-width="1.4" d="M6 12l4.8-4.8a1 1 0 0 1 1.4 0l2.7 2.7a1 1 0 0 0 1.3.1L23 5"></path><path fill="currentColor" fill-rule="evenodd" d="M19 12a1 1 0 0 0-1 1v4h-3v-1a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v2H7a1 1 0 0 0-1 1v4h17V13a1 1 0 0 0-1-1h-3zm0 10h3v-9h-3v9zm-1 0v-4h-3v4h3zm-4-4.5V22h-3v-6h3v1.5zM10 22v-3H7v3h3z"></path></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                             </button>
                             <button v-if="isStandalone" @click="toggleNakedChart()"
                                 style="padding:4px 8px;font-size:12px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;transition:background .15s;"
@@ -772,6 +800,105 @@
     <div style="display:flex;gap:8px;margin-top:14px;">
       <button onclick="saveTbCfgPanel()" style="flex:1;padding:6px;border-radius:4px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:600;">Salva</button>
       <button onclick="resetTbCfgPanel()" style="flex:1;padding:6px;border-radius:4px;border:1px solid #2A2E39;background:none;color:#B2B5BE;cursor:pointer;">Reset</button>
+    </div>
+  </div>
+</div>
+
+<div id="smc-cfg-panel" style="display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);"
+     onclick="if(event.target===this) closeSmcCfgPanel()">
+  <div style="background:#131722;border:1px solid #2A2E39;border-radius:8px;padding:16px 18px;width:320px;max-height:85vh;overflow-y:auto;color:#B2B5BE;font-size:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h3 style="margin:0;font-size:13px;color:#F3F4F6;">Impostazioni SMC / ICT</h3>
+      <button onclick="closeSmcCfgPanel()" style="background:none;border:none;color:#B2B5BE;font-size:16px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:8px 0 4px;">Struttura</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Swing Lookback (barre)
+      <input type="number" id="smc-cfg-swingLen" min="2" max="50" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra HH/LL
+      <input type="checkbox" id="smc-cfg-showStructure"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra zigzag struttura
+      <input type="checkbox" id="smc-cfg-showZigzag"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra BOS/MSS
+      <input type="checkbox" id="smc-cfg-showBreaks"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore rialzo
+      <input type="color" id="smc-cfg-bullColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore ribasso
+      <input type="color" id="smc-cfg-bearColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:12px 0 4px;">Order Block</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra Order Block
+      <input type="checkbox" id="smc-cfg-showOB"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Ricerca (barre indietro)
+      <input type="number" id="smc-cfg-obSearchBars" min="3" max="100" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Estensione (barre)
+      <input type="number" id="smc-cfg-obExtendBars" min="5" max="200" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Max per lato
+      <input type="number" id="smc-cfg-maxOB" min="1" max="30" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore Demand
+      <input type="color" id="smc-cfg-demandColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore Supply
+      <input type="color" id="smc-cfg-supplyColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Opacità %
+      <input type="number" id="smc-cfg-obOpacity" min="0" max="100" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:12px 0 4px;">Imbalance (FVG)</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra FVG
+      <input type="checkbox" id="smc-cfg-showFVG"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Estensione (barre)
+      <input type="number" id="smc-cfg-fvgExtendBars" min="1" max="100" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Max per lato
+      <input type="number" id="smc-cfg-maxFVG" min="1" max="50" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore FVG rialzista
+      <input type="color" id="smc-cfg-bullFVGColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore FVG ribassista
+      <input type="color" id="smc-cfg-bearFVGColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Opacità %
+      <input type="number" id="smc-cfg-fvgOpacity" min="0" max="100" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:12px 0 4px;">Auto-Fibonacci</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra Fibonacci
+      <input type="checkbox" id="smc-cfg-showFib"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Livello 0.5
+      <input type="checkbox" id="smc-cfg-showFib50"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Livello 0.71
+      <input type="checkbox" id="smc-cfg-showFib71"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Livello 0.786
+      <input type="checkbox" id="smc-cfg-showFib786"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Livello 0.886
+      <input type="checkbox" id="smc-cfg-showFib886"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Estensione -0.27
+      <input type="checkbox" id="smc-cfg-showFibExt"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore
+      <input type="color" id="smc-cfg-fibColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:12px 0 4px;">Liquidity Sweep</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra Liquidity Sweep
+      <input type="checkbox" id="smc-cfg-showSweeps"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore
+      <input type="color" id="smc-cfg-sweepColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+
+    <div style="font-weight:700;color:#9CA3AF;margin:12px 0 4px;">Sessioni</div>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra sfondo sessioni
+      <input type="checkbox" id="smc-cfg-showSessions"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Londra: inizio (ora UTC)
+      <input type="number" id="smc-cfg-londonStart" min="0" max="23" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Londra: fine (ora UTC)
+      <input type="number" id="smc-cfg-londonEnd" min="0" max="23" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">New York: inizio (ora UTC)
+      <input type="number" id="smc-cfg-nyStart" min="0" max="23" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">New York: fine (ora UTC)
+      <input type="number" id="smc-cfg-nyEnd" min="0" max="23" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore Londra
+      <input type="color" id="smc-cfg-londonColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Colore New York
+      <input type="color" id="smc-cfg-nyColor" style="width:36px;height:22px;padding:0;border:none;background:none;cursor:pointer;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Opacità %
+      <input type="number" id="smc-cfg-sessionOpacity" min="0" max="100" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button onclick="saveSmcCfgPanel()" style="flex:1;padding:6px;border-radius:4px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-weight:600;">Salva</button>
+      <button onclick="resetSmcCfgPanel()" style="flex:1;padding:6px;border-radius:4px;border:1px solid #2A2E39;background:none;color:#B2B5BE;cursor:pointer;">Reset</button>
     </div>
   </div>
 </div>

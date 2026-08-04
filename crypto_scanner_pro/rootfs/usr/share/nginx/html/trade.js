@@ -399,7 +399,10 @@ let _obCandleS = null, _obChart = null, _obSymbol = '', _obLivePrice = 0, _obCha
 let _isLoggedIn = false;
 
 // ── Bollinger Bands (BB) ───────────────────────────────────────────────────────
-let _obBbActive = false, _obBbSeries = { upper: null, mid: null, lower: null }, _obKlines = [];
+// Stato ON/OFF persistito in localStorage (chiavi ob_*_active) — a differenza del resto di
+// questo file, qui vogliamo che sopravviva ai cambi coin dal tasto ricerca, che fanno un
+// window.location.href (reload completo di pagina), non un cambio in-place.
+let _obBbActive = localStorage.getItem('ob_bb_active') === '1', _obBbSeries = { upper: null, mid: null, lower: null }, _obKlines = [];
 
 function _obApplyBB() {
     for (const k of ['upper', 'mid', 'lower']) {
@@ -421,6 +424,7 @@ function _obApplyBB() {
 
 function toggleObBB() {
     _obBbActive = !_obBbActive;
+    try { localStorage.setItem('ob_bb_active', _obBbActive ? '1' : '0'); } catch(e) {}
     const btn = document.getElementById('ob-bb-btn');
     if (btn) btn.style.color = _obBbActive ? '#60a5fa' : '#B2B5BE';
     _obApplyBB();
@@ -428,7 +432,7 @@ function toggleObBB() {
 
 // ── Canale EMA20 (EMA di high/close/low → 3 linee + riempimento) ───────────────
 const OB_CH_PERIOD = 20, OB_CH_COLOR = '#22d3ee';
-let _obChActive = false, _obChSeries = { upper: null, mid: null, lower: null }, _obChData = null;
+let _obChActive = localStorage.getItem('ob_ch_active') === '1', _obChSeries = { upper: null, mid: null, lower: null }, _obChData = null;
 
 function calcSmaChannel(klines, period) {
     const mid = [], upper = [], lower = [];
@@ -524,13 +528,14 @@ function _obApplyChannel() {
 
 function toggleObChannel() {
     _obChActive = !_obChActive;
+    try { localStorage.setItem('ob_ch_active', _obChActive ? '1' : '0'); } catch(e) {}
     const btn = document.getElementById('ob-ch-btn');
     if (btn) btn.style.color = _obChActive ? OB_CH_COLOR : '#B2B5BE';
     _obApplyChannel();
 }
 
 // ── GRaB (Buy green Sell Red) ───────────────────────────────────────────────────
-let _obGrabActive = false;
+let _obGrabActive = localStorage.getItem('ob_grab_active') === '1';
 let _obGrabWaveSeries = { high: null, low: null, close: null };
 let _obGrabMurreySeries = { mid: null, lo: null, hi: null };
 let _obGrabState = null;
@@ -584,6 +589,7 @@ function _obApplyGrab() {
 
 function toggleObGrab() {
     _obGrabActive = !_obGrabActive;
+    try { localStorage.setItem('ob_grab_active', _obGrabActive ? '1' : '0'); } catch(e) {}
     const btn = document.getElementById('ob-grab-btn');
     if (btn) btn.style.color = _obGrabActive ? '#f59e0b' : '#B2B5BE';
     const cfgBtn = document.getElementById('ob-grab-cfg-btn');
@@ -671,148 +677,9 @@ function _obGrabConfirmPrev(prevCandle) {
     _obGrabState.emaClose = prevCandle.close * k + _obGrabState.emaClose * (1 - k);
 }
 
-// ── Squeeze Channel — porting verbatim da chart.html/mtf.html: volume dry-up +
-// range compresso, 2 price-line tratteggiate hi/lo, stateless. Assente in trade.js.
-let _obSqzActive = false;
-let _obSqzLines = { hi: null, lo: null };
-const SQZ_K = 6, SQZ_VOL_DRY_RATIO = 0.55, SQZ_RANGE_DRY_RATIO = 0.55;
-function _sqzCond(klines, i) {
-    const widerN = SQZ_K * 4;
-    if (i - SQZ_K - widerN + 1 < 0) return null;
-    let sumRecent = 0; for (let j = i - SQZ_K + 1; j <= i; j++) sumRecent += klines[j].volume;
-    const pf = i - SQZ_K - widerN + 1, pt = i - SQZ_K;
-    let sumPrior = 0; for (let j = pf; j <= pt; j++) sumPrior += klines[j].volume;
-    const avgRecent = sumRecent / SQZ_K, avgPrior = sumPrior / (pt - pf + 1);
-    if (avgPrior <= 0 || avgRecent / avgPrior > SQZ_VOL_DRY_RATIO) return null;
-    let hiR = -Infinity, loR = Infinity;
-    for (let j = i - SQZ_K + 1; j <= i; j++) { hiR = Math.max(hiR, klines[j].high); loR = Math.min(loR, klines[j].low); }
-    let hiP = -Infinity, loP = Infinity;
-    for (let j = Math.max(0, i - widerN + 1); j <= i; j++) { hiP = Math.max(hiP, klines[j].high); loP = Math.min(loP, klines[j].low); }
-    const rangeRecent = (hiR - loR) / klines[i].close, rangeWider = (hiP - loP) / klines[i].close;
-    if (rangeWider <= 0 || rangeRecent / rangeWider > SQZ_RANGE_DRY_RATIO) return null;
-    return { hiR, loR };
-}
-function checkSqueeze(klines) {
-    if (!klines || !klines.length) return null;
-    return _sqzCond(klines, klines.length - 1);
-}
-function _drawSqzChannel(candleS, klines, lineRefs) {
-    const hit = checkSqueeze(klines);
-    if (hit) {
-        if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} }
-        if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} }
-        lineRefs.hi = candleS.createPriceLine({ price: hit.hiR, color:'#22d3ee', lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'Squeeze' });
-        lineRefs.lo = candleS.createPriceLine({ price: hit.loR, color:'#22d3ee', lineWidth:1, lineStyle:2, axisLabelVisible:false, title:'' });
-    } else {
-        if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} lineRefs.hi = null; }
-        if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} lineRefs.lo = null; }
-    }
-}
-function _clearSqzChannel(candleS, lineRefs) {
-    if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} lineRefs.hi = null; }
-    if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} lineRefs.lo = null; }
-}
-function toggleObSqueeze() {
-    _obSqzActive = !_obSqzActive;
-    if (!_obCandleS) return;
-    if (_obSqzActive) _drawSqzChannel(_obCandleS, _obKlines, _obSqzLines);
-    else _clearSqzChannel(_obCandleS, _obSqzLines);
-}
-
-// ── Trendline S/R automatica — porting da chart.html/trendline.html ────────────
-let _obSrActive = false;
-let _obSrSeries = { sup: null, res: null };
-const TRENDLINE_SR_CFG = { shortPeriod: 30, longPeriod: 100, tolerancePct: 0.3 };
-function pivotExtreme(candles, iEnd, offFrom, offTo) {
-    let lowVal = Infinity, lowOff = null, highVal = -Infinity, highOff = null;
-    for (let off = offFrom; off <= offTo; off++) {
-        const idx = iEnd - off;
-        if (idx < 0) return null;
-        const c = candles[idx];
-        if (c.low  < lowVal)  { lowVal  = c.low;  lowOff  = off; }
-        if (c.high > highVal) { highVal = c.high; highOff = off; }
-    }
-    return { lowVal, lowOff, highVal, highOff };
-}
-function trendlineAt(candles, iEnd, shortPeriod, longPeriod) {
-    if (iEnd - longPeriod < 0) return null;
-    const rec = pivotExtreme(candles, iEnd, 1, shortPeriod);
-    const old = pivotExtreme(candles, iEnd, shortPeriod + 1, longPeriod);
-    if (!rec || !old) return null;
-    const supX1 = iEnd - old.lowOff,  supY1 = old.lowVal,  supX2 = iEnd - rec.lowOff,  supY2 = rec.lowVal;
-    const resX1 = iEnd - old.highOff, resY1 = old.highVal, resX2 = iEnd - rec.highOff, resY2 = rec.highVal;
-    const supSlope = (supY2 - supY1) / (supX2 - supX1);
-    const resSlope = (resY2 - resY1) / (resX2 - resX1);
-    return {
-        supX1, supY1, supX2, supY2, supSlope, supVal: supY2 + supSlope * (iEnd - supX2),
-        resX1, resY1, resX2, resY2, resSlope, resVal: resY2 + resSlope * (iEnd - resX2),
-    };
-}
-function isLineValid(candles, x1Idx, y1, slope, kind, tolerancePct) {
-    for (let idx = x1Idx; idx < candles.length; idx++) {
-        const lineVal = y1 + slope * (idx - x1Idx);
-        const tol = Math.abs(lineVal) * (tolerancePct / 100);
-        if (kind === 'support'    && candles[idx].close < lineVal - tol) return false;
-        if (kind === 'resistance' && candles[idx].close > lineVal + tol) return false;
-    }
-    return true;
-}
-function detectActiveTrendlines(candles, cfg) {
-    const n = candles.length;
-    const iEnd = n - 1;
-    const cur = trendlineAt(candles, iEnd, cfg.shortPeriod, cfg.longPeriod);
-    if (!cur) return [];
-    const toPt = (idx, price) => ({ time: candles[idx].time, price });
-    const sup = { p1: toPt(cur.supX1, cur.supY1), p2: toPt(cur.supX2, cur.supY2) };
-    const res = { p1: toPt(cur.resX1, cur.resY1), p2: toPt(cur.resX2, cur.resY2) };
-    const hits = [];
-    if (isLineValid(candles, cur.supX1, cur.supY1, cur.supSlope, 'support', cfg.tolerancePct))
-        hits.push({ kind: 'support', lineVal: cur.supVal, sup, res });
-    if (isLineValid(candles, cur.resX1, cur.resY1, cur.resSlope, 'resistance', cfg.tolerancePct))
-        hits.push({ kind: 'resistance', lineVal: cur.resVal, sup, res });
-    return hits;
-}
-function lineSlope(p1, p2) { return (p2.price - p1.price) / (p2.time - p1.time); }
-const TRENDLINE_SR_EXTEND_BARS = 30;
-function lineSeriesFromPts(p1, p2, klines) {
-    const slope = lineSlope(p1, p2);
-    const pts = klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
-    // Estende la linea oltre l'ultima candela reale invece di troncarla lì: un raggio
-    // continuo, non un segmento che si interrompe di colpo sull'ultimo dato disponibile.
-    if (pts.length >= 2 && klines.length >= 2) {
-        const step = klines[klines.length - 1].time - klines[klines.length - 2].time;
-        if (step > 0) {
-            const lastT = pts[pts.length - 1].time;
-            for (let i = 1; i <= TRENDLINE_SR_EXTEND_BARS; i++) {
-                const t = lastT + step * i;
-                pts.push({ time: t, value: p1.price + slope * (t - p1.time) });
-            }
-        }
-    }
-    return pts;
-}
-function applyTrendlineSRToOb() {
-    if (_obSrSeries.sup) { try { _obChart.removeSeries(_obSrSeries.sup); } catch(e) {} _obSrSeries.sup = null; }
-    if (_obSrSeries.res) { try { _obChart.removeSeries(_obSrSeries.res); } catch(e) {} _obSrSeries.res = null; }
-    if (!_obSrActive || !_obChart || !_obKlines || _obKlines.length < TRENDLINE_SR_CFG.longPeriod + 2) return;
-    const hits = detectActiveTrendlines(_obKlines, TRENDLINE_SR_CFG);
-    const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
-    for (const hit of hits) {
-        const pts = hit.kind === 'support' ? hit.sup : hit.res;
-        const color = hit.kind === 'support' ? '#22c55e' : '#ef4444';
-        const line = lineSeriesFromPts(pts.p1, pts.p2, _obKlines);
-        const series = addSeries(_obChart, 'LineSeries', { ...lb, color, lineWidth: 2 });
-        series.setData(line);
-        if (hit.kind === 'support') _obSrSeries.sup = series; else _obSrSeries.res = series;
-    }
-}
-function toggleObTrendlineSR() {
-    _obSrActive = !_obSrActive;
-    applyTrendlineSRToOb();
-}
 
 // ── Trend Band (banda EMA fast/slow) ───────────────────────────────────────────
-let _obTbActive = false;
+let _obTbActive = localStorage.getItem('ob_tb_active') === '1';
 let _obTbSeries = { fast: null, slow: null }, _obTbData = null, _obTbState = null;
 // TF di calcolo diverso dal TF visualizzato ("a gradini"): banda calcolata sulle
 // candele CHIUSE di cfg.calcTf, il valore resta fermo fino alla chiusura della
@@ -1011,6 +878,7 @@ function _obApplyTb() {
 
 function toggleObTb() {
     _obTbActive = !_obTbActive;
+    try { localStorage.setItem('ob_tb_active', _obTbActive ? '1' : '0'); } catch(e) {}
     const btn = document.getElementById('ob-tb-btn');
     if (btn) btn.style.color = _obTbActive ? '#8a9a5b' : '#B2B5BE';
     const cfgBtn = document.getElementById('ob-tb-cfg-btn');
@@ -1162,6 +1030,328 @@ function resetTbCfgPanel() {
     localStorage.removeItem('chart_tb_cfg');
     openTbCfgPanel();
     _obTbReapplyAll();
+}
+
+// ── SMC / ICT — Market Structure, Order Blocks, FVG, Fibonacci, Liquidity Sweeps, Sessioni ──
+// Stessa logica di chart.html/mtf.html (calcSmc puro, ricalcolo completo solo a candela
+// chiusa — struttura/OB/FVG/fib/sweep sono pattern "a candela chiusa", nessun senso in un
+// update incrementale tick-by-tick come EMA/Trend Band).
+let _obSmcActive = localStorage.getItem('ob_smc_active') === '1';
+let _obSmcData = null, _obSmcMarkersHandle = null, _obSmcFibLines = [];
+const _DEFAULT_SMC_CFG = {
+    swingLen: 5, showStructure: true, showZigzag: true, showBreaks: true,
+    bullColor: '#26a69a', bearColor: '#ef5350',
+    showOB: true, obSearchBars: 20, obExtendBars: 25, maxOB: 6,
+    demandColor: '#2962ff', supplyColor: '#ff9800', obOpacity: 20,
+    showFVG: true, fvgExtendBars: 15, maxFVG: 15,
+    bullFVGColor: '#00e676', bearFVGColor: '#e040fb', fvgOpacity: 15,
+    showFib: true, showFib50: true, showFib71: true, showFib786: true, showFib886: true, showFibExt: true,
+    fibColor: '#ffd54f',
+    showSweeps: true, sweepColor: '#ffffff',
+    showSessions: true, londonStart: 9, londonEnd: 11, nyStart: 14, nyEnd: 16,
+    londonColor: '#2962ff', nyColor: '#ff9800', sessionOpacity: 10,
+};
+function getSmcCfg() {
+    try { const s = JSON.parse(localStorage.getItem('chart_smc_cfg')); if (s) return { ..._DEFAULT_SMC_CFG, ...s }; } catch(e) {}
+    return { ..._DEFAULT_SMC_CFG };
+}
+function setSmcCfg(cfg) { try { localStorage.setItem('chart_smc_cfg', JSON.stringify(cfg)); } catch(e) {} }
+function _smcPivotHigh(klines, i, len) {
+    if (i - len < 0 || i + len >= klines.length) return false;
+    const v = klines[i].high;
+    for (let j = i - len; j <= i + len; j++) { if (j !== i && klines[j].high >= v) return false; }
+    return true;
+}
+function _smcPivotLow(klines, i, len) {
+    if (i - len < 0 || i + len >= klines.length) return false;
+    const v = klines[i].low;
+    for (let j = i - len; j <= i + len; j++) { if (j !== i && klines[j].low <= v) return false; }
+    return true;
+}
+function calcSmc(klines, cfg) {
+    const n = klines.length;
+    const result = { markers: [], zigzag: [], demandBoxes: [], supplyBoxes: [], bullFVGBoxes: [], bearFVGBoxes: [], fib: null };
+    if (n < cfg.swingLen * 2 + 3) return result;
+
+    let lastPH = null, lastPL = null, lastPHBar = null, lastPLBar = null;
+    let prevPH = null, prevPL = null;
+    let phBroken = true, plBroken = true, phSwept = false, plSwept = false;
+    let structTrend = 0, zzPrev = null;
+
+    const findOB = (fromBar, searchBars, bullishOB) => {
+        const end = Math.max(0, fromBar - searchBars);
+        for (let j = fromBar; j >= end; j--) {
+            const isOpposite = bullishOB ? klines[j].close < klines[j].open : klines[j].close > klines[j].open;
+            if (isOpposite) return j;
+        }
+        return null;
+    };
+
+    for (let i = 0; i < n; i++) {
+        const k = klines[i];
+
+        if (_smcPivotHigh(klines, i, cfg.swingLen)) {
+            if (cfg.showStructure) {
+                const isHH = prevPH == null || k.high > prevPH;
+                result.markers.push({ time: k.time, position: 'aboveBar', color: isHH ? cfg.bullColor : cfg.bearColor, shape: 'circle', text: isHH ? 'HH' : 'LH', size: 0.6 });
+            }
+            if (cfg.showZigzag && zzPrev) result.zigzag.push({ time1: zzPrev.time, price1: zzPrev.price, time2: k.time, price2: k.high });
+            if (cfg.showZigzag) zzPrev = { time: k.time, price: k.high };
+            prevPH = k.high; lastPH = k.high; lastPHBar = i; phBroken = false; phSwept = false;
+        }
+        if (_smcPivotLow(klines, i, cfg.swingLen)) {
+            if (cfg.showStructure) {
+                const isLL = prevPL == null || k.low < prevPL;
+                result.markers.push({ time: k.time, position: 'belowBar', color: isLL ? cfg.bearColor : cfg.bullColor, shape: 'circle', text: isLL ? 'LL' : 'HL', size: 0.6 });
+            }
+            if (cfg.showZigzag && zzPrev) result.zigzag.push({ time1: zzPrev.time, price1: zzPrev.price, time2: k.time, price2: k.low });
+            if (cfg.showZigzag) zzPrev = { time: k.time, price: k.low };
+            prevPL = k.low; lastPL = k.low; lastPLBar = i; plBroken = false; plSwept = false;
+        }
+
+        if (cfg.showSweeps && lastPH != null && !phBroken && !phSwept && k.high > lastPH && k.close < lastPH) {
+            phSwept = true;
+            result.markers.push({ time: k.time, position: 'aboveBar', color: cfg.sweepColor, shape: 'circle', text: '✕', size: 0.6 });
+        }
+        if (cfg.showSweeps && lastPL != null && !plBroken && !plSwept && k.low < lastPL && k.close > lastPL) {
+            plSwept = true;
+            result.markers.push({ time: k.time, position: 'belowBar', color: cfg.sweepColor, shape: 'circle', text: '✕', size: 0.6 });
+        }
+
+        const bullBreak = lastPH != null && !phBroken && k.close > lastPH;
+        const bearBreak = lastPL != null && !plBroken && k.close < lastPL;
+
+        if (bullBreak) {
+            phBroken = true;
+            const isReversal = structTrend === -1 || structTrend === 0;
+            if (cfg.showBreaks) result.markers.push({ time: k.time, position: 'aboveBar', color: cfg.bullColor, shape: 'arrowUp', text: isReversal ? 'MSS' : 'BOS', size: 1 });
+            structTrend = 1;
+            if (cfg.showOB && lastPLBar != null) {
+                const obIdx = findOB(lastPLBar, cfg.obSearchBars, true);
+                if (obIdx != null) result.demandBoxes.push({ time1: klines[obIdx].time, price1: klines[obIdx].high, time2: k.time, price2: klines[obIdx].low, lastIdx: i });
+            }
+            if (cfg.showFib && lastPL != null) result.fib = { p0: lastPH, p1: lastPL };
+        }
+        if (bearBreak) {
+            plBroken = true;
+            const isReversal = structTrend === 1 || structTrend === 0;
+            if (cfg.showBreaks) result.markers.push({ time: k.time, position: 'belowBar', color: cfg.bearColor, shape: 'arrowDown', text: isReversal ? 'MSS' : 'BOS', size: 1 });
+            structTrend = -1;
+            if (cfg.showOB && lastPHBar != null) {
+                const obIdx = findOB(lastPHBar, cfg.obSearchBars, false);
+                if (obIdx != null) result.supplyBoxes.push({ time1: klines[obIdx].time, price1: klines[obIdx].high, time2: k.time, price2: klines[obIdx].low, lastIdx: i });
+            }
+            if (cfg.showFib && lastPH != null) result.fib = { p0: lastPL, p1: lastPH };
+        }
+
+        if (cfg.showFVG && i >= 2) {
+            const k2 = klines[i - 2];
+            if (k.low > k2.high) result.bullFVGBoxes.push({ time1: k2.time, price1: k.low, time2: k.time, price2: k2.high, lastIdx: i });
+            else if (k.high < k2.low) result.bearFVGBoxes.push({ time1: k2.time, price1: k2.low, time2: k.time, price2: k.high, lastIdx: i });
+        }
+    }
+
+    const mitigateOB = (boxes, isDemand) => {
+        const out = [];
+        for (const b of boxes) {
+            let invalidated = false;
+            for (let j = b.lastIdx + 1; j < n; j++) {
+                if (isDemand ? klines[j].low <= b.price2 : klines[j].high >= b.price1) { invalidated = true; break; }
+            }
+            if (!invalidated) out.push({ time1: b.time1, price1: b.price1, time2: klines[n - 1].time, price2: b.price2 });
+        }
+        return out.slice(-cfg.maxOB);
+    };
+    result.demandBoxes = mitigateOB(result.demandBoxes, true);
+    result.supplyBoxes = mitigateOB(result.supplyBoxes, false);
+
+    const processFVG = (boxes, isBull) => {
+        const out = [];
+        for (const b of boxes) {
+            let top = b.price1, bot = b.price2, filled = false;
+            for (let j = b.lastIdx + 1; j < n; j++) {
+                const kk = klines[j];
+                if (isBull) { if (kk.low <= bot) { filled = true; break; } top = Math.min(top, kk.low); }
+                else { if (kk.high >= top) { filled = true; break; } bot = Math.max(bot, kk.high); }
+            }
+            if (!filled) out.push({ time1: b.time1, time2: klines[n - 1].time, price1: top, price2: bot });
+        }
+        return out.slice(-cfg.maxFVG);
+    };
+    result.bullFVGBoxes = processFVG(result.bullFVGBoxes, true);
+    result.bearFVGBoxes = processFVG(result.bearFVGBoxes, false);
+
+    return result;
+}
+
+class _SmcOverlayPrimitive {
+    constructor(slot, chart) {
+        this._slot = slot; this._chart = chart; this._series = null;
+        const bgRenderer = {
+            draw: target => target.useBitmapCoordinateSpace(scope => {
+                const s = this._slot, series = this._series;
+                if (!series || !_obSmcActive || !s.smcData) return;
+                const cfg = getSmcCfg();
+                const ctx = scope.context, ts = this._chart.timeScale();
+                const hpr = scope.horizontalPixelRatio, vpr = scope.verticalPixelRatio;
+                const barSpacingPx = (ts.options().barSpacing || 6) * hpr;
+
+                if (cfg.showSessions && s.klines && s.klines.length) {
+                    const halfW = Math.max(1, barSpacingPx / 2);
+                    for (let i = 0; i < s.klines.length; i++) {
+                        const t = s.klines[i].time;
+                        const x = ts.timeToCoordinate(t);
+                        if (x == null) continue;
+                        const hour = new Date(t * 1000).getUTCHours();
+                        const inLondon = hour >= cfg.londonStart && hour < cfg.londonEnd;
+                        const inNY = hour >= cfg.nyStart && hour < cfg.nyEnd;
+                        if (!inLondon && !inNY) continue;
+                        ctx.fillStyle = _hexToRgba(inLondon ? cfg.londonColor : cfg.nyColor, (cfg.sessionOpacity ?? 10) / 100);
+                        ctx.fillRect(x * hpr - halfW, 0, halfW * 2, scope.bitmapSize.height);
+                    }
+                }
+
+                const drawBoxes = (boxes, color, opacity, extendBars) => {
+                    if (!boxes || !boxes.length) return;
+                    for (const b of boxes) {
+                        const x1 = ts.timeToCoordinate(b.time1);
+                        const x2raw = ts.timeToCoordinate(b.time2);
+                        const y1 = series.priceToCoordinate(b.price1);
+                        const y2 = series.priceToCoordinate(b.price2);
+                        if (x1 == null || x2raw == null || y1 == null || y2 == null) continue;
+                        const xp1 = x1 * hpr, xp2 = x2raw * hpr + extendBars * barSpacingPx;
+                        const yp1 = y1 * vpr, yp2 = y2 * vpr;
+                        ctx.fillStyle = _hexToRgba(color, opacity / 100);
+                        ctx.fillRect(Math.min(xp1, xp2), Math.min(yp1, yp2), Math.abs(xp2 - xp1), Math.abs(yp2 - yp1));
+                    }
+                };
+                if (cfg.showOB) { drawBoxes(s.smcData.demandBoxes, cfg.demandColor, cfg.obOpacity, cfg.obExtendBars); drawBoxes(s.smcData.supplyBoxes, cfg.supplyColor, cfg.obOpacity, cfg.obExtendBars); }
+                if (cfg.showFVG) { drawBoxes(s.smcData.bullFVGBoxes, cfg.bullFVGColor, cfg.fvgOpacity, cfg.fvgExtendBars); drawBoxes(s.smcData.bearFVGBoxes, cfg.bearFVGColor, cfg.fvgOpacity, cfg.fvgExtendBars); }
+            })
+        };
+        const zzRenderer = {
+            draw: target => target.useBitmapCoordinateSpace(scope => {
+                const s = this._slot, series = this._series;
+                if (!series || !_obSmcActive || !s.smcData || !s.smcData.zigzag.length) return;
+                const cfg = getSmcCfg();
+                if (!cfg.showZigzag) return;
+                const ctx = scope.context, ts = this._chart.timeScale();
+                const hpr = scope.horizontalPixelRatio, vpr = scope.verticalPixelRatio;
+                ctx.save();
+                ctx.strokeStyle = 'rgba(150,150,150,0.6)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (const seg of s.smcData.zigzag) {
+                    const x1 = ts.timeToCoordinate(seg.time1), y1 = series.priceToCoordinate(seg.price1);
+                    const x2 = ts.timeToCoordinate(seg.time2), y2 = series.priceToCoordinate(seg.price2);
+                    if (x1 == null || y1 == null || x2 == null || y2 == null) continue;
+                    ctx.moveTo(x1 * hpr, y1 * vpr);
+                    ctx.lineTo(x2 * hpr, y2 * vpr);
+                }
+                ctx.stroke();
+                ctx.restore();
+            })
+        };
+        this._bgView = { renderer: () => bgRenderer, zOrder: () => 'bottom' };
+        this._zzView = { renderer: () => zzRenderer, zOrder: () => 'top' };
+    }
+    attached({ series }) { this._series = series; }
+    detached() { this._series = null; }
+    updateAllViews() {}
+    paneViews() { return [this._bgView, this._zzView]; }
+}
+
+// Adapter sulle variabili modulo _ob*, stesso pattern di _obLvlSlot/_cdSlot già usati
+// in initChart per gli altri primitive — _obSmcSlot è dichiarato una sola volta qui,
+// non ricreato ad ogni initChart().
+const _obSmcSlot = {
+    get candleS() { return _obCandleS; },
+    get klines() { return _obKlines; },
+    get smcData() { return _obSmcData; },
+    set smcData(v) { _obSmcData = v; },
+    get smcMarkersHandle() { return _obSmcMarkersHandle; },
+    set smcMarkersHandle(v) { _obSmcMarkersHandle = v; },
+    get smcFibLines() { return _obSmcFibLines; },
+    set smcFibLines(v) { _obSmcFibLines = v; },
+};
+
+const _SMC_FIB_LEVELS = [[0.5, '50%'], [0.71, '71%'], [0.786, '78.6%'], [0.886, '88.6%'], [-0.27, '-27% Ext']];
+function applySmcToSlot(s, cfg) {
+    if (s.smcFibLines) { for (const pl of s.smcFibLines) { try { s.candleS.removePriceLine(pl); } catch(e) {} } }
+    s.smcFibLines = [];
+    if (!s.smcMarkersHandle && LC.createSeriesMarkers) { try { s.smcMarkersHandle = LC.createSeriesMarkers(s.candleS, []); } catch(e) {} }
+
+    if (!_obSmcActive || !s.klines || !s.klines.length) {
+        s.smcData = null;
+        if (s.smcMarkersHandle) s.smcMarkersHandle.setMarkers([]);
+        return;
+    }
+
+    const res = calcSmc(s.klines, cfg);
+    s.smcData = res;
+    if (s.smcMarkersHandle) s.smcMarkersHandle.setMarkers(res.markers);
+
+    if (cfg.showFib && res.fib) {
+        const showFlags = { 0.5: cfg.showFib50, 0.71: cfg.showFib71, 0.786: cfg.showFib786, 0.886: cfg.showFib886, '-0.27': cfg.showFibExt };
+        for (const [ratio, txt] of _SMC_FIB_LEVELS) {
+            if (!showFlags[ratio]) continue;
+            const lvl = res.fib.p0 - ratio * (res.fib.p0 - res.fib.p1);
+            s.smcFibLines.push(s.candleS.createPriceLine({ price: lvl, color: cfg.fibColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: txt }));
+        }
+    }
+}
+function toggleObSmc() {
+    _obSmcActive = !_obSmcActive;
+    try { localStorage.setItem('ob_smc_active', _obSmcActive ? '1' : '0'); } catch(e) {}
+    const btn = document.getElementById('ob-smc-btn');
+    if (btn) btn.style.color = _obSmcActive ? '#a78bfa' : '#B2B5BE';
+    applySmcToSlot(_obSmcSlot, getSmcCfg());
+}
+function _obSmcReapplyAll() { applySmcToSlot(_obSmcSlot, getSmcCfg()); }
+
+// I 5 bottoni rapidi in header (Canale/BB/Trend Band/GRaB/SMC) colorano se stessi solo
+// dentro il proprio toggleObX(), che gira al click — ma con lo stato ora persistito e
+// ripristinato al load (vedi i _obXActive = localStorage.getItem(...) più sopra), il
+// colore va risincronizzato manualmente una volta all'avvio, altrimenti l'indicatore
+// risulta attivo ma il bottone appare ancora spento. OB Levels non serve: è legato via
+// :class Vue a showObLines, si aggiorna da solo.
+function _obSyncIndicatorButtonColors() {
+    const set = (id, active, color) => { const btn = document.getElementById(id); if (btn) btn.style.color = active ? color : '#B2B5BE'; };
+    set('ob-ch-btn', _obChActive, OB_CH_COLOR);
+    set('ob-bb-btn', _obBbActive, '#60a5fa');
+    set('ob-tb-btn', _obTbActive, '#8a9a5b');
+    set('ob-grab-btn', _obGrabActive, '#f59e0b');
+    set('ob-smc-btn', _obSmcActive, '#a78bfa');
+}
+function openSmcCfgPanel() {
+    const cfg = getSmcCfg();
+    for (const k of Object.keys(_DEFAULT_SMC_CFG)) {
+        const el = document.getElementById('smc-cfg-' + k);
+        if (!el) continue;
+        if (el.type === 'checkbox') el.checked = !!cfg[k];
+        else el.value = cfg[k];
+    }
+    document.getElementById('smc-cfg-panel').style.display = 'flex';
+}
+function closeSmcCfgPanel() { document.getElementById('smc-cfg-panel').style.display = 'none'; }
+function saveSmcCfgPanel() {
+    const cfg = {};
+    for (const k of Object.keys(_DEFAULT_SMC_CFG)) {
+        const el = document.getElementById('smc-cfg-' + k);
+        if (!el) { cfg[k] = _DEFAULT_SMC_CFG[k]; continue; }
+        if (el.type === 'checkbox') cfg[k] = el.checked;
+        else if (el.type === 'number') cfg[k] = parseFloat(el.value);
+        else cfg[k] = el.value;
+        if (typeof _DEFAULT_SMC_CFG[k] === 'number' && !isFinite(cfg[k])) cfg[k] = _DEFAULT_SMC_CFG[k];
+    }
+    setSmcCfg(cfg);
+    closeSmcCfgPanel();
+    if (_obSmcActive) _obSmcReapplyAll();
+}
+function resetSmcCfgPanel() {
+    localStorage.removeItem('chart_smc_cfg');
+    openSmcCfgPanel();
+    if (_obSmcActive) _obSmcReapplyAll();
 }
 
 let _tradeEnabled = false, _tradePos = null, _tradeSide = null, _hadPosition = false;
@@ -2814,7 +3004,6 @@ async function confirmFsOrder() {
 async function closeFsPosition() {
     if (!_tradePos || !_obSymbol) return;
     const p = _tradePos;
-    if (!confirm(`${window.t('close_pos_q')} ${p.side === 'Buy' ? 'LONG' : 'SHORT'} ${p.size} ${_obSymbol}?`)) return;
     try {
         const d = await fetch('api/trade/close', { method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ symbol: _obSymbol, side: p.side === 'Buy' ? 'Sell' : 'Buy', qty: String(p.size) }) }).then(r => r.json());
@@ -2825,9 +3014,6 @@ async function closeFsPosition() {
 
 async function reverseFsPosition() {
     if (!_tradePos || !_obSymbol) return;
-    const p = _tradePos;
-    const newLabel = p.side === 'Buy' ? 'SHORT' : 'LONG';
-    if (!confirm(`${window.t('reverse_pos_q')}\n${p.side === 'Buy' ? 'LONG' : 'SHORT'} ${p.size} ${_obSymbol} → ${newLabel} ${p.size} ${_obSymbol}`)) return;
     try {
         // qty/side vengono ricalcolati server-side dalla posizione reale su Bybit
         // (non dal client) — vedi /api/trade/reverse, stesso principio di sicurezza
@@ -3552,7 +3738,7 @@ createApp({
         let obBidLine = null;
         let dayHighLine = null, dayLowLine = null, prevHighLine = null, prevLowLine = null;
         let _dayHighPrice = null, _dayLowPrice = null, _prevHighPrice = null, _prevLowPrice = null;
-        const showObLines   = ref(false);
+        const showObLines   = ref(localStorage.getItem('ob_lines_active') === '1');
         const nakedChart    = ref(false);
         const showTradePanel = ref(true);
 
@@ -3629,7 +3815,7 @@ createApp({
         const error          = ref('');
         const pressure       = ref({ score: 50, label: '—', color: '#6B7280', long: 50, short: 50 });
         const isPaused       = ref(false);
-        const showBook       = ref(true);
+        const showBook       = ref(localStorage.getItem('ob_show_book') !== '0');
 
         const maxLevelDistance = ref({
             askPrice: 0, askPercent: '0.00',
@@ -3681,6 +3867,7 @@ createApp({
         const initChart = () => {
             if (!chartContainerEl.value || obChart) return;
 
+            _obSyncIndicatorButtonColors();
             obChart  = makeOBChart(chartContainerEl.value);
             candleS  = addSeries(obChart, 'CandlestickSeries', {
                 upColor: '#20B26C', downColor: '#EF454A',
@@ -3693,6 +3880,7 @@ createApp({
                 candleS.attachPrimitive(new _ObBandFillPrimitive(_obLvlSlot));
                 candleS.attachPrimitive(new _ObChannelFillPrimitive());
                 candleS.attachPrimitive(new _TrendBandFillPrimitive());
+                candleS.attachPrimitive(new _SmcOverlayPrimitive(_obSmcSlot, obChart));
             } catch(e) {}
             const lineBase = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
             for (const { p, color, width, style } of EMA_CFG)
@@ -3776,8 +3964,7 @@ createApp({
                 if (_obChActive) _obApplyChannel();
                 if (_obGrabActive) _obApplyGrab();
                 if (_obTbActive) _obApplyTb();
-                if (_obSqzActive) _drawSqzChannel(candleS, _obKlines, _obSqzLines); else _clearSqzChannel(candleS, _obSqzLines);
-                if (_obSrActive) applyTrendlineSRToOb();
+                if (_obSmcActive) applySmcToSlot(_obSmcSlot, getSmcCfg());
                 candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length - 1]?.close) });
 
                 for (const { p, enabled } of EMA_CFG) {
@@ -3908,6 +4095,7 @@ createApp({
                             _obGrabConfirmPrev(prev);
                             _obTbConfirmPrev(prev);
                             lastConfirmedTime = prev.time;
+                            if (_obSmcActive) applySmcToSlot(_obSmcSlot, getSmcCfg());
                         }
                         // Live EMA for current forming candle
                         for (const { p } of EMA_CFG) {
@@ -3922,11 +4110,6 @@ createApp({
                             if (lastK.time === last.time) _obKlines[_obKlines.length - 1] = { ...last };
                             else _obKlines.push({ ...last });
                         }
-                        // Deve girare DOPO il sync di _obKlines qui sopra: prima leggeva ancora
-                        // l'array di un poll fa (candela appena chiusa non ancora aggiornata,
-                        // nuova candela non ancora pushata) — la linea restava sempre indietro
-                        // di una candela, mai davvero "aggiornata alla nuova candela".
-                        if (_obSrActive && justConfirmed) applyTrendlineSRToOb();
                         if (_obBbActive && _obBbSeries.upper) {
                             const bbCfg = getBbCfg();
                             if (_obKlines.length >= bbCfg.period) {
@@ -3946,7 +4129,6 @@ createApp({
                         // 3s prima che il prossimo tick WS lo ricorreggesse. Bug reale segnalato
                         // con screenshot per Trend Band, stesso identico bug trovato in seguito
                         // (mai fixato) sul Canale SMA20 — vedi _obChUpdateTail in startKlineWS.
-                        if (_obSqzActive) _drawSqzChannel(candleS, _obKlines, _obSqzLines);
                         // Trend Band con TF di calcolo diverso ("a gradini"): il valore scatta solo
                         // alla chiusura della candela del TF scelto, non a quella del TF visualizzato
                         // — qui basta controllare (ogni 3s) se il bucket del TF di calcolo è avanzato.
@@ -4506,12 +4688,14 @@ createApp({
 
         const toggleObLines = () => {
             showObLines.value = !showObLines.value;
+            try { localStorage.setItem('ob_lines_active', showObLines.value ? '1' : '0'); } catch(e) {}
             if (showObLines.value) updateObLines();
             else clearObLines();
         };
 
         const toggleBookPanel = () => {
             showBook.value = !showBook.value;
+            try { localStorage.setItem('ob_show_book', showBook.value ? '1' : '0'); } catch(e) {}
         };
 
         const toggleNakedChart = () => {
@@ -4716,9 +4900,8 @@ const IND_LIST = [
     { label: 'Bollinger Bands', isOn: () => _obBbActive,  toggle: toggleObBB,      col: 2 },
     { label: 'Trend Band',      isOn: () => _obTbActive,  toggle: toggleObTb,      cfgOpen: openTbCfgPanel,   col: 2 },
     { label: 'GRaB',            isOn: () => _obGrabActive,toggle: toggleObGrab,    cfgOpen: openGrabCfgPanel, col: 2 },
-    { label: 'Squeeze Channel', isOn: () => _obSqzActive, toggle: toggleObSqueeze, col: 2 },
+    { label: 'SMC / ICT',       isOn: () => _obSmcActive, toggle: toggleObSmc,     cfgOpen: openSmcCfgPanel,  col: 2 },
     { label: 'Order Book Levels', isOn: () => window._obShowLinesValue ? window._obShowLinesValue() : false, toggle: () => window.toggleObLines && window.toggleObLines(), col: 2 },
-    { label: 'Trendline S/R', isOn: () => _obSrActive, toggle: toggleObTrendlineSR, col: 2 },
     { label: 'Livelli Daily',          isOn: () => getLvCfg().dayHigh.vis.ob,  toggle: () => window.toggleDayLevelsAll  && window.toggleDayLevelsAll(),  col: 3 },
     { label: 'Massimi/Minimi Storici', isOn: () => getLvCfg().ath.vis.ob,     toggle: () => window.toggleAthAtlAll     && window.toggleAthAtlAll(),     col: 3 },
     { label: 'Livelli Giorno Prec.',   isOn: () => getLvCfg().prevHigh.vis.ob,toggle: () => window.togglePrevLevelsAll && window.togglePrevLevelsAll(), col: 3 },

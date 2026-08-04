@@ -1271,7 +1271,7 @@ function getChannelCfg() {
 }
 let CHANNEL_CFG = getChannelCfg();
 let channelActive = false, obLevelsActive = false;
-let tbActive = false, grabActive = false, sqzActive = false, srActive = false; // valorizzate più sotto, dopo i rispettivi const _DEFAULT_*_CFG
+let tbActive = false, grabActive = false, smcActive = false; // valorizzate più sotto, dopo i rispettivi const _DEFAULT_*_CFG
 function calcEMAField(bars, period, field) {
     const k = 2 / (period + 1); let v = bars[0][field];
     return bars.map((b, i) => { if (i > 0) v = b[field] * k + v * (1 - k); return { time: b.time, value: v }; });
@@ -1859,147 +1859,271 @@ function _grabLiveUpdate(s, candle, confirmed, cfg) {
     }
 }
 
-// ── Squeeze Channel — porting da mtf.html: volume dry-up + range compresso (stessa logica
-// dello screener Volume Inefficiency), 2 price-line tratteggiate hi/lo, stateless.
-const SQZ_K = 6, SQZ_VOL_DRY_RATIO = 0.55, SQZ_RANGE_DRY_RATIO = 0.55;
-function _sqzCond(klines, i) {
-    const widerN = SQZ_K * 4;
-    if (i - SQZ_K - widerN + 1 < 0) return null;
-    let sumRecent = 0; for (let j = i - SQZ_K + 1; j <= i; j++) sumRecent += klines[j].volume;
-    const pf = i - SQZ_K - widerN + 1, pt = i - SQZ_K;
-    let sumPrior = 0; for (let j = pf; j <= pt; j++) sumPrior += klines[j].volume;
-    const avgRecent = sumRecent / SQZ_K, avgPrior = sumPrior / (pt - pf + 1);
-    if (avgPrior <= 0 || avgRecent / avgPrior > SQZ_VOL_DRY_RATIO) return null;
-    let hiR = -Infinity, loR = Infinity;
-    for (let j = i - SQZ_K + 1; j <= i; j++) { hiR = Math.max(hiR, klines[j].high); loR = Math.min(loR, klines[j].low); }
-    let hiP = -Infinity, loP = Infinity;
-    for (let j = Math.max(0, i - widerN + 1); j <= i; j++) { hiP = Math.max(hiP, klines[j].high); loP = Math.min(loP, klines[j].low); }
-    const rangeRecent = (hiR - loR) / klines[i].close, rangeWider = (hiP - loP) / klines[i].close;
-    if (rangeWider <= 0 || rangeRecent / rangeWider > SQZ_RANGE_DRY_RATIO) return null;
-    return { hiR, loR };
+// ── SMC / ICT — Market Structure, Order Blocks, FVG, Fibonacci, Liquidity Sweeps, Sessioni ──
+// Ricalcolo completo solo a candela chiusa (confirmed): struttura/OB/FVG/fib/sweep sono per
+// costruzione pattern "a candela chiusa", non serve/ha senso un aggiornamento incrementale
+// tick-by-tick come per EMA/Trend Band.
+const _DEFAULT_SMC_CFG = {
+    swingLen: 5, showStructure: true, showZigzag: true, showBreaks: true,
+    bullColor: '#26a69a', bearColor: '#ef5350',
+    showOB: true, obSearchBars: 20, obExtendBars: 25, maxOB: 6,
+    demandColor: '#2962ff', supplyColor: '#ff9800', obOpacity: 20,
+    showFVG: true, fvgExtendBars: 15, maxFVG: 15,
+    bullFVGColor: '#00e676', bearFVGColor: '#e040fb', fvgOpacity: 15,
+    showFib: true, showFib50: true, showFib71: true, showFib786: true, showFib886: true, showFibExt: true,
+    fibColor: '#ffd54f',
+    showSweeps: true, sweepColor: '#ffffff',
+    showSessions: true, londonStart: 9, londonEnd: 11, nyStart: 14, nyEnd: 16,
+    londonColor: '#2962ff', nyColor: '#ff9800', sessionOpacity: 10,
+};
+function getSmcCfg() {
+    try { const s = JSON.parse(localStorage.getItem('chart_smc_cfg')); if (s) return { ..._DEFAULT_SMC_CFG, ...s }; } catch(e) {}
+    return { ..._DEFAULT_SMC_CFG };
 }
-function checkSqueeze(klines) {
-    if (!klines || !klines.length) return null;
-    return _sqzCond(klines, klines.length - 1);
-}
-function _drawSqzChannel(candleS, klines, lineRefs) {
-    const hit = checkSqueeze(klines);
-    if (hit) {
-        if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} }
-        if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} }
-        lineRefs.hi = candleS.createPriceLine({ price: hit.hiR, color:'#22d3ee', lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'Squeeze' });
-        lineRefs.lo = candleS.createPriceLine({ price: hit.loR, color:'#22d3ee', lineWidth:1, lineStyle:2, axisLabelVisible:false, title:'' });
-    } else {
-        if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} lineRefs.hi = null; }
-        if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} lineRefs.lo = null; }
-    }
-}
-function _clearSqzChannel(candleS, lineRefs) {
-    if (lineRefs.hi) { try { candleS.removePriceLine(lineRefs.hi); } catch(e) {} lineRefs.hi = null; }
-    if (lineRefs.lo) { try { candleS.removePriceLine(lineRefs.lo); } catch(e) {} lineRefs.lo = null; }
-}
-function toggleSqueezeAll() {
-    sqzActive = !sqzActive;
-    try { localStorage.setItem('chart_sqz_active', sqzActive ? '1' : '0'); } catch(e) {}
-    slots.forEach(s => { if (sqzActive) _drawSqzChannel(s.candleS, s.klines, s.sqzLines); else _clearSqzChannel(s.candleS, s.sqzLines); });
-}
-
-// ── Trendline S/R automatica — porting da trendline.html: 2 pivot (recente/vecchio) su
-// minimi (supporto) e massimi (resistenza), retta valida finché nessuna chiusura la rompe.
-const TRENDLINE_SR_CFG = { shortPeriod: 30, longPeriod: 100, tolerancePct: 0.3 };
-function pivotExtreme(candles, iEnd, offFrom, offTo) {
-    let lowVal = Infinity, lowOff = null, highVal = -Infinity, highOff = null;
-    for (let off = offFrom; off <= offTo; off++) {
-        const idx = iEnd - off;
-        if (idx < 0) return null;
-        const c = candles[idx];
-        if (c.low  < lowVal)  { lowVal  = c.low;  lowOff  = off; }
-        if (c.high > highVal) { highVal = c.high; highOff = off; }
-    }
-    return { lowVal, lowOff, highVal, highOff };
-}
-function trendlineAt(candles, iEnd, shortPeriod, longPeriod) {
-    if (iEnd - longPeriod < 0) return null;
-    const rec = pivotExtreme(candles, iEnd, 1, shortPeriod);
-    const old = pivotExtreme(candles, iEnd, shortPeriod + 1, longPeriod);
-    if (!rec || !old) return null;
-    const supX1 = iEnd - old.lowOff,  supY1 = old.lowVal,  supX2 = iEnd - rec.lowOff,  supY2 = rec.lowVal;
-    const resX1 = iEnd - old.highOff, resY1 = old.highVal, resX2 = iEnd - rec.highOff, resY2 = rec.highVal;
-    const supSlope = (supY2 - supY1) / (supX2 - supX1);
-    const resSlope = (resY2 - resY1) / (resX2 - resX1);
-    return {
-        supX1, supY1, supX2, supY2, supSlope, supVal: supY2 + supSlope * (iEnd - supX2),
-        resX1, resY1, resX2, resY2, resSlope, resVal: resY2 + resSlope * (iEnd - resX2),
-    };
-}
-function isLineValid(candles, x1Idx, y1, slope, kind, tolerancePct) {
-    for (let idx = x1Idx; idx < candles.length; idx++) {
-        const lineVal = y1 + slope * (idx - x1Idx);
-        const tol = Math.abs(lineVal) * (tolerancePct / 100);
-        if (kind === 'support'    && candles[idx].close < lineVal - tol) return false;
-        if (kind === 'resistance' && candles[idx].close > lineVal + tol) return false;
-    }
+function _smcPivotHigh(klines, i, len) {
+    if (i - len < 0 || i + len >= klines.length) return false;
+    const v = klines[i].high;
+    for (let j = i - len; j <= i + len; j++) { if (j !== i && klines[j].high >= v) return false; }
     return true;
 }
-function detectActiveTrendlines(candles, cfg) {
-    const n = candles.length;
-    const iEnd = n - 1;
-    const cur = trendlineAt(candles, iEnd, cfg.shortPeriod, cfg.longPeriod);
-    if (!cur) return [];
-    const toPt = (idx, price) => ({ time: candles[idx].time, price });
-    const sup = { p1: toPt(cur.supX1, cur.supY1), p2: toPt(cur.supX2, cur.supY2) };
-    const res = { p1: toPt(cur.resX1, cur.resY1), p2: toPt(cur.resX2, cur.resY2) };
-    const hits = [];
-    if (isLineValid(candles, cur.supX1, cur.supY1, cur.supSlope, 'support', cfg.tolerancePct))
-        hits.push({ kind: 'support', lineVal: cur.supVal, sup, res });
-    if (isLineValid(candles, cur.resX1, cur.resY1, cur.resSlope, 'resistance', cfg.tolerancePct))
-        hits.push({ kind: 'resistance', lineVal: cur.resVal, sup, res });
-    return hits;
+function _smcPivotLow(klines, i, len) {
+    if (i - len < 0 || i + len >= klines.length) return false;
+    const v = klines[i].low;
+    for (let j = i - len; j <= i + len; j++) { if (j !== i && klines[j].low <= v) return false; }
+    return true;
 }
-function lineSlope(p1, p2) { return (p2.price - p1.price) / (p2.time - p1.time); }
-const TRENDLINE_SR_EXTEND_BARS = 30;
-function lineSeriesFromPts(p1, p2, klines) {
-    const slope = lineSlope(p1, p2);
-    const pts = klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
-    // Estende la linea oltre l'ultima candela reale invece di troncarla lì: un raggio
-    // continuo, non un segmento che si interrompe di colpo sull'ultimo dato disponibile.
-    if (pts.length >= 2 && klines.length >= 2) {
-        const step = klines[klines.length - 1].time - klines[klines.length - 2].time;
-        if (step > 0) {
-            const lastT = pts[pts.length - 1].time;
-            for (let i = 1; i <= TRENDLINE_SR_EXTEND_BARS; i++) {
-                const t = lastT + step * i;
-                pts.push({ time: t, value: p1.price + slope * (t - p1.time) });
+function calcSmc(klines, cfg) {
+    const n = klines.length;
+    const result = { markers: [], zigzag: [], demandBoxes: [], supplyBoxes: [], bullFVGBoxes: [], bearFVGBoxes: [], fib: null };
+    if (n < cfg.swingLen * 2 + 3) return result;
+
+    let lastPH = null, lastPL = null, lastPHBar = null, lastPLBar = null;
+    let prevPH = null, prevPL = null;
+    let phBroken = true, plBroken = true, phSwept = false, plSwept = false;
+    let structTrend = 0, zzPrev = null;
+
+    const findOB = (fromBar, searchBars, bullishOB) => {
+        const end = Math.max(0, fromBar - searchBars);
+        for (let j = fromBar; j >= end; j--) {
+            const isOpposite = bullishOB ? klines[j].close < klines[j].open : klines[j].close > klines[j].open;
+            if (isOpposite) return j;
+        }
+        return null;
+    };
+
+    for (let i = 0; i < n; i++) {
+        const k = klines[i];
+
+        if (_smcPivotHigh(klines, i, cfg.swingLen)) {
+            if (cfg.showStructure) {
+                const isHH = prevPH == null || k.high > prevPH;
+                result.markers.push({ time: k.time, position: 'aboveBar', color: isHH ? cfg.bullColor : cfg.bearColor, shape: 'circle', text: isHH ? 'HH' : 'LH', size: 0.6 });
             }
+            if (cfg.showZigzag && zzPrev) result.zigzag.push({ time1: zzPrev.time, price1: zzPrev.price, time2: k.time, price2: k.high });
+            if (cfg.showZigzag) zzPrev = { time: k.time, price: k.high };
+            prevPH = k.high; lastPH = k.high; lastPHBar = i; phBroken = false; phSwept = false;
+        }
+        if (_smcPivotLow(klines, i, cfg.swingLen)) {
+            if (cfg.showStructure) {
+                const isLL = prevPL == null || k.low < prevPL;
+                result.markers.push({ time: k.time, position: 'belowBar', color: isLL ? cfg.bearColor : cfg.bullColor, shape: 'circle', text: isLL ? 'LL' : 'HL', size: 0.6 });
+            }
+            if (cfg.showZigzag && zzPrev) result.zigzag.push({ time1: zzPrev.time, price1: zzPrev.price, time2: k.time, price2: k.low });
+            if (cfg.showZigzag) zzPrev = { time: k.time, price: k.low };
+            prevPL = k.low; lastPL = k.low; lastPLBar = i; plBroken = false; plSwept = false;
+        }
+
+        if (cfg.showSweeps && lastPH != null && !phBroken && !phSwept && k.high > lastPH && k.close < lastPH) {
+            phSwept = true;
+            result.markers.push({ time: k.time, position: 'aboveBar', color: cfg.sweepColor, shape: 'circle', text: '✕', size: 0.6 });
+        }
+        if (cfg.showSweeps && lastPL != null && !plBroken && !plSwept && k.low < lastPL && k.close > lastPL) {
+            plSwept = true;
+            result.markers.push({ time: k.time, position: 'belowBar', color: cfg.sweepColor, shape: 'circle', text: '✕', size: 0.6 });
+        }
+
+        const bullBreak = lastPH != null && !phBroken && k.close > lastPH;
+        const bearBreak = lastPL != null && !plBroken && k.close < lastPL;
+
+        if (bullBreak) {
+            phBroken = true;
+            const isReversal = structTrend === -1 || structTrend === 0;
+            if (cfg.showBreaks) result.markers.push({ time: k.time, position: 'aboveBar', color: cfg.bullColor, shape: 'arrowUp', text: isReversal ? 'MSS' : 'BOS', size: 1 });
+            structTrend = 1;
+            if (cfg.showOB && lastPLBar != null) {
+                const obIdx = findOB(lastPLBar, cfg.obSearchBars, true);
+                if (obIdx != null) result.demandBoxes.push({ time1: klines[obIdx].time, price1: klines[obIdx].high, time2: k.time, price2: klines[obIdx].low, lastIdx: i });
+            }
+            if (cfg.showFib && lastPL != null) result.fib = { p0: lastPH, p1: lastPL };
+        }
+        if (bearBreak) {
+            plBroken = true;
+            const isReversal = structTrend === 1 || structTrend === 0;
+            if (cfg.showBreaks) result.markers.push({ time: k.time, position: 'belowBar', color: cfg.bearColor, shape: 'arrowDown', text: isReversal ? 'MSS' : 'BOS', size: 1 });
+            structTrend = -1;
+            if (cfg.showOB && lastPHBar != null) {
+                const obIdx = findOB(lastPHBar, cfg.obSearchBars, false);
+                if (obIdx != null) result.supplyBoxes.push({ time1: klines[obIdx].time, price1: klines[obIdx].high, time2: k.time, price2: klines[obIdx].low, lastIdx: i });
+            }
+            if (cfg.showFib && lastPH != null) result.fib = { p0: lastPL, p1: lastPH };
+        }
+
+        if (cfg.showFVG && i >= 2) {
+            const k2 = klines[i - 2];
+            if (k.low > k2.high) result.bullFVGBoxes.push({ time1: k2.time, price1: k.low, time2: k.time, price2: k2.high, lastIdx: i });
+            else if (k.high < k2.low) result.bearFVGBoxes.push({ time1: k2.time, price1: k2.low, time2: k.time, price2: k.high, lastIdx: i });
         }
     }
-    return pts;
+
+    // Solo le zone MAI invalidate/riempite del tutto vengono renderizzate (stessa scelta
+    // progettuale della versione Pine: niente stato "mitigato ma visibile", pulizia netta).
+    const mitigateOB = (boxes, isDemand) => {
+        const out = [];
+        for (const b of boxes) {
+            let invalidated = false;
+            for (let j = b.lastIdx + 1; j < n; j++) {
+                if (isDemand ? klines[j].low <= b.price2 : klines[j].high >= b.price1) { invalidated = true; break; }
+            }
+            if (!invalidated) out.push({ time1: b.time1, price1: b.price1, time2: klines[n - 1].time, price2: b.price2 });
+        }
+        return out.slice(-cfg.maxOB);
+    };
+    result.demandBoxes = mitigateOB(result.demandBoxes, true);
+    result.supplyBoxes = mitigateOB(result.supplyBoxes, false);
+
+    const processFVG = (boxes, isBull) => {
+        const out = [];
+        for (const b of boxes) {
+            let top = b.price1, bot = b.price2, filled = false;
+            for (let j = b.lastIdx + 1; j < n; j++) {
+                const kk = klines[j];
+                if (isBull) { if (kk.low <= bot) { filled = true; break; } top = Math.min(top, kk.low); }
+                else { if (kk.high >= top) { filled = true; break; } bot = Math.max(bot, kk.high); }
+            }
+            if (!filled) out.push({ time1: b.time1, time2: klines[n - 1].time, price1: top, price2: bot });
+        }
+        return out.slice(-cfg.maxFVG);
+    };
+    result.bullFVGBoxes = processFVG(result.bullFVGBoxes, true);
+    result.bearFVGBoxes = processFVG(result.bearFVGBoxes, false);
+
+    return result;
 }
-function toggleTrendlineSRAll() {
-    srActive = !srActive;
-    try { localStorage.setItem('chart_sr_active', srActive ? '1' : '0'); } catch(e) {}
-    slots.forEach(applyTrendlineSRToSlot);
-}
-function applyTrendlineSRToSlot(s) {
-    if (s.srSeries.sup) { try { s.chart.removeSeries(s.srSeries.sup); } catch(e) {} s.srSeries.sup = null; }
-    if (s.srSeries.res) { try { s.chart.removeSeries(s.srSeries.res); } catch(e) {} s.srSeries.res = null; }
-    if (!srActive || !s.klines || s.klines.length < TRENDLINE_SR_CFG.longPeriod + 2) return;
-    const hits = detectActiveTrendlines(s.klines, TRENDLINE_SR_CFG);
-    const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
-    for (const hit of hits) {
-        const pts = hit.kind === 'support' ? hit.sup : hit.res;
-        const color = hit.kind === 'support' ? '#22c55e' : '#ef4444';
-        const line = lineSeriesFromPts(pts.p1, pts.p2, s.klines);
-        const series = addSeries(s.chart, 'LineSeries', { ...lb, color, lineWidth: 2 });
-        series.setData(line);
-        if (hit.kind === 'support') s.srSeries.sup = series; else s.srSeries.res = series;
+
+// Un solo primitive per slot: fill OB/FVG + sfondo sessioni (zOrder 'bottom') e zigzag
+// struttura (zOrder 'top', sopra le candele). Riusa _hexToRgba già definita per Canale/TB.
+class _SmcOverlayPrimitive {
+    constructor(slot, chart) {
+        this._slot = slot; this._chart = chart; this._series = null;
+        const bgRenderer = {
+            draw: target => target.useBitmapCoordinateSpace(scope => {
+                const s = this._slot, series = this._series;
+                if (!series || !smcActive || !s.smcData) return;
+                const cfg = getSmcCfg();
+                const ctx = scope.context, ts = this._chart.timeScale();
+                const hpr = scope.horizontalPixelRatio, vpr = scope.verticalPixelRatio;
+                const barSpacingPx = (ts.options().barSpacing || 6) * hpr;
+
+                if (cfg.showSessions && s.klines && s.klines.length) {
+                    const halfW = Math.max(1, barSpacingPx / 2);
+                    for (let i = 0; i < s.klines.length; i++) {
+                        const t = s.klines[i].time;
+                        const x = ts.timeToCoordinate(t);
+                        if (x == null) continue;
+                        const hour = new Date(t * 1000).getUTCHours();
+                        const inLondon = hour >= cfg.londonStart && hour < cfg.londonEnd;
+                        const inNY = hour >= cfg.nyStart && hour < cfg.nyEnd;
+                        if (!inLondon && !inNY) continue;
+                        ctx.fillStyle = _hexToRgba(inLondon ? cfg.londonColor : cfg.nyColor, (cfg.sessionOpacity ?? 10) / 100);
+                        ctx.fillRect(x * hpr - halfW, 0, halfW * 2, scope.bitmapSize.height);
+                    }
+                }
+
+                const drawBoxes = (boxes, color, opacity, extendBars) => {
+                    if (!boxes || !boxes.length) return;
+                    for (const b of boxes) {
+                        const x1 = ts.timeToCoordinate(b.time1);
+                        const x2raw = ts.timeToCoordinate(b.time2);
+                        const y1 = series.priceToCoordinate(b.price1);
+                        const y2 = series.priceToCoordinate(b.price2);
+                        if (x1 == null || x2raw == null || y1 == null || y2 == null) continue;
+                        const xp1 = x1 * hpr, xp2 = x2raw * hpr + extendBars * barSpacingPx;
+                        const yp1 = y1 * vpr, yp2 = y2 * vpr;
+                        ctx.fillStyle = _hexToRgba(color, opacity / 100);
+                        ctx.fillRect(Math.min(xp1, xp2), Math.min(yp1, yp2), Math.abs(xp2 - xp1), Math.abs(yp2 - yp1));
+                    }
+                };
+                if (cfg.showOB) { drawBoxes(s.smcData.demandBoxes, cfg.demandColor, cfg.obOpacity, cfg.obExtendBars); drawBoxes(s.smcData.supplyBoxes, cfg.supplyColor, cfg.obOpacity, cfg.obExtendBars); }
+                if (cfg.showFVG) { drawBoxes(s.smcData.bullFVGBoxes, cfg.bullFVGColor, cfg.fvgOpacity, cfg.fvgExtendBars); drawBoxes(s.smcData.bearFVGBoxes, cfg.bearFVGColor, cfg.fvgOpacity, cfg.fvgExtendBars); }
+            })
+        };
+        const zzRenderer = {
+            draw: target => target.useBitmapCoordinateSpace(scope => {
+                const s = this._slot, series = this._series;
+                if (!series || !smcActive || !s.smcData || !s.smcData.zigzag.length) return;
+                const cfg = getSmcCfg();
+                if (!cfg.showZigzag) return;
+                const ctx = scope.context, ts = this._chart.timeScale();
+                const hpr = scope.horizontalPixelRatio, vpr = scope.verticalPixelRatio;
+                ctx.save();
+                ctx.strokeStyle = 'rgba(150,150,150,0.6)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (const seg of s.smcData.zigzag) {
+                    const x1 = ts.timeToCoordinate(seg.time1), y1 = series.priceToCoordinate(seg.price1);
+                    const x2 = ts.timeToCoordinate(seg.time2), y2 = series.priceToCoordinate(seg.price2);
+                    if (x1 == null || y1 == null || x2 == null || y2 == null) continue;
+                    ctx.moveTo(x1 * hpr, y1 * vpr);
+                    ctx.lineTo(x2 * hpr, y2 * vpr);
+                }
+                ctx.stroke();
+                ctx.restore();
+            })
+        };
+        this._bgView = { renderer: () => bgRenderer, zOrder: () => 'bottom' };
+        this._zzView = { renderer: () => zzRenderer, zOrder: () => 'top' };
     }
+    attached({ series }) { this._series = series; }
+    detached() { this._series = null; }
+    updateAllViews() {}
+    paneViews() { return [this._bgView, this._zzView]; }
+}
+
+const _SMC_FIB_LEVELS = [[0.5, '50%'], [0.71, '71%'], [0.786, '78.6%'], [0.886, '88.6%'], [-0.27, '-27% Ext']];
+function applySmcToSlot(s, cfg) {
+    if (s.smcFibLines) { for (const pl of s.smcFibLines) { try { s.candleS.removePriceLine(pl); } catch(e) {} } }
+    s.smcFibLines = [];
+    if (!s.smcMarkersHandle && LC.createSeriesMarkers) { try { s.smcMarkersHandle = LC.createSeriesMarkers(s.candleS, []); } catch(e) {} }
+
+    if (!smcActive || !s.klines || !s.klines.length) {
+        s.smcData = null;
+        if (s.smcMarkersHandle) s.smcMarkersHandle.setMarkers([]);
+        return;
+    }
+
+    const res = calcSmc(s.klines, cfg);
+    s.smcData = res;
+    if (s.smcMarkersHandle) s.smcMarkersHandle.setMarkers(res.markers);
+
+    if (cfg.showFib && res.fib) {
+        const showFlags = { 0.5: cfg.showFib50, 0.71: cfg.showFib71, 0.786: cfg.showFib786, 0.886: cfg.showFib886, '-0.27': cfg.showFibExt };
+        for (const [ratio, txt] of _SMC_FIB_LEVELS) {
+            if (!showFlags[ratio]) continue;
+            const lvl = res.fib.p0 - ratio * (res.fib.p0 - res.fib.p1);
+            s.smcFibLines.push(s.candleS.createPriceLine({ price: lvl, color: cfg.fibColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: txt }));
+        }
+    }
+}
+function toggleSmcAll() {
+    smcActive = !smcActive;
+    try { localStorage.setItem('chart_smc_active', smcActive ? '1' : '0'); } catch(e) {}
+    const cfg = getSmcCfg();
+    slots.forEach(s => applySmcToSlot(s, cfg));
 }
 
 tbActive = getTbCfg().enabled;
 grabActive = getGrabCfg().enabled;
-sqzActive = localStorage.getItem('chart_sqz_active') === '1';
-srActive = localStorage.getItem('chart_sr_active') === '1';
+smcActive = localStorage.getItem('chart_smc_active') === '1';
 
 // ── Toggle rapido gruppi di livelli (day/prev/ATH-ATL), riusa lo stesso cfg
 // (chart_levels_cfg / getLvCfg) del pannello Impostazioni Livelli — qui si tocca
@@ -2026,8 +2150,7 @@ const IND_LIST = [
     { label: 'Order Book Levels',    isOn: () => obLevelsActive,              toggle: toggleOBAll,            cfgKey: 'obLevels', col: 2 },
     { label: 'Trend Band',           isOn: () => tbActive,                    toggle: toggleTrendBandAll,    cfgKey: 'tb',      col: 2 },
     { label: 'GRaB',                 isOn: () => grabActive,                  toggle: toggleGrabAll,          cfgKey: 'grab',    col: 2 },
-    { label: 'Squeeze Channel',      isOn: () => sqzActive,                   toggle: toggleSqueezeAll,                        col: 2 },
-    { label: 'Trendline S/R',        isOn: () => srActive,                    toggle: toggleTrendlineSRAll,                    col: 2 },
+    { label: 'SMC / ICT',            isOn: () => smcActive,                   toggle: toggleSmcAll,           cfgKey: 'smc',     col: 2 },
     { label: 'Livelli Daily',        isOn: () => getLvCfg().dayHigh.vis.chart,  toggle: toggleDayLevelsAll,  cfgKey: 'dayLevels',  col: 3 },
     { label: 'Massimi/Minimi Storici', isOn: () => getLvCfg().ath.vis.chart,    toggle: toggleAthAtlAll,     cfgKey: 'athAtl',     col: 3 },
     { label: 'Livelli Giorno Prec.', isOn: () => getLvCfg().prevHigh.vis.chart, toggle: togglePrevLevelsAll, cfgKey: 'prevLevels', col: 3 },
@@ -2159,6 +2282,48 @@ const IND_CFG_SCHEMAS = {
             { key:'colorMidBear', label:'Dentro range (ribasso)', type:'color' },
         ],
         apply: cfg => { try { localStorage.setItem('chart_grab_cfg', JSON.stringify(cfg)); } catch(e) {} slots.forEach(s => applyGrabToSlot(s, cfg)); },
+    },
+    smc: {
+        title: 'SMC / ICT', getCfg: getSmcCfg, defaults: _DEFAULT_SMC_CFG,
+        fields: [
+            { key:'swingLen', label:'Swing Lookback (barre)', type:'number', min:2, max:50, step:1 },
+            { key:'showStructure', label:'Mostra HH/LL', type:'checkbox' },
+            { key:'showZigzag', label:'Mostra zigzag struttura', type:'checkbox' },
+            { key:'showBreaks', label:'Mostra BOS/MSS', type:'checkbox' },
+            { key:'bullColor', label:'Colore rialzo', type:'color' },
+            { key:'bearColor', label:'Colore ribasso', type:'color' },
+            { key:'showOB', label:'Mostra Order Block', type:'checkbox' },
+            { key:'obSearchBars', label:'OB: ricerca (barre indietro)', type:'number', min:3, max:100, step:1 },
+            { key:'obExtendBars', label:'OB: estensione (barre)', type:'number', min:5, max:200, step:1 },
+            { key:'maxOB', label:'OB: max per lato', type:'number', min:1, max:30, step:1 },
+            { key:'demandColor', label:'Colore Demand', type:'color' },
+            { key:'supplyColor', label:'Colore Supply', type:'color' },
+            { key:'obOpacity', label:'OB: opacità %', type:'number', min:0, max:100, step:1 },
+            { key:'showFVG', label:'Mostra Imbalance (FVG)', type:'checkbox' },
+            { key:'fvgExtendBars', label:'FVG: estensione (barre)', type:'number', min:1, max:100, step:1 },
+            { key:'maxFVG', label:'FVG: max per lato', type:'number', min:1, max:50, step:1 },
+            { key:'bullFVGColor', label:'Colore FVG rialzista', type:'color' },
+            { key:'bearFVGColor', label:'Colore FVG ribassista', type:'color' },
+            { key:'fvgOpacity', label:'FVG: opacità %', type:'number', min:0, max:100, step:1 },
+            { key:'showFib', label:'Mostra Auto-Fibonacci', type:'checkbox' },
+            { key:'showFib50', label:'Fib 0.5', type:'checkbox' },
+            { key:'showFib71', label:'Fib 0.71', type:'checkbox' },
+            { key:'showFib786', label:'Fib 0.786', type:'checkbox' },
+            { key:'showFib886', label:'Fib 0.886', type:'checkbox' },
+            { key:'showFibExt', label:'Fib -0.27 (estensione)', type:'checkbox' },
+            { key:'fibColor', label:'Colore Fibonacci', type:'color' },
+            { key:'showSweeps', label:'Mostra Liquidity Sweep', type:'checkbox' },
+            { key:'sweepColor', label:'Colore Liquidity Sweep', type:'color' },
+            { key:'showSessions', label:'Mostra sfondo sessioni', type:'checkbox' },
+            { key:'londonStart', label:'Londra: ora inizio (UTC)', type:'number', min:0, max:23, step:1 },
+            { key:'londonEnd', label:'Londra: ora fine (UTC)', type:'number', min:0, max:23, step:1 },
+            { key:'nyStart', label:'New York: ora inizio (UTC)', type:'number', min:0, max:23, step:1 },
+            { key:'nyEnd', label:'New York: ora fine (UTC)', type:'number', min:0, max:23, step:1 },
+            { key:'londonColor', label:'Colore sessione Londra', type:'color' },
+            { key:'nyColor', label:'Colore sessione New York', type:'color' },
+            { key:'sessionOpacity', label:'Sessioni: opacità %', type:'number', min:0, max:100, step:1 },
+        ],
+        apply: cfg => { try { localStorage.setItem('chart_smc_cfg', JSON.stringify(cfg)); } catch(e) {} slots.forEach(s => applySmcToSlot(s, cfg)); },
     },
     dayLevels: {
         title: 'Livelli Daily',
@@ -2977,14 +3142,14 @@ const mtfEl = document.createElement('button');
             tbMarkersHandle: null, tbMarkersData: [],
             tbHtfMode: false, tbHtfKlines: [], tbHtfKey: '', tbHtfBucket: null, tbHtfLastPoint: null, tbHtfLiveAgg: null,
             grabWaveS: { high: null, low: null, close: null }, grabMurreyS: { mid: null, lo: null, hi: null }, grabState: null,
-            sqzLines: { hi: null, lo: null },
-            srSeries: { sup: null, res: null },
+            smcData: null, smcMarkersHandle: null, smcFibLines: [],
         });
         const _s = slots[slots.length - 1];
         try { const _cdp = new _CountdownPrimitive(_s); candleS.attachPrimitive(_cdp); } catch(e) {}
         try { const _cfp = new _ChannelFillPrimitive(_s, chart); candleS.attachPrimitive(_cfp); } catch(e) {}
         try { const _obp = new _ObBandFillPrimitive(_s); candleS.attachPrimitive(_obp); } catch(e) {}
         try { const _tbp = new _TrendBandFillPrimitive(_s, chart); candleS.attachPrimitive(_tbp); } catch(e) {}
+        try { const _smcp = new _SmcOverlayPrimitive(_s, chart); candleS.attachPrimitive(_smcp); } catch(e) {}
         DrawTools.attachToolContextMenu(body, {
             isAnyToolActive: () => _s.rangeActive || _s.hlineActive || _s.trendActive,
             onTrend: () => toggleSlotTrend(i), onHline: () => toggleSlotHline(i), onRange: () => toggleSlotRange(i),
@@ -3300,8 +3465,7 @@ async function loadSlotData(idx) {
         applyChannelToSlot(s);
         applyTbToSlot(s, getTbCfg());
         applyGrabToSlot(s, getGrabCfg());
-        if (sqzActive) _drawSqzChannel(s.candleS, s.klines, s.sqzLines); else _clearSqzChannel(s.candleS, s.sqzLines);
-        applyTrendlineSRToSlot(s);
+        applySmcToSlot(s, getSmcCfg());
         s.dayPrimitive = attachDayLines(s.candleS, s.chart, klines, s.curTF, s.dayPrimitive);
         s.candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
         applyEmaToSlot(s);
@@ -3692,12 +3856,7 @@ function openWS() {
             }
             if (tbActive) _tbLiveUpdate(s, candle, confirmed, getTbCfg());
             if (grabActive) _grabLiveUpdate(s, candle, confirmed, getGrabCfg());
-            if (sqzActive) _drawSqzChannel(s.candleS, s.klines, s.sqzLines);
-            // Ricalcolo su "nuova candela iniziata" (klines.push) invece che sul solo flag
-            // WS confirm=true: quest'ultimo può arrivare in ritardo/perdersi in caso di
-            // reconnect proprio a cavallo della chiusura candela, lasciando la linea ferma
-            // — bug reale segnalato dall'utente ("non si aggiorna al cambio candela").
-            if (srActive && (confirmed || isNewBar)) applyTrendlineSRToSlot(s);
+            if (smcActive && confirmed) applySmcToSlot(s, getSmcCfg());
         }
     };
     sock.onerror = () => setWSDot('error');
