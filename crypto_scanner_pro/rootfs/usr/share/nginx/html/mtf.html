@@ -6,6 +6,7 @@
 <title>MTF View - Crypto Scanner Pro v4.4.7</title>
 <script src="/prefs-sync.js"></script>
 <script src="/i18n.js"></script>
+<script src="/candle-color.js"></script>
 <script src="/draw-tools.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxsaW5lIHgxPSIxIiB5MT0iOSIgeDI9IjMxIiB5Mj0iOSIgc3Ryb2tlPSIjMWEzYTRhIiBzdHJva2Utd2lkdGg9IjAuNCIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMTciIHgyPSIzMSIgeTI9IjE3IiBzdHJva2U9IiMxYTNhNGEiIHN0cm9rZS13aWR0aD0iMC40Ii8+CiAgPGxpbmUgeDE9IjEiIHkxPSIyNSIgeDI9IjMxIiB5Mj0iMjUiIHN0cm9rZT0iIzFhM2E0YSIgc3Ryb2tlLXdpZHRoPSIwLjQiLz4KICA8bGluZSB4MT0iNCIgeTE9IjciIHgyPSI0IiB5Mj0iMjkiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyLjUiIHk9IjE0IiB3aWR0aD0iMyIgaGVpZ2h0PSI5IiBmaWxsPSIjMDBDOEZGIi8+CiAgPGxpbmUgeDE9IjEyIiB5MT0iMyIgeDI9IjEyIiB5Mj0iMjYiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIxMC41IiB5PSI3IiB3aWR0aD0iMyIgaGVpZ2h0PSIxMyIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIyMCIgeTE9IjYiIHgyPSIyMCIgeTI9IjI4IiBzdHJva2U9IiMwMEM4RkYiIHN0cm9rZS13aWR0aD0iMC44Ii8+CiAgPHJlY3QgeD0iMTguNSIgeT0iMTMiIHdpZHRoPSIzIiBoZWlnaHQ9IjkiIGZpbGw9IiMwMEM4RkYiLz4KICA8bGluZSB4MT0iMjgiIHkxPSIxMCIgeDI9IjI4IiB5Mj0iMzAiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyNi41IiB5PSIxNiIgd2lkdGg9IjMiIGhlaWdodD0iOCIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMzAiIHgyPSIzMCIgeTI9IjIiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIxLjIiLz4KICA8cG9seWdvbiBwb2ludHM9IjMwLDIgMjQsNS41IDI2LjUsOC41IiBmaWxsPSIjMDBDOEZGIi8+Cjwvc3ZnPgo=">
 <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
@@ -392,6 +393,14 @@ let grabActive = false;
 let tbActive = false;
 let smcActive = false;
 let obLevelsActive = false;
+// "Colora candele" — toggle GLOBALE condiviso su tutte le pagine (vedi candle-color.js).
+const _applyCandleStyle = window.applyCandleColorStyle;
+function toggleCandleColorAll() {
+  window.toggleCandleColorGlobal(() => {
+    slots.forEach(s => _applyCandleStyle(s.candleS));
+    _applyCandleStyle(fsCandleS);
+  });
+}
 // Ogni toggleXxx() persiste il proprio stato on/off in localStorage (mtf_xxx_active).
 // Richiamata dopo il caricamento iniziale delle candele di tutti gli slot: gli xxxActive
 // sopra partono sempre false, toggleXxx() li flippa a true e applica l'indicatore —
@@ -717,7 +726,7 @@ function _grabLiveUpdate(s, candle, confirmed, cfg) {
 // struttura/OB/FVG/fib/sweep sono pattern "a candela chiusa", nessun senso in un update
 // incrementale tick-by-tick come EMA/Trend Band).
 const _DEFAULT_SMC_CFG = {
-  swingLen: 5, showStructure: true, showZigzag: true, showBreaks: true,
+  swingLen: 5, smcHistoryBars: 300, showStructure: true, showZigzag: true, showBreaks: true,
   bullColor: '#26a69a', bearColor: '#ef5350',
   showOB: true, obSearchBars: 20, obExtendBars: 25, maxOB: 6,
   demandColor: '#2962ff', supplyColor: '#ff9800', obOpacity: 20,
@@ -951,7 +960,7 @@ function applySmcToSlot(s, cfg) {
     return;
   }
 
-  const res = calcSmc(s.klines, cfg);
+  const res = calcSmc(s.klines.slice(-cfg.smcHistoryBars), cfg);
   s.smcData = res;
   if (s.smcMarkersHandle) s.smcMarkersHandle.setMarkers(res.markers);
 
@@ -1417,6 +1426,7 @@ const IND_LIST = [
   { label: 'Livelli Daily',          isOn: () => getLvCfg().dayHigh.vis.mtf,  toggle: toggleDayLevelsAll,  col: 3 },
   { label: 'Massimi/Minimi Storici', isOn: () => getLvCfg().ath.vis.mtf,      toggle: toggleAthAtlAll,     col: 3 },
   { label: 'Livelli Giorno Prec.',   isOn: () => getLvCfg().prevHigh.vis.mtf, toggle: togglePrevLevelsAll, col: 3 },
+  { label: 'Colora candele',         isOn: () => window.isCandleColorActive(), toggle: toggleCandleColorAll, col: 3 },
 ];
 function renderIndPanel() {
   const el = document.getElementById('ind-rows');
@@ -2021,6 +2031,7 @@ async function loadSlot(idx, dailyData) {
     s.dayPrimitive = attachDayLines(s.candleS, s.chart, klines, s.cfg.tf, s.dayPrimitive);
     s.candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
     applyEmaToSlot(s);
+    _applyCandleStyle(s.candleS);
     s.chart.timeScale().setVisibleLogicalRange({ from: klines.length - getCandlesForTF(s.cfg.tf), to: klines.length + 3 });
 
     // H / L / pH / pL lines
@@ -2964,6 +2975,7 @@ async function loadFSData() {
         applyFsChannel();
         applyFsGrab();
         applyFsTb();
+        _applyCandleStyle(fsCandleS);
         _applyObLevelsToFs();
         fsChart.timeScale().setVisibleLogicalRange({ from: fsKlineCount - getCandlesForTF(fsTF), to: fsKlineCount + 3 });
         fsChart.priceScale('right').applyOptions({ autoScale: true });
@@ -4224,6 +4236,8 @@ if (isMobile) {
     <div style="font-weight:700;color:#9CA3AF;margin:8px 0 4px;">Struttura</div>
     <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Swing Lookback (barre)
       <input type="number" id="smc-cfg-swingLen" min="2" max="50" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Storia analizzata (barre)
+      <input type="number" id="smc-cfg-smcHistoryBars" min="100" max="2000" step="50" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
     <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra HH/LL
       <input type="checkbox" id="smc-cfg-showStructure"></label>
     <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra zigzag struttura

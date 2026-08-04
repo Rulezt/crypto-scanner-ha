@@ -64,6 +64,7 @@
     <title>Crypto Scanner Pro - Scanner Criptovalute in Tempo Reale | Bybit</title>
     <script src="/prefs-sync.js"></script>
     <script src="/i18n.js"></script>
+    <script src="/candle-color.js"></script>
     <script src="/draw-tools.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
@@ -1825,6 +1826,7 @@
             if (_inlinePreviewChart !== chart) return;
             _inlinePreviewKlines = klines;
             series.setData(klines);
+            window.applyCandleColorStyle(series);
             for (const { p } of _TT_EMA) emaS[p].setData(_calcEmaT(klines, p));
             chart.timeScale().setVisibleLogicalRange({ from: klines.length - 60, to: klines.length + 1 });
           } catch (e) {}

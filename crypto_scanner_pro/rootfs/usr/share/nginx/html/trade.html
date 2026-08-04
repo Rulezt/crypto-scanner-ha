@@ -10,6 +10,7 @@
     <meta name="theme-color" content="#101014">
     <script src="/prefs-sync.js"></script>
     <script src="/i18n.js"></script>
+    <script src="/candle-color.js"></script>
     <script src="/draw-tools.js"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
@@ -815,6 +816,8 @@
     <div style="font-weight:700;color:#9CA3AF;margin:8px 0 4px;">Struttura</div>
     <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Swing Lookback (barre)
       <input type="number" id="smc-cfg-swingLen" min="2" max="50" step="1" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
+    <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Storia analizzata (barre)
+      <input type="number" id="smc-cfg-smcHistoryBars" min="100" max="2000" step="50" style="width:64px;background:#1E222D;color:#fff;border:1px solid #2A2E39;border-radius:3px;padding:2px 4px;"></label>
     <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra HH/LL
       <input type="checkbox" id="smc-cfg-showStructure"></label>
     <label style="display:flex;justify-content:space-between;align-items:center;margin:4px 0;">Mostra zigzag struttura

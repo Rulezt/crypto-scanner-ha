@@ -9,6 +9,7 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxyZWN0IHg9IjYiIHk9IjE4IiB3aWR0aD0iNCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmFjYzE1Ii8+CiAgPHJlY3QgeD0iMTQiIHk9IjEwIiB3aWR0aD0iNCIgaGVpZ2h0PSIxNiIgZmlsbD0iI2ZhY2MxNSIvPgogIDxyZWN0IHg9IjIyIiB5PSI0IiB3aWR0aD0iNCIgaGVpZ2h0PSIyMiIgZmlsbD0iI2ZhY2MxNSIvPgo8L3N2Zz4=">
     <script src="/prefs-sync.js"></script>
     <script src="/i18n.js"></script>
+    <script src="/candle-color.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
     <style>
@@ -614,6 +615,7 @@ createApp({
                 borderVisible: false, wickUpColor: '#089981', wickDownColor: '#F23645',
             });
             candleSeries.setData(klines);
+            window.applyCandleColorStyle(candleSeries);
 
             chart.subscribeCrosshairMove(param => {
                 const pctEl = document.getElementById('lwc-popup-candle-pct');

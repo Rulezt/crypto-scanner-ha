@@ -397,6 +397,11 @@ function fmtVol(v) {
 // fsCandleS→_obCandleS, fsChart→_obChart, fsCoin.symbol→_obSymbol, _livePrice[...]→_obLivePrice
 let _obCandleS = null, _obChart = null, _obSymbol = '', _obLivePrice = 0, _obChartTF = '', _obTzOffsetG = 0;
 let _isLoggedIn = false;
+// "Colora candele" — toggle GLOBALE condiviso su tutte le pagine (vedi candle-color.js).
+const _applyCandleStyle = window.applyCandleColorStyle;
+function toggleObCandleColor() {
+    window.toggleCandleColorGlobal(() => { _applyCandleStyle(_obCandleS); });
+}
 
 // ── Bollinger Bands (BB) ───────────────────────────────────────────────────────
 // Stato ON/OFF persistito in localStorage (chiavi ob_*_active) — a differenza del resto di
@@ -1039,7 +1044,7 @@ function resetTbCfgPanel() {
 let _obSmcActive = localStorage.getItem('ob_smc_active') === '1';
 let _obSmcData = null, _obSmcMarkersHandle = null, _obSmcFibLines = [];
 const _DEFAULT_SMC_CFG = {
-    swingLen: 5, showStructure: true, showZigzag: true, showBreaks: true,
+    swingLen: 5, smcHistoryBars: 300, showStructure: true, showZigzag: true, showBreaks: true,
     bullColor: '#26a69a', bearColor: '#ef5350',
     showOB: true, obSearchBars: 20, obExtendBars: 25, maxOB: 6,
     demandColor: '#2962ff', supplyColor: '#ff9800', obOpacity: 20,
@@ -1287,7 +1292,7 @@ function applySmcToSlot(s, cfg) {
         return;
     }
 
-    const res = calcSmc(s.klines, cfg);
+    const res = calcSmc(s.klines.slice(-cfg.smcHistoryBars), cfg);
     s.smcData = res;
     if (s.smcMarkersHandle) s.smcMarkersHandle.setMarkers(res.markers);
 
@@ -3965,6 +3970,7 @@ createApp({
                 if (_obGrabActive) _obApplyGrab();
                 if (_obTbActive) _obApplyTb();
                 if (_obSmcActive) applySmcToSlot(_obSmcSlot, getSmcCfg());
+                _applyCandleStyle(candleS);
                 candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length - 1]?.close) });
 
                 for (const { p, enabled } of EMA_CFG) {
@@ -4905,6 +4911,7 @@ const IND_LIST = [
     { label: 'Livelli Daily',          isOn: () => getLvCfg().dayHigh.vis.ob,  toggle: () => window.toggleDayLevelsAll  && window.toggleDayLevelsAll(),  col: 3 },
     { label: 'Massimi/Minimi Storici', isOn: () => getLvCfg().ath.vis.ob,     toggle: () => window.toggleAthAtlAll     && window.toggleAthAtlAll(),     col: 3 },
     { label: 'Livelli Giorno Prec.',   isOn: () => getLvCfg().prevHigh.vis.ob,toggle: () => window.togglePrevLevelsAll && window.togglePrevLevelsAll(), col: 3 },
+    { label: 'Colora candele',         isOn: () => window.isCandleColorActive(), toggle: toggleObCandleColor, col: 3 },
 ];
 function renderIndPanel() {
     const el = document.getElementById('ind-rows');
