@@ -81,6 +81,66 @@
         return (t != null && p != null) ? { t, p } : null;
     }
 
+    // ── Touch support ────────────────────────────────────────────────────────────────
+    // Tutti i tool sotto sono nati solo per mouse (mousedown/mousemove/mouseup +
+    // contextmenu per menu/cancella-riga). Su schermi touch questi eventi non esistono
+    // affatto durante un gesto continuo (nessun mousemove sintetico durante un drag), va
+    // ripetuto lo stesso schema con touchstart/touchmove/touchend traducendo il touch in
+    // un oggetto "mouse-like" così le funzioni handler già scritte per il mouse restano
+    // invariate e vengono richiamate identiche anche dal touch.
+    function _touchToMouseLike(te) {
+        const t = te.touches[0] || te.changedTouches[0];
+        return t ? { clientX: t.clientX, clientY: t.clientY, button: 0, buttons: 1, preventDefault: () => te.preventDefault() } : null;
+    }
+    // Aggancia le controparti touch di mousedown(sul target)/mousemove(su document)/
+    // mouseup(su document): stesso pattern usato ovunque per permettere il drag anche
+    // fuori dal canvas. Ritorna gli handler per poterli rimuovere nel cleanup (unwireTouch).
+    function wireTouch(target, onDown, onMove, onUp) {
+        const ts = e => { const m = _touchToMouseLike(e); if (m) { e.preventDefault(); onDown(m); } };
+        const tm = e => { const m = _touchToMouseLike(e); if (m) { e.preventDefault(); onMove(m); } };
+        const tu = e => { const m = _touchToMouseLike(e); if (m) onUp(m); };
+        target.addEventListener('touchstart', ts, { passive: false });
+        document.addEventListener('touchmove', tm, { passive: false });
+        document.addEventListener('touchend', tu);
+        document.addEventListener('touchcancel', tu);
+        return { ts, tm, tu };
+    }
+    function unwireTouch(target, h) {
+        if (!h) return;
+        target.removeEventListener('touchstart', h.ts);
+        document.removeEventListener('touchmove', h.tm);
+        document.removeEventListener('touchend', h.tu);
+        document.removeEventListener('touchcancel', h.tu);
+    }
+    // Pressione prolungata (long-press) = equivalente touch del tasto destro, usata SOLO
+    // per aprire il menu di scelta tool (attachToolContextMenu) quando nessun tool è
+    // attivo. Non si arma affatto se un tool è già attivo (isBlocked): un tool attivo
+    // interpreta già touchstart come "piazza/trascina" — far scattare ANCHE un long-press
+    // sullo stesso gesto lo cancellerebbe/eliminerebbe a metà, prima ancora che l'utente
+    // stacchi il dito. Con isBlocked il long-press resta un entry-point pulito, separato
+    // dal disegno vero e proprio (che quando attivo si gestisce già coi touch di wireTouch).
+    function wireLongPress(target, { isBlocked, onLongPress }) {
+        const DELAY = 550, SLOP = 12;
+        let timer = null, sx = 0, sy = 0;
+        const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
+        target.addEventListener('touchstart', e => {
+            if (isBlocked && isBlocked()) return;
+            if (e.touches.length !== 1) { clear(); return; }
+            const t = e.touches[0]; sx = t.clientX; sy = t.clientY;
+            clear();
+            timer = setTimeout(() => { timer = null; onLongPress(sx, sy); }, DELAY);
+        }, { passive: true });
+        target.addEventListener('touchmove', e => {
+            const t = e.touches[0]; if (!t) return;
+            if (Math.hypot(t.clientX - sx, t.clientY - sy) > SLOP) clear();
+        }, { passive: true });
+        target.addEventListener('touchend', clear);
+        target.addEventListener('touchcancel', clear);
+    }
+    function fireContextMenu(el, clientX, clientY) {
+        try { el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX, clientY })); } catch (e) {}
+    }
+
     // ── Range (tool di misura, mai persistito) ──────────────────────────────────────
     function drawRangeCanvas(canvas, series, p1, p2) {
         canvas.width  = canvas.clientWidth  || canvas.parentElement.clientWidth  || 100;
@@ -166,12 +226,14 @@
         if (s._rangeMM) { document.removeEventListener('mousemove', s._rangeMM); s._rangeMM = null; }
         if (s._rangeMU) { document.removeEventListener('mouseup', s._rangeMU); s._rangeMU = null; }
         if (s._rangeCM) { s.rangeCanvas.removeEventListener('contextmenu', s._rangeCM); s._rangeCM = null; }
+        unwireTouch(s.rangeCanvas, s._rangeTouch); s._rangeTouch = null;
         if (s._rangeHoverML) { s.rangeCanvas.removeEventListener('mouseleave', s._rangeHoverML); s._rangeHoverML = null; }
         if (s._rangeHoverLine) { try { s.candleS.removePriceLine(s._rangeHoverLine); } catch(e) {} s._rangeHoverLine = null; }
         s.rangeP1 = null;
         try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
         s.rangeCanvas.style.pointerEvents = s.rangeActive ? 'auto' : 'none';
         s.rangeCanvas.style.cursor = s.rangeActive ? 'crosshair' : '';
+        s.rangeCanvas.style.touchAction = s.rangeActive ? 'none' : '';
         if (!s.rangeActive) return;
         s._rangeMD = e => {
             if (e.button !== 0) return;
@@ -214,6 +276,7 @@
         document.addEventListener('mouseup', s._rangeMU);
         s.rangeCanvas.addEventListener('contextmenu', s._rangeCM);
         s.rangeCanvas.addEventListener('mouseleave', s._rangeHoverML);
+        s._rangeTouch = wireTouch(s.rangeCanvas, s._rangeMD, s._rangeMM, s._rangeMU);
     }
 
     // ── Hline ────────────────────────────────────────────────────────────────────────
@@ -237,11 +300,13 @@
         if (s._hlineMM) { document.removeEventListener('mousemove', s._hlineMM); s._hlineMM = null; }
         if (s._hlineMU) { document.removeEventListener('mouseup', s._hlineMU); s._hlineMU = null; }
         if (s._hlineCM) { s.hlineCanvas.removeEventListener('contextmenu', s._hlineCM); s._hlineCM = null; }
+        unwireTouch(s.hlineCanvas, s._hlineTouch); s._hlineTouch = null;
         if (s._hlineHoverML) { s.hlineCanvas.removeEventListener('mouseleave', s._hlineHoverML); s._hlineHoverML = null; }
         if (s._hlineHoverLine) { try { s.candleS.removePriceLine(s._hlineHoverLine); } catch(e) {} s._hlineHoverLine = null; }
         s._hlineDragging = null;
         s.hlineCanvas.style.pointerEvents = s.hlineActive ? 'auto' : 'none';
         s.hlineCanvas.style.cursor = s.hlineActive ? 'crosshair' : '';
+        s.hlineCanvas.style.touchAction = s.hlineActive ? 'none' : '';
         if (!s.hlineActive) return;
         s._hlineMD = e => {
             if (e.button !== 0) return;
@@ -297,6 +362,7 @@
         document.addEventListener('mouseup', s._hlineMU);
         s.hlineCanvas.addEventListener('contextmenu', s._hlineCM);
         s.hlineCanvas.addEventListener('mouseleave', s._hlineHoverML);
+        s._hlineTouch = wireTouch(s.hlineCanvas, s._hlineMD, s._hlineMM, s._hlineMU);
     }
 
     function clearHlines(s, opts = {}) {
@@ -412,9 +478,11 @@
         if (s._trendMM) { document.removeEventListener('mousemove', s._trendMM); s._trendMM = null; }
         if (s._trendMU) { document.removeEventListener('mouseup', s._trendMU); s._trendMU = null; }
         if (s._trendCM) { s.trendCanvas.removeEventListener('contextmenu', s._trendCM); s._trendCM = null; }
+        unwireTouch(s.trendCanvas, s._trendTouch); s._trendTouch = null;
         s._trendP1 = null; s._trendPrev = null; s._trendDrag = null; s._trendPending = null;
         s.trendCanvas.style.pointerEvents = s.trendActive ? 'auto' : 'none';
         s.trendCanvas.style.cursor = s.trendActive ? 'crosshair' : '';
+        s.trendCanvas.style.touchAction = s.trendActive ? 'none' : '';
         trendEnsureRAF(s);
         trendDrawAll(s);
         if (!s.trendActive) return;
@@ -490,6 +558,7 @@
         document.addEventListener('mousemove', s._trendMM);
         document.addEventListener('mouseup', s._trendMU);
         canvas.addEventListener('contextmenu', s._trendCM);
+        s._trendTouch = wireTouch(canvas, s._trendMD, s._trendMM, s._trendMU);
     }
 
     // ── Menu contestuale (tasto destro nel grafico quando nessun tool è attivo) ────────
@@ -562,6 +631,13 @@
                 { label: (opts.labels && opts.labels.clear) || tt('clear_drawings', 'Cancella disegni'), icon: ICON_CLEAR, onClick: showClear ? opts.onClear : null },
             ]);
         }, true);
+        // Equivalente touch del tasto destro: pressione prolungata su un punto vuoto del
+        // grafico (nessun tool attivo) apre lo stesso menu. Non si arma se un tool è già
+        // attivo — quel gesto è già interpretato come "piazza/trascina" (vedi wireLongPress).
+        wireLongPress(container, {
+            isBlocked: () => opts.isAnyToolActive && opts.isAnyToolActive(),
+            onLongPress: (x, y) => fireContextMenu(container, x, y),
+        });
     }
 
     window.DrawTools = {
@@ -572,5 +648,6 @@
         hlineNearest, toggleHline, clearHlines,
         toggleFsTrend, trendDrawAll, trendEnsureRAF,
         showToolMenu, closeToolMenu, attachToolContextMenu,
+        wireTouch, unwireTouch, wireLongPress, fireContextMenu,
     };
 })();

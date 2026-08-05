@@ -52,7 +52,6 @@ class DoubleTouchScanner:
 
         self.last_alerts      = self._load_cooldown()
         self._lock            = threading.Lock()
-        self._last_save       = 0.0
         self._last_scan_count = 0
         self._ws_manager      = ws_manager
 
@@ -119,12 +118,13 @@ class DoubleTouchScanner:
         return (datetime.now(timezone.utc) - self.last_alerts[key]) < timedelta(hours=self.cooldown_hours)
 
     def mark_alerted(self, key):
-        # Must be called with self._lock held
+        # Must be called with self._lock held. Salvataggio sempre immediato (non
+        # throttlato): un riavvio del container entro la finestra di throttle perdeva
+        # il segno su disco dell'alert appena inviato — nessun handler di shutdown
+        # flusha lo stato in-memory, quindi al riavvio successivo quell'alert veniva
+        # rivalutato come "mai inviato" e reinviato su Telegram.
         self.last_alerts[key] = datetime.now(timezone.utc)
-        now = time.time()
-        if now - self._last_save > 60:
-            self._last_save = now
-            self._save_cooldown()
+        self._save_cooldown()
 
     # ── schedule ──────────────────────────────────────────────────────────────
 

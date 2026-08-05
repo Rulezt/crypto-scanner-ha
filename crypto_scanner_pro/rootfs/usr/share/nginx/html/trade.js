@@ -3201,12 +3201,12 @@ function _showAgreementError(symbol) {
 }
 
 // ── DRAWING TOOLS ─────────────────────────────────────────────────────────────
-let _obRangeActive = false, _obRangeP1 = null, _obRangeMD = null, _obRangeMM = null, _obRangeMU = null, _obRangeCM = null;
+let _obRangeActive = false, _obRangeP1 = null, _obRangeMD = null, _obRangeMM = null, _obRangeMU = null, _obRangeCM = null, _obRangeTouch = null;
 let _obRangeHoverLine = null, _obRangeHoverMM = null, _obRangeHoverML = null;
-let _obHlineActive = false, _obHlines = [], _obHlineMD = null, _obHlineMM = null, _obHlineMU = null, _obHlineCM = null, _obHlineDragging = null;
+let _obHlineActive = false, _obHlines = [], _obHlineMD = null, _obHlineMM = null, _obHlineMU = null, _obHlineCM = null, _obHlineDragging = null, _obHlineTouch = null;
 let _obHlineHoverLine = null, _obHlineHoverMM = null, _obHlineHoverML = null;
 let _obTrendActive = false, _obTrendlines = [], _obTrendP1 = null, _obTrendPrev = null, _obTrendPending = null;
-let _obTrendMD = null, _obTrendMM = null, _obTrendMU = null, _obTrendCM = null, _obTrendDrag = null, _obTrendRAF = null;
+let _obTrendMD = null, _obTrendMM = null, _obTrendMU = null, _obTrendCM = null, _obTrendDrag = null, _obTrendRAF = null, _obTrendTouch = null;
 
 // Come _timeToXRobust in mtf.html: timeToCoordinate torna null se il timestamp non
 // combacia esattamente con una candela dell'asse attuale — cosa che succede sempre
@@ -3351,6 +3351,7 @@ function toggleObRange() {
     if (_obRangeMM) { document.removeEventListener('mousemove', _obRangeMM); _obRangeMM = null; }
     if (_obRangeMU) { document.removeEventListener('mouseup', _obRangeMU); _obRangeMU = null; }
     if (_obRangeCM) { canvas.removeEventListener('contextmenu', _obRangeCM); _obRangeCM = null; }
+    DrawTools.unwireTouch(canvas, _obRangeTouch); _obRangeTouch = null;
     if (_obRangeHoverMM) { canvas.removeEventListener('mousemove', _obRangeHoverMM); _obRangeHoverMM = null; }
     if (_obRangeHoverML) { canvas.removeEventListener('mouseleave', _obRangeHoverML); _obRangeHoverML = null; }
     if (_obRangeHoverLine) { try { _obCandleS.removePriceLine(_obRangeHoverLine); } catch(e) {} _obRangeHoverLine = null; }
@@ -3358,6 +3359,7 @@ function toggleObRange() {
     try { const rc = canvas.getContext('2d'); rc.clearRect(0,0,canvas.width,canvas.height); } catch(e) {}
     canvas.style.pointerEvents = _obRangeActive ? 'auto' : 'none';
     canvas.style.cursor = _obRangeActive ? 'crosshair' : '';
+    canvas.style.touchAction = _obRangeActive ? 'none' : '';
     if (_obRangeActive) {
         _obRangeMD = e => {
             if (e.button !== 0) return; e.preventDefault();
@@ -3383,6 +3385,7 @@ function toggleObRange() {
         document.addEventListener('mousemove', _obRangeMM);
         document.addEventListener('mouseup', _obRangeMU);
         canvas.addEventListener('contextmenu', _obRangeCM);
+        _obRangeTouch = DrawTools.wireTouch(canvas, _obRangeMD, _obRangeMM, _obRangeMU);
         _obRangeHoverMM = e => {
             if (!_obCandleS) return;
             const rect = canvas.getBoundingClientRect();
@@ -3424,12 +3427,14 @@ function toggleObHline() {
     if (_obHlineMM) { document.removeEventListener('mousemove', _obHlineMM); _obHlineMM = null; }
     if (_obHlineMU) { document.removeEventListener('mouseup', _obHlineMU); _obHlineMU = null; }
     if (_obHlineCM) { canvas.removeEventListener('contextmenu', _obHlineCM); _obHlineCM = null; }
+    DrawTools.unwireTouch(canvas, _obHlineTouch); _obHlineTouch = null;
     if (_obHlineHoverMM) { canvas.removeEventListener('mousemove', _obHlineHoverMM); _obHlineHoverMM = null; }
     if (_obHlineHoverML) { canvas.removeEventListener('mouseleave', _obHlineHoverML); _obHlineHoverML = null; }
     if (_obHlineHoverLine) { try { _obCandleS?.removePriceLine(_obHlineHoverLine); } catch(e) {} _obHlineHoverLine = null; }
     _obHlineDragging = null;
     canvas.style.pointerEvents = _obHlineActive ? 'auto' : 'none';
     canvas.style.cursor = _obHlineActive ? 'crosshair' : '';
+    canvas.style.touchAction = _obHlineActive ? 'none' : '';
     if (_obHlineActive) {
         _obHlineMD = e => {
             if (e.button !== 0) return; e.preventDefault();
@@ -3465,6 +3470,7 @@ function toggleObHline() {
         document.addEventListener('mousemove', _obHlineMM);
         document.addEventListener('mouseup', _obHlineMU);
         canvas.addEventListener('contextmenu', _obHlineCM);
+        _obHlineTouch = DrawTools.wireTouch(canvas, _obHlineMD, _obHlineMM, _obHlineMU);
         _obHlineHoverMM = e => {
             if (_obHlineDragging || !_obCandleS) return;
             const rect = canvas.getBoundingClientRect();
@@ -3571,9 +3577,11 @@ function toggleObTrend() {
     if (_obTrendMM) { document.removeEventListener('mousemove', _obTrendMM); _obTrendMM = null; }
     if (_obTrendMU) { document.removeEventListener('mouseup', _obTrendMU); _obTrendMU = null; }
     if (_obTrendCM) { canvas.removeEventListener('contextmenu', _obTrendCM); _obTrendCM = null; }
+    DrawTools.unwireTouch(canvas, _obTrendTouch); _obTrendTouch = null;
     _obTrendP1 = null; _obTrendPrev = null; _obTrendDrag = null; _obTrendPending = null;
     canvas.style.pointerEvents = _obTrendActive ? 'auto' : 'none';
     canvas.style.cursor = _obTrendActive ? 'crosshair' : '';
+    canvas.style.touchAction = _obTrendActive ? 'none' : '';
     _obTrendEnsureRAF();
     _obTrendDrawAll();
     if (!_obTrendActive) return;
@@ -3651,6 +3659,7 @@ function toggleObTrend() {
     document.addEventListener('mousemove', _obTrendMM);
     document.addEventListener('mouseup', _obTrendMU);
     canvas.addEventListener('contextmenu', _obTrendCM);
+    _obTrendTouch = DrawTools.wireTouch(canvas, _obTrendMD, _obTrendMM, _obTrendMU);
 }
 
 // ── Vue App ───────────────────────────────────────────────────────────────────

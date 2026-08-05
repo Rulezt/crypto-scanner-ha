@@ -3644,9 +3644,11 @@ function _toggleTrendForSurface(s, opts = {}) {
   if (s._trendMM) { document.removeEventListener('mousemove', s._trendMM); s._trendMM = null; }
   if (s._trendMU) { document.removeEventListener('mouseup', s._trendMU); s._trendMU = null; }
   if (s._trendCM) { s.trendCanvas.removeEventListener('contextmenu', s._trendCM); s._trendCM = null; }
+  DrawTools.unwireTouch(s.trendCanvas, s._trendTouch); s._trendTouch = null;
   s._trendP1 = null; s._trendPrev = null; s._trendDrag = null; s._trendPending = null; s._trendP1DownPx = null;
   s.trendCanvas.style.pointerEvents = s.trendActive ? 'auto' : 'none';
   s.trendCanvas.style.cursor = s.trendActive ? 'crosshair' : '';
+  s.trendCanvas.style.touchAction = s.trendActive ? 'none' : '';
   _trendEnsureRAF(s);
   _trendDrawAll(s);
   if (!s.trendActive) return;
@@ -3763,6 +3765,7 @@ function _toggleTrendForSurface(s, opts = {}) {
   document.addEventListener('mousemove', s._trendMM);
   document.addEventListener('mouseup', s._trendMU);
   s.trendCanvas.addEventListener('contextmenu', s._trendCM);
+  s._trendTouch = DrawTools.wireTouch(s.trendCanvas, s._trendMD, s._trendMM, s._trendMU);
 }
 
 const _fsTrendSurface = {

@@ -2673,6 +2673,10 @@ def serve_prefs_sync():
 def serve_draw_tools():
     return send_file('/usr/share/nginx/html/draw-tools.js', mimetype='application/javascript')
 
+@app.route('/candle-color.js')
+def serve_candle_color():
+    return send_file('/usr/share/nginx/html/candle-color.js', mimetype='application/javascript')
+
 @app.route('/api/auth/change-password', methods=['POST'])
 @login_required
 def change_password():

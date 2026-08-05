@@ -207,6 +207,14 @@
         .fs-sdot { position:absolute; top:50%; width:10px; height:10px; border-radius:50%; background:#101014; border:2px solid #4B5563; transform:translate(-50%,-50%); cursor:pointer; z-index:2; transition:background .12s,border-color .12s; }
         .fs-sdot.on { border-color:#FF9C2E; }
         #fs-slider-thumb { position:absolute; top:50%; width:14px; height:14px; background:#FF9C2E; border-radius:50%; transform:translate(-50%,-50%); z-index:3; box-shadow:0 0 0 3px rgba(255,156,46,0.25); cursor:grab; }
+        /* Popup TF a schermo intero (portrait) — stesso linguaggio visivo del bottom-sheet di trade.html */
+        .fs-sheet-backdrop { position:fixed; inset:0; z-index:299; background:rgba(0,0,0,0.65); backdrop-filter:blur(2px); }
+        .fs-sheet-panel { position:fixed; left:0; right:0; bottom:0; z-index:300; background:#161A1E; border-top:1px solid #2A2E39; border-radius:14px 14px 0 0; box-shadow:0 -10px 30px rgba(0,0,0,0.7); padding-bottom:env(safe-area-inset-bottom, 0); max-height:60vh; overflow-y:auto; }
+        .fs-sheet-title { padding:14px 16px 10px; font-size:13px; font-weight:700; color:#E5E7EB; text-align:center; border-bottom:1px solid #2A2E39; }
+        .fs-sheet-opt { display:flex; align-items:center; justify-content:center; padding:13px 18px; font-size:14px; color:#B2B5BE; cursor:pointer; user-select:none; border-bottom:1px solid #1E222D; }
+        .fs-sheet-opt:last-child { border-bottom:none; }
+        .fs-sheet-close { border-top:1px solid #2A2E39; color:#9CA3AF; font-weight:600; }
+        .fs-sheet-opt.active { color:#FF9C2E; font-weight:700; }
     </style>
 <style>#tv-attr-logo{display:none!important}</style>
 </head>
@@ -459,8 +467,8 @@
             data-i18n-title="trend_tool" title="Trendline">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="19" height="19" style="vertical-align:middle"><path d="M5 22 L23 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="5" cy="22" r="2.5" fill="currentColor"/><circle cx="23" cy="6" r="2.5" fill="currentColor"/></svg>
         </button>
-        <span style="color:#374151;margin-left:2px;">|</span>
-        <button onclick="if(fsCoin) window.open('mtf?symbol='+fsCoin.symbol, '_blank')"
+        <span id="fs-mtf-sep" style="color:#374151;margin-left:2px;">|</span>
+        <button id="fs-mtf-btn" onclick="if(fsCoin) window.open('mtf?symbol='+fsCoin.symbol, '_blank')"
             style="margin-left:2px;padding:4px 5px;font-size:17px;background:none;color:#B2B5BE;border:none;border-radius:4px;cursor:pointer;transition:background .15s,color .15s;"
             onmouseover="this.style.background='#2A2E39'" onmouseout="this.style.background='none'"
             title="Multi Timeframe">
@@ -901,6 +909,18 @@ const IS_LANDSCAPE_MOBILE = window.matchMedia('(orientation: landscape) and (poi
 const IS_MOBILE = window.innerWidth < 640 || IS_LANDSCAPE_MOBILE;
 const IS_PORTRAIT_MOBILE = IS_MOBILE && !IS_LANDSCAPE_MOBILE;
 let mobileChartIdx = 0;
+
+if (IS_PORTRAIT_MOBILE) {
+    // Bottoni MTF e F11 nell'header a schermo intero: non hanno senso in portrait
+    // (MTF apre un'altra pagina intera su schermo piccolo, F11 è una funzione desktop).
+    // Il separatore "|" fra MTF e F11 resta visibile apposta: senza i due bottoni in
+    // mezzo, ricade subito prima del bottone ✕, separando visivamente quel blocco
+    // dagli strumenti di disegno senza dover aggiungere un altro elemento.
+    const _fsMtfBtn = document.getElementById('fs-mtf-btn');
+    const _fsF11Btn = document.getElementById('btn-f11-fs');
+    if (_fsMtfBtn) _fsMtfBtn.style.display = 'none';
+    if (_fsF11Btn) _fsF11Btn.style.display = 'none';
+}
 
 // price alerts
 let pendingAlert = null;
@@ -3050,8 +3070,15 @@ const mtfEl = document.createElement('button');
         trendBtn.onmouseenter = () => { if (!slots[i]?.trendActive) trendBtn.style.color = '#B2B5BE'; };
         trendBtn.onmouseleave = () => { if (!slots[i]?.trendActive) trendBtn.style.color = '#4B5563'; };
         trendBtn.onclick = () => toggleSlotTrend(i);
+        const fsExpandBtn = document.createElement('button');
+        fsExpandBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" style="vertical-align:middle" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
+        fsExpandBtn.title = window.t('expand_chart_title'); fsExpandBtn.dataset.i18nTitle = 'expand_chart_title';
+        fsExpandBtn.style.cssText = 'font-size:16px;color:#4B5563;background:none;border:none;cursor:pointer;padding:0 1px;line-height:1;flex-shrink:0;transition:color .15s;';
+        fsExpandBtn.onmouseenter = () => fsExpandBtn.style.color = '#B2B5BE';
+        fsExpandBtn.onmouseleave = () => fsExpandBtn.style.color = '#4B5563';
+        fsExpandBtn.onclick = e => { e.stopPropagation(); if (!slots[i]?.coin) return; openFullscreen(i); };
         if (IS_MOBILE) {
-            rightGroup.append(candlePctEl, clearDrawBtn, rangeBtn, hlineBtn, trendBtn);
+            rightGroup.append(candlePctEl, clearDrawBtn, rangeBtn, hlineBtn, trendBtn, sep(), fsExpandBtn);
         } else {
             rightGroup.append(candlePctEl, clearDrawBtn, sep(), mtfEl, expandEl);
         }
@@ -3360,12 +3387,12 @@ async function loadPage() {
         if (s.prevHighLine) { try { s.candleS.removePriceLine(s.prevHighLine); } catch(e) {} s.prevHighLine = null; }
         if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
         clearInterval(s.obTimer); s.obTimer = null; _clearSlotOBLines(s); _clearSlotATHLines(s); s.athVal = null; s.atlVal = null;
-        if (s.rangeActive) { s.rangeActive = false; s.rangeBtn.style.color = '#4B5563'; if (s._rangeMD) { s.rangeCanvas.removeEventListener('mousedown', s._rangeMD); s._rangeMD = null; } if (s._rangeMM) { document.removeEventListener('mousemove', s._rangeMM); s._rangeMM = null; } if (s._rangeMU) { document.removeEventListener('mouseup', s._rangeMU); s._rangeMU = null; } if (s._rangeCM) { s.rangeCanvas.removeEventListener('contextmenu', s._rangeCM); s._rangeCM = null; } s.rangeCanvas.style.pointerEvents = 'none'; s.rangeCanvas.style.cursor = ''; }
+        if (s.rangeActive) { s.rangeActive = false; s.rangeBtn.style.color = '#4B5563'; if (s._rangeMD) { s.rangeCanvas.removeEventListener('mousedown', s._rangeMD); s._rangeMD = null; } if (s._rangeMM) { document.removeEventListener('mousemove', s._rangeMM); s._rangeMM = null; } if (s._rangeMU) { document.removeEventListener('mouseup', s._rangeMU); s._rangeMU = null; } if (s._rangeCM) { s.rangeCanvas.removeEventListener('contextmenu', s._rangeCM); s._rangeCM = null; } DrawTools.unwireTouch(s.rangeCanvas, s._rangeTouch); s._rangeTouch = null; s.rangeCanvas.style.pointerEvents = 'none'; s.rangeCanvas.style.cursor = ''; }
         s.rangeP1 = null; try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
-        if (s.hlineActive) { s.hlineActive = false; s.hlineBtn.style.color = '#4B5563'; if (s._hlineMD) { s.hlineCanvas.removeEventListener('mousedown', s._hlineMD); s._hlineMD = null; } if (s._hlineMM) { document.removeEventListener('mousemove', s._hlineMM); s._hlineMM = null; } if (s._hlineMU) { document.removeEventListener('mouseup', s._hlineMU); s._hlineMU = null; } if (s._hlineCM) { s.hlineCanvas.removeEventListener('contextmenu', s._hlineCM); s._hlineCM = null; } s._hlineDragging = null; s.hlineCanvas.style.pointerEvents = 'none'; s.hlineCanvas.style.cursor = ''; }
+        if (s.hlineActive) { s.hlineActive = false; s.hlineBtn.style.color = '#4B5563'; if (s._hlineMD) { s.hlineCanvas.removeEventListener('mousedown', s._hlineMD); s._hlineMD = null; } if (s._hlineMM) { document.removeEventListener('mousemove', s._hlineMM); s._hlineMM = null; } if (s._hlineMU) { document.removeEventListener('mouseup', s._hlineMU); s._hlineMU = null; } if (s._hlineCM) { s.hlineCanvas.removeEventListener('contextmenu', s._hlineCM); s._hlineCM = null; } DrawTools.unwireTouch(s.hlineCanvas, s._hlineTouch); s._hlineTouch = null; s._hlineDragging = null; s.hlineCanvas.style.pointerEvents = 'none'; s.hlineCanvas.style.cursor = ''; }
         for (const hl of s.hlines) { try { s.candleS.removePriceLine(hl.priceLine); } catch(ex) {} }
         s.hlines = [];
-        if (s.trendActive) { s.trendActive = false; s.trendBtn.style.color = '#4B5563'; if (s._trendMD) { s.trendCanvas.removeEventListener('mousedown', s._trendMD); s._trendMD = null; } if (s._trendMM) { document.removeEventListener('mousemove', s._trendMM); s._trendMM = null; } if (s._trendMU) { document.removeEventListener('mouseup', s._trendMU); s._trendMU = null; } if (s._trendCM) { s.trendCanvas.removeEventListener('contextmenu', s._trendCM); s._trendCM = null; } s._trendP1 = null; s._trendPrev = null; s._trendDrag = null; s.trendCanvas.style.pointerEvents = 'none'; s.trendCanvas.style.cursor = ''; }
+        if (s.trendActive) { s.trendActive = false; s.trendBtn.style.color = '#4B5563'; if (s._trendMD) { s.trendCanvas.removeEventListener('mousedown', s._trendMD); s._trendMD = null; } if (s._trendMM) { document.removeEventListener('mousemove', s._trendMM); s._trendMM = null; } if (s._trendMU) { document.removeEventListener('mouseup', s._trendMU); s._trendMU = null; } if (s._trendCM) { s.trendCanvas.removeEventListener('contextmenu', s._trendCM); s._trendCM = null; } DrawTools.unwireTouch(s.trendCanvas, s._trendTouch); s._trendTouch = null; s._trendP1 = null; s._trendPrev = null; s._trendDrag = null; s.trendCanvas.style.pointerEvents = 'none'; s.trendCanvas.style.cursor = ''; }
         if (s._trendRAF) { cancelAnimationFrame(s._trendRAF); s._trendRAF = null; }
         s.trendlines = [];
         try { const ctx = s.trendCanvas.getContext('2d'); ctx.clearRect(0,0,s.trendCanvas.width,s.trendCanvas.height); } catch(ex) {}
@@ -3612,6 +3639,7 @@ function closeFullscreen() {
     if (fsRangeActive) toggleFsRange();
     if (fsHlineActive) toggleFsHline();
     if (fsTrendActive) toggleFsTrend();
+    closeFsTfSheet();
     _syncFsDrawingsBackToSlot();
     document.getElementById('fs-overlay').style.display = 'none';
     // trade cleanup
@@ -3666,8 +3694,19 @@ function _syncFsDrawingsBackToSlot() {
 }
 
 function renderFsTFBar() {
+    const bar = document.getElementById('fs-tf-bar');
+    if (IS_PORTRAIT_MOBILE) {
+        // In portrait la riga di bottoni TF occupa troppo spazio nell'header: un solo
+        // bottone compatto col TF corrente, che apre un popup bottom-sheet per sceglierne un altro.
+        bar.innerHTML = `<button onclick="openFsTfSheet()"
+            style="padding:3px 9px;border-radius:4px;border:none;cursor:pointer;background:#2A2E39;color:#FF9C2E;font-weight:700;font-size:13px;display:flex;align-items:center;gap:3px;">
+            ${TF_LABEL[fsTF]}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>`;
+        return;
+    }
     const _CD_TFS = {'1':1,'5':1,'30':1,'60':1,'240':1,'D':1,'W':1,'M':1};
-    document.getElementById('fs-tf-bar').innerHTML = TIMEFRAMES.map(tf => {
+    bar.innerHTML = TIMEFRAMES.map(tf => {
         const active = tf === fsTF;
         const cdTxt = _CD_TFS[tf] ? fmtCountdown(getTFRemaining(tf), tf==='M'||tf==='W'?'days':tf==='D'||tf==='240') : '';
         return `<button onclick="switchFsTF('${tf}')"
@@ -3676,6 +3715,28 @@ function renderFsTFBar() {
             <span id="fs-tf-cd-${tf}" style="font-family:monospace;color:#F3F4F6;line-height:1;min-width:28px;text-align:center;">${cdTxt}</span>
             </button>`;
     }).join('');
+}
+
+let _fsTfSheet = null;
+function closeFsTfSheet() {
+    if (_fsTfSheet) { try { _fsTfSheet.remove(); } catch(e) {} _fsTfSheet = null; }
+}
+function openFsTfSheet() {
+    closeFsTfSheet();
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `<div class="fs-sheet-backdrop"></div>
+        <div class="fs-sheet-panel">
+            <div class="fs-sheet-title">${window.t('tf_label') || 'Timeframe'}</div>
+            ${TIMEFRAMES.map(tf => `<div class="fs-sheet-opt${tf===fsTF?' active':''}" data-tf="${tf}">${TF_LABEL[tf]}</div>`).join('')}
+            <div class="fs-sheet-opt fs-sheet-close" data-close="1">${window.t('sheet_close')}</div>
+        </div>`;
+    document.getElementById('fs-overlay').appendChild(wrap);
+    _fsTfSheet = wrap;
+    wrap.querySelector('.fs-sheet-backdrop').onclick = closeFsTfSheet;
+    wrap.querySelectorAll('[data-tf]').forEach(el => {
+        el.onclick = () => { switchFsTF(el.dataset.tf); closeFsTfSheet(); };
+    });
+    wrap.querySelector('[data-close]').onclick = closeFsTfSheet;
 }
 
 async function switchFsTF(tf) {
@@ -4970,9 +5031,11 @@ function toggleSlotTrend(idx) {
     if (s._trendMM) { document.removeEventListener('mousemove', s._trendMM); s._trendMM = null; }
     if (s._trendMU) { document.removeEventListener('mouseup', s._trendMU); s._trendMU = null; }
     if (s._trendCM) { s.trendCanvas.removeEventListener('contextmenu', s._trendCM); s._trendCM = null; }
+    DrawTools.unwireTouch(s.trendCanvas, s._trendTouch); s._trendTouch = null;
     s._trendP1 = null; s._trendPrev = null; s._trendDrag = null; s._trendPending = null;
     s.trendCanvas.style.pointerEvents = s.trendActive ? 'auto' : 'none';
     s.trendCanvas.style.cursor = s.trendActive ? 'crosshair' : '';
+    s.trendCanvas.style.touchAction = s.trendActive ? 'none' : '';
     _trendEnsureRAF(s);
     _trendDrawAll(s);
     if (!s.trendActive) return;
@@ -5052,6 +5115,7 @@ function toggleSlotTrend(idx) {
     document.addEventListener('mousemove', s._trendMM);
     document.addEventListener('mouseup', s._trendMU);
     s.trendCanvas.addEventListener('contextmenu', s._trendCM);
+    s._trendTouch = DrawTools.wireTouch(s.trendCanvas, s._trendMD, s._trendMM, s._trendMU);
 }
 
 const _fsTrendSurface = {
