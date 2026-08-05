@@ -19,9 +19,46 @@
     function isCandleColorActive() {
         try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; }
     }
+
+    // Label prezzo e linea del prezzo corrente di lightweight-charts, quando
+    // priceLineColor non è impostato esplicitamente, prendono il colore dall'upColor/
+    // downColor dell'ultima candela — con COLOR_STYLE sono uguali e semi-trasparenti,
+    // quindi label/linea diventavano bianche invece di verde/rosso. Le forziamo sempre
+    // al vero colore di direzione (uguale a quando il toggle è spento), anche a stile
+    // cosmetico attivo. Patch di update/setData sull'istanza (idempotente, una volta
+    // sola) invece di toccare le ~35 chiamate sparse di rendering candela nel codebase.
+    function _dirColor(bar) {
+        if (!bar || bar.open == null || bar.close == null) return null;
+        return bar.open <= bar.close ? NORMAL_STYLE.upColor : NORMAL_STYLE.downColor;
+    }
+    function _syncPriceLineColor(series, bar) {
+        if (!series) return;
+        try {
+            series.applyOptions({ priceLineColor: isCandleColorActive() ? (_dirColor(bar) || '') : '' });
+        } catch (e) {}
+    }
+    function _patchSeriesForPriceLine(series) {
+        if (!series || series.__ccPatched) return;
+        series.__ccPatched = true;
+        const origUpdate = series.update.bind(series);
+        const origSetData = series.setData.bind(series);
+        series.update = function (bar, ...rest) {
+            origUpdate(bar, ...rest);
+            _syncPriceLineColor(series, bar);
+        };
+        series.setData = function (data, ...rest) {
+            origSetData(data, ...rest);
+            _syncPriceLineColor(series, data && data.length ? data[data.length - 1] : null);
+        };
+    }
     function applyCandleColorStyle(series) {
         if (!series) return;
         try { series.applyOptions(isCandleColorActive() ? COLOR_STYLE : NORMAL_STYLE); } catch (e) {}
+        _patchSeriesForPriceLine(series);
+        try {
+            const data = series.data();
+            _syncPriceLineColor(series, data && data.length ? data[data.length - 1] : null);
+        } catch (e) {}
     }
     // `onToggle` (opzionale) riceve il nuovo stato per far ridisegnare la pagina chiamante
     // (griglia + fullscreen, o qualunque altro contesto locale) subito dopo lo switch.

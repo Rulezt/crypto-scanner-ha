@@ -1885,8 +1885,24 @@ def trade_amend():
             body['tpTriggerBy'] = 'MarkPrice'
             if data.get('tpOrderType') in ('Market', 'Limit'):
                 body['tpOrderType'] = data['tpOrderType']
-                if data['tpOrderType'] == 'Limit' and data.get('tpLimitPrice') is not None:
-                    body['tpLimitPrice'] = str(data['tpLimitPrice'])
+                if data['tpOrderType'] == 'Limit':
+                    # Stesso vincolo Bybit di /api/trade/set-sltp (tpslMode=Partial +
+                    # tpSize obbligatori per un TP Limit), ma qui l'ordine è ancora
+                    # pendente (nessuna posizione aperta), quindi la size di riferimento
+                    # è quella dell'ordine stesso, riletta da Bybit per lo stesso motivo
+                    # (mai fidarsi di un valore lato client potenzialmente stantio).
+                    qs = f'category=linear&symbol={sym}&orderId={order_id}&orderFilter={order_filter}'
+                    od = _byb_session.get(f'{_BYB}/v5/order/realtime?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+                    if od.get('retCode') != 0: return jsonify({'error': od.get('retMsg'), 'code': od.get('retCode')}), 400
+                    olist = od['result']['list']
+                    if not olist: return jsonify({'error': 'order not found'}), 400
+                    ord_qty = str(olist[0]['qty'])
+                    body['tpslMode'] = 'Partial'
+                    body['tpSize'] = ord_qty
+                    if body.get('stopLoss') is not None:
+                        body['slSize'] = ord_qty
+                    if data.get('tpLimitPrice') is not None:
+                        body['tpLimitPrice'] = str(data['tpLimitPrice'])
     b = json.dumps(body)
     d = _byb_session.post(f'{_BYB}/v5/order/amend', headers=_bsign(k, s, b), data=b, timeout=10).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
@@ -1929,8 +1945,14 @@ def trade_order():
         # stessa scelta già applicata su /api/trade/set-sltp per la posizione aperta.
         if data.get('tpOrderType') in ('Market', 'Limit'):
             order['tpOrderType'] = data['tpOrderType']
-            if data['tpOrderType'] == 'Limit' and data.get('tpLimitPrice') is not None:
-                order['tpLimitPrice'] = str(data['tpLimitPrice'])
+            if data['tpOrderType'] == 'Limit':
+                # Bybit: Full mode supporta solo tpOrderType=Market, quindi un TP Limit
+                # richiede tpslMode=Partial — qui (order/create, a differenza di
+                # trading-stop) non serve tpSize: Partial senza size usa la qty
+                # effettivamente riempita dell'ordine.
+                order['tpslMode'] = 'Partial'
+                if data.get('tpLimitPrice') is not None:
+                    order['tpLimitPrice'] = str(data['tpLimitPrice'])
     body = json.dumps(order)
     d = _byb_session.post(f'{_BYB}/v5/order/create', headers=_bsign(k, s, body), data=body, timeout=10).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg', 'Order failed')}), 400
@@ -1986,7 +2008,8 @@ def trade_set_sltp():
     if not en: return jsonify({'error': 'not configured'}), 403
     data = request.get_json() or {}
     pos_idx = int(data.get('positionIdx', 0))
-    body = {'category': 'linear', 'symbol': data.get('symbol', '').upper(), 'positionIdx': pos_idx}
+    sym = data.get('symbol', '').upper()
+    body = {'category': 'linear', 'symbol': sym, 'positionIdx': pos_idx}
     if data.get('stopLoss') is not None:
         body['stopLoss'] = str(data['stopLoss'])
         if float(data['stopLoss']) != 0: body['slTriggerBy'] = 'MarkPrice'
@@ -1999,8 +2022,28 @@ def trade_set_sltp():
             # vanificando la protezione: mai esposto come opzione lato utente).
             if data.get('tpOrderType') in ('Market', 'Limit'):
                 body['tpOrderType'] = data['tpOrderType']
-                if data['tpOrderType'] == 'Limit' and data.get('tpLimitPrice') is not None:
-                    body['tpLimitPrice'] = str(data['tpLimitPrice'])
+                if data['tpOrderType'] == 'Limit':
+                    # Bybit: un TP tpOrderType=Limit richiede tpslMode='Partial' (Full
+                    # supporta solo Market) — e in Partial mode tpSize è obbligatoria
+                    # ("⚠ limit tpsl order must have partial tpsl mode"). Si usa l'intera
+                    # size della posizione (riletta da Bybit, non dal client, stesso motivo
+                    # di /api/trade/reverse) così il TP limit chiude comunque tutta la
+                    # posizione, non una parte. Se anche lo stopLoss è nella stessa
+                    # richiesta va accoppiato con slSize della stessa size (Bybit richiede
+                    # tpSize/slSize uguali quando entrambi presenti).
+                    qs = f'category=linear&symbol={sym}'
+                    pd = _byb_session.get(f'{_BYB}/v5/position/list?{qs}', headers=_bsign(k, s, qs), timeout=6).json()
+                    if pd.get('retCode') != 0: return jsonify({'error': pd.get('retMsg'), 'code': pd.get('retCode')}), 400
+                    plist = pd['result']['list']
+                    if not plist or float(plist[0].get('size', 0)) == 0:
+                        return jsonify({'error': 'no open position'}), 400
+                    pos_size = str(plist[0]['size'])
+                    body['tpslMode'] = 'Partial'
+                    body['tpSize'] = pos_size
+                    if body.get('stopLoss') is not None:
+                        body['slSize'] = pos_size
+                    if data.get('tpLimitPrice') is not None:
+                        body['tpLimitPrice'] = str(data['tpLimitPrice'])
     b = json.dumps(body)
     d = _byb_session.post(f'{_BYB}/v5/position/trading-stop', headers=_bsign(k, s, b), data=b, timeout=6).json()
     if d.get('retCode') != 0: return jsonify({'error': d.get('retMsg'), 'code': d.get('retCode')}), 400
@@ -2676,6 +2719,10 @@ def serve_draw_tools():
 @app.route('/candle-color.js')
 def serve_candle_color():
     return send_file('/usr/share/nginx/html/candle-color.js', mimetype='application/javascript')
+
+@app.route('/indicator-state.js')
+def serve_indicator_state():
+    return send_file('/usr/share/nginx/html/indicator-state.js', mimetype='application/javascript')
 
 @app.route('/api/auth/change-password', methods=['POST'])
 @login_required

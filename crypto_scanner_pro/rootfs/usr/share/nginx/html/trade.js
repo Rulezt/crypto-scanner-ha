@@ -407,7 +407,7 @@ function toggleObCandleColor() {
 // Stato ON/OFF persistito in localStorage (chiavi ob_*_active) — a differenza del resto di
 // questo file, qui vogliamo che sopravviva ai cambi coin dal tasto ricerca, che fanno un
 // window.location.href (reload completo di pagina), non un cambio in-place.
-let _obBbActive = localStorage.getItem('ob_bb_active') === '1', _obBbSeries = { upper: null, mid: null, lower: null }, _obKlines = [];
+let _obBbActive = window.getIndActive('bb'), _obBbSeries = { upper: null, mid: null, lower: null }, _obKlines = [];
 
 function _obApplyBB() {
     for (const k of ['upper', 'mid', 'lower']) {
@@ -429,7 +429,7 @@ function _obApplyBB() {
 
 function toggleObBB() {
     _obBbActive = !_obBbActive;
-    try { localStorage.setItem('ob_bb_active', _obBbActive ? '1' : '0'); } catch(e) {}
+    window.setIndActive('bb', _obBbActive);
     const btn = document.getElementById('ob-bb-btn');
     if (btn) btn.style.color = _obBbActive ? '#60a5fa' : '#B2B5BE';
     _obApplyBB();
@@ -437,7 +437,7 @@ function toggleObBB() {
 
 // ── Canale EMA20 (EMA di high/close/low → 3 linee + riempimento) ───────────────
 const OB_CH_PERIOD = 20, OB_CH_COLOR = '#22d3ee';
-let _obChActive = localStorage.getItem('ob_ch_active') === '1', _obChSeries = { upper: null, mid: null, lower: null }, _obChData = null;
+let _obChActive = window.getIndActive('channel'), _obChSeries = { upper: null, mid: null, lower: null }, _obChData = null;
 
 function calcSmaChannel(klines, period) {
     const mid = [], upper = [], lower = [];
@@ -533,14 +533,14 @@ function _obApplyChannel() {
 
 function toggleObChannel() {
     _obChActive = !_obChActive;
-    try { localStorage.setItem('ob_ch_active', _obChActive ? '1' : '0'); } catch(e) {}
+    window.setIndActive('channel', _obChActive);
     const btn = document.getElementById('ob-ch-btn');
     if (btn) btn.style.color = _obChActive ? OB_CH_COLOR : '#B2B5BE';
     _obApplyChannel();
 }
 
 // ── GRaB (Buy green Sell Red) ───────────────────────────────────────────────────
-let _obGrabActive = localStorage.getItem('ob_grab_active') === '1';
+let _obGrabActive = window.getIndActive('grab');
 let _obGrabWaveSeries = { high: null, low: null, close: null };
 let _obGrabMurreySeries = { mid: null, lo: null, hi: null };
 let _obGrabState = null;
@@ -594,7 +594,7 @@ function _obApplyGrab() {
 
 function toggleObGrab() {
     _obGrabActive = !_obGrabActive;
-    try { localStorage.setItem('ob_grab_active', _obGrabActive ? '1' : '0'); } catch(e) {}
+    window.setIndActive('grab', _obGrabActive);
     const btn = document.getElementById('ob-grab-btn');
     if (btn) btn.style.color = _obGrabActive ? '#f59e0b' : '#B2B5BE';
     const cfgBtn = document.getElementById('ob-grab-cfg-btn');
@@ -684,7 +684,7 @@ function _obGrabConfirmPrev(prevCandle) {
 
 
 // ── Trend Band (banda EMA fast/slow) ───────────────────────────────────────────
-let _obTbActive = localStorage.getItem('ob_tb_active') === '1';
+let _obTbActive = window.getIndActive('tb');
 let _obTbSeries = { fast: null, slow: null }, _obTbData = null, _obTbState = null;
 // TF di calcolo diverso dal TF visualizzato ("a gradini"): banda calcolata sulle
 // candele CHIUSE di cfg.calcTf, il valore resta fermo fino alla chiusura della
@@ -883,7 +883,7 @@ function _obApplyTb() {
 
 function toggleObTb() {
     _obTbActive = !_obTbActive;
-    try { localStorage.setItem('ob_tb_active', _obTbActive ? '1' : '0'); } catch(e) {}
+    window.setIndActive('tb', _obTbActive);
     const btn = document.getElementById('ob-tb-btn');
     if (btn) btn.style.color = _obTbActive ? '#8a9a5b' : '#B2B5BE';
     const cfgBtn = document.getElementById('ob-tb-cfg-btn');
@@ -1041,7 +1041,7 @@ function resetTbCfgPanel() {
 // Stessa logica di chart.html/mtf.html (calcSmc puro, ricalcolo completo solo a candela
 // chiusa — struttura/OB/FVG/fib/sweep sono pattern "a candela chiusa", nessun senso in un
 // update incrementale tick-by-tick come EMA/Trend Band).
-let _obSmcActive = localStorage.getItem('ob_smc_active') === '1';
+let _obSmcActive = window.getIndActive('smc');
 let _obSmcData = null, _obSmcMarkersHandle = null, _obSmcFibLines = [];
 const _DEFAULT_SMC_CFG = {
     swingLen: 5, smcHistoryBars: 300, showStructure: true, showZigzag: true, showBreaks: true,
@@ -1307,7 +1307,7 @@ function applySmcToSlot(s, cfg) {
 }
 function toggleObSmc() {
     _obSmcActive = !_obSmcActive;
-    try { localStorage.setItem('ob_smc_active', _obSmcActive ? '1' : '0'); } catch(e) {}
+    window.setIndActive('smc', _obSmcActive);
     const btn = document.getElementById('ob-smc-btn');
     if (btn) btn.style.color = _obSmcActive ? '#a78bfa' : '#B2B5BE';
     applySmcToSlot(_obSmcSlot, getSmcCfg());
@@ -2948,14 +2948,6 @@ async function confirmFsOrder() {
         qty = parseFloat((Math.floor(qty / step) * step).toFixed(dec));
         if (qty < parseFloat(_instInfo.minOrderQty)) return _showTradeMsg(`Qty min: ${_instInfo.minOrderQty}`, false);
     } else { qty = parseFloat(qty.toPrecision(4)); }
-    const label = _tradeSide === 'Buy' ? 'LONG' : 'SHORT';
-    const typeLabel = otype === 'Conditional'
-        ? `Conditional trigger@${triggerP} exec:${condExec}${condExec==='Limit'?' @'+condLimP:''}`
-        : `${otype}${otype==='Limit'?' @ '+limitP:''}`;
-    const slLine = _fsSlPrice != null ? `\nSL: ${parseFloat(_fsSlPrice.toFixed(8))}` : '';
-    const tpLine = _fsTpPrice != null ? `\nTP: ${parseFloat(_fsTpPrice.toFixed(8))}` : '';
-    const limitNote = '';
-    if (!confirm(`${window.t('confirm_order_q')}\n${label} ${_obSymbol}\n${window.t('ord_type_lbl')}: ${typeLabel}\n${window.t('ord_qty_lbl')}: ${qty}\n${window.t('ord_value_lbl')}: $${size.toFixed(2)}\n${window.t('leva_label')}: ${lev}x${slLine}${tpLine}${limitNote}`)) return;
     try {
         const body = { symbol: _obSymbol, side: _tradeSide, orderType: otype === 'Conditional' ? condExec : otype, qty: String(qty), leverage: lev };
         if (otype === 'Limit') body.price = String(limitP);
@@ -3752,7 +3744,7 @@ createApp({
         let obBidLine = null;
         let dayHighLine = null, dayLowLine = null, prevHighLine = null, prevLowLine = null;
         let _dayHighPrice = null, _dayLowPrice = null, _prevHighPrice = null, _prevLowPrice = null;
-        const showObLines   = ref(localStorage.getItem('ob_lines_active') === '1');
+        const showObLines   = ref(window.getIndActive('obLevels'));
         const nakedChart    = ref(false);
         const showTradePanel = ref(true);
 
@@ -4703,7 +4695,7 @@ createApp({
 
         const toggleObLines = () => {
             showObLines.value = !showObLines.value;
-            try { localStorage.setItem('ob_lines_active', showObLines.value ? '1' : '0'); } catch(e) {}
+            window.setIndActive('obLevels', showObLines.value);
             if (showObLines.value) updateObLines();
             else clearObLines();
         };

@@ -7,6 +7,7 @@
 <script src="/prefs-sync.js"></script>
 <script src="/i18n.js"></script>
 <script src="/candle-color.js"></script>
+<script src="/indicator-state.js"></script>
 <script src="/draw-tools.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxsaW5lIHgxPSIxIiB5MT0iOSIgeDI9IjMxIiB5Mj0iOSIgc3Ryb2tlPSIjMWEzYTRhIiBzdHJva2Utd2lkdGg9IjAuNCIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMTciIHgyPSIzMSIgeTI9IjE3IiBzdHJva2U9IiMxYTNhNGEiIHN0cm9rZS13aWR0aD0iMC40Ii8+CiAgPGxpbmUgeDE9IjEiIHkxPSIyNSIgeDI9IjMxIiB5Mj0iMjUiIHN0cm9rZT0iIzFhM2E0YSIgc3Ryb2tlLXdpZHRoPSIwLjQiLz4KICA8bGluZSB4MT0iNCIgeTE9IjciIHgyPSI0IiB5Mj0iMjkiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyLjUiIHk9IjE0IiB3aWR0aD0iMyIgaGVpZ2h0PSI5IiBmaWxsPSIjMDBDOEZGIi8+CiAgPGxpbmUgeDE9IjEyIiB5MT0iMyIgeDI9IjEyIiB5Mj0iMjYiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIxMC41IiB5PSI3IiB3aWR0aD0iMyIgaGVpZ2h0PSIxMyIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIyMCIgeTE9IjYiIHgyPSIyMCIgeTI9IjI4IiBzdHJva2U9IiMwMEM4RkYiIHN0cm9rZS13aWR0aD0iMC44Ii8+CiAgPHJlY3QgeD0iMTguNSIgeT0iMTMiIHdpZHRoPSIzIiBoZWlnaHQ9IjkiIGZpbGw9IiMwMEM4RkYiLz4KICA8bGluZSB4MT0iMjgiIHkxPSIxMCIgeDI9IjI4IiB5Mj0iMzAiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyNi41IiB5PSIxNiIgd2lkdGg9IjMiIGhlaWdodD0iOCIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMzAiIHgyPSIzMCIgeTI9IjIiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIxLjIiLz4KICA8cG9seWdvbiBwb2ludHM9IjMwLDIgMjQsNS41IDI2LjUsOC41IiBmaWxsPSIjMDBDOEZGIi8+Cjwvc3ZnPgo=">
 <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
@@ -401,17 +402,18 @@ function toggleCandleColorAll() {
     _applyCandleStyle(fsCandleS);
   });
 }
-// Ogni toggleXxx() persiste il proprio stato on/off in localStorage (mtf_xxx_active).
+// Ogni toggleXxx() persiste il proprio stato on/off nella chiave GLOBALE condivisa
+// (vedi indicator-state.js/getIndActive) così un indicatore acceso su un'altra pagina
+// (chart/trade) o nel fullscreen resta acceso anche qui dopo un refresh.
 // Richiamata dopo il caricamento iniziale delle candele di tutti gli slot: gli xxxActive
-// sopra partono sempre false, toggleXxx() li flippa a true e applica l'indicatore —
-// così un indicatore selezionato resta attivo dopo un refresh della pagina.
+// sopra partono sempre false, toggleXxx() li flippa a true e applica l'indicatore.
 function _restorePersistedIndicators() {
-  if (localStorage.getItem('mtf_channel_active') === '1') toggleChannel();
-  if (localStorage.getItem('mtf_bb_active') === '1') toggleBB();
-  if (localStorage.getItem('mtf_tb_active') === '1') toggleTrendBand();
-  if (localStorage.getItem('mtf_grab_active') === '1') toggleGrab();
-  if (localStorage.getItem('mtf_ob_levels_active') === '1') toggleOBLevelsAll();
-  if (localStorage.getItem('mtf_smc_active') === '1') toggleSmc();
+  if (window.getIndActive('channel')) toggleChannel();
+  if (window.getIndActive('bb')) toggleBB();
+  if (window.getIndActive('tb')) toggleTrendBand();
+  if (window.getIndActive('grab')) toggleGrab();
+  if (window.getIndActive('obLevels')) toggleOBLevelsAll();
+  if (window.getIndActive('smc')) toggleSmc();
 }
 let _obLevelsTimer = null, _obLevelsBidVal = null, _obLevelsAskVal = null;
 let fsObLevBidLine = null, fsObLevAskLine = null;
@@ -513,7 +515,7 @@ function calcBB(klines, period=20, mult=2) {
 
 function toggleBB() {
   bbActive = !bbActive;
-  try { localStorage.setItem('mtf_bb_active', bbActive ? '1' : '0'); } catch(e) {}
+  window.setIndActive('bb', bbActive);
   const btn = document.getElementById('bb-btn');
   if (btn) btn.style.color = bbActive ? '#60a5fa' : '#B2B5BE';
   const _bbCfg = getBbCfg();
@@ -562,7 +564,7 @@ function calcChannel(klines, period) {
 }
 function toggleChannel() {
   channelActive = !channelActive;
-  try { localStorage.setItem('mtf_channel_active', channelActive ? '1' : '0'); } catch(e) {}
+  window.setIndActive('channel', channelActive);
   const btn = document.getElementById('channel-btn');
   if (btn) btn.style.color = channelActive ? '#ffffff' : '#B2B5BE';
   const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
@@ -635,7 +637,7 @@ function grabBarColor(close, open, eHigh, eLow, cfg) {
 
 function toggleGrab() {
   grabActive = !grabActive;
-  try { localStorage.setItem('mtf_grab_active', grabActive ? '1' : '0'); } catch(e) {}
+  window.setIndActive('grab', grabActive);
   const btn = document.getElementById('grab-btn');
   if (btn) btn.style.color = grabActive ? '#f59e0b' : '#B2B5BE';
   const cfgBtn = document.getElementById('grab-cfg-btn');
@@ -975,7 +977,7 @@ function applySmcToSlot(s, cfg) {
 }
 function toggleSmc() {
   smcActive = !smcActive;
-  try { localStorage.setItem('mtf_smc_active', smcActive ? '1' : '0'); } catch(e) {}
+  window.setIndActive('smc', smcActive);
   const cfg = getSmcCfg();
   slots.forEach(s => applySmcToSlot(s, cfg));
   if (fsChart) applySmcToSlot(fsSmcSlot, cfg);
@@ -1179,7 +1181,7 @@ function calcTrendBand(klines, cfg) {
 }
 function toggleTrendBand() {
   tbActive = !tbActive;
-  try { localStorage.setItem('mtf_tb_active', tbActive ? '1' : '0'); } catch(e) {}
+  window.setIndActive('tb', tbActive);
   const btn = document.getElementById('tb-btn');
   if (btn) btn.style.color = tbActive ? '#8a9a5b' : '#B2B5BE';
   const cfgBtn = document.getElementById('tb-cfg-btn');
@@ -1505,7 +1507,7 @@ async function _refreshObLevelsAll() {
 }
 function toggleOBLevelsAll() {
   obLevelsActive = !obLevelsActive;
-  try { localStorage.setItem('mtf_ob_levels_active', obLevelsActive ? '1' : '0'); } catch(e) {}
+  window.setIndActive('obLevels', obLevelsActive);
   const btn = document.getElementById('ob-lvl-btn');
   if (btn) btn.style.color = obLevelsActive ? '#3b82f6' : '#B2B5BE';
   clearInterval(_obLevelsTimer); _obLevelsTimer = null;
