@@ -906,20 +906,16 @@ let fsObActive = false, fsObBidLine = null, fsObAskLine = null, fsObTimer = null
 const _fsObSlot = { get obActive() { return fsObActive; }, get obBidVal() { return fsObBidVal; }, get obAskVal() { return fsObAskVal; } };
 let fsAthLine = null, fsAtlLine = null, _fsAthVal = null, _fsAtlVal = null;
 
-// ── fs pseudo-slot per Canale/Bollinger/Trend Band/GRaB/SMC nel fullscreen ─────────
+// ── fs pseudo-slot per Canale/Bollinger/GRaB/ROC nel fullscreen ─────────
 // Stesso pattern di _fsObSlot sopra: adapter che espone le variabili globali fs* con
 // la stessa "forma" di uno slot della griglia, per riusare applyChannelToSlot/
-// applyBBToSlot/applyTbToSlot/applyGrabToSlot/applySmcToSlot (scritte per slots[])
+// applyBBToSlot/applyGrabToSlot/applyRocToSlot (scritte per slots[])
 // invece di duplicarle. Prima di questa aggiunta il fullscreen di chart.html non
 // applicava affatto questi indicatori: restavano visibili solo nella griglia.
 let _fsBbSeries = { upper: null, mid: null, lower: null };
 let _fsChannelSeries = { upper: null, mid: null, lower: null }, _fsChannelData = null;
-let _fsTbSeries = { fast: null, slow: null }, _fsTbData = null, _fsTbState = null;
-let _fsTbMarkersHandle = null, _fsTbMarkersData = [];
-let _fsTbHtfMode = false, _fsTbHtfKlines = [], _fsTbHtfKey = '', _fsTbHtfBucket = null, _fsTbHtfLastPoint = null, _fsTbHtfLiveAgg = null;
-let _fsTbCandlesColored = false;
 let _fsGrabWaveS = { high: null, low: null, close: null }, _fsGrabMurreyS = { mid: null, lo: null, hi: null }, _fsGrabState = null;
-let _fsSmcData = null, _fsSmcMarkersHandle = null, _fsSmcFibLines = [];
+let _fsRocSeries = null, _fsRocZeroLine = null;
 const _fsIndSlot = {
     get chart() { return fsChart; },
     get candleS() { return fsCandleS; },
@@ -929,23 +925,10 @@ const _fsIndSlot = {
     bbSeries: _fsBbSeries,
     channelSeries: _fsChannelSeries,
     get channelData() { return _fsChannelData; }, set channelData(v) { _fsChannelData = v; },
-    tbSeries: _fsTbSeries,
-    get tbData() { return _fsTbData; }, set tbData(v) { _fsTbData = v; },
-    get tbState() { return _fsTbState; }, set tbState(v) { _fsTbState = v; },
-    get tbMarkersHandle() { return _fsTbMarkersHandle; }, set tbMarkersHandle(v) { _fsTbMarkersHandle = v; },
-    get tbMarkersData() { return _fsTbMarkersData; }, set tbMarkersData(v) { _fsTbMarkersData = v; },
-    get tbHtfMode() { return _fsTbHtfMode; }, set tbHtfMode(v) { _fsTbHtfMode = v; },
-    get tbHtfKlines() { return _fsTbHtfKlines; }, set tbHtfKlines(v) { _fsTbHtfKlines = v; },
-    get tbHtfKey() { return _fsTbHtfKey; }, set tbHtfKey(v) { _fsTbHtfKey = v; },
-    get tbHtfBucket() { return _fsTbHtfBucket; }, set tbHtfBucket(v) { _fsTbHtfBucket = v; },
-    get tbHtfLastPoint() { return _fsTbHtfLastPoint; }, set tbHtfLastPoint(v) { _fsTbHtfLastPoint = v; },
-    get tbHtfLiveAgg() { return _fsTbHtfLiveAgg; }, set tbHtfLiveAgg(v) { _fsTbHtfLiveAgg = v; },
-    get _tbCandlesColored() { return _fsTbCandlesColored; }, set _tbCandlesColored(v) { _fsTbCandlesColored = v; },
     grabWaveS: _fsGrabWaveS, grabMurreyS: _fsGrabMurreyS,
     get grabState() { return _fsGrabState; }, set grabState(v) { _fsGrabState = v; },
-    get smcData() { return _fsSmcData; }, set smcData(v) { _fsSmcData = v; },
-    get smcMarkersHandle() { return _fsSmcMarkersHandle; }, set smcMarkersHandle(v) { _fsSmcMarkersHandle = v; },
-    get smcFibLines() { return _fsSmcFibLines; }, set smcFibLines(v) { _fsSmcFibLines = v; },
+    get rocSeries() { return _fsRocSeries; }, set rocSeries(v) { _fsRocSeries = v; },
+    get rocZeroLine() { return _fsRocZeroLine; }, set rocZeroLine(v) { _fsRocZeroLine = v; },
 };
 
 const IS_LANDSCAPE_MOBILE = window.matchMedia('(orientation: landscape) and (pointer: coarse) and (max-height: 700px)').matches;
@@ -1328,6 +1311,44 @@ function toggleBBAll() {
     if (fsChart) applyBBToSlot(_fsIndSlot, cfg);
 }
 
+// ── ROC (Rate Of Change) — porting da Pine: 100 * (close - close[length]) / close[length].
+// A differenza degli overlay (BB/Canale/GRaB) è un oscillatore senza relazione di scala
+// col prezzo, quindi va in un pannello dedicato sotto le candele (Panes API di
+// Lightweight Charts v5, mai usata altrove nel sito — vedi addSeries/paneIndex).
+const ROC_PANE_INDEX = 1;
+const DEFAULT_ROC_CFG = { length: 9, color: '#2962FF' };
+function getRocCfg() {
+    try { const s = JSON.parse(localStorage.getItem('chart_roc_cfg')); if (s) return { ...DEFAULT_ROC_CFG, ...s }; } catch(e) {}
+    return { ...DEFAULT_ROC_CFG };
+}
+function calcRoc(klines, length) {
+    const out = [];
+    for (let i = length; i < klines.length; i++) {
+        const prev = klines[i - length].close;
+        out.push({ time: klines[i].time, value: 100 * (klines[i].close - prev) / prev });
+    }
+    return out;
+}
+function applyRocToSlot(s, rocCfg) {
+    if (s.rocSeries) { try { s.chart.removePane(ROC_PANE_INDEX); } catch(e) {} s.rocSeries = null; s.rocZeroLine = null; }
+    if (!rocActive || !s.klines || s.klines.length <= rocCfg.length) return;
+    s.rocSeries = addSeries(s.chart, 'LineSeries', {
+        priceLineVisible: true, lastValueVisible: true, crosshairMarkerVisible: true,
+        color: rocCfg.color, lineWidth: 1,
+        priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+    }, ROC_PANE_INDEX);
+    s.rocZeroLine = s.rocSeries.createPriceLine({ price: 0, color: '#787B86', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
+    try { s.chart.panes()[ROC_PANE_INDEX].setStretchFactor(0.3); } catch(e) {}
+    s.rocSeries.setData(calcRoc(s.klines, rocCfg.length));
+}
+function toggleRocAll() {
+    rocActive = !rocActive;
+    window.setIndActive('roc', rocActive);
+    const cfg = getRocCfg();
+    slots.forEach(s => applyRocToSlot(s, cfg));
+    if (fsChart) applyRocToSlot(_fsIndSlot, cfg);
+}
+
 // ── SMA Channel indicator (SMA20 close/high/low → canale a 3 linee) ────────────
 const DEFAULT_CHANNEL_CFG = { period: 20, color: '#ffffff', width: 1, style: 0, bgColor: '#ffffff', bgOpacity: 10 };
 function getChannelCfg() {
@@ -1340,7 +1361,8 @@ let CHANNEL_CFG = getChannelCfg();
 // e nel fullscreen di questa stessa pagina.
 let channelActive = window.getIndActive('channel'), obLevelsActive = window.getIndActive('obLevels');
 let bbActive = window.getIndActive('bb');
-let tbActive = false, grabActive = false, smcActive = false; // valorizzate più sotto, dopo i rispettivi const _DEFAULT_*_CFG
+let rocActive = window.getIndActive('roc');
+let grabActive = false; // valorizzata più sotto, dopo il rispettivo const _DEFAULT_GRAB_CFG
 // "Colora candele" — toggle GLOBALE condiviso su tutte le pagine (vedi candle-color.js).
 const _applyCandleStyle = window.applyCandleColorStyle;
 function toggleCandleColorAll() {
@@ -1460,377 +1482,6 @@ class _ObBandFillPrimitive {
     paneViews() { return [this._view]; }
 }
 
-// ── Trend Band — porting da mtf.html: banda tra EMA fast/slow, colorata bull/bear/flat
-// (flat quando |spread EMA| < ATR(14)*flatMult). Stesso cfg/chiave localStorage di mtf.html
-// così le impostazioni sono condivise fra le pagine.
-const _DEFAULT_TB_CFG = {
-    enabled: false, fastLen: 5, slowLen: 10,
-    bullColor: '#22c55e', bearColor: '#ef4444', flatColor: '#eab308',
-    bandTransp: 22, flatMult: 0.25, hideLines: true,
-    hideBand: false, // nasconde anche il riempimento colorato — con hideLines si vedono solo le frecce
-    showFlatArrow: false,
-    calcTf: '', // '' = stesso TF dello slot; altrimenti banda calcolata su un TF diverso e mostrata a gradini
-    colorCandles: false, // ricolora le candele con lo stesso colore della banda (bull/bear/flat)
-};
-const _TB_TF_SECONDS = { '1':60, '5':300, '30':1800, '60':3600, '240':14400, 'D':86400 };
-function _tbHtfBucketNow(tf) {
-    const secs = _TB_TF_SECONDS[tf];
-    if (!secs) return null;
-    return Math.floor((Math.floor(Date.now() / 1000) + TZ_OFFSET_S) / secs);
-}
-async function _tbFetchHtf(s, symbol, tf) {
-    try {
-        const r = await fetch(`api/klines?symbol=${symbol}&interval=${tf}`);
-        const j = await r.json();
-        if (!j.success || !j.data || !j.data.length) { s.tbHtfKlines = []; return; }
-        const secs = _TB_TF_SECONDS[tf];
-        const nowBucketStart = secs ? Math.floor((Math.floor(Date.now() / 1000) + TZ_OFFSET_S) / secs) * secs : Infinity;
-        const data = j.data;
-        const last = data[data.length - 1];
-        // Scarta l'ultima candela se ancora in formazione: la banda deve riflettere
-        // solo TF chiusi ("scatta solo alla chiusura", comportamento scelto dall'utente).
-        s.tbHtfKlines = (last && last.time >= nowBucketStart) ? data.slice(0, -1) : data.slice();
-        s.tbHtfBucket = _tbHtfBucketNow(tf);
-    } catch (e) { s.tbHtfKlines = []; }
-}
-// Merge a gradini: per ogni candela dello slot usa il valore dell'ultima candela
-// CHIUSA del TF di calcolo con time <= a quella candela.
-function _tbReindexStep(htfTb, displayKlines) {
-    const fast = [], slow = [], color = [];
-    if (!htfTb.fast.length) return { fast, slow, color };
-    let j = 0;
-    for (const k of displayKlines) {
-        if (htfTb.fast[0].time > k.time) continue;
-        while (j + 1 < htfTb.fast.length && htfTb.fast[j + 1].time <= k.time) j++;
-        fast.push({ time: k.time, value: htfTb.fast[j].value });
-        slow.push({ time: k.time, value: htfTb.slow[j].value });
-        color.push(htfTb.color[j]);
-    }
-    return { fast, slow, color };
-}
-function getTbCfg() {
-    try { const s = JSON.parse(localStorage.getItem('chart_tb_cfg')); if (s) return { ..._DEFAULT_TB_CFG, ...s }; } catch(e) {}
-    return { ..._DEFAULT_TB_CFG };
-}
-function calcTR(klines) {
-    return klines.map((k, i) => {
-        if (i === 0) return k.high - k.low;
-        const pc = klines[i-1].close;
-        return Math.max(k.high - k.low, Math.abs(k.high - pc), Math.abs(k.low - pc));
-    });
-}
-function calcRMA(values, length) {
-    const out = new Array(values.length).fill(null);
-    if (values.length < length) return out;
-    let sum = 0;
-    for (let i = 0; i < length; i++) sum += values[i];
-    out[length-1] = sum / length;
-    for (let i = length; i < values.length; i++) out[i] = (values[i] - out[i-1]) / length + out[i-1];
-    return out;
-}
-function tbBandColor(spread, atr, cfg) {
-    if (atr != null && Math.abs(spread) < atr * cfg.flatMult) return cfg.flatColor;
-    return spread > 0 ? cfg.bullColor : cfg.bearColor;
-}
-// Freccia di ingresso long/short: solo quando il colore cambia rispetto all'ULTIMO
-// segnale non-flat (lastSignal) — una candela flat in mezzo a due tratti dello stesso
-// colore non fa ridisegnare la freccia, per non ripetere lo stesso segnale long/short.
-function _tbArrowMarker(time, color, lastSignal, cfg) {
-    if (color === lastSignal) return null;
-    // size 1.8 (default 1): oltre a ingrandire la freccia, LWC scosta il marker
-    // più lontano dalla candela in proporzione alla dimensione — meno rischio
-    // che si confonda con lo stoppino.
-    if (color === cfg.bullColor) return { time, position: 'belowBar', color: cfg.bullColor, shape: 'arrowUp', text: '', size: 1.8 };
-    if (color === cfg.bearColor) return { time, position: 'aboveBar', color: cfg.bearColor, shape: 'arrowDown', text: '', size: 1.8 };
-    return null;
-}
-function _tbLastSignal(colors, cfg) {
-    let ls = null;
-    for (const c of colors) if (c === cfg.bullColor || c === cfg.bearColor) ls = c;
-    return ls;
-}
-// Ricolora le candele con lo stesso colore della banda (stesso pattern di GRaB,
-// vedi applyGrabToSlot) — colors[k] allineato a s.klines[k+offset] (offset>0 in
-// modalità "Calcola su TF": step.color può essere più corto di s.klines perché
-// _tbReindexStep scarta il prefisso senza ancora un dato del TF di calcolo).
-function _tbApplyCandleColors(s, cfg, colors) {
-    if (!s.candleS || !s.klines.length) return;
-    if (!cfg.colorCandles) {
-        if (s._tbCandlesColored) { s.candleS.setData(s.klines); s._tbCandlesColored = false; }
-        return;
-    }
-    const offset = s.klines.length - colors.length;
-    const colored = s.klines.map((k, i) => {
-        if (i < offset) return k;
-        const c = colors[i - offset];
-        return { ...k, color: c, wickColor: c, borderColor: c };
-    });
-    s.candleS.setData(colored);
-    s._tbCandlesColored = true;
-}
-function calcTrendBand(klines, cfg) {
-    const ef = calcEMAField(klines, cfg.fastLen, 'close');
-    const es = calcEMAField(klines, cfg.slowLen, 'close');
-    const tr = calcTR(klines);
-    const atr = calcRMA(tr, 14);
-    const color = klines.map((k, i) => tbBandColor(ef[i].value - es[i].value, atr[i], cfg));
-    return { fast: ef, slow: es, color, lastAtr: atr[atr.length-1] };
-}
-function toggleTrendBandAll() {
-    tbActive = !tbActive;
-    window.setIndActive('tb', tbActive);
-    const cfg = getTbCfg();
-    slots.forEach(s => applyTbToSlot(s, cfg));
-    if (fsChart) applyTbToSlot(_fsIndSlot, cfg);
-}
-function applyTbToSlot(s, cfg) {
-    for (const k of ['fast', 'slow']) {
-        if (s.tbSeries[k]) { try { s.chart.removeSeries(s.tbSeries[k]); } catch(e) {} s.tbSeries[k] = null; }
-    }
-    s.tbData = null; s.tbState = null;
-    if (!s.tbMarkersHandle && LC.createSeriesMarkers) { try { s.tbMarkersHandle = LC.createSeriesMarkers(s.candleS, []); } catch(e) {} }
-    if (!tbActive || !s.klines.length) {
-        s.tbHtfMode = false;
-        s.tbMarkersData = [];
-        if (s.tbMarkersHandle) s.tbMarkersHandle.setMarkers([]);
-        _tbApplyCandleColors(s, { ...cfg, colorCandles: false }, []);
-        return;
-    }
-    const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: !cfg.hideLines };
-    s.tbSeries.fast = addSeries(s.chart, 'LineSeries', { ...lb, color: '#ffe082', lineWidth: 1 });
-    s.tbSeries.slow = addSeries(s.chart, 'LineSeries', { ...lb, color: '#e0e0e0', lineWidth: 1 });
-
-    s.tbHtfMode = !!(cfg.calcTf && cfg.calcTf !== s.curTF);
-    if (s.tbHtfMode) {
-        const key = `${s.symbol}|${cfg.calcTf}`;
-        if (s.tbHtfKey !== key) {
-            s.tbHtfKey = key; s.tbHtfKlines = []; s.tbHtfLastPoint = null; s.tbHtfLiveAgg = null;
-            _tbFetchHtf(s, s.symbol, cfg.calcTf).then(() => { if (tbActive) applyTbToSlot(s, getTbCfg()); });
-            return; // si ridisegna da sola al termine del fetch
-        }
-        if (!s.tbHtfKlines.length) return; // fetch in corso/fallito
-        const htfTb = calcTrendBand(s.tbHtfKlines, cfg);
-        const step = _tbReindexStep(htfTb, s.klines);
-        if (!step.fast.length) return;
-        s.tbSeries.fast.setData(step.fast);
-        s.tbSeries.slow.setData(step.slow);
-        s.tbData = { fast: step.fast, slow: step.slow, color: step.color };
-        s.tbHtfLastPoint = {
-            fastV: htfTb.fast[htfTb.fast.length - 1].value,
-            slowV: htfTb.slow[htfTb.slow.length - 1].value,
-            color: htfTb.color[htfTb.color.length - 1],
-            atr: htfTb.lastAtr,
-            closeV: s.tbHtfKlines[s.tbHtfKlines.length - 1].close,
-        };
-        _tbApplyCandleColors(s, cfg, step.color);
-        s.tbMarkersData = [];
-        if (cfg.showFlatArrow) {
-            let ls = _tbLastSignal([step.color[0]], cfg);
-            for (let i = 1; i < step.color.length; i++) {
-                const m = _tbArrowMarker(step.fast[i].time, step.color[i], ls, cfg);
-                if (m) s.tbMarkersData.push(m);
-                if (step.color[i] === cfg.bullColor || step.color[i] === cfg.bearColor) ls = step.color[i];
-            }
-        }
-        if (s.tbMarkersHandle) s.tbMarkersHandle.setMarkers(s.tbMarkersData);
-        return;
-    }
-
-    const tb = calcTrendBand(s.klines, cfg);
-    s.tbSeries.fast.setData(tb.fast);
-    s.tbSeries.slow.setData(tb.slow);
-    s.tbData = { fast: tb.fast, slow: tb.slow, color: tb.color };
-    s.tbState = {
-        emaFast: tb.fast[tb.fast.length-1].value, emaSlow: tb.slow[tb.slow.length-1].value,
-        atr: tb.lastAtr, prevClose: s.klines[s.klines.length-2] ? s.klines[s.klines.length-2].close : s.klines[s.klines.length-1].close,
-        lastSignal: _tbLastSignal(tb.color, cfg),
-    };
-    _tbApplyCandleColors(s, cfg, tb.color);
-    // Freccia solo sulla candela CHIUSA che entra in long/short rispetto all'ultimo
-    // segnale non-flat (ignora gap flat intermedi, per non ripetere lo stesso segnale).
-    s.tbMarkersData = [];
-    if (cfg.showFlatArrow) {
-        let ls = _tbLastSignal([tb.color[0]], cfg);
-        for (let i = 1; i < tb.color.length; i++) {
-            const m = _tbArrowMarker(tb.fast[i].time, tb.color[i], ls, cfg);
-            if (m) s.tbMarkersData.push(m);
-            if (tb.color[i] === cfg.bullColor || tb.color[i] === cfg.bearColor) ls = tb.color[i];
-        }
-    }
-    if (s.tbMarkersHandle) s.tbMarkersHandle.setMarkers(s.tbMarkersData);
-}
-function _tbLiveUpdate(s, candle, confirmed, cfg) {
-    if (!tbActive) return;
-    if (s.tbHtfMode) {
-        // La banda si aggiorna in tempo reale anche prima che il TF di calcolo chiuda
-        // (richiesta esplicita utente: tradando su 1m con calcolo a 5m non si può
-        // aspettare 5 minuti). Si ricostruisce un EMA "un passo avanti" a partire dallo
-        // stato dell'ultima candela CHIUSA del TF di calcolo (pt), usando il prezzo live
-        // come close e l'high/low aggregato di tutte le candele viste finora nel bucket
-        // corrente del TF di calcolo (non solo quella del pannello in formazione).
-        if (!s.tbData || !s.tbHtfLastPoint) return;
-        const pt = s.tbHtfLastPoint;
-        const curBucket = _tbHtfBucketNow(cfg.calcTf);
-        if (!s.tbHtfLiveAgg || s.tbHtfLiveAgg.bucket !== curBucket) {
-            s.tbHtfLiveAgg = { bucket: curBucket, high: candle.high, low: candle.low };
-        } else {
-            s.tbHtfLiveAgg.high = Math.max(s.tbHtfLiveAgg.high, candle.high);
-            s.tbHtfLiveAgg.low  = Math.min(s.tbHtfLiveAgg.low, candle.low);
-        }
-        const agg = s.tbHtfLiveAgg;
-        const kf = 2/(cfg.fastLen+1), ks = 2/(cfg.slowLen+1);
-        const liveFastV = candle.close * kf + pt.fastV * (1-kf);
-        const liveSlowV = candle.close * ks + pt.slowV * (1-ks);
-        const tr = pt.closeV != null ? Math.max(agg.high - agg.low, Math.abs(agg.high - pt.closeV), Math.abs(agg.low - pt.closeV)) : (agg.high - agg.low);
-        const liveAtr = pt.atr != null ? (tr - pt.atr) / 14 + pt.atr : null;
-        const color = tbBandColor(liveFastV - liveSlowV, liveAtr, cfg);
-        if (cfg.colorCandles) {
-            try { s.candleS.update({ ...candle, color, wickColor: color, borderColor: color }); } catch(e) {}
-        }
-        if (s.tbSeries.fast) {
-            try { s.tbSeries.fast.update({time:candle.time, value:liveFastV}); s.tbSeries.slow.update({time:candle.time, value:liveSlowV}); } catch(e) {}
-        }
-        const lastPt = s.tbData.fast[s.tbData.fast.length-1];
-        if (lastPt && lastPt.time === candle.time) {
-            s.tbData.fast[s.tbData.fast.length-1]  = {time:candle.time, value:liveFastV};
-            s.tbData.slow[s.tbData.slow.length-1]  = {time:candle.time, value:liveSlowV};
-            s.tbData.color[s.tbData.color.length-1] = color;
-        } else {
-            s.tbData.fast.push({time:candle.time, value:liveFastV});
-            s.tbData.slow.push({time:candle.time, value:liveSlowV});
-            s.tbData.color.push(color);
-            const MAX_TB_POINTS = 1500;
-            if (s.tbData.fast.length > MAX_TB_POINTS) { s.tbData.fast.shift(); s.tbData.slow.shift(); s.tbData.color.shift(); }
-        }
-        return;
-    }
-    if (!s.tbState) return;
-    const kf = 2/(cfg.fastLen+1), ks = 2/(cfg.slowLen+1);
-    const liveEmaFast = candle.close * kf + s.tbState.emaFast * (1-kf);
-    const liveEmaSlow = candle.close * ks + s.tbState.emaSlow * (1-ks);
-    const pc = s.tbState.prevClose;
-    const tr = Math.max(candle.high - candle.low, Math.abs(candle.high - pc), Math.abs(candle.low - pc));
-    const liveAtr = s.tbState.atr != null ? (tr - s.tbState.atr) / 14 + s.tbState.atr : null;
-    const color = tbBandColor(liveEmaFast - liveEmaSlow, liveAtr, cfg);
-    if (cfg.colorCandles) {
-        try { s.candleS.update({ ...candle, color, wickColor: color, borderColor: color }); } catch(e) {}
-    }
-    if (s.tbSeries.fast) {
-        try { s.tbSeries.fast.update({time:candle.time, value:liveEmaFast}); s.tbSeries.slow.update({time:candle.time, value:liveEmaSlow}); } catch(e) {}
-    }
-    if (s.tbData) {
-        const lastPt = s.tbData.fast[s.tbData.fast.length-1];
-        if (lastPt && lastPt.time === candle.time) {
-            s.tbData.fast[s.tbData.fast.length-1] = {time:candle.time, value:liveEmaFast};
-            s.tbData.slow[s.tbData.slow.length-1] = {time:candle.time, value:liveEmaSlow};
-            s.tbData.color[s.tbData.color.length-1] = color;
-        } else {
-            s.tbData.fast.push({time:candle.time, value:liveEmaFast});
-            s.tbData.slow.push({time:candle.time, value:liveEmaSlow});
-            s.tbData.color.push(color);
-            const MAX_TB_POINTS = 1500;
-            if (s.tbData.fast.length > MAX_TB_POINTS) {
-                s.tbData.fast.shift(); s.tbData.slow.shift(); s.tbData.color.shift();
-            }
-        }
-    }
-    if (confirmed) {
-        if (cfg.showFlatArrow && s.tbMarkersHandle) {
-            const m = _tbArrowMarker(candle.time, color, s.tbState.lastSignal, cfg);
-            if (m) { s.tbMarkersData = s.tbMarkersData || []; s.tbMarkersData.push(m); s.tbMarkersHandle.setMarkers(s.tbMarkersData); }
-        }
-        if (color === cfg.bullColor || color === cfg.bearColor) s.tbState.lastSignal = color;
-        s.tbState.emaFast = liveEmaFast; s.tbState.emaSlow = liveEmaSlow; s.tbState.atr = liveAtr; s.tbState.prevClose = candle.close;
-    }
-}
-// Trend Band con TF di calcolo diverso ("a gradini"): il valore scatta solo alla
-// chiusura della candela del TF scelto, non a quella del TF visualizzato — qui
-// basta controllare (ogni 3s) se il bucket del TF di calcolo è avanzato.
-setInterval(() => {
-    if (!tbActive || typeof slots === 'undefined') return;
-    const cfg = getTbCfg();
-    if (!cfg.calcTf) return;
-    const nowB = _tbHtfBucketNow(cfg.calcTf);
-    if (nowB == null) return;
-    for (const s of slots) {
-        if (!s.tbHtfMode || s.tbHtfBucket == null || nowB === s.tbHtfBucket) continue;
-        _tbFetchHtf(s, s.symbol, cfg.calcTf).then(() => { if (tbActive) applyTbToSlot(s, getTbCfg()); });
-    }
-}, 3000);
-// Traccia curve attraverso i punti medi (tecnica standard "smooth line" su canvas):
-// dalla posizione corrente (pts[0], già raggiunta con moveTo/lineTo) passa per
-// pts[1..] con quadraticCurveTo, terminando ESATTAMENTE su pts[last] — così i
-// confini fra run di colore diverso restano allineati senza spazi vuoti.
-function _tbSmoothCurveThrough(ctx, pts) {
-    const n = pts.length;
-    if (n < 2) return;
-    if (n === 2) { ctx.lineTo(pts[1].x, pts[1].y); return; }
-    for (let i = 1; i < n - 1; i++) {
-        const mx = (pts[i].x + pts[i+1].x) / 2, my = (pts[i].y + pts[i+1].y) / 2;
-        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
-    }
-    ctx.quadraticCurveTo(pts[n-2].x, pts[n-2].y, pts[n-1].x, pts[n-1].y);
-}
-class _TrendBandFillPrimitive {
-    constructor(slot, chart) {
-        this._slot = slot;
-        this._series = null;
-        const renderer = {
-            draw: target => target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio, verticalPixelRatio }) => {
-                const s = this._slot, series = this._series;
-                if (!series || !tbActive || !s.tbData) return;
-                const _cfg = getTbCfg();
-                if (_cfg.hideBand) return;
-                const { fast, slow, color } = s.tbData;
-                const n = fast.length;
-                if (n < 2) return;
-                const ts = chart.timeScale();
-                ctx.save();
-                const alpha = (100 - (_cfg.bandTransp ?? 35)) / 100;
-
-                const fx = new Array(n), fy = new Array(n), sy = new Array(n), valid = new Array(n);
-                for (let k = 0; k < n; k++) {
-                    const x = ts.timeToCoordinate(fast[k].time);
-                    const yf = series.priceToCoordinate(fast[k].value);
-                    const ysv = series.priceToCoordinate(slow[k].value);
-                    valid[k] = x != null && yf != null && ysv != null;
-                    if (valid[k]) { fx[k] = x * horizontalPixelRatio; fy[k] = yf * verticalPixelRatio; sy[k] = ysv * verticalPixelRatio; }
-                }
-
-                // Raggruppa segmenti CONSECUTIVI dello stesso colore in un'unica forma
-                // con bordi curvi (invece di un poligono dritto per ogni singola
-                // candela) — bordo netto solo dove il colore cambia davvero.
-                let i = 0;
-                while (i < n - 1) {
-                    if (!valid[i] || !valid[i+1]) { i++; continue; }
-                    let j = i;
-                    while (j + 1 < n - 1 && valid[j+2] && color[j+1] === color[i]) j++;
-                    const fastPts = [], slowPtsRev = [];
-                    for (let k = i; k <= j+1; k++) fastPts.push({ x: fx[k], y: fy[k] });
-                    for (let k = j+1; k >= i; k--) slowPtsRev.push({ x: fx[k], y: sy[k] });
-
-                    ctx.beginPath();
-                    ctx.moveTo(fastPts[0].x, fastPts[0].y);
-                    _tbSmoothCurveThrough(ctx, fastPts);
-                    ctx.lineTo(slowPtsRev[0].x, slowPtsRev[0].y);
-                    _tbSmoothCurveThrough(ctx, slowPtsRev);
-                    ctx.closePath();
-                    ctx.fillStyle = _hexToRgba(color[i], alpha);
-                    ctx.fill();
-
-                    i = j + 1;
-                }
-                ctx.restore();
-            })
-        };
-        this._view = { renderer: () => renderer, zOrder: () => 'bottom' };
-    }
-    attached({ series }) { this._series = series; }
-    detached() { this._series = null; }
-    updateAllViews() {}
-    paneViews() { return [this._view]; }
-}
-
 // ── GRaB — porting da mtf.html: Murrey Math midline/range + wave EMA(high/low/close) +
 // ricolorazione candela close/open vs wave. Stessa chiave localStorage di mtf.html.
 const _DEFAULT_GRAB_CFG = {
@@ -1938,271 +1589,7 @@ function _grabLiveUpdate(s, candle, confirmed, cfg) {
     }
 }
 
-// ── SMC / ICT — Market Structure, Order Blocks, FVG, Fibonacci, Liquidity Sweeps, Sessioni ──
-// Ricalcolo completo solo a candela chiusa (confirmed): struttura/OB/FVG/fib/sweep sono per
-// costruzione pattern "a candela chiusa", non serve/ha senso un aggiornamento incrementale
-// tick-by-tick come per EMA/Trend Band.
-const _DEFAULT_SMC_CFG = {
-    swingLen: 5, showStructure: true, showZigzag: true, showBreaks: true,
-    bullColor: '#26a69a', bearColor: '#ef5350',
-    showOB: true, obSearchBars: 20, obExtendBars: 25, maxOB: 6,
-    demandColor: '#2962ff', supplyColor: '#ff9800', obOpacity: 20,
-    showFVG: true, fvgExtendBars: 15, maxFVG: 15,
-    bullFVGColor: '#00e676', bearFVGColor: '#e040fb', fvgOpacity: 15,
-    showFib: true, showFib50: true, showFib71: true, showFib786: true, showFib886: true, showFibExt: true,
-    fibColor: '#ffd54f', smcHistoryBars: 300,
-    showSweeps: true, sweepColor: '#ffffff',
-    showSessions: true, londonStart: 9, londonEnd: 11, nyStart: 14, nyEnd: 16,
-    londonColor: '#2962ff', nyColor: '#ff9800', sessionOpacity: 10,
-};
-function getSmcCfg() {
-    try { const s = JSON.parse(localStorage.getItem('chart_smc_cfg')); if (s) return { ..._DEFAULT_SMC_CFG, ...s }; } catch(e) {}
-    return { ..._DEFAULT_SMC_CFG };
-}
-function _smcPivotHigh(klines, i, len) {
-    if (i - len < 0 || i + len >= klines.length) return false;
-    const v = klines[i].high;
-    for (let j = i - len; j <= i + len; j++) { if (j !== i && klines[j].high >= v) return false; }
-    return true;
-}
-function _smcPivotLow(klines, i, len) {
-    if (i - len < 0 || i + len >= klines.length) return false;
-    const v = klines[i].low;
-    for (let j = i - len; j <= i + len; j++) { if (j !== i && klines[j].low <= v) return false; }
-    return true;
-}
-function calcSmc(klines, cfg) {
-    const n = klines.length;
-    const result = { markers: [], zigzag: [], demandBoxes: [], supplyBoxes: [], bullFVGBoxes: [], bearFVGBoxes: [], fib: null };
-    if (n < cfg.swingLen * 2 + 3) return result;
-
-    let lastPH = null, lastPL = null, lastPHBar = null, lastPLBar = null;
-    let prevPH = null, prevPL = null;
-    let phBroken = true, plBroken = true, phSwept = false, plSwept = false;
-    let structTrend = 0, zzPrev = null;
-
-    const findOB = (fromBar, searchBars, bullishOB) => {
-        const end = Math.max(0, fromBar - searchBars);
-        for (let j = fromBar; j >= end; j--) {
-            const isOpposite = bullishOB ? klines[j].close < klines[j].open : klines[j].close > klines[j].open;
-            if (isOpposite) return j;
-        }
-        return null;
-    };
-
-    for (let i = 0; i < n; i++) {
-        const k = klines[i];
-
-        if (_smcPivotHigh(klines, i, cfg.swingLen)) {
-            if (cfg.showStructure) {
-                const isHH = prevPH == null || k.high > prevPH;
-                result.markers.push({ time: k.time, position: 'aboveBar', color: isHH ? cfg.bullColor : cfg.bearColor, shape: 'circle', text: isHH ? 'HH' : 'LH', size: 0.6 });
-            }
-            if (cfg.showZigzag && zzPrev) result.zigzag.push({ time1: zzPrev.time, price1: zzPrev.price, time2: k.time, price2: k.high });
-            if (cfg.showZigzag) zzPrev = { time: k.time, price: k.high };
-            prevPH = k.high; lastPH = k.high; lastPHBar = i; phBroken = false; phSwept = false;
-        }
-        if (_smcPivotLow(klines, i, cfg.swingLen)) {
-            if (cfg.showStructure) {
-                const isLL = prevPL == null || k.low < prevPL;
-                result.markers.push({ time: k.time, position: 'belowBar', color: isLL ? cfg.bearColor : cfg.bullColor, shape: 'circle', text: isLL ? 'LL' : 'HL', size: 0.6 });
-            }
-            if (cfg.showZigzag && zzPrev) result.zigzag.push({ time1: zzPrev.time, price1: zzPrev.price, time2: k.time, price2: k.low });
-            if (cfg.showZigzag) zzPrev = { time: k.time, price: k.low };
-            prevPL = k.low; lastPL = k.low; lastPLBar = i; plBroken = false; plSwept = false;
-        }
-
-        if (cfg.showSweeps && lastPH != null && !phBroken && !phSwept && k.high > lastPH && k.close < lastPH) {
-            phSwept = true;
-            result.markers.push({ time: k.time, position: 'aboveBar', color: cfg.sweepColor, shape: 'circle', text: '✕', size: 0.6 });
-        }
-        if (cfg.showSweeps && lastPL != null && !plBroken && !plSwept && k.low < lastPL && k.close > lastPL) {
-            plSwept = true;
-            result.markers.push({ time: k.time, position: 'belowBar', color: cfg.sweepColor, shape: 'circle', text: '✕', size: 0.6 });
-        }
-
-        const bullBreak = lastPH != null && !phBroken && k.close > lastPH;
-        const bearBreak = lastPL != null && !plBroken && k.close < lastPL;
-
-        if (bullBreak) {
-            phBroken = true;
-            const isReversal = structTrend === -1 || structTrend === 0;
-            if (cfg.showBreaks) result.markers.push({ time: k.time, position: 'aboveBar', color: cfg.bullColor, shape: 'arrowUp', text: isReversal ? 'MSS' : 'BOS', size: 1 });
-            structTrend = 1;
-            if (cfg.showOB && lastPLBar != null) {
-                const obIdx = findOB(lastPLBar, cfg.obSearchBars, true);
-                if (obIdx != null) result.demandBoxes.push({ time1: klines[obIdx].time, price1: klines[obIdx].high, time2: k.time, price2: klines[obIdx].low, lastIdx: i });
-            }
-            if (cfg.showFib && lastPL != null) result.fib = { p0: lastPH, p1: lastPL };
-        }
-        if (bearBreak) {
-            plBroken = true;
-            const isReversal = structTrend === 1 || structTrend === 0;
-            if (cfg.showBreaks) result.markers.push({ time: k.time, position: 'belowBar', color: cfg.bearColor, shape: 'arrowDown', text: isReversal ? 'MSS' : 'BOS', size: 1 });
-            structTrend = -1;
-            if (cfg.showOB && lastPHBar != null) {
-                const obIdx = findOB(lastPHBar, cfg.obSearchBars, false);
-                if (obIdx != null) result.supplyBoxes.push({ time1: klines[obIdx].time, price1: klines[obIdx].high, time2: k.time, price2: klines[obIdx].low, lastIdx: i });
-            }
-            if (cfg.showFib && lastPH != null) result.fib = { p0: lastPL, p1: lastPH };
-        }
-
-        if (cfg.showFVG && i >= 2) {
-            const k2 = klines[i - 2];
-            if (k.low > k2.high) result.bullFVGBoxes.push({ time1: k2.time, price1: k.low, time2: k.time, price2: k2.high, lastIdx: i });
-            else if (k.high < k2.low) result.bearFVGBoxes.push({ time1: k2.time, price1: k2.low, time2: k.time, price2: k.high, lastIdx: i });
-        }
-    }
-
-    // Solo le zone MAI invalidate/riempite del tutto vengono renderizzate (stessa scelta
-    // progettuale della versione Pine: niente stato "mitigato ma visibile", pulizia netta).
-    const mitigateOB = (boxes, isDemand) => {
-        const out = [];
-        for (const b of boxes) {
-            let invalidated = false;
-            for (let j = b.lastIdx + 1; j < n; j++) {
-                if (isDemand ? klines[j].low <= b.price2 : klines[j].high >= b.price1) { invalidated = true; break; }
-            }
-            if (!invalidated) out.push({ time1: b.time1, price1: b.price1, time2: klines[n - 1].time, price2: b.price2 });
-        }
-        return out.slice(-cfg.maxOB);
-    };
-    result.demandBoxes = mitigateOB(result.demandBoxes, true);
-    result.supplyBoxes = mitigateOB(result.supplyBoxes, false);
-
-    const processFVG = (boxes, isBull) => {
-        const out = [];
-        for (const b of boxes) {
-            let top = b.price1, bot = b.price2, filled = false;
-            for (let j = b.lastIdx + 1; j < n; j++) {
-                const kk = klines[j];
-                if (isBull) { if (kk.low <= bot) { filled = true; break; } top = Math.min(top, kk.low); }
-                else { if (kk.high >= top) { filled = true; break; } bot = Math.max(bot, kk.high); }
-            }
-            if (!filled) out.push({ time1: b.time1, time2: klines[n - 1].time, price1: top, price2: bot });
-        }
-        return out.slice(-cfg.maxFVG);
-    };
-    result.bullFVGBoxes = processFVG(result.bullFVGBoxes, true);
-    result.bearFVGBoxes = processFVG(result.bearFVGBoxes, false);
-
-    return result;
-}
-
-// Un solo primitive per slot: fill OB/FVG + sfondo sessioni (zOrder 'bottom') e zigzag
-// struttura (zOrder 'top', sopra le candele). Riusa _hexToRgba già definita per Canale/TB.
-class _SmcOverlayPrimitive {
-    constructor(slot, chart) {
-        this._slot = slot; this._chart = chart; this._series = null;
-        const bgRenderer = {
-            draw: target => target.useBitmapCoordinateSpace(scope => {
-                const s = this._slot, series = this._series;
-                if (!series || !smcActive || !s.smcData) return;
-                const cfg = getSmcCfg();
-                const ctx = scope.context, ts = this._chart.timeScale();
-                const hpr = scope.horizontalPixelRatio, vpr = scope.verticalPixelRatio;
-                const barSpacingPx = (ts.options().barSpacing || 6) * hpr;
-
-                if (cfg.showSessions && s.klines && s.klines.length) {
-                    const halfW = Math.max(1, barSpacingPx / 2);
-                    for (let i = 0; i < s.klines.length; i++) {
-                        const t = s.klines[i].time;
-                        const x = ts.timeToCoordinate(t);
-                        if (x == null) continue;
-                        const hour = new Date(t * 1000).getUTCHours();
-                        const inLondon = hour >= cfg.londonStart && hour < cfg.londonEnd;
-                        const inNY = hour >= cfg.nyStart && hour < cfg.nyEnd;
-                        if (!inLondon && !inNY) continue;
-                        ctx.fillStyle = _hexToRgba(inLondon ? cfg.londonColor : cfg.nyColor, (cfg.sessionOpacity ?? 10) / 100);
-                        ctx.fillRect(x * hpr - halfW, 0, halfW * 2, scope.bitmapSize.height);
-                    }
-                }
-
-                const drawBoxes = (boxes, color, opacity, extendBars) => {
-                    if (!boxes || !boxes.length) return;
-                    for (const b of boxes) {
-                        const x1 = ts.timeToCoordinate(b.time1);
-                        const x2raw = ts.timeToCoordinate(b.time2);
-                        const y1 = series.priceToCoordinate(b.price1);
-                        const y2 = series.priceToCoordinate(b.price2);
-                        if (x1 == null || x2raw == null || y1 == null || y2 == null) continue;
-                        const xp1 = x1 * hpr, xp2 = x2raw * hpr + extendBars * barSpacingPx;
-                        const yp1 = y1 * vpr, yp2 = y2 * vpr;
-                        ctx.fillStyle = _hexToRgba(color, opacity / 100);
-                        ctx.fillRect(Math.min(xp1, xp2), Math.min(yp1, yp2), Math.abs(xp2 - xp1), Math.abs(yp2 - yp1));
-                    }
-                };
-                if (cfg.showOB) { drawBoxes(s.smcData.demandBoxes, cfg.demandColor, cfg.obOpacity, cfg.obExtendBars); drawBoxes(s.smcData.supplyBoxes, cfg.supplyColor, cfg.obOpacity, cfg.obExtendBars); }
-                if (cfg.showFVG) { drawBoxes(s.smcData.bullFVGBoxes, cfg.bullFVGColor, cfg.fvgOpacity, cfg.fvgExtendBars); drawBoxes(s.smcData.bearFVGBoxes, cfg.bearFVGColor, cfg.fvgOpacity, cfg.fvgExtendBars); }
-            })
-        };
-        const zzRenderer = {
-            draw: target => target.useBitmapCoordinateSpace(scope => {
-                const s = this._slot, series = this._series;
-                if (!series || !smcActive || !s.smcData || !s.smcData.zigzag.length) return;
-                const cfg = getSmcCfg();
-                if (!cfg.showZigzag) return;
-                const ctx = scope.context, ts = this._chart.timeScale();
-                const hpr = scope.horizontalPixelRatio, vpr = scope.verticalPixelRatio;
-                ctx.save();
-                ctx.strokeStyle = 'rgba(150,150,150,0.6)';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                for (const seg of s.smcData.zigzag) {
-                    const x1 = ts.timeToCoordinate(seg.time1), y1 = series.priceToCoordinate(seg.price1);
-                    const x2 = ts.timeToCoordinate(seg.time2), y2 = series.priceToCoordinate(seg.price2);
-                    if (x1 == null || y1 == null || x2 == null || y2 == null) continue;
-                    ctx.moveTo(x1 * hpr, y1 * vpr);
-                    ctx.lineTo(x2 * hpr, y2 * vpr);
-                }
-                ctx.stroke();
-                ctx.restore();
-            })
-        };
-        this._bgView = { renderer: () => bgRenderer, zOrder: () => 'bottom' };
-        this._zzView = { renderer: () => zzRenderer, zOrder: () => 'top' };
-    }
-    attached({ series }) { this._series = series; }
-    detached() { this._series = null; }
-    updateAllViews() {}
-    paneViews() { return [this._bgView, this._zzView]; }
-}
-
-const _SMC_FIB_LEVELS = [[0.5, '50%'], [0.71, '71%'], [0.786, '78.6%'], [0.886, '88.6%'], [-0.27, '-27% Ext']];
-function applySmcToSlot(s, cfg) {
-    if (s.smcFibLines) { for (const pl of s.smcFibLines) { try { s.candleS.removePriceLine(pl); } catch(e) {} } }
-    s.smcFibLines = [];
-    if (!s.smcMarkersHandle && LC.createSeriesMarkers) { try { s.smcMarkersHandle = LC.createSeriesMarkers(s.candleS, []); } catch(e) {} }
-
-    if (!smcActive || !s.klines || !s.klines.length) {
-        s.smcData = null;
-        if (s.smcMarkersHandle) s.smcMarkersHandle.setMarkers([]);
-        return;
-    }
-
-    const res = calcSmc(s.klines.slice(-cfg.smcHistoryBars), cfg);
-    s.smcData = res;
-    if (s.smcMarkersHandle) s.smcMarkersHandle.setMarkers(res.markers);
-
-    if (cfg.showFib && res.fib) {
-        const showFlags = { 0.5: cfg.showFib50, 0.71: cfg.showFib71, 0.786: cfg.showFib786, 0.886: cfg.showFib886, '-0.27': cfg.showFibExt };
-        for (const [ratio, txt] of _SMC_FIB_LEVELS) {
-            if (!showFlags[ratio]) continue;
-            const lvl = res.fib.p0 - ratio * (res.fib.p0 - res.fib.p1);
-            s.smcFibLines.push(s.candleS.createPriceLine({ price: lvl, color: cfg.fibColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: txt }));
-        }
-    }
-}
-function toggleSmcAll() {
-    smcActive = !smcActive;
-    window.setIndActive('smc', smcActive);
-    const cfg = getSmcCfg();
-    slots.forEach(s => applySmcToSlot(s, cfg));
-    if (fsChart) applySmcToSlot(_fsIndSlot, cfg);
-}
-tbActive = window.getIndActive('tb');
 grabActive = window.getIndActive('grab');
-smcActive = window.getIndActive('smc');
 
 // ── Toggle rapido gruppi di livelli (day/prev/ATH-ATL), riusa lo stesso cfg
 // (chart_levels_cfg / getLvCfg) del pannello Impostazioni Livelli — qui si tocca
@@ -2227,9 +1614,8 @@ const IND_LIST = [
     { label: 'Canale SMA 20',        isOn: () => channelActive,               toggle: toggleChannelAll,      cfgKey: 'channel', col: 2 },
     { label: 'Bollinger Bands',      isOn: () => bbActive,                    toggle: toggleBBAll,           cfgKey: 'bb',      col: 2 },
     { label: 'Order Book Levels',    isOn: () => obLevelsActive,              toggle: toggleOBAll,            cfgKey: 'obLevels', col: 2 },
-    { label: 'Trend Band',           isOn: () => tbActive,                    toggle: toggleTrendBandAll,    cfgKey: 'tb',      col: 2 },
     { label: 'GRaB',                 isOn: () => grabActive,                  toggle: toggleGrabAll,          cfgKey: 'grab',    col: 2 },
-    { label: 'SMC / ICT',            isOn: () => smcActive,                   toggle: toggleSmcAll,           cfgKey: 'smc',     col: 2 },
+    { label: 'ROC',                  isOn: () => rocActive,                   toggle: toggleRocAll,           cfgKey: 'roc',     col: 2 },
     { label: 'Livelli Daily',        isOn: () => getLvCfg().dayHigh.vis.chart,  toggle: toggleDayLevelsAll,  cfgKey: 'dayLevels',  col: 3 },
     { label: 'Massimi/Minimi Storici', isOn: () => getLvCfg().ath.vis.chart,    toggle: toggleAthAtlAll,     cfgKey: 'athAtl',     col: 3 },
     { label: 'Livelli Giorno Prec.', isOn: () => getLvCfg().prevHigh.vis.chart, toggle: togglePrevLevelsAll, cfgKey: 'prevLevels', col: 3 },
@@ -2323,24 +1709,6 @@ const IND_CFG_SCHEMAS = {
         ],
         apply: cfg => { try { localStorage.setItem('chart_bb_cfg', JSON.stringify(cfg)); } catch(e) {} slots.forEach(s => applyBBToSlot(s, cfg)); if (fsChart) applyBBToSlot(_fsIndSlot, cfg); },
     },
-    tb: {
-        title: 'Trend Band', getCfg: getTbCfg, defaults: _DEFAULT_TB_CFG,
-        fields: [
-            { key:'fastLen', label:'EMA veloce', type:'number', min:2, max:100, step:1 },
-            { key:'slowLen', label:'EMA lenta', type:'number', min:2, max:200, step:1 },
-            { key:'bullColor', label:'Colore rialzo', type:'color' },
-            { key:'bearColor', label:'Colore ribasso', type:'color' },
-            { key:'flatColor', label:'Colore flat', type:'color' },
-            { key:'bandTransp', label:'Trasparenza banda %', type:'number', min:0, max:100, step:1 },
-            { key:'flatMult', label:'Soglia flat (xATR)', type:'number', min:0, max:2, step:0.05 },
-            { key:'hideLines', label:'Nascondi linee EMA', type:'checkbox' },
-            { key:'hideBand', label:'Nascondi banda (solo frecce)', type:'checkbox' },
-            { key:'showFlatArrow', label:'Freccia ingresso Long/Short', type:'checkbox' },
-            { key:'calcTf', label:'Calcola su TF', type:'select', raw:true, options:[['','Stesso del grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D']] },
-            { key:'colorCandles', label:'Colora candele come la banda', type:'checkbox' },
-        ],
-        apply: cfg => { try { localStorage.setItem('chart_tb_cfg', JSON.stringify(cfg)); } catch(e) {} slots.forEach(s => applyTbToSlot(s, cfg)); if (fsChart) applyTbToSlot(_fsIndSlot, cfg); },
-    },
     grab: {
         title: 'GRaB', getCfg: getGrabCfg, defaults: _DEFAULT_GRAB_CFG,
         fields: [
@@ -2363,48 +1731,13 @@ const IND_CFG_SCHEMAS = {
         ],
         apply: cfg => { try { localStorage.setItem('chart_grab_cfg', JSON.stringify(cfg)); } catch(e) {} slots.forEach(s => applyGrabToSlot(s, cfg)); if (fsChart) applyGrabToSlot(_fsIndSlot, cfg); },
     },
-    smc: {
-        title: 'SMC / ICT', getCfg: getSmcCfg, defaults: _DEFAULT_SMC_CFG,
+    roc: {
+        title: 'ROC (Rate Of Change)', getCfg: getRocCfg, defaults: DEFAULT_ROC_CFG,
         fields: [
-            { key:'swingLen', label:'Swing Lookback (barre)', type:'number', min:2, max:50, step:1 },
-            { key:'smcHistoryBars', label:'Storia analizzata (barre)', type:'number', min:100, max:2000, step:50 },
-            { key:'showStructure', label:'Mostra HH/LL', type:'checkbox' },
-            { key:'showZigzag', label:'Mostra zigzag struttura', type:'checkbox' },
-            { key:'showBreaks', label:'Mostra BOS/MSS', type:'checkbox' },
-            { key:'bullColor', label:'Colore rialzo', type:'color' },
-            { key:'bearColor', label:'Colore ribasso', type:'color' },
-            { key:'showOB', label:'Mostra Order Block', type:'checkbox' },
-            { key:'obSearchBars', label:'OB: ricerca (barre indietro)', type:'number', min:3, max:100, step:1 },
-            { key:'obExtendBars', label:'OB: estensione (barre)', type:'number', min:5, max:200, step:1 },
-            { key:'maxOB', label:'OB: max per lato', type:'number', min:1, max:30, step:1 },
-            { key:'demandColor', label:'Colore Demand', type:'color' },
-            { key:'supplyColor', label:'Colore Supply', type:'color' },
-            { key:'obOpacity', label:'OB: opacità %', type:'number', min:0, max:100, step:1 },
-            { key:'showFVG', label:'Mostra Imbalance (FVG)', type:'checkbox' },
-            { key:'fvgExtendBars', label:'FVG: estensione (barre)', type:'number', min:1, max:100, step:1 },
-            { key:'maxFVG', label:'FVG: max per lato', type:'number', min:1, max:50, step:1 },
-            { key:'bullFVGColor', label:'Colore FVG rialzista', type:'color' },
-            { key:'bearFVGColor', label:'Colore FVG ribassista', type:'color' },
-            { key:'fvgOpacity', label:'FVG: opacità %', type:'number', min:0, max:100, step:1 },
-            { key:'showFib', label:'Mostra Auto-Fibonacci', type:'checkbox' },
-            { key:'showFib50', label:'Fib 0.5', type:'checkbox' },
-            { key:'showFib71', label:'Fib 0.71', type:'checkbox' },
-            { key:'showFib786', label:'Fib 0.786', type:'checkbox' },
-            { key:'showFib886', label:'Fib 0.886', type:'checkbox' },
-            { key:'showFibExt', label:'Fib -0.27 (estensione)', type:'checkbox' },
-            { key:'fibColor', label:'Colore Fibonacci', type:'color' },
-            { key:'showSweeps', label:'Mostra Liquidity Sweep', type:'checkbox' },
-            { key:'sweepColor', label:'Colore Liquidity Sweep', type:'color' },
-            { key:'showSessions', label:'Mostra sfondo sessioni', type:'checkbox' },
-            { key:'londonStart', label:'Londra: ora inizio (UTC)', type:'number', min:0, max:23, step:1 },
-            { key:'londonEnd', label:'Londra: ora fine (UTC)', type:'number', min:0, max:23, step:1 },
-            { key:'nyStart', label:'New York: ora inizio (UTC)', type:'number', min:0, max:23, step:1 },
-            { key:'nyEnd', label:'New York: ora fine (UTC)', type:'number', min:0, max:23, step:1 },
-            { key:'londonColor', label:'Colore sessione Londra', type:'color' },
-            { key:'nyColor', label:'Colore sessione New York', type:'color' },
-            { key:'sessionOpacity', label:'Sessioni: opacità %', type:'number', min:0, max:100, step:1 },
+            { key:'length', label:'Periodo', type:'number', min:1, max:300, step:1 },
+            { key:'color', label:'Colore', type:'color' },
         ],
-        apply: cfg => { try { localStorage.setItem('chart_smc_cfg', JSON.stringify(cfg)); } catch(e) {} slots.forEach(s => applySmcToSlot(s, cfg)); if (fsChart) applySmcToSlot(_fsIndSlot, cfg); },
+        apply: cfg => { try { localStorage.setItem('chart_roc_cfg', JSON.stringify(cfg)); } catch(e) {} slots.forEach(s => applyRocToSlot(s, cfg)); if (fsChart) applyRocToSlot(_fsIndSlot, cfg); },
     },
     dayLevels: {
         title: 'Livelli Daily',
@@ -2714,13 +2047,15 @@ function getPriceFormat(price) {
 }
 
 // ── chart factory ─────────────────────────────────────────────────────────────
-function addSeries(chart, type, opts) {
+function addSeries(chart, type, opts, paneIndex) {
     // Le LineSeries qui sono sempre indicatori overlay (EMA/canale/BB), mai la serie
     // principale: escluderle dall'autoscale evita che un EMA223 lontano dal prezzo
     // schiacci le candele in una riga piatta illeggibile — la scala verticale segue
-    // solo le candele.
-    if (type === 'LineSeries') opts = { ...opts, autoscaleInfoProvider: () => null };
-    if (typeof chart.addSeries === 'function' && LC[type]) return chart.addSeries(LC[type], opts);
+    // solo le candele. Non si applica quando la serie va in un pannello dedicato
+    // (paneIndex esplicito, es. ROC): lì la scala prezzi è indipendente e deve
+    // autoscalare normalmente sui valori dell'oscillatore.
+    if (type === 'LineSeries' && paneIndex == null) opts = { ...opts, autoscaleInfoProvider: () => null };
+    if (typeof chart.addSeries === 'function' && LC[type]) return paneIndex != null ? chart.addSeries(LC[type], opts, paneIndex) : chart.addSeries(LC[type], opts);
     const legacy = { CandlestickSeries:'addCandlestickSeries', LineSeries:'addLineSeries' };
     return chart[legacy[type]](opts);
 }
@@ -3243,18 +2578,13 @@ const mtfEl = document.createElement('button');
             dayPrimitive: null,
             bbSeries: { upper: null, mid: null, lower: null }, klines: [],
             channelSeries: { upper: null, mid: null, lower: null }, channelData: null,
-            tbSeries: { fast: null, slow: null }, tbData: null, tbState: null,
-            tbMarkersHandle: null, tbMarkersData: [],
-            tbHtfMode: false, tbHtfKlines: [], tbHtfKey: '', tbHtfBucket: null, tbHtfLastPoint: null, tbHtfLiveAgg: null,
             grabWaveS: { high: null, low: null, close: null }, grabMurreyS: { mid: null, lo: null, hi: null }, grabState: null,
-            smcData: null, smcMarkersHandle: null, smcFibLines: [],
+            rocSeries: null, rocZeroLine: null,
         });
         const _s = slots[slots.length - 1];
         try { const _cdp = new _CountdownPrimitive(_s); candleS.attachPrimitive(_cdp); } catch(e) {}
         try { const _cfp = new _ChannelFillPrimitive(_s, chart); candleS.attachPrimitive(_cfp); } catch(e) {}
         try { const _obp = new _ObBandFillPrimitive(_s); candleS.attachPrimitive(_obp); } catch(e) {}
-        try { const _tbp = new _TrendBandFillPrimitive(_s, chart); candleS.attachPrimitive(_tbp); } catch(e) {}
-        try { const _smcp = new _SmcOverlayPrimitive(_s, chart); candleS.attachPrimitive(_smcp); } catch(e) {}
         DrawTools.attachToolContextMenu(body, {
             isAnyToolActive: () => _s.rangeActive || _s.hlineActive || _s.trendActive,
             onTrend: () => toggleSlotTrend(i), onHline: () => toggleSlotHline(i), onRange: () => toggleSlotRange(i),
@@ -3409,6 +2739,7 @@ async function switchSlotTF(idx, tf) {
     if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
     if (s.dayPrimitive) { try { s.candleS.detachPrimitive(s.dayPrimitive); } catch(e) {} s.dayPrimitive = null; }
     for (const k of ['upper','mid','lower']) { if (s.bbSeries[k]) { try { s.chart.removeSeries(s.bbSeries[k]); } catch(e) {} s.bbSeries[k]=null; } }
+    if (s.rocSeries) { try { s.chart.removePane(ROC_PANE_INDEX); } catch(e) {} s.rocSeries = null; s.rocZeroLine = null; }
     for (const k of ['upper','mid','lower']) { if (s.channelSeries[k]) { try { s.chart.removeSeries(s.channelSeries[k]); } catch(e) {} s.channelSeries[k]=null; } }
     s.channelData = null;
     s.klines = [];
@@ -3567,10 +2898,9 @@ async function loadSlotData(idx) {
         s.klines = klines.slice();
         s.candleS.setData(klines);
         applyBBToSlot(s, getBbCfg());
+        applyRocToSlot(s, getRocCfg());
         applyChannelToSlot(s);
-        applyTbToSlot(s, getTbCfg());
         applyGrabToSlot(s, getGrabCfg());
-        applySmcToSlot(s, getSmcCfg());
         _applyCandleStyle(s.candleS);
         s.dayPrimitive = attachDayLines(s.candleS, s.chart, klines, s.curTF, s.dayPrimitive);
         s.candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
@@ -3615,8 +2945,6 @@ function initFsChart() {
         fsCandleS.attachPrimitive(new _CountdownPrimitive(_fsCdSlot));
         fsCandleS.attachPrimitive(new _ObBandFillPrimitive(_fsObSlot));
         fsCandleS.attachPrimitive(new _ChannelFillPrimitive(_fsIndSlot, fsChart));
-        fsCandleS.attachPrimitive(new _TrendBandFillPrimitive(_fsIndSlot, fsChart));
-        fsCandleS.attachPrimitive(new _SmcOverlayPrimitive(_fsIndSlot, fsChart));
     } catch(e) {}
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
     for (const {p, color, width, style} of EMA_CFG)
@@ -3847,15 +3175,14 @@ async function loadFsData() {
             fsEmaS[p].setData(ema);
             fsLastEMA[p] = ema[ema.length - 1].value;
         }
-        // Canale/Bollinger/Trend Band/GRaB/SMC: prima non venivano mai applicati al
+        // Canale/Bollinger/GRaB/ROC: prima non venivano mai applicati al
         // fullscreen (solo alla griglia), quindi un indicatore attivo spariva aprendo
         // lo schermo intero. applyXToSlot fa già la sua pulizia interna (rimuove/ricrea
         // le serie), quindi si può richiamare ad ogni load senza reset manuale prima.
         applyBBToSlot(_fsIndSlot, getBbCfg());
+        applyRocToSlot(_fsIndSlot, getRocCfg());
         applyChannelToSlot(_fsIndSlot);
-        applyTbToSlot(_fsIndSlot, getTbCfg());
         applyGrabToSlot(_fsIndSlot, getGrabCfg());
-        applySmcToSlot(_fsIndSlot, getSmcCfg());
         fsKlineCount = klines.length;
         const _fn = TF_DEFAULT_N[fsTF] || 80;
         const _fr = () => fsChart.timeScale().setVisibleLogicalRange({ from: Math.max(0, fsKlineCount - _fn), to: fsKlineCount + 3 });
@@ -3920,7 +3247,7 @@ function connectFsWS() {
             if (confirmed) fsLastEMA[p] = live;
         }
         // Stesso blocco della griglia (vedi openWS): fsKlines prima non veniva mai
-        // aggiornato sui tick WS, quindi Canale/Bollinger/Trend Band/GRaB restavano
+        // aggiornato sui tick WS, quindi Canale/Bollinger/GRaB restavano
         // fermi allo stato del caricamento iniziale finché non si riapriva il fullscreen.
         if (fsKlines.length > 0) {
             const last = fsKlines[fsKlines.length - 1];
@@ -3938,6 +3265,11 @@ function connectFsWS() {
                 _fsBbSeries.mid.update(  { time: candle.time, value: mean });
                 _fsBbSeries.lower.update({ time: candle.time, value: mean - _fsBb.mult * std });
             }
+            const _fsRoc = getRocCfg();
+            if (rocActive && _fsRocSeries && fsKlines.length > _fsRoc.length) {
+                const _fsRocPrev = fsKlines[fsKlines.length - 1 - _fsRoc.length].close;
+                _fsRocSeries.update({ time: candle.time, value: 100 * (candle.close - _fsRocPrev) / _fsRocPrev });
+            }
             if (channelActive && _fsChannelSeries.upper && fsKlines.length >= CHANNEL_CFG.period) {
                 const csl = fsKlines.slice(-CHANNEL_CFG.period);
                 let sumC = 0, sumH = 0, sumL = 0;
@@ -3952,9 +3284,7 @@ function connectFsWS() {
                     _cdUpd(_fsChannelData.lower, liveL);
                 }
             }
-            if (tbActive) _tbLiveUpdate(_fsIndSlot, candle, confirmed, getTbCfg());
             if (grabActive) _grabLiveUpdate(_fsIndSlot, candle, confirmed, getGrabCfg());
-            if (smcActive && confirmed) applySmcToSlot(_fsIndSlot, getSmcCfg());
         }
     };
     sock.onerror = () => setFsWSDot('error');
@@ -4030,6 +3360,11 @@ function openWS() {
                 s.bbSeries.mid.update(  { time: candle.time, value: mean });
                 s.bbSeries.lower.update({ time: candle.time, value: mean - _bb.mult * std });
             }
+            const _roc = getRocCfg();
+            if (rocActive && s.rocSeries && s.klines.length > _roc.length) {
+                const _rocPrev = s.klines[s.klines.length - 1 - _roc.length].close;
+                s.rocSeries.update({ time: candle.time, value: 100 * (candle.close - _rocPrev) / _rocPrev });
+            }
             if (channelActive && s.channelSeries.upper && s.klines.length >= CHANNEL_CFG.period) {
                 const csl = s.klines.slice(-CHANNEL_CFG.period);
                 let sumC = 0, sumH = 0, sumL = 0;
@@ -4044,9 +3379,7 @@ function openWS() {
                     _cdUpd(s.channelData.lower, liveL);
                 }
             }
-            if (tbActive) _tbLiveUpdate(s, candle, confirmed, getTbCfg());
             if (grabActive) _grabLiveUpdate(s, candle, confirmed, getGrabCfg());
-            if (smcActive && confirmed) applySmcToSlot(s, getSmcCfg());
         }
     };
     sock.onerror = () => setWSDot('error');
@@ -5329,6 +4662,7 @@ function applyCfgToAllSlots() {
         if (s.obBidVal != null && lv.obBid.vis?.chart !== false) s.obBidLine = s.candleS.createPriceLine({price:s.obBidVal, color:lv.obBid.color, lineWidth:lv.obBid.width, lineStyle:lv.obBid.style, axisLabelVisible:true, title:''});
         if (s.obAskVal != null && lv.obAsk.vis?.chart !== false) s.obAskLine = s.candleS.createPriceLine({price:s.obAskVal, color:lv.obAsk.color, lineWidth:lv.obAsk.width, lineStyle:lv.obAsk.style, axisLabelVisible:true, title:''});
         applyBBToSlot(s, getBbCfg());
+        applyRocToSlot(s, getRocCfg());
         applyChannelToSlot(s);
     }
 }

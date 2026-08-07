@@ -309,7 +309,6 @@ createApp({
             { key:'bb_squeeze',   label:'BB Squeeze',   short:'BB-SQ',  color:'#fb923c' },
             { key:'rvol',         label:'RVOL',         short:'RVOL',   color:'#facc15' },
             { key:'midline_breakout', label:'Midline Breakout', short:'MID-BRK', color:'#2dd4bf' },
-            { key:'trend_band',   label:'Trend Band',   short:'TB',     color:'#22c55e' },
             { key:'trendline_active', label:'Trendline S/R', short:'TRD-SR', color:'#818cf8' },
         ];
         const SCREENER_DEFS = Object.fromEntries(SCREENER_LIST.map(d => [d.key, d]));
@@ -883,64 +882,6 @@ createApp({
             return { dir: sig.dir, metric: 'Midline', sigTime: candles[sig.idx].time, murreyLength: cfg.midMurreyLength };
         };
 
-        // ── Trend Band (ported from trendband.html) — stessa formula EMA fast/slow +
-        // soglia flat su ATR(14) dell'indicatore (vedi chart.html/mtf.html/trade.js).
-        // EMA fast/slow indipendenti per TF (cfg.tbEmaByTf), soglia flat condivisa.
-        // Segnale: l'ULTIMO vero flip (ignora i gap flat, stesso identico filtro
-        // lastSignal delle frecce dell'indicatore) se rientra nella finestra di
-        // lookback — nessuna condizione sulla sola candela precedente.
-        const calcEMAFieldArrConfl = (candles, period, field) => {
-            const k = 2 / (period + 1);
-            let v = candles[0][field];
-            const out = new Array(candles.length);
-            out[0] = v;
-            for (let i = 1; i < candles.length; i++) { v = candles[i][field] * k + v * (1 - k); out[i] = v; }
-            return out;
-        };
-        const calcTRConfl = (candles) => candles.map((k, i) => {
-            if (i === 0) return k.high - k.low;
-            const pc = candles[i - 1].close;
-            return Math.max(k.high - k.low, Math.abs(k.high - pc), Math.abs(k.low - pc));
-        });
-        const calcRMAConfl = (values, length) => {
-            const out = new Array(values.length).fill(null);
-            if (values.length < length) return out;
-            let sum = 0;
-            for (let i = 0; i < length; i++) sum += values[i];
-            out[length - 1] = sum / length;
-            for (let i = length; i < values.length; i++) out[i] = (values[i] - out[i - 1]) / length + out[i - 1];
-            return out;
-        };
-        const tbBandColorConfl = (spread, atr, flatMult) => {
-            if (atr != null && Math.abs(spread) < atr * flatMult) return 'flat';
-            return spread > 0 ? 'bull' : 'bear';
-        };
-        const detectTrendBandFlipConfl = (candles, fastLen, slowLen, flatMult, lookbackBars) => {
-            const n = candles.length;
-            const warmup = Math.max(fastLen, slowLen, 14) + 2;
-            if (n < warmup) return null;
-            const ef = calcEMAFieldArrConfl(candles, fastLen, 'close');
-            const es = calcEMAFieldArrConfl(candles, slowLen, 'close');
-            const atr = calcRMAConfl(calcTRConfl(candles), 14);
-            let lastSignal = null, lastFlip = null;
-            for (let i = 0; i < n; i++) {
-                const c = tbBandColorConfl(ef[i] - es[i], atr[i], flatMult);
-                if (i < warmup) { if (c === 'bull' || c === 'bear') lastSignal = c; continue; }
-                if ((c === 'bull' || c === 'bear') && c !== lastSignal) lastFlip = { idx: i, dir: c };
-                if (c === 'bull' || c === 'bear') lastSignal = c;
-            }
-            if (!lastFlip) return null;
-            if (n - 1 - lastFlip.idx > lookbackBars) return null;
-            return lastFlip;
-        };
-        const trendBandHit = (candles, cfg, tf) => {
-            const emaCfg = cfg.tbEmaByTf && cfg.tbEmaByTf[tf];
-            if (!emaCfg) return null; // TF senza EMA configurate (es. 'D') — non valutato
-            const sig = detectTrendBandFlipConfl(candles, emaCfg.fast, emaCfg.slow, cfg.tbFlatMult, cfg.tbLookback);
-            if (!sig) return null;
-            return { dir: sig.dir, metric: 'Trend Band', sigTime: candles[sig.idx].time, tbFast: emaCfg.fast, tbSlow: emaCfg.slow };
-        };
-
         // ── Trendline S/R attiva (stessa tecnica a 2 pivot di trendline.html, vedi
         // memoria project_trendline_breakout_scanner) — segnala le rette ancora valide
         // (mai invalidate in chiusura da quando esistono), non più le rotture.
@@ -1048,8 +989,6 @@ createApp({
                 bbPeriod: 20, bbMult: 2, bbRankPeriod: 100, bbPctThreshold: 90, bbFreshBars: 5,
                 rvolAvgPeriod: 20, rvolMin: 2.5,
                 midMurreyLength: 100, midLookback: 20,
-                tbEmaByTf: { '1':{fast:5,slow:10}, '5':{fast:5,slow:10}, '30':{fast:5,slow:10}, '60':{fast:5,slow:10}, '240':{fast:5,slow:10} },
-                tbFlatMult: 0.25, tbLookback: 20,
                 trdlnShortPeriod: 30, trdlnLongPeriod: 100, trdlnTolerancePct: 0.3,
             };
             // Riusa le soglie già configurate dall'utente sulle pagine originali, se presenti.
@@ -1097,12 +1036,6 @@ createApp({
                 const c = JSON.parse(localStorage.getItem('midbrk_cfg') || '{}');
                 if (c.murreyLength != null) cfg.midMurreyLength = c.murreyLength;
                 if (c.lookbackBars != null) cfg.midLookback = c.lookbackBars;
-            } catch {}
-            try {
-                const c = JSON.parse(localStorage.getItem('tbscan_cfg') || '{}');
-                if (c.emaByTf != null) cfg.tbEmaByTf = c.emaByTf;
-                if (c.flatMult != null) cfg.tbFlatMult = c.flatMult;
-                if (c.lookbackBars != null) cfg.tbLookback = c.lookbackBars;
             } catch {}
             try {
                 const c = JSON.parse(localStorage.getItem('trdln_cfg') || '{}');
@@ -1153,7 +1086,7 @@ createApp({
                 progressTotal.value = tickers.length;
                 statusMsg.value = `${SVG_SEARCH}${t('emax_progress')} ${tickers.length} ${t('dt_coin')}…`;
 
-                const anyClientEnabled = en.ema_touch || en.third_touch || en.ema223_cross || en.channel_breakout || en.vol_inefficiency || en.bb_squeeze || en.rvol || en.midline_breakout || en.trend_band || en.trendline_active;
+                const anyClientEnabled = en.ema_touch || en.third_touch || en.ema223_cross || en.channel_breakout || en.vol_inefficiency || en.bb_squeeze || en.rvol || en.midline_breakout || en.trendline_active;
                 if (anyClientEnabled) {
                     const BATCH = 5;
                     for (let i = 0; i < tickers.length; i += BATCH) {
@@ -1204,10 +1137,6 @@ createApp({
                                         if (en.midline_breakout) {
                                             const h = midlineBreakoutHit(candles, cfg);
                                             if (h) addMatch(ticker.symbol, ticker, 'midline_breakout', tf, h.dir, h.metric, { sigTime: h.sigTime, murreyLength: h.murreyLength });
-                                        }
-                                        if (en.trend_band) {
-                                            const h = trendBandHit(candles, cfg, tf);
-                                            if (h) addMatch(ticker.symbol, ticker, 'trend_band', tf, h.dir, h.metric, { sigTime: h.sigTime, tbFast: h.tbFast, tbSlow: h.tbSlow });
                                         }
                                         if (en.trendline_active && tf !== '1' && tf !== '5' && tf !== 'D') {
                                             const hits = trendlineActiveHits(candles, cfg);
@@ -1411,14 +1340,6 @@ createApp({
                             if (d.sigTime != null) {
                                 markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Midline' });
                             }
-                        } else if (g.screener === 'trend_band' && d.tbFast && d.tbSlow) {
-                            const efData = calcEMAFieldArrConfl(klines, d.tbFast, 'close').map((v,i) => ({ time: klines[i].time, value: v }));
-                            const esData = calcEMAFieldArrConfl(klines, d.tbSlow, 'close').map((v,i) => ({ time: klines[i].time, value: v }));
-                            addS(chart, 'LineSeries', { ...lb, color: '#ffe082', lineWidth: 1 }).setData(efData);
-                            addS(chart, 'LineSeries', { ...lb, color: '#e0e0e0', lineWidth: 1 }).setData(esData);
-                            if (d.sigTime != null) {
-                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#22c55e' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Trend Band' });
-                            }
                         } else if (g.screener === 'trendline_active' && d.sup && d.res) {
                             const supData = lineSeriesFromPtsConfl(d.sup.p1, d.sup.p2, klines);
                             const resData = lineSeriesFromPtsConfl(d.res.p1, d.res.p2, klines);
@@ -1547,14 +1468,6 @@ createApp({
                             if (d.sigTime != null) {
                                 markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Midline' });
                             }
-                        } else if (g.screener === 'trend_band' && d.tbFast && d.tbSlow) {
-                            const efData = calcEMAFieldArrConfl(klines, d.tbFast, 'close').map((v,i) => ({ time: klines[i].time, value: v }));
-                            const esData = calcEMAFieldArrConfl(klines, d.tbSlow, 'close').map((v,i) => ({ time: klines[i].time, value: v }));
-                            addS(chart, 'LineSeries', { ...lb, color: '#ffe082', lineWidth: 1 }).setData(efData);
-                            addS(chart, 'LineSeries', { ...lb, color: '#e0e0e0', lineWidth: 1 }).setData(esData);
-                            if (d.sigTime != null) {
-                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#22c55e' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Trend Band' });
-                            }
                         } else if (g.screener === 'trendline_active' && d.sup && d.res) {
                             const supData = lineSeriesFromPtsConfl(d.sup.p1, d.sup.p2, klines);
                             const resData = lineSeriesFromPtsConfl(d.res.p1, d.res.p2, klines);
@@ -1658,11 +1571,6 @@ createApp({
                     } else if (g.screener === 'midline_breakout' && d.murreyLength) {
                         const midArr = calcMidlineArrConfl(klines, d.murreyLength);
                         lines.push({ color: '#f9fafb', values: bars.map((_, i) => midArr[offset + i]) });
-                    } else if (g.screener === 'trend_band' && d.tbFast && d.tbSlow) {
-                        const efArr = calcEMAFieldArrConfl(klines, d.tbFast, 'close');
-                        const esArr = calcEMAFieldArrConfl(klines, d.tbSlow, 'close');
-                        lines.push({ color: '#ffe082', values: bars.map((_, i) => efArr[offset + i]) });
-                        lines.push({ color: '#e0e0e0', values: bars.map((_, i) => esArr[offset + i]) });
                     } else if (g.screener === 'trendline_active' && d.sup && d.res) {
                         const lineAt = (pts, b) => (b.time >= pts.p1.time) ? pts.p1.price + lineSlopeConfl(pts.p1, pts.p2) * (b.time - pts.p1.time) : null;
                         lines.push({ color: '#10b981', values: bars.map(b => lineAt(d.sup, b)) });

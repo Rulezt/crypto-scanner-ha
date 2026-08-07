@@ -2844,12 +2844,6 @@ def midline_breakout_page():
     return send_file('/usr/share/nginx/html/midline-breakout.html')
 
 
-@app.route('/trendband', methods=['GET'])
-@app.route('/trendband.html', methods=['GET'])
-def trendband_scanner_page():
-    return send_file('/usr/share/nginx/html/trendband.html')
-
-
 @app.route('/trendline', methods=['GET'])
 @app.route('/trendline.html', methods=['GET'])
 def trendline_scanner_page():
