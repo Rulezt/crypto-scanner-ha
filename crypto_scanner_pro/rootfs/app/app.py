@@ -1430,8 +1430,12 @@ def get_klines():
             raw, tz_s = _fetch_klines_bybit(symbol, base_iv, max_pages)
             result = _aggregate_candles(raw, bucket_s, tz_s)
         else:
-            # Max pages per TF to keep response times reasonable
-            max_pages = {'1': 2, '5': 3, '15': 3, '30': 4, '60': 4, '240': 5}.get(interval, 5)
+            # Il grafico mostra di default solo 24-120 candele per TF (TF_DEFAULT_N/_TF_N
+            # lato frontend): 1 pagina (~1000 candele) è già 8-40x quel margine, abbondante
+            # anche per l'EMA223 e per lo scroll-back manuale. Prima si arrivava fino a 5
+            # pagine (5000 candele, 5 chiamate Bybit sequenziali) per TF come 4h/1h/D, con
+            # cambio TF percepito come lento pur avendo il grafico ricaricato correttamente.
+            max_pages = 1
             result, tz_s = _fetch_klines_bybit(symbol, interval, max_pages)
 
         payload = {'success': True, 'data': result, 'symbol': symbol,

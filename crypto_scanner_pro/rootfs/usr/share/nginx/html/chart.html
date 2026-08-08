@@ -1330,15 +1330,27 @@ function calcRoc(klines, length) {
     return out;
 }
 function applyRocToSlot(s, rocCfg) {
-    if (s.rocSeries) { try { s.chart.removePane(ROC_PANE_INDEX); } catch(e) {} s.rocSeries = null; s.rocZeroLine = null; }
-    if (!rocActive || !s.klines || s.klines.length <= rocCfg.length) return;
-    s.rocSeries = addSeries(s.chart, 'LineSeries', {
-        priceLineVisible: true, lastValueVisible: true, crosshairMarkerVisible: true,
-        color: rocCfg.color, lineWidth: 1,
-        priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
-    }, ROC_PANE_INDEX);
-    s.rocZeroLine = s.rocSeries.createPriceLine({ price: 0, color: '#787B86', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
-    try { s.chart.panes()[ROC_PANE_INDEX].setStretchFactor(0.3); } catch(e) {}
+    // removePane() è un'operazione di layout pesante (ricalcola tutte le pane del
+    // chart): chiamarla ad ogni refresh dati/cambio TF (prima si distruggeva e
+    // ricreava la pane ROC ogni volta) col tempo destabilizza il chart di
+    // Lightweight Charts, che smette di renderizzare le candele dopo alcuni cambi
+    // TF consecutivi. Ora la pane si tocca SOLO su vera transizione ON<->OFF:
+    // sui refresh dati si riusa la serie esistente con un semplice setData/color.
+    if (!rocActive || !s.klines || s.klines.length <= rocCfg.length) {
+        if (s.rocSeries) { try { s.chart.removePane(ROC_PANE_INDEX); } catch(e) {} s.rocSeries = null; s.rocZeroLine = null; }
+        return;
+    }
+    if (!s.rocSeries) {
+        s.rocSeries = addSeries(s.chart, 'LineSeries', {
+            priceLineVisible: true, lastValueVisible: true, crosshairMarkerVisible: true,
+            color: rocCfg.color, lineWidth: 1,
+            priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+        }, ROC_PANE_INDEX);
+        s.rocZeroLine = s.rocSeries.createPriceLine({ price: 0, color: '#787B86', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
+        try { s.chart.panes()[ROC_PANE_INDEX].setStretchFactor(0.3); } catch(e) {}
+    } else {
+        s.rocSeries.applyOptions({ color: rocCfg.color });
+    }
     s.rocSeries.setData(calcRoc(s.klines, rocCfg.length));
 }
 function toggleRocAll() {
@@ -2739,7 +2751,7 @@ async function switchSlotTF(idx, tf) {
     if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
     if (s.dayPrimitive) { try { s.candleS.detachPrimitive(s.dayPrimitive); } catch(e) {} s.dayPrimitive = null; }
     for (const k of ['upper','mid','lower']) { if (s.bbSeries[k]) { try { s.chart.removeSeries(s.bbSeries[k]); } catch(e) {} s.bbSeries[k]=null; } }
-    if (s.rocSeries) { try { s.chart.removePane(ROC_PANE_INDEX); } catch(e) {} s.rocSeries = null; s.rocZeroLine = null; }
+    if (s.rocSeries) { try { s.rocSeries.setData([]); } catch(e) {} }
     for (const k of ['upper','mid','lower']) { if (s.channelSeries[k]) { try { s.chart.removeSeries(s.channelSeries[k]); } catch(e) {} s.channelSeries[k]=null; } }
     s.channelData = null;
     s.klines = [];
@@ -2860,6 +2872,8 @@ async function loadSlot(idx, coin) {
 
 async function loadSlotData(idx) {
     const s = slots[idx];
+    s._loadSeq = (s._loadSeq || 0) + 1;
+    const _mySeq = s._loadSeq;
     try {
         let klines, jd;
         if (curMode === 'ibkr') {
@@ -2894,6 +2908,11 @@ async function loadSlotData(idx) {
             klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
             jd = jdj;
         }
+        // Se nel frattempo è partito un altro switchSlotTF/loadSlot per questo slot
+        // (l'utente ha cambiato TF di nuovo prima che questa fetch finisse), questa
+        // risposta è superata: applicarla sovrascriverebbe le candele corrette con
+        // dati di un TF non più selezionato (bug: "cambio TF veloce → candele bloccate").
+        if (s._loadSeq !== _mySeq) return;
         s.klineCount = klines.length;
         s.klines = klines.slice();
         s.candleS.setData(klines);

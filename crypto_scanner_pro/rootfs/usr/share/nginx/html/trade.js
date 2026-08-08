@@ -322,6 +322,7 @@ function fmtVol(v) {
 // Variables and functions copied verbatim from chart.html with 4 substitutions:
 // fsCandleS→_obCandleS, fsChart→_obChart, fsCoin.symbol→_obSymbol, _livePrice[...]→_obLivePrice
 let _obCandleS = null, _obChart = null, _obSymbol = '', _obLivePrice = 0, _obChartTF = '', _obTzOffsetG = 0;
+let _obLoadSeq = 0;
 let _isLoggedIn = false;
 // "Colora candele" — toggle GLOBALE condiviso su tutte le pagine (vedi candle-color.js).
 const _applyCandleStyle = window.applyCandleColorStyle;
@@ -365,16 +366,25 @@ function toggleObBB() {
 let _obRocActive = window.getIndActive('roc'), _obRocSeries = null, _obRocZeroLine = null;
 
 function _obApplyRoc() {
-    if (_obRocSeries) { try { _obChart.removePane(ROC_PANE_INDEX); } catch(e) {} _obRocSeries = null; _obRocZeroLine = null; }
+    // removePane() è un'operazione di layout pesante: farla ad ogni refresh dati/cambio
+    // TF (invece che solo su vera transizione ON<->OFF) col tempo destabilizza il chart
+    // (smette di renderizzare le candele dopo alcuni cambi TF) — vedi chart.html applyRocToSlot.
     const cfg = getRocCfg();
-    if (!_obRocActive || !_obChart || !_obKlines.length || _obKlines.length <= cfg.length) return;
-    _obRocSeries = addSeries(_obChart, 'LineSeries', {
-        priceLineVisible: true, lastValueVisible: true, crosshairMarkerVisible: true,
-        color: cfg.color, lineWidth: 1,
-        priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
-    }, ROC_PANE_INDEX);
-    _obRocZeroLine = _obRocSeries.createPriceLine({ price: 0, color: '#787B86', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
-    try { _obChart.panes()[ROC_PANE_INDEX].setStretchFactor(0.3); } catch(e) {}
+    if (!_obRocActive || !_obChart || !_obKlines.length || _obKlines.length <= cfg.length) {
+        if (_obRocSeries) { try { _obChart.removePane(ROC_PANE_INDEX); } catch(e) {} _obRocSeries = null; _obRocZeroLine = null; }
+        return;
+    }
+    if (!_obRocSeries) {
+        _obRocSeries = addSeries(_obChart, 'LineSeries', {
+            priceLineVisible: true, lastValueVisible: true, crosshairMarkerVisible: true,
+            color: cfg.color, lineWidth: 1,
+            priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+        }, ROC_PANE_INDEX);
+        _obRocZeroLine = _obRocSeries.createPriceLine({ price: 0, color: '#787B86', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
+        try { _obChart.panes()[ROC_PANE_INDEX].setStretchFactor(0.3); } catch(e) {}
+    } else {
+        _obRocSeries.applyOptions({ color: cfg.color });
+    }
     _obRocSeries.setData(calcRoc(_obKlines, cfg.length));
 }
 
@@ -3233,6 +3243,8 @@ createApp({
         const loadChartData = async (tf) => {
             if (!candleS) return;
             _obChartTF = tf;
+            _obLoadSeq++;
+            const _mySeq = _obLoadSeq;
             try {
                 // Le linee Day/Prev H/L usano solo le ultime 2 candele D: partite in parallelo
                 // al fetch principale, e su /api/klines/live (una sola chiamata Bybit, cache
@@ -3244,6 +3256,10 @@ createApp({
                 const r = await fetch(`api/klines?symbol=${symbol.value}&interval=${tf}`);
                 const j = await r.json();
                 if (!j.success || !j.data || !j.data.length) return;
+                // Se nel frattempo è partito un altro changeChartTF (TF cambiato di nuovo
+                // prima che questa fetch finisse), questa risposta è superata: scartarla
+                // evita di sovrascrivere le candele del TF corrente con dati vecchi.
+                if (_obLoadSeq !== _mySeq) return;
                 const klines = j.data;
                 if (j.utc_offset_s != null) { _obTzOffset = j.utc_offset_s; _obTzOffsetG = j.utc_offset_s; }
 
@@ -3290,6 +3306,7 @@ createApp({
                 _fetchAthAtl(symbol.value);
                 try {
                     const jd = await dayPromise;
+                    if (_obLoadSeq !== _mySeq) return;
                     if (jd && jd.success && jd.data && jd.data.length) {
                         const lv = getLvCfg();
                         const today = jd.data[jd.data.length - 1];

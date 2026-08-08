@@ -80,7 +80,6 @@
         .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
         .legend-line { width: 18px; height: 3px; border-radius: 2px; border-top: 2px dashed currentColor; background: transparent; }
         @media (max-width: 639px) and (orientation: portrait) {
-            [data-col="mtf"] { display: none !important; }
         }
     </style>
 <style>#tv-attr-logo{display:none!important}</style>
@@ -180,12 +179,6 @@
                         <template v-if="col.key==='symbol'">
                             <a :href="'mtf?symbol='+row.symbol" target="_blank">{{ row.symbol.replace('USDT','') }}</a>
                         </template>
-                        <template v-else-if="col.key==='mtf'">
-                            <a :href="'mtf?symbol='+row.symbol" target="_blank" :title="t('col_mtf')" style="display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="16" height="16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1.5"/><rect x="15" y="3" width="10" height="10" rx="1.5"/><rect x="3" y="15" width="10" height="10" rx="1.5"/><rect x="15" y="15" width="10" height="10" rx="1.5"/></svg></a>
-                        </template>
-                        <template v-else-if="col.key==='trade'">
-                            <a :href="'trade?symbol='+row.symbol" target="_blank" :title="t('col_trade')" style="display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3v4"/><rect x="4" y="7" width="4" height="7" rx="1" fill="currentColor" stroke="none"/><path d="M6 14v7"/><path d="M14 3v2"/><rect x="12" y="5" width="4" height="10" rx="1" fill="currentColor" stroke="none"/><path d="M14 15v6"/></svg></a>
-                        </template>
                         <template v-else-if="col.key==='preview'">
                             <span v-if="viewIsMobile" @click="toggleMobilePreview(row)" :title="t('col_preview')" style="cursor:pointer;display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
                             <canvas v-else data-thumb-trigger width="96" height="38" style="width:96px;height:38px;display:block;margin:0 auto;cursor:zoom-in;border-radius:3px;background:#0b0e11;"
@@ -204,7 +197,6 @@
                         </template>
                         <template v-else-if="col.key==='first_high'">{{ formatPrice(row.first_high) }}</template>
                         <template v-else-if="col.key==='first_low'">{{ formatPrice(row.first_low) }}</template>
-                        <template v-else-if="col.key==='price'">{{ formatPrice(row.price) }}</template>
                         <template v-else-if="col.key==='change'">
                             <span :class="row.change>=0?'positive':'negative'">{{ row.change>=0?'+':'' }}{{ row.change.toFixed(2) }}%</span>
                         </template>
@@ -229,6 +221,11 @@
             <span id="lwc-popup-change" style="font-size:0.72rem;font-weight:500;white-space:nowrap;"></span>
             <span style="color:#374151;font-size:0.72rem;">|</span>
             <span id="lwc-popup-vol"    style="font-size:0.72rem;color:#60a5fa;white-space:nowrap;"></span>
+            <span style="color:#374151;font-size:0.72rem;">|</span>
+            <a id="lwc-popup-mtf"   href="#" target="_blank" :title="t('popup_mtf_title')"   style="display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="14" height="14" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1.5"/><rect x="15" y="3" width="10" height="10" rx="1.5"/><rect x="3" y="15" width="10" height="10" rx="1.5"/><rect x="15" y="15" width="10" height="10" rx="1.5"/></svg></a>
+            <span style="color:#374151;font-size:0.72rem;">|</span>
+            <a id="lwc-popup-trade" href="#" target="_blank" :title="t('popup_trade_title')" style="display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3v4"/><rect x="4" y="7" width="4" height="7" rx="1" fill="currentColor" stroke="none"/><path d="M6 14v7"/><path d="M14 3v2"/><rect x="12" y="5" width="4" height="10" rx="1" fill="currentColor" stroke="none"/><path d="M14 15v6"/></svg></a>
+            <span style="color:#374151;font-size:0.72rem;">|</span>
             <span id="lwc-popup-ohlc" style="display:none;align-items:center;gap:3px;font-family:monospace;font-size:0.68rem;white-space:nowrap;">
                 <span style="color:#6b7280;">O</span><span id="lwc-popup-o"></span>
                 <span style="color:#6b7280;">H</span><span id="lwc-popup-h" style="color:#34d399;"></span>
@@ -344,14 +341,11 @@ createApp({
         let _colKey_ico = STORAGE_KEY_ICO;
         const columnsDef = [
             { key:'symbol',     labelKey:'ico_v_col_symbol', sortKey:null,     align:'left',   tdClass:()=>'td-sym' },
-            { key:'mtf',        labelKey:'col_mtf',          sortKey:null,     align:'center', tdClass:()=>'td-center' },
-            { key:'trade',      labelKey:'col_trade',        sortKey:null,     align:'center', tdClass:()=>'td-center' },
             { key:'preview', labelKey:'col_preview', sortKey:null, align:'center', tdClass:()=>'td-center' },
             { key:'side',       labelKey:'ico_v_col_side',   sortKey:null,     align:'center', tdClass:()=>'td-center' },
             { key:'dist',       labelKey:'ico_v_col_dist',   sortKey:'dist',   align:'right',  tdClass:()=>'td-num' },
             { key:'first_high', labelKey:'ico_v_col_high',   sortKey:null,     align:'right',  tdClass:()=>'td-num muted' },
             { key:'first_low',  labelKey:'ico_v_col_low',    sortKey:null,     align:'right',  tdClass:()=>'td-num muted' },
-            { key:'price',      labelKey:'ico_v_col_price',  sortKey:null,     align:'right',  tdClass:()=>'td-num' },
             { key:'change',     labelKey:'ico_v_col_change', sortKey:'change', align:'right',  tdClass:(r)=>r.change>=0?'td-num positive':'td-num negative' },
             { key:'volume',     labelKey:'ico_v_col_vol',    sortKey:'volume', align:'right',  tdClass:()=>'td-num muted' },
         ];
@@ -658,6 +652,10 @@ createApp({
             const chgEl  = document.getElementById('lwc-popup-change');
             const volEl  = document.getElementById('lwc-popup-vol');
             if (coinEl) coinEl.textContent = row.symbol.replace('USDT','');
+            const mtfEl = document.getElementById('lwc-popup-mtf');
+            const tradeEl = document.getElementById('lwc-popup-trade');
+            if (mtfEl)   mtfEl.href   = 'mtf?symbol='   + row.symbol;
+            if (tradeEl) tradeEl.href = 'trade?symbol=' + row.symbol;
             if (chgEl)  { chgEl.textContent = (row.change >= 0 ? '+' : '') + row.change.toFixed(2) + '%'; chgEl.style.color = row.change >= 0 ? '#34d399' : '#f87171'; }
             if (volEl)  volEl.textContent = formatVolume(row.volume);
             const pctEl = document.getElementById('lwc-popup-candle-pct');
