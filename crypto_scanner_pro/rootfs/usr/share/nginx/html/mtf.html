@@ -340,7 +340,7 @@ function _mtfSaveDrawings() {
     const hlinesByTf = {};
     for (const s of slots) hlinesByTf[s.cfg.tf] = s.hlines.map(h => h.price);
     all[SYM] = {
-      trendlines: sharedTrendlines.map(tl => ({ t1: tl.t1, p1: tl.p1, t2: tl.t2, p2: tl.p2 })),
+      trendlines: sharedTrendlines.map(tl => ({ t1: tl.t1, p1: tl.p1, t2: tl.t2, p2: tl.p2, pane: tl.pane || 0 })),
       hlines: hlinesByTf,
     };
     json = JSON.stringify(all);
@@ -2712,17 +2712,27 @@ function _logicalToTimeRobust(s, logicalIdx) {
 // per ottenere l'indice logico ESATTO ai due bordi pixel del canvas (funziona anche nello
 // spazio vuoto, lightweight-charts estrapola l'indice oltre i dati reali), poi convertirlo
 // in tempo con _logicalToTimeRobust — così x1/x2 sono SEMPRE 0 e W per costruzione.
+// paneTop/paneHeight (coordinate canvas condiviso) accompagnano il segmento così
+// _trendVisibleXSpan/_trendDrawAll possono valutare/clippare contro il proprio pane
+// invece che contro l'intero canvas (che con ROC attivo copre anche l'altro pane).
 function _trendLineEdgePts(s, tl) {
-  const W = s.trendCanvas.width;
+  const canvas = s.trendCanvas;
+  const W = canvas.width;
   if (!W) return null;
   // La retta si ferma al bordo del pannello candele, prima della colonna prezzo
   // (il canvas del tool è largo quanto l'intero container, asse compreso).
   let paneW = W;
   try { const aw = s.chart.priceScale('right').width(); if (Number.isFinite(aw)) paneW = Math.max(0, W - aw); } catch(e) {}
+  const paneIndex = tl.pane || 0;
+  const series = DrawTools.trendSeriesForPane(s, paneIndex);
+  const paneRect = DrawTools.getPaneRect(s.chart, paneIndex);
+  if (!series || !paneRect) return null;
+  const canvasRect = canvas.getBoundingClientRect();
+  const offsetY = paneRect.top - canvasRect.top;
   if (tl.t2 === tl.t1) {
     const x = _timeToXRobust(s, tl.t1);
     if (x == null) return null;
-    return { x1: x, y1: 0, x2: x, y2: s.trendCanvas.height || 1 };
+    return { x1: x, y1: offsetY, x2: x, y2: offsetY + paneRect.height, paneTop: offsetY, paneHeight: paneRect.height };
   }
   const ts = s.chart.timeScale();
   let logical0, logicalW;
@@ -2734,28 +2744,29 @@ function _trendLineEdgePts(s, tl) {
   const slope = (tl.p2 - tl.p1) / (tl.t2 - tl.t1); // prezzo per secondo
   const pA = tl.p1 + slope * (tLeft  - tl.t1);
   const pB = tl.p1 + slope * (tRight - tl.t1);
-  const x1 = 0, y1 = s.candleS.priceToCoordinate(pA);
-  const x2 = paneW, y2 = s.candleS.priceToCoordinate(pB);
-  if (y1==null||y2==null) return null;
-  return { x1, y1, x2, y2 };
+  const localY1 = series.priceToCoordinate(pA), localY2 = series.priceToCoordinate(pB);
+  if (localY1==null||localY2==null) return null;
+  return { x1: 0, y1: localY1 + offsetY, x2: paneW, y2: localY2 + offsetY, paneTop: offsetY, paneHeight: paneRect.height };
 }
 
-// Interseca il segmento (x1,y1)-(x2,y2) con la fascia orizzontale visibile [0,H] e
-// ritorna quanti pixel di larghezza (asse x) occupa la porzione realmente dentro al
-// canvas. Una trendline disegnata su un TF molto più "stretto" di quello del pannello
-// (es. tracciata su 1h, vista su Monthly) ha pendenza fortissima in questo sistema di
-// coordinate: quasi tutta la retta cade fuori dal canvas e resta visibile solo una
+// Interseca il segmento (x1,y1)-(x2,y2) con la fascia orizzontale del PROPRIO pane
+// (pts.paneTop/paneHeight, non più tutto il canvas: con ROC attivo il canvas copre
+// anche l'altro pane) e ritorna quanti pixel di larghezza (asse x) occupa la porzione
+// realmente dentro. Una trendline disegnata su un TF molto più "stretto" di quello del
+// pannello (es. tracciata su 1h, vista su Monthly) ha pendenza fortissima in questo
+// sistema di coordinate: quasi tutta la retta cade fuori e resta visibile solo una
 // scheggia larga pochi pixel vicino a un bordo — inutile e brutta da vedere. La si
 // nasconde su quel pannello invece di disegnarla (vedi soglia in _trendDrawAll).
-function _trendVisibleXSpan(pts, H) {
-  const { x1, y1, x2, y2 } = pts;
+function _trendVisibleXSpan(pts) {
+  const { x1, y1, x2, y2, paneTop, paneHeight } = pts;
+  const top = paneTop, bottom = paneTop + paneHeight;
   const dy = y2 - y1;
   let t0 = 0, t1 = 1;
   if (dy !== 0) {
-    const tA = (0 - y1) / dy, tB = (H - y1) / dy;
+    const tA = (top - y1) / dy, tB = (bottom - y1) / dy;
     t0 = Math.max(t0, Math.min(tA, tB));
     t1 = Math.min(t1, Math.max(tA, tB));
-  } else if (y1 < 0 || y1 > H) {
+  } else if (y1 < top || y1 > bottom) {
     return 0;
   }
   if (t0 >= t1) return 0;
@@ -2779,25 +2790,34 @@ function _trendDrawAll(s) {
       // il cui tratto entro il range di prezzo corrente non riempiva quella percentuale,
       // es. quando il pannello ha uno zoom di prezzo stretto: bug reale, linee sparivano
       // o sembravano non arrivare più al bordo destro. Nasconde solo la vera "scheggia".
-      if (_trendVisibleXSpan(pts, H) < 6) continue;
+      if (_trendVisibleXSpan(pts) < 6) continue;
+      const paneIndex = tl.pane || 0;
+      // Confina la retta (e i marker) dentro il proprio pane: la pendenza calcolata ai
+      // bordi della vista temporale può portare y1/y2 ben oltre il pane (es. una linea
+      // sul pannello principale che, estrapolata, ricadrebbe nel pane ROC sottostante).
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, pts.paneTop, W, pts.paneHeight); ctx.clip();
       ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(pts.x1, pts.y1); ctx.lineTo(pts.x2, pts.y2); ctx.stroke();
       // marker sui due punti originali, solo se ricadono nella vista di questo pannello
-      const ox1 = _timeToXRobust(s, tl.t1), oy1 = s.candleS.priceToCoordinate(tl.p1);
-      const ox2 = _timeToXRobust(s, tl.t2), oy2 = s.candleS.priceToCoordinate(tl.p2);
+      const c1 = DrawTools.trendCanvasY(s, canvas, paneIndex, tl.p1), c2 = DrawTools.trendCanvasY(s, canvas, paneIndex, tl.p2);
+      const ox1 = _timeToXRobust(s, tl.t1), ox2 = _timeToXRobust(s, tl.t2);
       ctx.fillStyle = '#22c55e';
-      if (ox1!=null && oy1!=null) { ctx.beginPath(); ctx.arc(ox1, oy1, 4, 0, Math.PI*2); ctx.fill(); }
-      if (ox2!=null && oy2!=null) { ctx.beginPath(); ctx.arc(ox2, oy2, 4, 0, Math.PI*2); ctx.fill(); }
+      if (ox1!=null && c1) { ctx.beginPath(); ctx.arc(ox1, c1.y, 4, 0, Math.PI*2); ctx.fill(); }
+      if (ox2!=null && c2) { ctx.beginPath(); ctx.arc(ox2, c2.y, 4, 0, Math.PI*2); ctx.fill(); }
+      ctx.restore();
     } catch(ex) {}
   }
   if (s._trendP1 && s._trendPrev) {
     try {
-      const x1 = s.chart.timeScale().timeToCoordinate(s._trendP1.t), y1 = s.candleS.priceToCoordinate(s._trendP1.p);
-      if (x1!=null && y1!=null) {
+      const paneIndex = s._trendPane || 0;
+      const x1 = s.chart.timeScale().timeToCoordinate(s._trendP1.t);
+      const c1 = DrawTools.trendCanvasY(s, canvas, paneIndex, s._trendP1.p);
+      if (x1!=null && c1) {
         ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1; ctx.setLineDash([5,3]);
-        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(s._trendPrev.x, s._trendPrev.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x1, c1.y); ctx.lineTo(s._trendPrev.x, s._trendPrev.y); ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(x1, y1, 4, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(x1, c1.y, 4, 0, Math.PI*2); ctx.fill();
       }
     } catch(ex) {}
   }
@@ -2817,13 +2837,16 @@ function _trendEnsureRAF(s) {
 }
 
 function _trendNearest(s, cx, cy) {
-  const rect = s.trendCanvas.getBoundingClientRect(), mx = cx-rect.left, my = cy-rect.top;
+  const canvas = s.trendCanvas;
+  const rect = canvas.getBoundingClientRect(), mx = cx-rect.left, my = cy-rect.top;
   let best = null, bestDist = DrawTools.TREND_HIT, bestPart = 'line';
   for (const tl of s.trendlines) {
     try {
-      const x1 = _timeToXRobust(s, tl.t1), y1 = s.candleS.priceToCoordinate(tl.p1);
-      const x2 = _timeToXRobust(s, tl.t2), y2 = s.candleS.priceToCoordinate(tl.p2);
-      if (x1==null||y1==null||x2==null||y2==null) continue;
+      const paneIndex = tl.pane || 0;
+      const c1 = DrawTools.trendCanvasY(s, canvas, paneIndex, tl.p1), c2 = DrawTools.trendCanvasY(s, canvas, paneIndex, tl.p2);
+      const x1 = _timeToXRobust(s, tl.t1), x2 = _timeToXRobust(s, tl.t2);
+      if (x1==null||!c1||x2==null||!c2) continue;
+      const y1 = c1.y, y2 = c2.y;
       const d1 = Math.hypot(mx-x1, my-y1), d2 = Math.hypot(mx-x2, my-y2);
       // if/else-if/else, NON tre if indipendenti: vicino a un pallino la distanza
       // perpendicolare alla retta può risultare più piccola di quella dal pallino
@@ -2856,7 +2879,7 @@ function _toggleTrendForSurface(s, opts = {}) {
   if (s._trendMU) { document.removeEventListener('mouseup', s._trendMU); s._trendMU = null; }
   if (s._trendCM) { s.trendCanvas.removeEventListener('contextmenu', s._trendCM); s._trendCM = null; }
   DrawTools.unwireTouch(s.trendCanvas, s._trendTouch); s._trendTouch = null;
-  s._trendP1 = null; s._trendPrev = null; s._trendDrag = null; s._trendPending = null; s._trendP1DownPx = null;
+  s._trendP1 = null; s._trendPrev = null; s._trendPane = null; s._trendDrag = null; s._trendPending = null; s._trendP1DownPx = null;
   s.trendCanvas.style.pointerEvents = s.trendActive ? 'auto' : 'none';
   s.trendCanvas.style.cursor = s.trendActive ? 'crosshair' : '';
   s.trendCanvas.style.touchAction = s.trendActive ? 'none' : '';
@@ -2873,16 +2896,16 @@ function _toggleTrendForSurface(s, opts = {}) {
       // serve poter piazzare due trendline dallo stesso punto esatto (vedi mousemove/mouseup).
       s._trendPending = { hit, px, py };
     } else if (!s._trendP1) {
-      const r = DrawTools.trendPickPoint(s.chart, s.candleS, s.klines, px, py);
-      if (r) { s._trendP1 = r; s._trendP1DownPx = { x: px, y: py }; }
+      const r = DrawTools.trendPickAtClient(s, e.clientY, px);
+      if (r) { s._trendP1 = r; s._trendPane = r.pane; s._trendP1DownPx = { x: px, y: py }; }
     } else {
-      const r2 = DrawTools.trendPickPoint(s.chart, s.candleS, s.klines, px, py, s._trendP1.t);
+      const r2 = DrawTools.trendPickAtPane(s, s._trendPane || 0, e.clientY, px, s._trendP1.t);
       if (r2) {
-        s.trendlines.push({ t1: s._trendP1.t, p1: s._trendP1.p, t2: r2.t, p2: r2.p });
+        s.trendlines.push({ t1: s._trendP1.t, p1: s._trendP1.p, t2: r2.t, p2: r2.p, pane: s._trendPane || 0 });
         _trendWakeAllSlots();
         _mtfSaveDrawings();
       }
-      s._trendP1 = null; s._trendPrev = null;
+      s._trendP1 = null; s._trendPrev = null; s._trendPane = null;
       _trendDrawAll(s);
     }
   };
@@ -2895,10 +2918,13 @@ function _toggleTrendForSurface(s, opts = {}) {
       else {
         // Trascinamento dell'intera linea: si lavora in delta tempo/prezzo (non pixel),
         // così funziona anche su un pannello dove i due punti originali sono compressi
-        // in pochi pixel o fuori vista (vedi _trendLineEdgePts).
+        // in pochi pixel o fuori vista (vedi _trendLineEdgePts). pxPerPriceUnit va
+        // calcolato sulla serie del PANE della linea (candele o ROC), non sempre candleS.
+        const dragPane = hit.tl.pane || 0;
+        const dragSeries = DrawTools.trendSeriesForPane(s, dragPane);
         const vr = s.chart.timeScale().getVisibleRange();
         const secPerPx = vr ? (vr.to - vr.from) / (s.trendCanvas.width || 1) : 0;
-        const y0 = s.candleS.priceToCoordinate(hit.tl.p1), y1 = s.candleS.priceToCoordinate(hit.tl.p1 + 1);
+        const y0 = dragSeries && dragSeries.priceToCoordinate(hit.tl.p1), y1 = dragSeries && dragSeries.priceToCoordinate(hit.tl.p1 + 1);
         const pxPerPriceUnit = (y0!=null && y1!=null) ? (y1 - y0) : null;
         s._trendDrag = {
           tl: hit.tl, part: 'line', sx: dpx0, sy: dpy0, secPerPx, pxPerPriceUnit,
@@ -2911,8 +2937,9 @@ function _toggleTrendForSurface(s, opts = {}) {
     if (s._trendDrag) {
       if (!(e.buttons & 1)) { s._trendDrag = null; return; }
       const { tl, part } = s._trendDrag;
-      if (part === 'p1') { const r = DrawTools.trendPickPoint(s.chart, s.candleS, s.klines, px, py, tl.t2); if (r) { tl.t1=r.t; tl.p1=r.p; } }
-      else if (part === 'p2') { const r = DrawTools.trendPickPoint(s.chart, s.candleS, s.klines, px, py, tl.t1); if (r) { tl.t2=r.t; tl.p2=r.p; } }
+      const dragPane = tl.pane || 0;
+      if (part === 'p1') { const r = DrawTools.trendPickAtPane(s, dragPane, e.clientY, px, tl.t2); if (r) { tl.t1=r.t; tl.p1=r.p; } }
+      else if (part === 'p2') { const r = DrawTools.trendPickAtPane(s, dragPane, e.clientY, px, tl.t1); if (r) { tl.t2=r.t; tl.p2=r.p; } }
       else {
         const d = s._trendDrag;
         const dpx = px - d.sx, dpy = py - d.sy;
@@ -2935,8 +2962,8 @@ function _toggleTrendForSurface(s, opts = {}) {
     if (s._trendPending) {
       // Click senza drag su un punto/linea esistente → inizia una nuova trendline da qui.
       const { px: cpx, py: cpy } = s._trendPending;
-      const r = DrawTools.trendPickPoint(s.chart, s.candleS, s.klines, cpx, cpy);
-      if (r) { s._trendP1 = r; s._trendP1DownPx = { x: cpx, y: cpy }; }
+      const r = DrawTools.trendPickAtClient(s, e.clientY, cpx);
+      if (r) { s._trendP1 = r; s._trendPane = r.pane; s._trendP1DownPx = { x: cpx, y: cpy }; }
       s._trendPending = null;
       return;
     }
@@ -2947,13 +2974,13 @@ function _toggleTrendForSurface(s, opts = {}) {
       const rect = s.trendCanvas.getBoundingClientRect(), px = e.clientX-rect.left, py = e.clientY-rect.top;
       const moved = Math.hypot(px - s._trendP1DownPx.x, py - s._trendP1DownPx.y);
       if (moved > DrawTools.TREND_CLICK_SLOP) {
-        const r2 = DrawTools.trendPickPoint(s.chart, s.candleS, s.klines, px, py, s._trendP1.t);
+        const r2 = DrawTools.trendPickAtPane(s, s._trendPane || 0, e.clientY, px, s._trendP1.t);
         if (r2) {
-          s.trendlines.push({ t1: s._trendP1.t, p1: s._trendP1.p, t2: r2.t, p2: r2.p });
+          s.trendlines.push({ t1: s._trendP1.t, p1: s._trendP1.p, t2: r2.t, p2: r2.p, pane: s._trendPane || 0 });
           _trendWakeAllSlots();
           _mtfSaveDrawings();
         }
-        s._trendP1 = null; s._trendPrev = null; s._trendP1DownPx = null;
+        s._trendP1 = null; s._trendPrev = null; s._trendPane = null; s._trendP1DownPx = null;
         _trendDrawAll(s);
         return;
       }
@@ -2962,7 +2989,7 @@ function _toggleTrendForSurface(s, opts = {}) {
   };
   s._trendCM = e => {
     e.preventDefault();
-    if (s._trendP1) { s._trendP1 = null; s._trendPrev = null; s._trendP1DownPx = null; _trendDrawAll(s); return; }
+    if (s._trendP1) { s._trendP1 = null; s._trendPrev = null; s._trendPane = null; s._trendP1DownPx = null; _trendDrawAll(s); return; }
     const hit = _trendNearest(s, e.clientX, e.clientY);
     if (hit) {
       const hidx = s.trendlines.indexOf(hit.tl);
@@ -2990,6 +3017,9 @@ const _fsTrendSurface = {
   get trendBtn() { return document.getElementById('fs-trend-btn'); },
   get chart() { return fsChart; },
   get candleS() { return fsCandleS; },
+  // Pane ROC del pannello fullscreen (vedi fsRocSlot/applyFsRoc) — usato da draw-tools.js
+  // per capire se un click cade nel pannello ROC invece che sulle candele.
+  get rocSeries() { return fsRocSeries; },
   get klines() { return fsKlines; },
   get _trendP1() { return _fsTrendP1; }, set _trendP1(v) { _fsTrendP1 = v; },
   get _trendPrev() { return _fsTrendPrev; }, set _trendPrev(v) { _fsTrendPrev = v; },

@@ -2494,8 +2494,16 @@ let _obRangeActive = false, _obRangeP1 = null, _obRangeMD = null, _obRangeMM = n
 let _obRangeHoverLine = null, _obRangeHoverMM = null, _obRangeHoverML = null;
 let _obHlineActive = false, _obHlines = [], _obHlineMD = null, _obHlineMM = null, _obHlineMU = null, _obHlineCM = null, _obHlineDragging = null, _obHlineTouch = null;
 let _obHlineHoverLine = null, _obHlineHoverMM = null, _obHlineHoverML = null;
-let _obTrendActive = false, _obTrendlines = [], _obTrendP1 = null, _obTrendPrev = null, _obTrendPending = null;
+let _obTrendActive = false, _obTrendlines = [], _obTrendP1 = null, _obTrendPrev = null, _obTrendPending = null, _obTrendPane = null;
 let _obTrendMD = null, _obTrendMM = null, _obTrendMU = null, _obTrendCM = null, _obTrendDrag = null, _obTrendRAF = null, _obTrendTouch = null;
+// Surface minimale per riusare gli helper multi-pane di draw-tools.js (getPaneRect/
+// resolvePaneAtY/trendPickAtClient/...), che si aspettano un oggetto con questa forma.
+const _obTrendSurface = {
+    get chart() { return _obChart; },
+    get candleS() { return _obCandleS; },
+    get klines() { return _obKlines; },
+    get rocSeries() { return _obRocSeries; },
+};
 
 // Come _timeToXRobust in mtf.html: timeToCoordinate torna null se il timestamp non
 // combacia esattamente con una candela dell'asse attuale — cosa che succede sempre
@@ -2543,7 +2551,7 @@ function _obSaveDrawings() {
     try {
         const all = _obLoadDrawings();
         all[_obSymbol] = {
-            trendlines: _obTrendlines.map(tl => ({ t1: tl.t1, p1: tl.p1, t2: tl.t2, p2: tl.p2 })),
+            trendlines: _obTrendlines.map(tl => ({ t1: tl.t1, p1: tl.p1, t2: tl.t2, p2: tl.p2, pane: tl.pane || 0 })),
             hlines: _obHlines.map(h => h.price),
         };
         json = JSON.stringify(all);
@@ -2796,26 +2804,35 @@ function _obTrendDrawAll() {
     ctx.clearRect(0, 0, W, H);
     for (const tl of _obTrendlines) {
         try {
-            const x1 = _obTimeToXRobust(tl.t1), y1 = _obCandleS.priceToCoordinate(tl.p1);
-            const x2 = _obTimeToXRobust(tl.t2), y2 = _obCandleS.priceToCoordinate(tl.p2);
-            if (x1==null||y1==null||x2==null||y2==null) continue;
+            const paneIndex = tl.pane || 0;
+            const c1 = DrawTools.trendCanvasY(_obTrendSurface, canvas, paneIndex, tl.p1), c2 = DrawTools.trendCanvasY(_obTrendSurface, canvas, paneIndex, tl.p2);
+            const x1 = _obTimeToXRobust(tl.t1), x2 = _obTimeToXRobust(tl.t2);
+            if (x1==null||!c1||x2==null||!c2) continue;
+            const y1 = c1.y, y2 = c2.y, paneTop = c1.paneRect.top - c1.canvasRect.top;
+            // Confina la retta estesa (e i marker) dentro il proprio pane, così non
+            // sbrodola sull'altro pane quando la pendenza è estrema (es. pane ROC piccolo).
+            ctx.save();
+            ctx.beginPath(); ctx.rect(0, paneTop, W, c1.paneRect.height); ctx.clip();
             ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1.5; ctx.beginPath();
-            if (Math.abs(x2-x1) < 0.5) { ctx.moveTo(x1,0); ctx.lineTo(x1,H); }
+            if (Math.abs(x2-x1) < 0.5) { ctx.moveTo(x1,paneTop); ctx.lineTo(x1,paneTop+c1.paneRect.height); }
             else { const m=(y2-y1)/(x2-x1); ctx.moveTo(0,y1+m*-x1); ctx.lineTo(paneW,y1+m*(paneW-x1)); }
             ctx.stroke();
             ctx.fillStyle = '#22c55e';
             ctx.beginPath(); ctx.arc(x1,y1,4,0,Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(x2,y2,4,0,Math.PI*2); ctx.fill();
+            ctx.restore();
         } catch(ex) {}
     }
     if (_obTrendP1 && _obTrendPrev) {
         try {
-            const x1 = _obChart.timeScale().timeToCoordinate(_obTrendP1.t), y1 = _obCandleS.priceToCoordinate(_obTrendP1.p);
-            if (x1!=null && y1!=null) {
+            const paneIndex = _obTrendPane || 0;
+            const x1 = _obChart.timeScale().timeToCoordinate(_obTrendP1.t);
+            const c1 = DrawTools.trendCanvasY(_obTrendSurface, canvas, paneIndex, _obTrendP1.p);
+            if (x1!=null && c1) {
                 ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1; ctx.setLineDash([5,3]);
-                ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(_obTrendPrev.x, _obTrendPrev.y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x1,c1.y); ctx.lineTo(_obTrendPrev.x, _obTrendPrev.y); ctx.stroke();
                 ctx.setLineDash([]);
-                ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(x1,y1,4,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(x1,c1.y,4,0,Math.PI*2); ctx.fill();
             }
         } catch(ex) {}
     }
@@ -2828,9 +2845,11 @@ function _obTrendNearest(cx, cy) {
     let best = null, bestDist = _OB_TREND_HIT, bestPart = 'line';
     for (const tl of _obTrendlines) {
         try {
-            const x1 = _obTimeToXRobust(tl.t1), y1 = _obCandleS.priceToCoordinate(tl.p1);
-            const x2 = _obTimeToXRobust(tl.t2), y2 = _obCandleS.priceToCoordinate(tl.p2);
-            if (x1==null||y1==null||x2==null||y2==null) continue;
+            const paneIndex = tl.pane || 0;
+            const c1 = DrawTools.trendCanvasY(_obTrendSurface, canvas, paneIndex, tl.p1), c2 = DrawTools.trendCanvasY(_obTrendSurface, canvas, paneIndex, tl.p2);
+            const x1 = _obTimeToXRobust(tl.t1), x2 = _obTimeToXRobust(tl.t2);
+            if (x1==null||!c1||x2==null||!c2) continue;
+            const y1 = c1.y, y2 = c2.y;
             const d1=Math.hypot(mx-x1,my-y1), d2=Math.hypot(mx-x2,my-y2);
             const dx=x2-x1, dy=y2-y1, L2=dx*dx+dy*dy;
             const dl = L2 ? Math.hypot(mx-x1-Math.max(0,Math.min(1,((mx-x1)*dx+(my-y1)*dy)/L2))*dx, my-y1-Math.max(0,Math.min(1,((mx-x1)*dx+(my-y1)*dy)/L2))*dy) : Math.hypot(mx-x1,my-y1);
@@ -2867,7 +2886,7 @@ function toggleObTrend() {
     if (_obTrendMU) { document.removeEventListener('mouseup', _obTrendMU); _obTrendMU = null; }
     if (_obTrendCM) { canvas.removeEventListener('contextmenu', _obTrendCM); _obTrendCM = null; }
     DrawTools.unwireTouch(canvas, _obTrendTouch); _obTrendTouch = null;
-    _obTrendP1 = null; _obTrendPrev = null; _obTrendDrag = null; _obTrendPending = null;
+    _obTrendP1 = null; _obTrendPrev = null; _obTrendPane = null; _obTrendDrag = null; _obTrendPending = null;
     canvas.style.pointerEvents = _obTrendActive ? 'auto' : 'none';
     canvas.style.cursor = _obTrendActive ? 'crosshair' : '';
     canvas.style.touchAction = _obTrendActive ? 'none' : '';
@@ -2883,15 +2902,15 @@ function toggleObTrend() {
             // serve poter piazzare due trendline dallo stesso punto esatto (vedi mousemove/mouseup).
             _obTrendPending = { hit, px, py };
         } else if (!_obTrendP1) {
-            const r = DrawTools.trendPickPoint(_obChart, _obCandleS, _obKlines, px, py);
-            if (r) _obTrendP1 = r;
+            const r = DrawTools.trendPickAtClient(_obTrendSurface, e.clientY, px);
+            if (r) { _obTrendP1 = r; _obTrendPane = r.pane; }
         } else {
-            const r2 = DrawTools.trendPickPoint(_obChart, _obCandleS, _obKlines, px, py, _obTrendP1.t);
+            const r2 = DrawTools.trendPickAtPane(_obTrendSurface, _obTrendPane || 0, e.clientY, px, _obTrendP1.t);
             if (r2) {
-                _obTrendlines.push({ t1: _obTrendP1.t, p1: _obTrendP1.p, t2: r2.t, p2: r2.p });
+                _obTrendlines.push({ t1: _obTrendP1.t, p1: _obTrendP1.p, t2: r2.t, p2: r2.p, pane: _obTrendPane || 0 });
                 _obSaveDrawings();
             }
-            _obTrendP1 = null; _obTrendPrev = null;
+            _obTrendP1 = null; _obTrendPrev = null; _obTrendPane = null;
             _obTrendDrawAll();
         }
     };
@@ -2902,9 +2921,10 @@ function toggleObTrend() {
             const { hit, px: dpx0, py: dpy0 } = _obTrendPending;
             if (hit.part !== 'line') { _obTrendDrag = { tl: hit.tl, part: hit.part }; canvas.style.cursor = 'grabbing'; }
             else {
-                const ox1 = _obTimeToXRobust(hit.tl.t1), oy1 = _obCandleS.priceToCoordinate(hit.tl.p1);
-                const ox2 = _obTimeToXRobust(hit.tl.t2), oy2 = _obCandleS.priceToCoordinate(hit.tl.p2);
-                _obTrendDrag = { tl: hit.tl, part: 'line', sx: dpx0, sy: dpy0, ox1, oy1, ox2, oy2 };
+                const dragPane = hit.tl.pane || 0;
+                const c1 = DrawTools.trendCanvasY(_obTrendSurface, canvas, dragPane, hit.tl.p1), c2 = DrawTools.trendCanvasY(_obTrendSurface, canvas, dragPane, hit.tl.p2);
+                const ox1 = _obTimeToXRobust(hit.tl.t1), ox2 = _obTimeToXRobust(hit.tl.t2);
+                _obTrendDrag = { tl: hit.tl, part: 'line', sx: dpx0, sy: dpy0, ox1, oy1: c1 && c1.y, ox2, oy2: c2 && c2.y };
                 canvas.style.cursor = 'move';
             }
             _obTrendPending = null;
@@ -2912,9 +2932,19 @@ function toggleObTrend() {
         if (_obTrendDrag) {
             if (!(e.buttons & 1)) { _obTrendDrag = null; return; }
             const { tl, part } = _obTrendDrag;
-            if (part === 'p1') { const r = DrawTools.trendPickPoint(_obChart, _obCandleS, _obKlines, px, py, tl.t2); if (r) { tl.t1=r.t; tl.p1=r.p; } }
-            else if (part === 'p2') { const r = DrawTools.trendPickPoint(_obChart, _obCandleS, _obKlines, px, py, tl.t1); if (r) { tl.t2=r.t; tl.p2=r.p; } }
-            else { const dpx=px-_obTrendDrag.sx, dpy=py-_obTrendDrag.sy; const nt1=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox1+dpx), np1=_obCandleS.coordinateToPrice(_obTrendDrag.oy1+dpy); const nt2=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox2+dpx), np2=_obCandleS.coordinateToPrice(_obTrendDrag.oy2+dpy); if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2;} }
+            const dragPane = tl.pane || 0;
+            if (part === 'p1') { const r = DrawTools.trendPickAtPane(_obTrendSurface, dragPane, e.clientY, px, tl.t2); if (r) { tl.t1=r.t; tl.p1=r.p; } }
+            else if (part === 'p2') { const r = DrawTools.trendPickAtPane(_obTrendSurface, dragPane, e.clientY, px, tl.t1); if (r) { tl.t2=r.t; tl.p2=r.p; } }
+            else {
+                const series = DrawTools.trendSeriesForPane(_obTrendSurface, dragPane), paneRect = DrawTools.getPaneRect(_obChart, dragPane);
+                if (series && paneRect) {
+                    const canvasRect = canvas.getBoundingClientRect(), offsetY = paneRect.top - canvasRect.top;
+                    const dpx=px-_obTrendDrag.sx, dpy=py-_obTrendDrag.sy;
+                    const nt1=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox1+dpx), np1=series.coordinateToPrice(_obTrendDrag.oy1+dpy-offsetY);
+                    const nt2=_obChart.timeScale().coordinateToTime(_obTrendDrag.ox2+dpx), np2=series.coordinateToPrice(_obTrendDrag.oy2+dpy-offsetY);
+                    if(nt1&&np1&&nt2&&np2){tl.t1=nt1;tl.p1=np1;tl.t2=nt2;tl.p2=np2;}
+                }
+            }
             _obTrendDrawAll();
         } else if (_obTrendP1) {
             _obTrendPrev = { x: px, y: py };
@@ -2928,9 +2958,9 @@ function toggleObTrend() {
         if (e.button !== 0) return;
         if (_obTrendPending) {
             // Click senza drag su un punto/linea esistente → inizia una nuova trendline da qui.
-            const { px: cpx, py: cpy } = _obTrendPending;
-            const r = DrawTools.trendPickPoint(_obChart, _obCandleS, _obKlines, cpx, cpy);
-            if (r) _obTrendP1 = r;
+            const { px: cpx } = _obTrendPending;
+            const r = DrawTools.trendPickAtClient(_obTrendSurface, e.clientY, cpx);
+            if (r) { _obTrendP1 = r; _obTrendPane = r.pane; }
             _obTrendPending = null;
             return;
         }
@@ -2939,7 +2969,7 @@ function toggleObTrend() {
     };
     _obTrendCM = e => {
         e.preventDefault();
-        if (_obTrendP1) { _obTrendP1 = null; _obTrendPrev = null; _obTrendDrawAll(); return; }
+        if (_obTrendP1) { _obTrendP1 = null; _obTrendPrev = null; _obTrendPane = null; _obTrendDrawAll(); return; }
         const hit = _obTrendNearest(e.clientX, e.clientY);
         if (hit) { _obTrendlines = _obTrendlines.filter(tl => tl !== hit.tl); _obTrendDrawAll(); _obSaveDrawings(); }
         else toggleObTrend();
