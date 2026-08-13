@@ -20,7 +20,10 @@ PAGE_W, PAGE_H = 1280, 760
 def take_screenshot(symbol, interval='30', signal_type=None, signal_price=None,
                     signal_condition=None, signal_time=None,
                     signal_ath=None, signal_atl=None,
-                    no_indicators=False, no_levels=False, flip_level=0, port=8080):
+                    no_indicators=False, no_levels=False, flip_level=0, port=8080,
+                    target=None, stop=None,
+                    sup_p1_time=None, sup_p1_price=None, sup_p2_time=None, sup_p2_price=None,
+                    res_p1_time=None, res_p1_price=None, res_p2_time=None, res_p2_price=None):
     """
     Renders screenshot.html in headless Chromium for the given symbol/interval.
     Returns PNG bytes or None on failure.
@@ -71,6 +74,18 @@ def take_screenshot(symbol, interval='30', signal_type=None, signal_price=None,
                 url += '&no_levels=1'
             if flip_level and flip_level > 0:
                 url += f'&flip_level={flip_level}'
+            if target is not None:
+                url += f'&signal_target={target}'
+            if stop is not None:
+                url += f'&signal_stop={stop}'
+            for key, val in (
+                ('sup_p1_time', sup_p1_time), ('sup_p1_price', sup_p1_price),
+                ('sup_p2_time', sup_p2_time), ('sup_p2_price', sup_p2_price),
+                ('res_p1_time', res_p1_time), ('res_p1_price', res_p1_price),
+                ('res_p2_time', res_p2_time), ('res_p2_price', res_p2_price),
+            ):
+                if val is not None:
+                    url += f'&{key}={val}'
 
             driver.get(url)
 

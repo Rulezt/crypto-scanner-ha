@@ -93,6 +93,11 @@ def get_chart(symbol, interval='30', signal=None):
       type       : 'ema' | 'price' | 'gainer' | 'loser' | 'flip' | 'ath' | 'atl'
       price      : float   (for price alerts)
       condition  : 'above' | 'below'  (for price alerts)
+      target/stop: float, opzionali (per price alerts con target/stop calcolati, es. Terzo Tocco)
+      sup_p1_time/sup_p1_price/sup_p2_time/sup_p2_price,
+      res_p1_time/res_p1_price/res_p2_time/res_p2_price: float, opzionali — due punti
+        (tempo unix, prezzo) per ciascuna retta di un canale (Channel Up/Down); se
+        presenti, dt_chart disegna le rette inclinate invece della linea piatta
     """
     sig_type       = signal.get('type')           if signal else None
     sig_price      = signal.get('price')          if signal else None
@@ -103,6 +108,16 @@ def get_chart(symbol, interval='30', signal=None):
     sig_no_ind     = signal.get('no_indicators')  if signal else False
     sig_no_levels  = signal.get('no_levels')      if signal else False
     sig_flip_level = signal.get('flip_level', 0)  if signal else 0
+    sig_target     = signal.get('target')         if signal else None
+    sig_stop       = signal.get('stop')           if signal else None
+    sig_sup_p1_t   = signal.get('sup_p1_time')    if signal else None
+    sig_sup_p1_p   = signal.get('sup_p1_price')   if signal else None
+    sig_sup_p2_t   = signal.get('sup_p2_time')    if signal else None
+    sig_sup_p2_p   = signal.get('sup_p2_price')   if signal else None
+    sig_res_p1_t   = signal.get('res_p1_time')    if signal else None
+    sig_res_p1_p   = signal.get('res_p1_price')   if signal else None
+    sig_res_p2_t   = signal.get('res_p2_time')    if signal else None
+    sig_res_p2_p   = signal.get('res_p2_price')   if signal else None
 
     # Primary: Selenium screenshot of chart.html-style page
     try:
@@ -118,6 +133,11 @@ def get_chart(symbol, interval='30', signal=None):
             no_indicators=sig_no_ind,
             no_levels=sig_no_levels,
             flip_level=sig_flip_level,
+            target=sig_target, stop=sig_stop,
+            sup_p1_time=sig_sup_p1_t, sup_p1_price=sig_sup_p1_p,
+            sup_p2_time=sig_sup_p2_t, sup_p2_price=sig_sup_p2_p,
+            res_p1_time=sig_res_p1_t, res_p1_price=sig_res_p1_p,
+            res_p2_time=sig_res_p2_t, res_p2_price=sig_res_p2_p,
         )
         if img:
             return img

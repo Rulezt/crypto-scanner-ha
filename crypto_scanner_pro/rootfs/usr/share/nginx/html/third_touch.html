@@ -238,11 +238,23 @@
     <div class="filter-bar" v-if="results.length > 0">
         <span class="filter-label">{{ t('dt_type') }}</span>
         <button @click="typeFilter='all'" :class="['filt-btn', typeFilter==='all' ? 'active':'']">{{ t('dt_all') }}</button>
-        <button @click="typeFilter='resistance'" :class="['filt-btn res', typeFilter==='resistance' ? 'active':'']">
-            🟢 Long ({{ countRes }})
+        <button @click="typeFilter='support'" :class="['filt-btn res', typeFilter==='support' ? 'active':'']">
+            🟢 Long ({{ countSup }})
         </button>
-        <button @click="typeFilter='support'" :class="['filt-btn sup', typeFilter==='support' ? 'active':'']">
-            🔴 Short ({{ countSup }})
+        <button @click="typeFilter='resistance'" :class="['filt-btn sup', typeFilter==='resistance' ? 'active':'']">
+            🔴 Short ({{ countRes }})
+        </button>
+        <button @click="typeFilter='cup_handle'" :class="['filt-btn res', typeFilter==='cup_handle' ? 'active':'']">
+            🏆 Cup&amp;Handle ({{ countCup }})
+        </button>
+        <button @click="typeFilter='inv_cup_handle'" :class="['filt-btn sup', typeFilter==='inv_cup_handle' ? 'active':'']">
+            🔻 Inv.Cup&amp;Handle ({{ countInvCup }})
+        </button>
+        <button @click="typeFilter='channel_up'" :class="['filt-btn res', typeFilter==='channel_up' ? 'active':'']">
+            📈 Channel Up ({{ countChUp }})
+        </button>
+        <button @click="typeFilter='channel_down'" :class="['filt-btn sup', typeFilter==='channel_down' ? 'active':'']">
+            📉 Channel Down ({{ countChDown }})
         </button>
         <div class="divider"></div>
         <span class="filter-label">{{ t('dt_sort') }}</span>
@@ -325,8 +337,8 @@
                                 :ref="el => registerThumb(el, r)" @click="openThumbPopup(r)" :title="t('col_preview')"></canvas>
                         </template>
                         <template v-else-if="col.key === 'segnale'">
-                            <span :class="['type-badge', r.type === 'resistance' ? 'type-res' : 'type-sup']">
-                                {{ r.type === 'resistance' ? '🟢 Long' : '🔴 Short' }}
+                            <span :class="['type-badge', (r.type === 'resistance' || r.type === 'inv_cup_handle' || r.type === 'channel_down') ? 'type-sup' : 'type-res']">
+                                {{ r.type === 'cup_handle' ? '🏆 Cup&amp;Handle' : (r.type === 'inv_cup_handle' ? '🔻 Inv.Cup&amp;Handle' : (r.type === 'channel_up' ? '📈 Channel Up' : (r.type === 'channel_down' ? '📉 Channel Down' : (r.type === 'support' ? '🟢 Long' : '🔴 Short')))) }}
                             </span>
                         </template>
                         <template v-else-if="col.key === 'tf'">
@@ -433,6 +445,15 @@
                     <label style="font-size:0.78rem;color:#9CA3AF;">{{ t('scr_min_var') }}</label>
                     <input type="number" v-model.number="minVarPct" min="0" max="1000" step="0.5" style="width:80px;background:#1f2937;color:#f9fafb;border:1px solid #374151;border-radius:4px;padding:5px 8px;font-size:0.82rem;">
                 </div>
+                <div style="height:1px;background:#2A2E39;margin:2px 0;"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <label style="font-size:0.78rem;color:#9CA3AF;">{{ t('dt_show_target') }}</label>
+                    <input type="checkbox" v-model="showTarget" style="width:16px;height:16px;accent-color:#4ade80;cursor:pointer;">
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <label style="font-size:0.78rem;color:#9CA3AF;">{{ t('dt_show_stop') }}</label>
+                    <input type="checkbox" v-model="showStop" style="width:16px;height:16px;accent-color:#f87171;cursor:pointer;">
+                </div>
             </div>
             <button @click="cfgOpen=false" class="btn primary" style="width:100%;margin-top:20px;justify-content:center;">OK</button>
         </div>
@@ -459,6 +480,8 @@ createApp({
         const maxFreshness= 30;
         const TFS         = ['D','240','60','30','5','1'];
         const proximity   = ref(_cfgT.proximity  ?? 2);
+        const showTarget  = ref(_cfgT.showTarget ?? true);
+        const showStop    = ref(_cfgT.showStop   ?? true);
         const scanning    = ref(false);
         const stopFlag    = ref(false);
         const statusMsg   = ref(window.t('dt_ready'));
@@ -546,6 +569,10 @@ createApp({
 
         const countRes = computed(() => results.value.filter(r => r.type === 'resistance').length);
         const countSup = computed(() => results.value.filter(r => r.type === 'support').length);
+        const countCup = computed(() => results.value.filter(r => r.type === 'cup_handle').length);
+        const countInvCup = computed(() => results.value.filter(r => r.type === 'inv_cup_handle').length);
+        const countChUp = computed(() => results.value.filter(r => r.type === 'channel_up').length);
+        const countChDown = computed(() => results.value.filter(r => r.type === 'channel_down').length);
 
         const filteredResults = computed(() => {
             let list = [...results.value];
@@ -567,6 +594,349 @@ createApp({
             });
             return list;
         });
+
+        // ============================
+        //  CUP AND HANDLE
+        // ============================
+        // Sempre bullish (Long): forma a "U" (left lip -> cup bottom -> right lip)
+        // seguita da un ritracciamento breve (handle), poi avvicinamento al breakout
+        // sopra il right lip. Stesso schema concettuale del terzo tocco (touchA/touchB
+        // + avvicinamento corrente), con vincoli di forma aggiuntivi.
+        const CH_PIVOT_BARS = 3, CH_MIN_CUP_BARS = 15, CH_MAX_CUP_BARS = 80,
+              CH_MIN_HANDLE_BARS = 2, CH_MAX_HANDLE_BARS = 25,
+              CH_MIN_CUP_DEPTH_PCT = 3, CH_MAX_HANDLE_RETRACE = 0.5;
+
+        const findPivots = (candles, bars) => {
+            const piv_hi = [], piv_lo = [];
+            const n = candles.length;
+            for (let i = bars; i < n - bars; i++) {
+                const hi = candles[i].high;
+                let isHi = true;
+                for (let k = 1; k <= bars; k++) { if (!(hi > candles[i-k].high && hi > candles[i+k].high)) { isHi = false; break; } }
+                if (isHi) piv_hi.push(i);
+                const lo = candles[i].low;
+                let isLo = true;
+                for (let k = 1; k <= bars; k++) { if (!(lo < candles[i-k].low && lo < candles[i+k].low)) { isLo = false; break; } }
+                if (isLo) piv_lo.push(i);
+            }
+            return { piv_hi, piv_lo };
+        };
+
+        const findCupHandle = (candles, tol, currentPrice) => {
+            const n = candles.length;
+            const patterns = [];
+            const minNeeded = CH_MIN_CUP_BARS + CH_MIN_HANDLE_BARS + 2 * CH_PIVOT_BARS + 2;
+            if (n < minNeeded) return patterns;
+            const { piv_hi, piv_lo } = findPivots(candles, CH_PIVOT_BARS);
+            if (piv_hi.length < 2 || !piv_lo.length) return patterns;
+            const tolFrac = tol / 100;
+
+            for (let a = 0; a < piv_hi.length; a++) {
+                const Lidx = piv_hi[a], L = candles[Lidx].high;
+                for (let b = a + 1; b < piv_hi.length; b++) {
+                    const Ridx = piv_hi[b];
+                    const gap = Ridx - Lidx;
+                    if (gap < CH_MIN_CUP_BARS) continue;
+                    if (gap > CH_MAX_CUP_BARS) break;
+
+                    const R = candles[Ridx].high;
+                    const ref = Math.max(L, R);
+                    if (Math.abs(L - R) / ref > tolFrac) continue;
+
+                    let B = Infinity;
+                    for (let k = Lidx + 1; k < Ridx; k++) B = Math.min(B, candles[k].low);
+                    if (!isFinite(B)) continue;
+                    if ((ref - B) / ref < CH_MIN_CUP_DEPTH_PCT / 100) continue;
+
+                    const upper = ref * (1 + tolFrac);
+                    let violated = false;
+                    for (let k = Lidx + 1; k < Ridx; k++) { if (candles[k].high > upper) { violated = true; break; } }
+                    if (violated) continue;
+
+                    for (let hi = 0; hi < piv_lo.length; hi++) {
+                        const Hidx = piv_lo[hi];
+                        if (Hidx <= Ridx) continue;
+                        const hgap = Hidx - Ridx;
+                        if (hgap < CH_MIN_HANDLE_BARS) continue;
+                        if (hgap > CH_MAX_HANDLE_BARS) break;
+
+                        const H = candles[Hidx].low;
+                        if (H <= B || H >= R) continue;
+                        if ((R - H) / (R - B) > CH_MAX_HANDLE_RETRACE) continue;
+
+                        let handleViolated = false;
+                        for (let k = Ridx + 1; k < Hidx; k++) { if (candles[k].close > upper) { handleViolated = true; break; } }
+                        if (handleViolated) continue;
+
+                        let alreadyBroke = false;
+                        for (let k = Hidx + 1; k < n; k++) { if (candles[k].close > R) { alreadyBroke = true; break; } }
+                        if (alreadyBroke) continue;
+
+                        if (currentPrice >= R) continue;
+                        const prevClose = candles[candles.length - 2].close;
+                        if (Math.abs(currentPrice - R) > Math.abs(prevClose - R)) continue;
+
+                        let highestHigh = -Infinity;
+                        for (let k = Lidx; k <= Ridx; k++) highestHigh = Math.max(highestHigh, candles[k].high);
+
+                        patterns.push({
+                            type:      'cup_handle',
+                            level:     R,
+                            precision: Math.abs(L - R) / ref * 100,
+                            gap,
+                            freshness: Math.max(1, n - Hidx),
+                            touchA:     Lidx,
+                            touchB:     Ridx,
+                            touchATime: candles[Lidx].time,
+                            touchBTime: candles[Ridx].time,
+                            distFromCurrent: ((currentPrice - R) / R) * 100,
+                            target: R + (highestHigh - B), stop: R,
+                            cupBottom: B, leftLip: L, handleLow: H,
+                        });
+                    }
+                }
+            }
+            return patterns;
+        };
+
+        // ============================
+        //  INVERSE CUP AND HANDLE
+        // ============================
+        // Sempre bearish (Short): specchio verticale del Cup and Handle — "U" rovesciata
+        // (left lip -> cup top -> right lip) seguita da un breve rimbalzo (handle) e
+        // avvicinamento al breakout sotto il right lip.
+        const findInverseCupHandle = (candles, tol, currentPrice) => {
+            const n = candles.length;
+            const patterns = [];
+            const minNeeded = CH_MIN_CUP_BARS + CH_MIN_HANDLE_BARS + 2 * CH_PIVOT_BARS + 2;
+            if (n < minNeeded) return patterns;
+            const { piv_hi, piv_lo } = findPivots(candles, CH_PIVOT_BARS);
+            if (piv_lo.length < 2 || !piv_hi.length) return patterns;
+            const tolFrac = tol / 100;
+
+            for (let a = 0; a < piv_lo.length; a++) {
+                const Lidx = piv_lo[a], L = candles[Lidx].low;
+                for (let b = a + 1; b < piv_lo.length; b++) {
+                    const Ridx = piv_lo[b];
+                    const gap = Ridx - Lidx;
+                    if (gap < CH_MIN_CUP_BARS) continue;
+                    if (gap > CH_MAX_CUP_BARS) break;
+
+                    const R = candles[Ridx].low;
+                    const ref = Math.min(L, R);
+                    if (Math.abs(L - R) / ref > tolFrac) continue;
+
+                    let T = -Infinity;
+                    for (let k = Lidx + 1; k < Ridx; k++) T = Math.max(T, candles[k].high);
+                    if (!isFinite(T)) continue;
+                    if ((T - ref) / ref < CH_MIN_CUP_DEPTH_PCT / 100) continue;
+
+                    const lower = ref * (1 - tolFrac);
+                    let violated = false;
+                    for (let k = Lidx + 1; k < Ridx; k++) { if (candles[k].low < lower) { violated = true; break; } }
+                    if (violated) continue;
+
+                    for (let hi = 0; hi < piv_hi.length; hi++) {
+                        const Hidx = piv_hi[hi];
+                        if (Hidx <= Ridx) continue;
+                        const hgap = Hidx - Ridx;
+                        if (hgap < CH_MIN_HANDLE_BARS) continue;
+                        if (hgap > CH_MAX_HANDLE_BARS) break;
+
+                        const H = candles[Hidx].high;
+                        if (H >= T || H <= R) continue;
+                        if ((H - R) / (T - R) > CH_MAX_HANDLE_RETRACE) continue;
+
+                        let handleViolated = false;
+                        for (let k = Ridx + 1; k < Hidx; k++) { if (candles[k].close < lower) { handleViolated = true; break; } }
+                        if (handleViolated) continue;
+
+                        let alreadyBroke = false;
+                        for (let k = Hidx + 1; k < n; k++) { if (candles[k].close < R) { alreadyBroke = true; break; } }
+                        if (alreadyBroke) continue;
+
+                        if (currentPrice <= R) continue;
+                        const prevClose = candles[candles.length - 2].close;
+                        if (Math.abs(currentPrice - R) > Math.abs(prevClose - R)) continue;
+
+                        let lowestLow = Infinity;
+                        for (let k = Lidx; k <= Ridx; k++) lowestLow = Math.min(lowestLow, candles[k].low);
+
+                        patterns.push({
+                            type:      'inv_cup_handle',
+                            level:     R,
+                            precision: Math.abs(L - R) / ref * 100,
+                            gap,
+                            freshness: Math.max(1, n - Hidx),
+                            touchA:     Lidx,
+                            touchB:     Ridx,
+                            touchATime: candles[Lidx].time,
+                            touchBTime: candles[Ridx].time,
+                            distFromCurrent: ((currentPrice - R) / R) * 100,
+                            target: R - (T - lowestLow), stop: R,
+                            cupTop: T, leftLip: L, handleHigh: H,
+                        });
+                    }
+                }
+            }
+            return patterns;
+        };
+
+        // ============================
+        //  CHANNEL UP / CHANNEL DOWN
+        // ============================
+        // Porting dell'engine a 2 pivot già collaudato in trendline.html (pivotExtreme/
+        // trendlineAt/isLineValid): pivot "recente" (offset 1..shortPeriod da iEnd) e
+        // pivot "vecchio" (offset shortPeriod+1..longPeriod), separati per massimi
+        // (resistenza) e minimi (supporto). Canale = rette parallele con stessa direzione,
+        // mai invalidate. Trigger sempre in continuazione (avvicinamento al lato che si
+        // prevede rotto), mai sul rimbalzo interno al canale.
+        const CHN_SHORT_PERIOD = 30, CHN_LONG_PERIOD = 80,
+              CHN_TOLERANCE_PCT = 1.5, CHN_PARALLEL_RATIO = 0.5, CHN_MAX_VIOLATION_RATIO = 0.15;
+
+        const chnPivotExtreme = (candles, iEnd, offFrom, offTo) => {
+            let lowVal = Infinity, lowOff = null, highVal = -Infinity, highOff = null;
+            for (let off = offFrom; off <= offTo; off++) {
+                const idx = iEnd - off;
+                if (idx < 0) return null;
+                const c = candles[idx];
+                if (c.low  < lowVal)  { lowVal  = c.low;  lowOff  = off; }
+                if (c.high > highVal) { highVal = c.high; highOff = off; }
+            }
+            return { lowVal, lowOff, highVal, highOff };
+        };
+        const chnTrendlineAt = (candles, iEnd, shortPeriod, longPeriod) => {
+            if (iEnd - longPeriod < 0) return null;
+            const rec = chnPivotExtreme(candles, iEnd, 1, shortPeriod);
+            const old = chnPivotExtreme(candles, iEnd, shortPeriod + 1, longPeriod);
+            if (!rec || !old) return null;
+            const supX1 = iEnd - old.lowOff,  supY1 = old.lowVal,  supX2 = iEnd - rec.lowOff,  supY2 = rec.lowVal;
+            const resX1 = iEnd - old.highOff, resY1 = old.highVal, resX2 = iEnd - rec.highOff, resY2 = rec.highVal;
+            const supSlope = (supY2 - supY1) / (supX2 - supX1);
+            const resSlope = (resY2 - resY1) / (resX2 - resX1);
+            return {
+                supX1, supY1, supX2, supY2, supSlope, supVal: supY2 + supSlope * (iEnd - supX2),
+                resX1, resY1, resX2, resY2, resSlope, resVal: resY2 + resSlope * (iEnd - resX2),
+            };
+        };
+        // Un vero canale deve CONTENERE il prezzo (high sotto la resistenza, low sopra
+        // il supporto), non solo avere chiusure vicine — controllare solo il close
+        // (come in trendline.html per una singola retta) lascia passare rette che
+        // tagliano dritto in mezzo alle candele. Si ammette una piccola quota di
+        // violazioni (wick isolati) ma non un canale attraversato spesso dal prezzo.
+        const chnContainmentOk = (candles, tl, tolerancePct, maxViolationRatio) => {
+            const start = Math.min(tl.supX1, tl.resX1);
+            const tolFrac = tolerancePct / 100;
+            let total = 0, violations = 0;
+            for (let idx = start; idx < candles.length; idx++) {
+                const supLine = tl.supY1 + tl.supSlope * (idx - tl.supX1);
+                const resLine = tl.resY1 + tl.resSlope * (idx - tl.resX1);
+                if (resLine <= supLine) return false;
+                total++;
+                const supTol = Math.abs(supLine) * tolFrac;
+                const resTol = Math.abs(resLine) * tolFrac;
+                if (candles[idx].high > resLine + resTol || candles[idx].low < supLine - supTol) violations++;
+            }
+            return total > 0 && (violations / total) <= maxViolationRatio;
+        };
+        // Retta per 2 punti (tempo,prezzo) estrapolata oltre l'ultima candela — usata
+        // dal popup per disegnare le rette inclinate di Channel Up/Down (mai bar-index,
+        // il popup rifetcha le candele a parte da quelle usate in scansione).
+        const CHN_EXTEND_BARS = 20;
+        const chnLineSeriesFromPts = (p1, p2, klines) => {
+            const slope = (p2.price - p1.price) / (p2.time - p1.time);
+            const pts = klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
+            if (pts.length >= 2 && klines.length >= 2) {
+                const step = klines[klines.length - 1].time - klines[klines.length - 2].time;
+                if (step > 0) {
+                    const lastT = pts[pts.length - 1].time;
+                    for (let i = 1; i <= CHN_EXTEND_BARS; i++) {
+                        const t = lastT + step * i;
+                        pts.push({ time: t, value: p1.price + slope * (t - p1.time) });
+                    }
+                }
+            }
+            return pts;
+        };
+        const findChannelPatterns = (candles, currentPrice) => {
+            const n = candles.length;
+            if (n < CHN_LONG_PERIOD + 5) return [];
+            const iEnd = n - 1;
+            const tl = chnTrendlineAt(candles, iEnd, CHN_SHORT_PERIOD, CHN_LONG_PERIOD);
+            if (!tl) return [];
+
+            const { supSlope, resSlope } = tl;
+            const absSup = Math.abs(supSlope), absRes = Math.abs(resSlope);
+            const lo = Math.min(absSup, absRes), hi = Math.max(absSup, absRes);
+            if (hi === 0 || lo / hi < CHN_PARALLEL_RATIO) return [];
+            if (tl.resVal <= tl.supVal) return [];
+
+            // Un canale vero mantiene una larghezza pressoché costante: il solo rapporto
+            // fra pendenze non basta (2 rette possono divergere a ventaglio/cuneo pur
+            // avendo pendenze "simili in rapporto" se entrambe piccole) — visto in un
+            // caso reale con screenshot allegato dall'utente.
+            const startIdx = Math.min(tl.supX1, tl.resX1);
+            const supAtStart = tl.supY1 + supSlope * (startIdx - tl.supX1);
+            const resAtStart = tl.resY1 + resSlope * (startIdx - tl.resX1);
+            const widthStart = resAtStart - supAtStart;
+            const widthNow   = tl.resVal - tl.supVal;
+            if (widthStart <= 0) return [];
+            const widthRatio = widthNow / widthStart;
+            if (widthRatio < 0.5 || widthRatio > 2.0) return [];
+
+            if (!chnContainmentOk(candles, tl, CHN_TOLERANCE_PCT, CHN_MAX_VIOLATION_RATIO)) return [];
+
+            const width = tl.resVal - tl.supVal;
+            const precision = (1 - lo / hi) * 100;
+            const patterns = [];
+
+            // Punti delle 2 rette in TEMPO (mai bar-index): il popup rifetcha le
+            // candele a parte, gli indici di questa scansione non sono portabili.
+            const linePts = {
+                supP1Time: candles[tl.supX1].time, supP1Price: tl.supY1,
+                supP2Time: candles[tl.supX2].time, supP2Price: tl.supY2,
+                resP1Time: candles[tl.resX1].time, resP1Price: tl.resY1,
+                resP2Time: candles[tl.resX2].time, resP2Price: tl.resY2,
+            };
+
+            if (supSlope > 0 && resSlope > 0) {
+                const resVal = tl.resVal;
+                const distFromCurrent = ((currentPrice - resVal) / resVal) * 100;
+                const prevClose = candles[candles.length - 2].close;
+                if (currentPrice < resVal &&
+                    Math.abs(currentPrice - resVal) <= Math.abs(prevClose - resVal)) {
+                    patterns.push({
+                        type: 'channel_up', level: resVal,
+                        precision, gap: iEnd - tl.resX1,
+                        freshness: Math.max(1, n - tl.resX2),
+                        touchATime: candles[tl.resX1].time, touchBTime: candles[tl.resX2].time,
+                        distFromCurrent,
+                        target: resVal + width, stop: resVal,
+                        ...linePts,
+                    });
+                }
+            }
+
+            if (supSlope < 0 && resSlope < 0) {
+                const supVal = tl.supVal;
+                const distFromCurrent = ((currentPrice - supVal) / supVal) * 100;
+                const prevClose = candles[candles.length - 2].close;
+                if (currentPrice > supVal &&
+                    Math.abs(currentPrice - supVal) <= Math.abs(prevClose - supVal)) {
+                    patterns.push({
+                        type: 'channel_down', level: supVal,
+                        precision, gap: iEnd - tl.supX1,
+                        freshness: Math.max(1, n - tl.supX2),
+                        touchATime: candles[tl.supX1].time, touchBTime: candles[tl.supX2].time,
+                        distFromCurrent,
+                        target: supVal - width, stop: supVal,
+                        ...linePts,
+                    });
+                }
+            }
+
+            return patterns;
+        };
 
         // ============================
         //  CORE ALGORITHM
@@ -622,6 +992,12 @@ createApp({
                     const bouncedRes = candles.slice(j + 1).some(c => c.close <= level * (1 - tolFrac));
                     if (!bouncedRes) continue;
 
+                    // Short (resistance-type): breakout boundary = trough (lowest low) fra i due tocchi
+                    let breakoutLevel = Infinity;
+                    for (let k = i; k <= j; k++) breakoutLevel = Math.min(breakoutLevel, candles[k].low);
+                    const target = 2 * breakoutLevel - level;
+                    const stop   = breakoutLevel;
+
                     const freshness = n - 1 - j;
                     patterns.push({
                         type:      'resistance',
@@ -634,6 +1010,7 @@ createApp({
                         touchATime: candles[i].time,
                         touchBTime: candles[j].time,
                         distFromCurrent: ((currentPrice - level) / level) * 100,
+                        breakoutLevel, target, stop,
                     });
                 }
             }
@@ -685,6 +1062,12 @@ createApp({
                     const bouncedSup = candles.slice(j + 1).some(c => c.close >= level * (1 + tolFrac));
                     if (!bouncedSup) continue;
 
+                    // Long (support-type): breakout boundary = picco (highest high) fra i due tocchi
+                    let breakoutLevel = -Infinity;
+                    for (let k = i; k <= j; k++) breakoutLevel = Math.max(breakoutLevel, candles[k].high);
+                    const target = 2 * breakoutLevel - level;
+                    const stop   = breakoutLevel;
+
                     const freshness = n - 1 - j;
                     patterns.push({
                         type:      'support',
@@ -697,9 +1080,14 @@ createApp({
                         touchATime: candles[i].time,
                         touchBTime: candles[j].time,
                         distFromCurrent: ((currentPrice - level) / level) * 100,
+                        breakoutLevel, target, stop,
                     });
                 }
             }
+
+            patterns.push(...findCupHandle(candles, tol, currentPrice));
+            patterns.push(...findInverseCupHandle(candles, tol, currentPrice));
+            patterns.push(...findChannelPatterns(candles, currentPrice));
 
             const best = {};
             for (const p of patterns) {
@@ -941,16 +1329,58 @@ createApp({
                         : 86400;
                     const hasA     = klines.some(k => k.time === result.touchATime);
                     const lastTime = klines[klines.length - 1].time;
-                    const lvlS = addS(chart, 'LineSeries', {
-                        color: result.type === 'resistance' ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)',
-                        lineWidth: 2, lineStyle: 0,
-                        priceLineVisible: false, lastValueVisible: false,
-                        crosshairMarkerVisible: false, title: '',
-                    });
-                    lvlS.setData([
-                        { time: hasA ? result.touchATime : klines[0].time, value: result.level },
-                        { time: lastTime + timeStep * 20,                  value: result.level },
-                    ]);
+                    const fromTime = hasA ? result.touchATime : klines[0].time;
+                    const toTime   = lastTime + timeStep * 20;
+                    const isChannel = (result.type === 'channel_up' || result.type === 'channel_down') && result.supP1Time != null;
+
+                    if (isChannel) {
+                        addS(chart, 'LineSeries', {
+                            color: 'rgba(16,185,129,0.9)', lineWidth: 2, lineStyle: 0,
+                            priceLineVisible: false, lastValueVisible: false,
+                            crosshairMarkerVisible: false, title: '',
+                        }).setData(chnLineSeriesFromPts(
+                            { time: result.supP1Time, price: result.supP1Price },
+                            { time: result.supP2Time, price: result.supP2Price }, klines));
+                        addS(chart, 'LineSeries', {
+                            color: 'rgba(239,68,68,0.9)', lineWidth: 2, lineStyle: 0,
+                            priceLineVisible: false, lastValueVisible: false,
+                            crosshairMarkerVisible: false, title: '',
+                        }).setData(chnLineSeriesFromPts(
+                            { time: result.resP1Time, price: result.resP1Price },
+                            { time: result.resP2Time, price: result.resP2Price }, klines));
+                    } else {
+                        const lvlS = addS(chart, 'LineSeries', {
+                            color: (result.type === 'resistance' || result.type === 'inv_cup_handle') ? 'rgba(239,68,68,0.9)' : 'rgba(16,185,129,0.9)',
+                            lineWidth: 2, lineStyle: 0,
+                            priceLineVisible: false, lastValueVisible: false,
+                            crosshairMarkerVisible: false, title: '',
+                        });
+                        lvlS.setData([
+                            { time: fromTime, value: result.level },
+                            { time: toTime,   value: result.level },
+                        ]);
+                    }
+
+                    if (result.target != null && showTarget.value) {
+                        addS(chart, 'LineSeries', {
+                            color: '#4ade80', lineWidth: 1, lineStyle: 2,
+                            priceLineVisible: false, lastValueVisible: false,
+                            crosshairMarkerVisible: false, title: 'Target',
+                        }).setData([
+                            { time: fromTime, value: result.target },
+                            { time: toTime,   value: result.target },
+                        ]);
+                    }
+                    if (result.stop != null && showStop.value) {
+                        addS(chart, 'LineSeries', {
+                            color: '#f87171', lineWidth: 1, lineStyle: 2,
+                            priceLineVisible: false, lastValueVisible: false,
+                            crosshairMarkerVisible: false, title: 'Stop',
+                        }).setData([
+                            { time: fromTime, value: result.stop },
+                            { time: toTime,   value: result.stop },
+                        ]);
+                    }
                 }
 
                 for (const cfg of EMA_CONFIG) {
@@ -1054,16 +1484,58 @@ createApp({
                         : 86400;
                     const hasA     = klines.some(k => k.time === r.touchATime);
                     const lastTime = klines[klines.length - 1].time;
-                    const lvlS = addS(chart, 'LineSeries', {
-                        color: r.type === 'resistance' ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)',
-                        lineWidth: 2, lineStyle: 0,
-                        priceLineVisible: false, lastValueVisible: false,
-                        crosshairMarkerVisible: false, title: '',
-                    });
-                    lvlS.setData([
-                        { time: hasA ? r.touchATime : klines[0].time, value: r.level },
-                        { time: lastTime + timeStep * 20,             value: r.level },
-                    ]);
+                    const fromTime = hasA ? r.touchATime : klines[0].time;
+                    const toTime   = lastTime + timeStep * 20;
+                    const isChannel = (r.type === 'channel_up' || r.type === 'channel_down') && r.supP1Time != null;
+
+                    if (isChannel) {
+                        addS(chart, 'LineSeries', {
+                            color: 'rgba(16,185,129,0.9)', lineWidth: 2, lineStyle: 0,
+                            priceLineVisible: false, lastValueVisible: false,
+                            crosshairMarkerVisible: false, title: '',
+                        }).setData(chnLineSeriesFromPts(
+                            { time: r.supP1Time, price: r.supP1Price },
+                            { time: r.supP2Time, price: r.supP2Price }, klines));
+                        addS(chart, 'LineSeries', {
+                            color: 'rgba(239,68,68,0.9)', lineWidth: 2, lineStyle: 0,
+                            priceLineVisible: false, lastValueVisible: false,
+                            crosshairMarkerVisible: false, title: '',
+                        }).setData(chnLineSeriesFromPts(
+                            { time: r.resP1Time, price: r.resP1Price },
+                            { time: r.resP2Time, price: r.resP2Price }, klines));
+                    } else {
+                        const lvlS = addS(chart, 'LineSeries', {
+                            color: (r.type === 'resistance' || r.type === 'inv_cup_handle') ? 'rgba(239,68,68,0.9)' : 'rgba(16,185,129,0.9)',
+                            lineWidth: 2, lineStyle: 0,
+                            priceLineVisible: false, lastValueVisible: false,
+                            crosshairMarkerVisible: false, title: '',
+                        });
+                        lvlS.setData([
+                            { time: fromTime, value: r.level },
+                            { time: toTime,   value: r.level },
+                        ]);
+                    }
+
+                    if (r.target != null && showTarget.value) {
+                        addS(chart, 'LineSeries', {
+                            color: '#4ade80', lineWidth: 1, lineStyle: 2,
+                            priceLineVisible: false, lastValueVisible: false,
+                            crosshairMarkerVisible: false, title: 'Target',
+                        }).setData([
+                            { time: fromTime, value: r.target },
+                            { time: toTime,   value: r.target },
+                        ]);
+                    }
+                    if (r.stop != null && showStop.value) {
+                        addS(chart, 'LineSeries', {
+                            color: '#f87171', lineWidth: 1, lineStyle: 2,
+                            priceLineVisible: false, lastValueVisible: false,
+                            crosshairMarkerVisible: false, title: 'Stop',
+                        }).setData([
+                            { time: fromTime, value: r.stop },
+                            { time: toTime,   value: r.stop },
+                        ]);
+                    }
                 }
 
                 for (const cfg of EMA_CONFIG) {
@@ -1165,7 +1637,7 @@ createApp({
             });
             if (result.level != null) {
                 lines.push({
-                    color: result.type === 'resistance' ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)',
+                    color: (result.type === 'resistance' || result.type === 'inv_cup_handle' || result.type === 'channel_down') ? 'rgba(239,68,68,0.9)' : 'rgba(16,185,129,0.9)',
                     values: bars.map(() => result.level),
                 });
             }
@@ -1274,8 +1746,8 @@ createApp({
             document.documentElement.style.setProperty('--sticky-top', wh + 'px');
             document.documentElement.style.setProperty('--thead-top', (wh + fh) + 'px');
         };
-        watch([minVolume, minVarPct, tolerance, proximity], () => {
-            try { localStorage.setItem('third_touch_cfg', JSON.stringify({ minVolume: minVolume.value, minVarPct: minVarPct.value, tolerance: tolerance.value, proximity: proximity.value })); } catch {}
+        watch([minVolume, minVarPct, tolerance, proximity, showTarget, showStop], () => {
+            try { localStorage.setItem('third_touch_cfg', JSON.stringify({ minVolume: minVolume.value, minVarPct: minVarPct.value, tolerance: tolerance.value, proximity: proximity.value, showTarget: showTarget.value, showStop: showStop.value })); } catch {}
         });
         watch(filteredResults, () => nextTick(updateStickyOffsets));
         onMounted(() => { updateStickyOffsets(); window.addEventListener('resize', updateStickyOffsets); });
@@ -1355,12 +1827,12 @@ createApp({
         };
 
         return {
-            cfgOpen, baseUrl, tolerance, proximity, minVarPct,
+            cfgOpen, baseUrl, tolerance, proximity, minVarPct, showTarget, showStop,
             favoriteSymbols, isFav, toggleFav,
             columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
             scanning, stopFlag, statusMsg, displayMsg, initialDone,
             results, filteredResults, progressDone, progressTotal, progressPct,
-            typeFilter, tfFilter, sortBy, sortDir, countRes, countSup,
+            typeFilter, tfFilter, sortBy, sortDir, countRes, countSup, countCup, countInvCup, countChUp, countChDown,
             setSortBy, sa, t,
             startScan, stopScan,
             showPopup,

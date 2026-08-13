@@ -43,9 +43,37 @@ let TZ_OFFSET_S = 0;
 const qp        = new URLSearchParams(location.search);
 const SYM       = qp.get('symbol')          || 'BTCUSDT';
 const TF        = qp.get('interval')        || '30';
-const SIG_PRICE = parseFloat(qp.get('signal_price') || '0');
-const SIG_COND  = qp.get('signal_condition') || 'above';
-const SIG_TIME  = parseInt(qp.get('signal_time') || '0');
+const SIG_PRICE  = parseFloat(qp.get('signal_price') || '0');
+const SIG_COND   = qp.get('signal_condition') || 'above';
+const SIG_TIME   = parseInt(qp.get('signal_time') || '0');
+const SIG_TARGET = qp.get('signal_target') != null ? parseFloat(qp.get('signal_target')) : null;
+const SIG_STOP   = qp.get('signal_stop')   != null ? parseFloat(qp.get('signal_stop'))   : null;
+const numOrNull = (k) => qp.get(k) != null ? parseFloat(qp.get(k)) : null;
+const SUP_P1 = { time: numOrNull('sup_p1_time'), price: numOrNull('sup_p1_price') };
+const SUP_P2 = { time: numOrNull('sup_p2_time'), price: numOrNull('sup_p2_price') };
+const RES_P1 = { time: numOrNull('res_p1_time'), price: numOrNull('res_p1_price') };
+const RES_P2 = { time: numOrNull('res_p2_time'), price: numOrNull('res_p2_price') };
+const HAS_CHANNEL = [SUP_P1.time, SUP_P2.time, RES_P1.time, RES_P2.time].every(v => v != null);
+
+// Stessa tecnica di trendline.html: retta per 2 punti (tempo,prezzo) estrapolata
+// oltre l'ultima candela, mai per bar-index (evita disallineamenti fra il set di
+// candele usato dallo scanner e quello rifetchato qui).
+const CHN_EXTEND_BARS = 20;
+const lineSeriesFromPts = (p1, p2, klines) => {
+    const slope = (p2.price - p1.price) / (p2.time - p1.time);
+    const pts = klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
+    if (pts.length >= 2 && klines.length >= 2) {
+        const step = klines[klines.length - 1].time - klines[klines.length - 2].time;
+        if (step > 0) {
+            const lastT = pts[pts.length - 1].time;
+            for (let i = 1; i <= CHN_EXTEND_BARS; i++) {
+                const t = lastT + step * i;
+                pts.push({ time: t, value: p1.price + slope * (t - p1.time) });
+            }
+        }
+    }
+    return pts;
+};
 
 const TF_LABEL = {'1':'1m','5':'5m','15':'15m','30':'30m','60':'1h','240':'4h','D':'D'};
 
@@ -156,7 +184,20 @@ async function init() {
       candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
       for (const {p} of EMA_CFG) emaS[p].setData(calcEMA(klines, p));
 
-      if (SIG_PRICE > 0) {
+      if (HAS_CHANNEL) {
+        // Canale: 2 rette inclinate (supporto+resistenza), non un livello piatto —
+        // stessa tecnica di trendline.html (2 punti tempo/prezzo, mai bar-index).
+        addS(chart, 'LineSeries', {
+          color: 'rgba(16,185,129,0.9)', lineWidth: 2, lineStyle: 0,
+          priceLineVisible: false, lastValueVisible: false,
+          crosshairMarkerVisible: false, title: '',
+        }).setData(lineSeriesFromPts(SUP_P1, SUP_P2, klines));
+        addS(chart, 'LineSeries', {
+          color: 'rgba(239,68,68,0.9)', lineWidth: 2, lineStyle: 0,
+          priceLineVisible: false, lastValueVisible: false,
+          crosshairMarkerVisible: false, title: '',
+        }).setData(lineSeriesFromPts(RES_P1, RES_P2, klines));
+      } else if (SIG_PRICE > 0) {
         const clr      = SIG_COND === 'above' ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)';
         const lastTime = klines[klines.length - 1].time;
         const timeStep = klines.length > 1 ? klines[klines.length-1].time - klines[klines.length-2].time : 86400;
@@ -175,6 +216,23 @@ async function init() {
           { time: startTime,  value: SIG_PRICE },
           { time: futureTime, value: SIG_PRICE },
         ]);
+
+        if (SIG_TARGET != null || SIG_STOP != null) {
+          if (SIG_TARGET != null) {
+            addS(chart, 'LineSeries', {
+              color: '#4ade80', lineWidth: 1, lineStyle: 2,
+              priceLineVisible: false, lastValueVisible: false,
+              crosshairMarkerVisible: false, title: '',
+            }).setData([{ time: startTime, value: SIG_TARGET }, { time: futureTime, value: SIG_TARGET }]);
+          }
+          if (SIG_STOP != null) {
+            addS(chart, 'LineSeries', {
+              color: '#f87171', lineWidth: 1, lineStyle: 2,
+              priceLineVisible: false, lastValueVisible: false,
+              crosshairMarkerVisible: false, title: '',
+            }).setData([{ time: startTime, value: SIG_STOP }, { time: futureTime, value: SIG_STOP }]);
+          }
+        }
       }
 
       const visibleBars = TF === 'D' ? 50 : TF === '240' ? 60 : 70;

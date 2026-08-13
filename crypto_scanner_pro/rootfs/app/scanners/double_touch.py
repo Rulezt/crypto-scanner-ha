@@ -30,6 +30,12 @@ class DoubleTouchScanner:
                  max_coins_per_alert=5,
                  max_freshness=30, min_gap=3, max_gap=60,
                  strict_mode=True,
+                 ch_pivot_bars=3, ch_min_cup_bars=15, ch_max_cup_bars=80,
+                 ch_min_handle_bars=2, ch_max_handle_bars=25,
+                 ch_min_cup_depth_pct=3.0, ch_max_handle_retrace=0.5,
+                 chn_short_period=30, chn_long_period=80,
+                 chn_tolerance_pct=1.5, chn_parallel_ratio=0.5,
+                 chn_max_violation_ratio=0.15,
                  ws_manager=None, live_config=None, **kwargs):
 
         self.telegram_token      = telegram_config['token']
@@ -48,6 +54,18 @@ class DoubleTouchScanner:
         self.min_gap             = int(min_gap)
         self.max_gap             = int(max_gap)
         self.strict_mode         = bool(strict_mode)
+        self.ch_pivot_bars         = int(ch_pivot_bars)
+        self.ch_min_cup_bars       = int(ch_min_cup_bars)
+        self.ch_max_cup_bars       = int(ch_max_cup_bars)
+        self.ch_min_handle_bars    = int(ch_min_handle_bars)
+        self.ch_max_handle_bars    = int(ch_max_handle_bars)
+        self.ch_min_cup_depth_pct  = float(ch_min_cup_depth_pct)
+        self.ch_max_handle_retrace = float(ch_max_handle_retrace)
+        self.chn_short_period     = int(chn_short_period)
+        self.chn_long_period      = int(chn_long_period)
+        self.chn_tolerance_pct    = float(chn_tolerance_pct)
+        self.chn_parallel_ratio   = float(chn_parallel_ratio)
+        self.chn_max_violation_ratio = float(chn_max_violation_ratio)
         self._live_config        = live_config
 
         self.last_alerts      = self._load_cooldown()
@@ -266,7 +284,10 @@ class DoubleTouchScanner:
 
         patterns = (
             self._scan_side(highs, lows, closes, times, n, current_price, 'resistance', sp_h) +
-            self._scan_side(highs, lows, closes, times, n, current_price, 'support',    sp_l)
+            self._scan_side(highs, lows, closes, times, n, current_price, 'support',    sp_l) +
+            self._find_cup_handle(highs, lows, closes, times, n, current_price) +
+            self._find_inverse_cup_handle(highs, lows, closes, times, n, current_price) +
+            self._find_channel_patterns(highs, lows, closes, times, n, current_price)
         )
 
         # Normalized score: each dimension contributes equally regardless of units
@@ -377,6 +398,338 @@ class DoubleTouchScanner:
 
         return patterns
 
+    # ── Cup and Handle ───────────────────────────────────────────────────────
+    # Sempre bullish (Long): forma a "U" (left lip → cup bottom → right lip)
+    # seguita da un ritracciamento breve (handle), poi avvicinamento al breakout
+    # sopra il right lip. Stesso schema concettuale del terzo tocco (touchA/touchB
+    # + avvicinamento corrente), con vincoli di forma aggiuntivi (profondità coppa,
+    # simmetria dei due lip, handle poco profondo e breve).
+
+    @staticmethod
+    def _find_pivots(highs, lows, n, bars):
+        """Fractal pivot: massimo/minimo locale con `bars` barre più basse/alte su entrambi i lati."""
+        piv_hi, piv_lo = [], []
+        for i in range(bars, n - bars):
+            hi = highs[i]
+            if all(hi > highs[i - k] for k in range(1, bars + 1)) and \
+               all(hi > highs[i + k] for k in range(1, bars + 1)):
+                piv_hi.append(i)
+            lo = lows[i]
+            if all(lo < lows[i - k] for k in range(1, bars + 1)) and \
+               all(lo < lows[i + k] for k in range(1, bars + 1)):
+                piv_lo.append(i)
+        return piv_hi, piv_lo
+
+    def _find_cup_handle(self, highs, lows, closes, times, n, current_price):
+        min_needed = self.ch_min_cup_bars + self.ch_min_handle_bars + 2 * self.ch_pivot_bars + 2
+        if n < min_needed:
+            return []
+
+        piv_hi, piv_lo = self._find_pivots(highs, lows, n, self.ch_pivot_bars)
+        if len(piv_hi) < 2 or not piv_lo:
+            return []
+
+        tol_frac = self.tolerance / 100
+        patterns = []
+
+        for a in range(len(piv_hi)):
+            Lidx = piv_hi[a]
+            L = highs[Lidx]
+            for b in range(a + 1, len(piv_hi)):
+                Ridx = piv_hi[b]
+                gap = Ridx - Lidx
+                if gap < self.ch_min_cup_bars:
+                    continue
+                if gap > self.ch_max_cup_bars:
+                    break  # piv_hi crescente: b successivi hanno gap solo maggiore
+
+                R = highs[Ridx]
+                ref = max(L, R)
+                if abs(L - R) / ref > tol_frac:
+                    continue
+
+                between = lows[Lidx + 1:Ridx]
+                if not between:
+                    continue
+                B = min(between)
+                if (ref - B) / ref < self.ch_min_cup_depth_pct / 100:
+                    continue
+
+                upper = ref * (1 + tol_frac)
+                if any(h > upper for h in highs[Lidx + 1:Ridx]):
+                    continue  # nulla fra i due lip deve aver già superato la banda
+
+                for Hidx in piv_lo:
+                    if Hidx <= Ridx:
+                        continue
+                    hgap = Hidx - Ridx
+                    if hgap < self.ch_min_handle_bars:
+                        continue
+                    if hgap > self.ch_max_handle_bars:
+                        break  # piv_lo crescente
+
+                    H = lows[Hidx]
+                    if H <= B or H >= R:
+                        continue
+                    if (R - H) / (R - B) > self.ch_max_handle_retrace:
+                        continue
+
+                    if any(c > upper for c in closes[Ridx + 1:Hidx]):
+                        continue  # handle pulito: non richiude sopra il lip prima del tempo
+                    if any(c > R for c in closes[Hidx + 1:n]):
+                        continue  # ancora nessun breakout confermato
+
+                    dist_pct = (current_price - R) / R * 100
+                    if abs(dist_pct) > self.proximity:
+                        continue
+                    if current_price >= R:
+                        continue
+                    prev_close = closes[-2]
+                    if abs(current_price - R) > abs(prev_close - R):
+                        continue
+
+                    highest_high = max(highs[Lidx:Ridx + 1])
+                    patterns.append({
+                        'type': 'cup_handle', 'level': R,
+                        'precision': abs(L - R) / ref * 100, 'gap': gap,
+                        'freshness': max(1, n - Hidx), 'dist_pct': dist_pct,
+                        'touchATime': times[Lidx],
+                        'target': R + (highest_high - B), 'stop': R,
+                        'cupBottom': B, 'leftLip': L, 'handleLow': H,
+                    })
+
+        return patterns
+
+    # ── Inverse Cup and Handle ───────────────────────────────────────────────
+    # Sempre bearish (Short): specchio verticale del Cup and Handle — "U" rovesciata
+    # (left lip → cup top → right lip) seguita da un breve rimbalzo (handle) e
+    # avvicinamento al breakout sotto il right lip.
+
+    def _find_inverse_cup_handle(self, highs, lows, closes, times, n, current_price):
+        min_needed = self.ch_min_cup_bars + self.ch_min_handle_bars + 2 * self.ch_pivot_bars + 2
+        if n < min_needed:
+            return []
+
+        piv_hi, piv_lo = self._find_pivots(highs, lows, n, self.ch_pivot_bars)
+        if len(piv_lo) < 2 or not piv_hi:
+            return []
+
+        tol_frac = self.tolerance / 100
+        patterns = []
+
+        for a in range(len(piv_lo)):
+            Lidx = piv_lo[a]
+            L = lows[Lidx]
+            for b in range(a + 1, len(piv_lo)):
+                Ridx = piv_lo[b]
+                gap = Ridx - Lidx
+                if gap < self.ch_min_cup_bars:
+                    continue
+                if gap > self.ch_max_cup_bars:
+                    break  # piv_lo crescente: b successivi hanno gap solo maggiore
+
+                R = lows[Ridx]
+                ref = min(L, R)
+                if abs(L - R) / ref > tol_frac:
+                    continue
+
+                between = highs[Lidx + 1:Ridx]
+                if not between:
+                    continue
+                T = max(between)
+                if (T - ref) / ref < self.ch_min_cup_depth_pct / 100:
+                    continue
+
+                lower = ref * (1 - tol_frac)
+                if any(l < lower for l in lows[Lidx + 1:Ridx]):
+                    continue  # nulla fra i due lip deve aver già rotto sotto la banda
+
+                for Hidx in piv_hi:
+                    if Hidx <= Ridx:
+                        continue
+                    hgap = Hidx - Ridx
+                    if hgap < self.ch_min_handle_bars:
+                        continue
+                    if hgap > self.ch_max_handle_bars:
+                        break  # piv_hi crescente
+
+                    H = highs[Hidx]
+                    if H >= T or H <= R:
+                        continue
+                    if (H - R) / (T - R) > self.ch_max_handle_retrace:
+                        continue
+
+                    if any(c < lower for c in closes[Ridx + 1:Hidx]):
+                        continue  # handle pulito: non richiude sotto il lip prima del tempo
+                    if any(c < R for c in closes[Hidx + 1:n]):
+                        continue  # ancora nessun breakdown confermato
+
+                    dist_pct = (current_price - R) / R * 100
+                    if abs(dist_pct) > self.proximity:
+                        continue
+                    if current_price <= R:
+                        continue
+                    prev_close = closes[-2]
+                    if abs(current_price - R) > abs(prev_close - R):
+                        continue
+
+                    lowest_low = min(lows[Lidx:Ridx + 1])
+                    patterns.append({
+                        'type': 'inv_cup_handle', 'level': R,
+                        'precision': abs(L - R) / ref * 100, 'gap': gap,
+                        'freshness': max(1, n - Hidx), 'dist_pct': dist_pct,
+                        'touchATime': times[Lidx],
+                        'target': R - (T - lowest_low), 'stop': R,
+                        'cupTop': T, 'leftLip': L, 'handleHigh': H,
+                    })
+
+        return patterns
+
+    # ── Channel Up / Channel Down ────────────────────────────────────────────
+    # Porting dell'engine a 2 pivot già collaudato in trendline.html (pivotExtreme/
+    # trendlineAt/isLineValid): pivot "recente" (offset 1..short_period da iEnd) e
+    # pivot "vecchio" (offset short_period+1..long_period), separati per massimi
+    # (resistenza) e minimi (supporto). Canale = le due rette hanno stessa direzione
+    # e pendenza simile (parallele entro chn_parallel_ratio), mai invalidate da una
+    # chiusura oltre tolleranza da quando esistono. Trigger sempre in continuazione
+    # (avvicinamento al lato che si prevede rotto), mai sul rimbalzo interno al canale.
+
+    @staticmethod
+    def _pivot_extreme(highs, lows, i_end, off_from, off_to):
+        low_val, low_off, high_val, high_off = float('inf'), None, float('-inf'), None
+        for off in range(off_from, off_to + 1):
+            idx = i_end - off
+            if idx < 0:
+                return None
+            if lows[idx] < low_val:
+                low_val, low_off = lows[idx], off
+            if highs[idx] > high_val:
+                high_val, high_off = highs[idx], off
+        return low_val, low_off, high_val, high_off
+
+    def _trendline_at(self, highs, lows, i_end, short_period, long_period):
+        if i_end - long_period < 0:
+            return None
+        rec = self._pivot_extreme(highs, lows, i_end, 1, short_period)
+        old = self._pivot_extreme(highs, lows, i_end, short_period + 1, long_period)
+        if not rec or not old:
+            return None
+        rec_low_val, rec_low_off, rec_high_val, rec_high_off = rec
+        old_low_val, old_low_off, old_high_val, old_high_off = old
+
+        sup_x1, sup_y1 = i_end - old_low_off,  old_low_val
+        sup_x2, sup_y2 = i_end - rec_low_off,  rec_low_val
+        res_x1, res_y1 = i_end - old_high_off, old_high_val
+        res_x2, res_y2 = i_end - rec_high_off, rec_high_val
+        sup_slope = (sup_y2 - sup_y1) / (sup_x2 - sup_x1) if sup_x2 != sup_x1 else 0.0
+        res_slope = (res_y2 - res_y1) / (res_x2 - res_x1) if res_x2 != res_x1 else 0.0
+        return {
+            'sup_x1': sup_x1, 'sup_y1': sup_y1, 'sup_x2': sup_x2, 'sup_y2': sup_y2,
+            'sup_slope': sup_slope, 'sup_val': sup_y2 + sup_slope * (i_end - sup_x2),
+            'res_x1': res_x1, 'res_y1': res_y1, 'res_x2': res_x2, 'res_y2': res_y2,
+            'res_slope': res_slope, 'res_val': res_y2 + res_slope * (i_end - res_x2),
+        }
+
+    @staticmethod
+    def _channel_containment_ok(highs, lows, tl, n, tolerance_pct, max_violation_ratio):
+        """Un vero canale deve CONTENERE il prezzo (high sotto la resistenza, low
+        sopra il supporto), non solo avere chiusure vicine — controllare solo il
+        close (come in trendline.html per una singola retta) lascia passare rette
+        che tagliano dritto in mezzo alle candele. Qui si ammette una piccola quota
+        di violazioni (wick isolati) ma non un canale che il prezzo attraversa spesso."""
+        start = min(tl['sup_x1'], tl['res_x1'])
+        tol_frac = tolerance_pct / 100
+        total = violations = 0
+        for idx in range(start, n):
+            sup_line = tl['sup_y1'] + tl['sup_slope'] * (idx - tl['sup_x1'])
+            res_line = tl['res_y1'] + tl['res_slope'] * (idx - tl['res_x1'])
+            if res_line <= sup_line:
+                return False  # rette incrociate in questo punto, canale non valido
+            total += 1
+            sup_tol = abs(sup_line) * tol_frac
+            res_tol = abs(res_line) * tol_frac
+            if highs[idx] > res_line + res_tol or lows[idx] < sup_line - sup_tol:
+                violations += 1
+        return total > 0 and (violations / total) <= max_violation_ratio
+
+    def _find_channel_patterns(self, highs, lows, closes, times, n, current_price):
+        if n < self.chn_long_period + 5:
+            return []
+        i_end = n - 1
+        tl = self._trendline_at(highs, lows, i_end, self.chn_short_period, self.chn_long_period)
+        if not tl:
+            return []
+
+        sup_slope, res_slope = tl['sup_slope'], tl['res_slope']
+        lo, hi = sorted((abs(sup_slope), abs(res_slope)))
+        if hi == 0 or lo / hi < self.chn_parallel_ratio:
+            return []  # rette non abbastanza parallele (pendenze troppo diverse)
+        if tl['res_val'] <= tl['sup_val']:
+            return []  # canale collassato/incrociato
+
+        # Un canale vero mantiene una larghezza pressoché costante nel tempo. Il solo
+        # rapporto fra le pendenze non basta: due rette possono avere pendenze "simili
+        # in rapporto" (es. entrambe piccole) mentre in realtà divergono a ventaglio
+        # (cuneo) partendo quasi dallo stesso punto — visto in un caso reale con
+        # screenshot allegato dall'utente. Si confronta la larghezza all'inizio delle
+        # rette con quella attuale: se cambia troppo, non è un canale parallelo.
+        start_idx = min(tl['sup_x1'], tl['res_x1'])
+        sup_at_start = tl['sup_y1'] + sup_slope * (start_idx - tl['sup_x1'])
+        res_at_start = tl['res_y1'] + res_slope * (start_idx - tl['res_x1'])
+        width_start = res_at_start - sup_at_start
+        width_now   = tl['res_val'] - tl['sup_val']
+        if width_start <= 0:
+            return []
+        width_ratio = width_now / width_start
+        if width_ratio < 0.5 or width_ratio > 2.0:
+            return []  # larghezza raddoppiata/dimezzata: cuneo, non canale
+
+        if not self._channel_containment_ok(highs, lows, tl, n, self.chn_tolerance_pct, self.chn_max_violation_ratio):
+            return []
+
+        width     = tl['res_val'] - tl['sup_val']
+        precision = (1 - lo / hi) * 100
+        patterns  = []
+
+        # Entrambe le rette (non solo quella del breakout) così chi disegna il
+        # grafico può mostrare il canale intero, come nel pattern di riferimento.
+        line_pts = {
+            'supP1Time': times[tl['sup_x1']], 'supP1Price': tl['sup_y1'],
+            'supP2Time': times[tl['sup_x2']], 'supP2Price': tl['sup_y2'],
+            'resP1Time': times[tl['res_x1']], 'resP1Price': tl['res_y1'],
+            'resP2Time': times[tl['res_x2']], 'resP2Price': tl['res_y2'],
+        }
+
+        if sup_slope > 0 and res_slope > 0:
+            res_val = tl['res_val']
+            dist_pct = (current_price - res_val) / res_val * 100
+            if (abs(dist_pct) <= self.proximity and current_price < res_val and
+                    abs(current_price - res_val) <= abs(closes[-2] - res_val)):
+                patterns.append({
+                    'type': 'channel_up', 'level': res_val,
+                    'precision': precision, 'gap': i_end - tl['res_x1'],
+                    'freshness': max(1, n - tl['res_x2']), 'dist_pct': dist_pct,
+                    'touchATime': times[tl['res_x1']],
+                    'target': res_val + width, 'stop': res_val,
+                    **line_pts,
+                })
+
+        if sup_slope < 0 and res_slope < 0:
+            sup_val = tl['sup_val']
+            dist_pct = (current_price - sup_val) / sup_val * 100
+            if (abs(dist_pct) <= self.proximity and current_price > sup_val and
+                    abs(current_price - sup_val) <= abs(closes[-2] - sup_val)):
+                patterns.append({
+                    'type': 'channel_down', 'level': sup_val,
+                    'precision': precision, 'gap': i_end - tl['sup_x1'],
+                    'freshness': max(1, n - tl['sup_x2']), 'dist_pct': dist_pct,
+                    'touchATime': times[tl['sup_x1']],
+                    'target': sup_val - width, 'stop': sup_val,
+                    **line_pts,
+                })
+
+        return patterns
+
     # ── polling scan (fallback / manual) ──────────────────────────────────────
 
     def scan(self):
@@ -429,14 +782,23 @@ class DoubleTouchScanner:
         except ImportError:
             return
         TF_LABEL = {'D': '1D', '240': '4h', '60': '1h', '30': '30m', '15': '15m', '5': '5m', '1': '1m'}
+        # (etichetta pattern, segnale Long/Short, condizione linea sul grafico 'above'/'below')
+        TYPE_INFO = {
+            'resistance':     ('Terzo Tocco',            'Short', 'below'),
+            'support':        ('Terzo Tocco',            'Long',  'above'),
+            'cup_handle':     ('Cup & Handle',            'Long',  'above'),
+            'inv_cup_handle': ('Inverse Cup & Handle',    'Short', 'below'),
+            'channel_up':     ('Channel Up',              'Long',  'above'),
+            'channel_down':   ('Channel Down',            'Short', 'below'),
+        }
         for p in patterns[:3]:
             sym      = p['symbol']
             tf       = p.get('tf', self.scan_tfs[0])
             tf_label = TF_LABEL.get(tf, tf)
-            segnale  = 'Long' if p['type'] == 'resistance' else 'Short'
+            pattern_label, segnale, condition = TYPE_INFO.get(p['type'], ('Terzo Tocco', 'Long', 'above'))
             change   = p.get('change_pct', 0.0)
             lines    = [
-                f'🔔 Terzo Tocco {tf_label}',
+                f'🔔 {pattern_label} {tf_label}',
                 '',
                 '------------------------------------------------',
                 f'- Coin: {sym}',
@@ -453,15 +815,21 @@ class DoubleTouchScanner:
             img = get_chart(sym, interval=tf, signal={
                 'type': 'price',
                 'price': p['level'],
-                'condition': 'above' if p['type'] == 'resistance' else 'below',
+                'condition': condition,
                 'time': p.get('touchATime'),
+                'target': p.get('target'),
+                'stop': p.get('stop'),
+                'sup_p1_time': p.get('supP1Time'), 'sup_p1_price': p.get('supP1Price'),
+                'sup_p2_time': p.get('supP2Time'), 'sup_p2_price': p.get('supP2Price'),
+                'res_p1_time': p.get('resP1Time'), 'res_p1_price': p.get('resP1Price'),
+                'res_p2_time': p.get('resP2Time'), 'res_p2_price': p.get('resP2Price'),
             })
             if img:
                 send_photo(self.telegram_token, self.telegram_chat_id, img, caption)
             else:
                 send_text(self.telegram_token, self.telegram_chat_id, caption)
-            log_alert(sym, 'Terzo Tocco', emoji='🔁', note=segnale, tf=tf_label, screenshot=img)
-            logger.info('🔁 Terzo Tocco alert: %s %s (%s)', sym, tf_label, p['type'])
+            log_alert(sym, pattern_label, emoji='🔁', note=segnale, tf=tf_label, screenshot=img)
+            logger.info('🔁 %s alert: %s %s (%s)', pattern_label, sym, tf_label, p['type'])
 
     # ── status ────────────────────────────────────────────────────────────────
 

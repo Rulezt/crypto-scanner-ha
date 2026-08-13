@@ -1252,8 +1252,9 @@ function calcEMA(bars, period) {
 // === null) continue;`) la salta automaticamente, nessun controllo enabled duplicato lì.
 function applyEmaToSlot(s) {
     if (!s.klines || !s.klines.length) return;
+    const hideForMini = hideIndMiniActive && slots.includes(s);
     for (const {p, enabled} of EMA_CFG) {
-        if (enabled === false) {
+        if (hideForMini || enabled === false) {
             s.emaSeries[p].setData([]);
             s.lastEMA[p] = null;
         } else {
@@ -1293,7 +1294,7 @@ function applyBBToSlot(s, bbCfg) {
     for (const k of ['upper', 'mid', 'lower']) {
         if (s.bbSeries[k]) { try { s.chart.removeSeries(s.bbSeries[k]); } catch(e) {} s.bbSeries[k] = null; }
     }
-    if (!bbActive || !s.klines || s.klines.length < bbCfg.period) return;
+    if (!bbActive || (hideIndMiniActive && slots.includes(s)) || !s.klines || s.klines.length < bbCfg.period) return;
     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
     s.bbSeries.upper = addSeries(s.chart, 'LineSeries', { ...lb, color: bbCfg.color, lineWidth: bbCfg.width, lineStyle: bbCfg.style });
     s.bbSeries.mid   = addSeries(s.chart, 'LineSeries', { ...lb, color: bbCfg.color, lineWidth: bbCfg.width, lineStyle: 2 });
@@ -1365,7 +1366,7 @@ function applyRocToSlot(s, rocCfg) {
     // Lightweight Charts, che smette di renderizzare le candele dopo alcuni cambi
     // TF consecutivi. Ora la pane si tocca SOLO su vera transizione ON<->OFF:
     // sui refresh dati si riusa la serie esistente con un semplice setData/color.
-    if (!rocActive || !s.klines || s.klines.length <= rocCfg.length) {
+    if (!rocActive || (hideIndMiniActive && slots.includes(s)) || !s.klines || s.klines.length <= rocCfg.length) {
         if (s.rocSeries) { try { s.chart.removePane(ROC_PANE_INDEX); } catch(e) {} s.rocSeries = null; s.rocZeroLine = null; s.rocMaxLine = null; s.rocMinLine = null; }
         return;
     }
@@ -1407,6 +1408,10 @@ let bbActive = window.getIndActive('bb');
 let rocActive = window.getIndActive('roc');
 let grabActive = false; // valorizzata più sotto, dopo il rispettivo const _DEFAULT_GRAB_CFG
 let grabMidlineActive = false; // toggle indipendente per vedere solo la midline GRaB senza attivare tutto l'indicatore
+// Nasconde TUTTI gli indicatori/livelli SOLO nei mini-chart della griglia (mai nel
+// fullscreen, che resta sempre completo): non tocca i toggle individuali, si limita
+// a sopprimerne temporaneamente il disegno sugli slot — vedi ogni applyXxxToSlot.
+let hideIndMiniActive = window.getIndActive('hideIndMini');
 // "Colora candele" — toggle GLOBALE condiviso su tutte le pagine (vedi candle-color.js).
 const _applyCandleStyle = window.applyCandleColorStyle;
 function toggleCandleColorAll() {
@@ -1414,6 +1419,25 @@ function toggleCandleColorAll() {
         slots.forEach(s => _applyCandleStyle(s.candleS));
         _applyCandleStyle(fsCandleS);
     });
+}
+// Nasconde/ripristina TUTTI gli indicatori/livelli nei mini-chart della griglia,
+// senza toccare i toggle individuali (restano acceso/spento come impostati) — il
+// fullscreen (_fsIndSlot) non è mai coinvolto, resta sempre completo. Ogni
+// applyXxxToSlot controlla `hideIndMiniActive && slots.includes(s)` per sapere se
+// deve sopprimere il disegno; qui si riapplica tutto in un colpo solo, sia per
+// nascondere (ON) sia per ripristinare (OFF).
+function toggleHideIndMiniAll() {
+    hideIndMiniActive = !hideIndMiniActive;
+    window.setIndActive('hideIndMini', hideIndMiniActive);
+    slots.forEach(applyEmaToSlot);
+    slots.forEach(s => applyBBToSlot(s, getBbCfg()));
+    slots.forEach(s => applyRocToSlot(s, getRocCfg()));
+    slots.forEach(applyChannelToSlot);
+    slots.forEach(s => applyGrabToSlot(s, getGrabCfg()));
+    applyCfgToAllSlots();
+    if (!hideIndMiniActive && obLevelsActive) {
+        slots.forEach((s, idx) => { if (s.symbol) fetchSlotOBLevels(idx); });
+    }
 }
 function calcEMAField(bars, period, field) {
     const k = 2 / (period + 1); let v = bars[0][field];
@@ -1435,7 +1459,7 @@ function applyChannelToSlot(s) {
         if (s.channelSeries[k]) { try { s.chart.removeSeries(s.channelSeries[k]); } catch(e) {} s.channelSeries[k] = null; }
     }
     s.channelData = null;
-    if (!channelActive || !s.klines || s.klines.length < CHANNEL_CFG.period) return;
+    if (!channelActive || (hideIndMiniActive && slots.includes(s)) || !s.klines || s.klines.length < CHANNEL_CFG.period) return;
     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
     s.channelSeries.upper = addSeries(s.chart, 'LineSeries', { ...lb, color: CHANNEL_CFG.color, lineWidth: CHANNEL_CFG.width, lineStyle: CHANNEL_CFG.style });
     s.channelSeries.mid   = addSeries(s.chart, 'LineSeries', { ...lb, color: CHANNEL_CFG.color, lineWidth: CHANNEL_CFG.width, lineStyle: 2 });
@@ -1574,8 +1598,9 @@ function applyGrabToSlot(s, cfg) {
     }
     // Se il GRaB completo è OFF, la midline resta comunque disponibile tramite il
     // toggle indipendente grabMidlineActive (pannello Indicatori, sotto EMA 223).
-    const midlineOn = grabActive ? cfg.showMidline : grabMidlineActive;
-    if (!grabActive) {
+    const hideForMini = hideIndMiniActive && slots.includes(s);
+    const midlineOn = hideForMini ? false : (grabActive ? cfg.showMidline : grabMidlineActive);
+    if (hideForMini || !grabActive) {
         if (s.candleS && s.klines.length) s.candleS.setData(s.klines);
         s.grabState = null;
         if (!midlineOn || !s.klines.length) return;
@@ -1682,6 +1707,7 @@ const IND_LIST = [
     { label: 'Massimi/Minimi Storici', isOn: () => getLvCfg().ath.vis.chart,    toggle: toggleAthAtlAll,     cfgKey: 'athAtl',     col: 3 },
     { label: 'Livelli Giorno Prec.', isOn: () => getLvCfg().prevHigh.vis.chart, toggle: togglePrevLevelsAll, cfgKey: 'prevLevels', col: 3 },
     { label: 'Colora candele',       isOn: () => window.isCandleColorActive(),  toggle: toggleCandleColorAll, col: 3 },
+    { label: 'Nascondi ind. mini-chart', isOn: () => hideIndMiniActive,         toggle: toggleHideIndMiniAll, col: 3 },
 ];
 const _GEAR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
 const LOCK_ICON_OPEN   = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.75-1.5"/></svg>';
@@ -2241,6 +2267,7 @@ async function _fetchOBLevels(symbol) {
 async function fetchSlotOBLevels(idx) {
     const s = slots[idx];
     if (!s || !s.symbol || !s.candleS || !obLevelsActive) return;
+    if (hideIndMiniActive) { _clearSlotOBLines(s); return; }
     try {
         const lv = await _fetchOBLevels(s.symbol);
         if (!lv) return;
@@ -2277,8 +2304,9 @@ async function fetchSlotATHATL(idx) {
         _clearSlotATHLines(s);
         const lv = getLvCfg();
         s.athVal = j.ath; s.atlVal = j.atl;
-        if (lv.ath.vis?.chart !== false) s.athLine = s.candleS.createPriceLine({price: j.ath, color: lv.ath.color, lineWidth: lv.ath.width, lineStyle: lv.ath.style, axisLabelVisible: false, title: ''});
-        if (lv.atl.vis?.chart !== false) s.atlLine = s.candleS.createPriceLine({price: j.atl, color: lv.atl.color, lineWidth: lv.atl.width, lineStyle: lv.atl.style, axisLabelVisible: false, title: ''});
+        const hideForMini = hideIndMiniActive && slots.includes(s);
+        if (!hideForMini && lv.ath.vis?.chart !== false) s.athLine = s.candleS.createPriceLine({price: j.ath, color: lv.ath.color, lineWidth: lv.ath.width, lineStyle: lv.ath.style, axisLabelVisible: false, title: ''});
+        if (!hideForMini && lv.atl.vis?.chart !== false) s.atlLine = s.candleS.createPriceLine({price: j.atl, color: lv.atl.color, lineWidth: lv.atl.width, lineStyle: lv.atl.style, axisLabelVisible: false, title: ''});
     } catch(e) {}
 }
 
@@ -2992,14 +3020,15 @@ async function loadSlotData(idx) {
         if (jd.success && jd.data && jd.data.length) {
             const today = jd.data[jd.data.length - 1];
             const _slvl = getLvCfg();
+            const hideForMini = hideIndMiniActive && slots.includes(s);
             s.dayHighVal = today.high; s.dayLowVal = today.low;
-            if (_slvl.dayHigh.vis?.chart !== false) s.dayHighLine = s.candleS.createPriceLine({ price: today.high, color:_slvl.dayHigh.color,  lineWidth:_slvl.dayHigh.width,  lineStyle:_slvl.dayHigh.style,  axisLabelVisible:false, title:'' });
-            if (_slvl.dayLow.vis?.chart  !== false) s.dayLowLine  = s.candleS.createPriceLine({ price: today.low,  color:_slvl.dayLow.color,   lineWidth:_slvl.dayLow.width,   lineStyle:_slvl.dayLow.style,   axisLabelVisible:false, title:'' });
+            if (!hideForMini && _slvl.dayHigh.vis?.chart !== false) s.dayHighLine = s.candleS.createPriceLine({ price: today.high, color:_slvl.dayHigh.color,  lineWidth:_slvl.dayHigh.width,  lineStyle:_slvl.dayHigh.style,  axisLabelVisible:false, title:'' });
+            if (!hideForMini && _slvl.dayLow.vis?.chart  !== false) s.dayLowLine  = s.candleS.createPriceLine({ price: today.low,  color:_slvl.dayLow.color,   lineWidth:_slvl.dayLow.width,   lineStyle:_slvl.dayLow.style,   axisLabelVisible:false, title:'' });
             if (jd.data.length >= 2) {
                 const prev = jd.data[jd.data.length - 2];
                 s.prevHighVal = prev.high; s.prevLowVal = prev.low;
-                if (_slvl.prevHigh.vis?.chart !== false) s.prevHighLine = s.candleS.createPriceLine({ price: prev.high, color:_slvl.prevHigh.color, lineWidth:_slvl.prevHigh.width, lineStyle:_slvl.prevHigh.style, axisLabelVisible:false, title:'' });
-                if (_slvl.prevLow.vis?.chart  !== false) s.prevLowLine  = s.candleS.createPriceLine({ price: prev.low,  color:_slvl.prevLow.color,  lineWidth:_slvl.prevLow.width,  lineStyle:_slvl.prevLow.style,  axisLabelVisible:false, title:'' });
+                if (!hideForMini && _slvl.prevHigh.vis?.chart !== false) s.prevHighLine = s.candleS.createPriceLine({ price: prev.high, color:_slvl.prevHigh.color, lineWidth:_slvl.prevHigh.width, lineStyle:_slvl.prevHigh.style, axisLabelVisible:false, title:'' });
+                if (!hideForMini && _slvl.prevLow.vis?.chart  !== false) s.prevLowLine  = s.candleS.createPriceLine({ price: prev.low,  color:_slvl.prevLow.color,  lineWidth:_slvl.prevLow.width,  lineStyle:_slvl.prevLow.style,  axisLabelVisible:false, title:'' });
             }
         }
     } catch(e) { console.error(`Error loading ${s.symbol}:`, e); }
@@ -4745,21 +4774,22 @@ function applyCfgToAllSlots() {
     for (let i = 0; i < visible; i++) {
         const s = slots[i];
         if (!s || !s.candleS || !s.symbol) continue;
+        const hideForMini = hideIndMiniActive && slots.includes(s);
         if (s.dayHighLine)  { try { s.candleS.removePriceLine(s.dayHighLine);  } catch(e) {} s.dayHighLine  = null; }
         if (s.dayLowLine)   { try { s.candleS.removePriceLine(s.dayLowLine);   } catch(e) {} s.dayLowLine   = null; }
         if (s.prevHighLine) { try { s.candleS.removePriceLine(s.prevHighLine); } catch(e) {} s.prevHighLine = null; }
         if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
-        if (s.dayHighVal  != null && lv.dayHigh.vis?.chart  !== false) s.dayHighLine  = s.candleS.createPriceLine({price:s.dayHighVal,  color:lv.dayHigh.color,  lineWidth:lv.dayHigh.width,  lineStyle:lv.dayHigh.style,  axisLabelVisible:false, title:''});
-        if (s.dayLowVal   != null && lv.dayLow.vis?.chart   !== false) s.dayLowLine   = s.candleS.createPriceLine({price:s.dayLowVal,   color:lv.dayLow.color,   lineWidth:lv.dayLow.width,   lineStyle:lv.dayLow.style,   axisLabelVisible:false, title:''});
-        if (s.prevHighVal != null && lv.prevHigh.vis?.chart !== false) s.prevHighLine = s.candleS.createPriceLine({price:s.prevHighVal, color:lv.prevHigh.color, lineWidth:lv.prevHigh.width, lineStyle:lv.prevHigh.style, axisLabelVisible:false, title:''});
-        if (s.prevLowVal  != null && lv.prevLow.vis?.chart  !== false) s.prevLowLine  = s.candleS.createPriceLine({price:s.prevLowVal,  color:lv.prevLow.color,  lineWidth:lv.prevLow.width,  lineStyle:lv.prevLow.style,  axisLabelVisible:false, title:''});
+        if (!hideForMini && s.dayHighVal  != null && lv.dayHigh.vis?.chart  !== false) s.dayHighLine  = s.candleS.createPriceLine({price:s.dayHighVal,  color:lv.dayHigh.color,  lineWidth:lv.dayHigh.width,  lineStyle:lv.dayHigh.style,  axisLabelVisible:false, title:''});
+        if (!hideForMini && s.dayLowVal   != null && lv.dayLow.vis?.chart   !== false) s.dayLowLine   = s.candleS.createPriceLine({price:s.dayLowVal,   color:lv.dayLow.color,   lineWidth:lv.dayLow.width,   lineStyle:lv.dayLow.style,   axisLabelVisible:false, title:''});
+        if (!hideForMini && s.prevHighVal != null && lv.prevHigh.vis?.chart !== false) s.prevHighLine = s.candleS.createPriceLine({price:s.prevHighVal, color:lv.prevHigh.color, lineWidth:lv.prevHigh.width, lineStyle:lv.prevHigh.style, axisLabelVisible:false, title:''});
+        if (!hideForMini && s.prevLowVal  != null && lv.prevLow.vis?.chart  !== false) s.prevLowLine  = s.candleS.createPriceLine({price:s.prevLowVal,  color:lv.prevLow.color,  lineWidth:lv.prevLow.width,  lineStyle:lv.prevLow.style,  axisLabelVisible:false, title:''});
         _clearSlotATHLines(s);
-        if (s.athVal != null && lv.ath.vis?.chart !== false) s.athLine = s.candleS.createPriceLine({price:s.athVal, color:lv.ath.color, lineWidth:lv.ath.width, lineStyle:lv.ath.style, axisLabelVisible:false, title:''});
-        if (s.atlVal != null && lv.atl.vis?.chart !== false) s.atlLine = s.candleS.createPriceLine({price:s.atlVal, color:lv.atl.color, lineWidth:lv.atl.width, lineStyle:lv.atl.style, axisLabelVisible:false, title:''});
+        if (!hideForMini && s.athVal != null && lv.ath.vis?.chart !== false) s.athLine = s.candleS.createPriceLine({price:s.athVal, color:lv.ath.color, lineWidth:lv.ath.width, lineStyle:lv.ath.style, axisLabelVisible:false, title:''});
+        if (!hideForMini && s.atlVal != null && lv.atl.vis?.chart !== false) s.atlLine = s.candleS.createPriceLine({price:s.atlVal, color:lv.atl.color, lineWidth:lv.atl.width, lineStyle:lv.atl.style, axisLabelVisible:false, title:''});
         if (s.obBidLine) { try { s.candleS.removePriceLine(s.obBidLine); } catch(e) {} s.obBidLine = null; }
         if (s.obAskLine) { try { s.candleS.removePriceLine(s.obAskLine); } catch(e) {} s.obAskLine = null; }
-        if (s.obBidVal != null && lv.obBid.vis?.chart !== false) s.obBidLine = s.candleS.createPriceLine({price:s.obBidVal, color:lv.obBid.color, lineWidth:lv.obBid.width, lineStyle:lv.obBid.style, axisLabelVisible:true, title:''});
-        if (s.obAskVal != null && lv.obAsk.vis?.chart !== false) s.obAskLine = s.candleS.createPriceLine({price:s.obAskVal, color:lv.obAsk.color, lineWidth:lv.obAsk.width, lineStyle:lv.obAsk.style, axisLabelVisible:true, title:''});
+        if (!hideForMini && s.obBidVal != null && lv.obBid.vis?.chart !== false) s.obBidLine = s.candleS.createPriceLine({price:s.obBidVal, color:lv.obBid.color, lineWidth:lv.obBid.width, lineStyle:lv.obBid.style, axisLabelVisible:true, title:''});
+        if (!hideForMini && s.obAskVal != null && lv.obAsk.vis?.chart !== false) s.obAskLine = s.candleS.createPriceLine({price:s.obAskVal, color:lv.obAsk.color, lineWidth:lv.obAsk.width, lineStyle:lv.obAsk.style, axisLabelVisible:true, title:''});
         applyBBToSlot(s, getBbCfg());
         applyRocToSlot(s, getRocCfg());
         applyChannelToSlot(s);

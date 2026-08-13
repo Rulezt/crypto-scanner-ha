@@ -452,8 +452,293 @@ createApp({
             return { dir: price >= ema60 ? 'above' : 'below', metric: dist.toFixed(2) + '%' };
         };
 
+        // ── Cup and Handle (ported from third_touch.html) — sempre bullish (bull) ──
+        const CH_PIVOT_BARS = 3, CH_MIN_CUP_BARS = 15, CH_MAX_CUP_BARS = 80,
+              CH_MIN_HANDLE_BARS = 2, CH_MAX_HANDLE_BARS = 25,
+              CH_MIN_CUP_DEPTH_PCT = 3, CH_MAX_HANDLE_RETRACE = 0.5;
+
+        const findPivots = (candles, bars) => {
+            const piv_hi = [], piv_lo = [];
+            const n = candles.length;
+            for (let i = bars; i < n - bars; i++) {
+                const hi = candles[i].high;
+                let isHi = true;
+                for (let k = 1; k <= bars; k++) { if (!(hi > candles[i-k].high && hi > candles[i+k].high)) { isHi = false; break; } }
+                if (isHi) piv_hi.push(i);
+                const lo = candles[i].low;
+                let isLo = true;
+                for (let k = 1; k <= bars; k++) { if (!(lo < candles[i-k].low && lo < candles[i+k].low)) { isLo = false; break; } }
+                if (isLo) piv_lo.push(i);
+            }
+            return { piv_hi, piv_lo };
+        };
+
+        const findCupHandle = (candles, tol, currentPrice) => {
+            const n = candles.length;
+            const patterns = [];
+            const minNeeded = CH_MIN_CUP_BARS + CH_MIN_HANDLE_BARS + 2 * CH_PIVOT_BARS + 2;
+            if (n < minNeeded) return patterns;
+            const { piv_hi, piv_lo } = findPivots(candles, CH_PIVOT_BARS);
+            if (piv_hi.length < 2 || !piv_lo.length) return patterns;
+            const tolFrac = tol / 100;
+
+            for (let a = 0; a < piv_hi.length; a++) {
+                const Lidx = piv_hi[a], L = candles[Lidx].high;
+                for (let b = a + 1; b < piv_hi.length; b++) {
+                    const Ridx = piv_hi[b];
+                    const gap = Ridx - Lidx;
+                    if (gap < CH_MIN_CUP_BARS) continue;
+                    if (gap > CH_MAX_CUP_BARS) break;
+
+                    const R = candles[Ridx].high;
+                    const ref = Math.max(L, R);
+                    if (Math.abs(L - R) / ref > tolFrac) continue;
+
+                    let B = Infinity;
+                    for (let k = Lidx + 1; k < Ridx; k++) B = Math.min(B, candles[k].low);
+                    if (!isFinite(B)) continue;
+                    if ((ref - B) / ref < CH_MIN_CUP_DEPTH_PCT / 100) continue;
+
+                    const upper = ref * (1 + tolFrac);
+                    let violated = false;
+                    for (let k = Lidx + 1; k < Ridx; k++) { if (candles[k].high > upper) { violated = true; break; } }
+                    if (violated) continue;
+
+                    for (let hi = 0; hi < piv_lo.length; hi++) {
+                        const Hidx = piv_lo[hi];
+                        if (Hidx <= Ridx) continue;
+                        const hgap = Hidx - Ridx;
+                        if (hgap < CH_MIN_HANDLE_BARS) continue;
+                        if (hgap > CH_MAX_HANDLE_BARS) break;
+
+                        const H = candles[Hidx].low;
+                        if (H <= B || H >= R) continue;
+                        if ((R - H) / (R - B) > CH_MAX_HANDLE_RETRACE) continue;
+
+                        let handleViolated = false;
+                        for (let k = Ridx + 1; k < Hidx; k++) { if (candles[k].close > upper) { handleViolated = true; break; } }
+                        if (handleViolated) continue;
+
+                        let alreadyBroke = false;
+                        for (let k = Hidx + 1; k < n; k++) { if (candles[k].close > R) { alreadyBroke = true; break; } }
+                        if (alreadyBroke) continue;
+
+                        if (currentPrice >= R) continue;
+                        const prevClose = candles[candles.length - 2].close;
+                        if (Math.abs(currentPrice - R) > Math.abs(prevClose - R)) continue;
+
+                        let highestHigh = -Infinity;
+                        for (let k = Lidx; k <= Ridx; k++) highestHigh = Math.max(highestHigh, candles[k].high);
+
+                        patterns.push({
+                            type: 'cup_handle', level: R,
+                            precision: Math.abs(L - R) / ref * 100, gap,
+                            freshness: Math.max(1, n - Hidx),
+                            distFromCurrent: ((currentPrice - R) / R) * 100,
+                            target: R + (highestHigh - B), stop: R,
+                        });
+                    }
+                }
+            }
+            return patterns;
+        };
+
+        // ── Inverse Cup and Handle (ported from third_touch.html) — sempre bearish (bear) ──
+        const findInverseCupHandle = (candles, tol, currentPrice) => {
+            const n = candles.length;
+            const patterns = [];
+            const minNeeded = CH_MIN_CUP_BARS + CH_MIN_HANDLE_BARS + 2 * CH_PIVOT_BARS + 2;
+            if (n < minNeeded) return patterns;
+            const { piv_hi, piv_lo } = findPivots(candles, CH_PIVOT_BARS);
+            if (piv_lo.length < 2 || !piv_hi.length) return patterns;
+            const tolFrac = tol / 100;
+
+            for (let a = 0; a < piv_lo.length; a++) {
+                const Lidx = piv_lo[a], L = candles[Lidx].low;
+                for (let b = a + 1; b < piv_lo.length; b++) {
+                    const Ridx = piv_lo[b];
+                    const gap = Ridx - Lidx;
+                    if (gap < CH_MIN_CUP_BARS) continue;
+                    if (gap > CH_MAX_CUP_BARS) break;
+
+                    const R = candles[Ridx].low;
+                    const ref = Math.min(L, R);
+                    if (Math.abs(L - R) / ref > tolFrac) continue;
+
+                    let T = -Infinity;
+                    for (let k = Lidx + 1; k < Ridx; k++) T = Math.max(T, candles[k].high);
+                    if (!isFinite(T)) continue;
+                    if ((T - ref) / ref < CH_MIN_CUP_DEPTH_PCT / 100) continue;
+
+                    const lower = ref * (1 - tolFrac);
+                    let violated = false;
+                    for (let k = Lidx + 1; k < Ridx; k++) { if (candles[k].low < lower) { violated = true; break; } }
+                    if (violated) continue;
+
+                    for (let hi = 0; hi < piv_hi.length; hi++) {
+                        const Hidx = piv_hi[hi];
+                        if (Hidx <= Ridx) continue;
+                        const hgap = Hidx - Ridx;
+                        if (hgap < CH_MIN_HANDLE_BARS) continue;
+                        if (hgap > CH_MAX_HANDLE_BARS) break;
+
+                        const H = candles[Hidx].high;
+                        if (H >= T || H <= R) continue;
+                        if ((H - R) / (T - R) > CH_MAX_HANDLE_RETRACE) continue;
+
+                        let handleViolated = false;
+                        for (let k = Ridx + 1; k < Hidx; k++) { if (candles[k].close < lower) { handleViolated = true; break; } }
+                        if (handleViolated) continue;
+
+                        let alreadyBroke = false;
+                        for (let k = Hidx + 1; k < n; k++) { if (candles[k].close < R) { alreadyBroke = true; break; } }
+                        if (alreadyBroke) continue;
+
+                        if (currentPrice <= R) continue;
+                        const prevClose = candles[candles.length - 2].close;
+                        if (Math.abs(currentPrice - R) > Math.abs(prevClose - R)) continue;
+
+                        let lowestLow = Infinity;
+                        for (let k = Lidx; k <= Ridx; k++) lowestLow = Math.min(lowestLow, candles[k].low);
+
+                        patterns.push({
+                            type: 'inv_cup_handle', level: R,
+                            precision: Math.abs(L - R) / ref * 100, gap,
+                            freshness: Math.max(1, n - Hidx),
+                            distFromCurrent: ((currentPrice - R) / R) * 100,
+                            target: R - (T - lowestLow), stop: R,
+                        });
+                    }
+                }
+            }
+            return patterns;
+        };
+
+        // ── Channel Up / Channel Down (ported from third_touch.html) ────────────
+        const CHN_SHORT_PERIOD = 30, CHN_LONG_PERIOD = 80,
+              CHN_TOLERANCE_PCT = 1.5, CHN_PARALLEL_RATIO = 0.5, CHN_MAX_VIOLATION_RATIO = 0.15;
+
+        const chnPivotExtreme = (candles, iEnd, offFrom, offTo) => {
+            let lowVal = Infinity, lowOff = null, highVal = -Infinity, highOff = null;
+            for (let off = offFrom; off <= offTo; off++) {
+                const idx = iEnd - off;
+                if (idx < 0) return null;
+                const c = candles[idx];
+                if (c.low  < lowVal)  { lowVal  = c.low;  lowOff  = off; }
+                if (c.high > highVal) { highVal = c.high; highOff = off; }
+            }
+            return { lowVal, lowOff, highVal, highOff };
+        };
+        const chnTrendlineAt = (candles, iEnd, shortPeriod, longPeriod) => {
+            if (iEnd - longPeriod < 0) return null;
+            const rec = chnPivotExtreme(candles, iEnd, 1, shortPeriod);
+            const old = chnPivotExtreme(candles, iEnd, shortPeriod + 1, longPeriod);
+            if (!rec || !old) return null;
+            const supX1 = iEnd - old.lowOff,  supY1 = old.lowVal,  supX2 = iEnd - rec.lowOff,  supY2 = rec.lowVal;
+            const resX1 = iEnd - old.highOff, resY1 = old.highVal, resX2 = iEnd - rec.highOff, resY2 = rec.highVal;
+            const supSlope = (supY2 - supY1) / (supX2 - supX1);
+            const resSlope = (resY2 - resY1) / (resX2 - resX1);
+            return {
+                supX1, supY1, supX2, supY2, supSlope, supVal: supY2 + supSlope * (iEnd - supX2),
+                resX1, resY1, resX2, resY2, resSlope, resVal: resY2 + resSlope * (iEnd - resX2),
+            };
+        };
+        // Un vero canale deve CONTENERE il prezzo (high sotto la resistenza, low sopra
+        // il supporto), non solo avere chiusure vicine — controllare solo il close
+        // (come in trendline.html per una singola retta) lascia passare rette che
+        // tagliano dritto in mezzo alle candele. Si ammette una piccola quota di
+        // violazioni (wick isolati) ma non un canale attraversato spesso dal prezzo.
+        const chnContainmentOk = (candles, tl, tolerancePct, maxViolationRatio) => {
+            const start = Math.min(tl.supX1, tl.resX1);
+            const tolFrac = tolerancePct / 100;
+            let total = 0, violations = 0;
+            for (let idx = start; idx < candles.length; idx++) {
+                const supLine = tl.supY1 + tl.supSlope * (idx - tl.supX1);
+                const resLine = tl.resY1 + tl.resSlope * (idx - tl.resX1);
+                if (resLine <= supLine) return false;
+                total++;
+                const supTol = Math.abs(supLine) * tolFrac;
+                const resTol = Math.abs(resLine) * tolFrac;
+                if (candles[idx].high > resLine + resTol || candles[idx].low < supLine - supTol) violations++;
+            }
+            return total > 0 && (violations / total) <= maxViolationRatio;
+        };
+        const findChannelPatterns = (candles, currentPrice) => {
+            const n = candles.length;
+            if (n < CHN_LONG_PERIOD + 5) return [];
+            const iEnd = n - 1;
+            const tl = chnTrendlineAt(candles, iEnd, CHN_SHORT_PERIOD, CHN_LONG_PERIOD);
+            if (!tl) return [];
+
+            const { supSlope, resSlope } = tl;
+            const absSup = Math.abs(supSlope), absRes = Math.abs(resSlope);
+            const lo = Math.min(absSup, absRes), hi = Math.max(absSup, absRes);
+            if (hi === 0 || lo / hi < CHN_PARALLEL_RATIO) return [];
+            if (tl.resVal <= tl.supVal) return [];
+
+            // Un canale vero mantiene una larghezza pressoché costante: il solo rapporto
+            // fra pendenze non basta (2 rette possono divergere a ventaglio/cuneo pur
+            // avendo pendenze "simili in rapporto" se entrambe piccole) — visto in un
+            // caso reale con screenshot allegato dall'utente.
+            const startIdx = Math.min(tl.supX1, tl.resX1);
+            const supAtStart = tl.supY1 + supSlope * (startIdx - tl.supX1);
+            const resAtStart = tl.resY1 + resSlope * (startIdx - tl.resX1);
+            const widthStart = resAtStart - supAtStart;
+            const widthNow   = tl.resVal - tl.supVal;
+            if (widthStart <= 0) return [];
+            const widthRatio = widthNow / widthStart;
+            if (widthRatio < 0.5 || widthRatio > 2.0) return [];
+
+            if (!chnContainmentOk(candles, tl, CHN_TOLERANCE_PCT, CHN_MAX_VIOLATION_RATIO)) return [];
+
+            const width = tl.resVal - tl.supVal;
+            const precision = (1 - lo / hi) * 100;
+            const patterns = [];
+
+            const linePts = {
+                supP1Time: candles[tl.supX1].time, supP1Price: tl.supY1,
+                supP2Time: candles[tl.supX2].time, supP2Price: tl.supY2,
+                resP1Time: candles[tl.resX1].time, resP1Price: tl.resY1,
+                resP2Time: candles[tl.resX2].time, resP2Price: tl.resY2,
+            };
+
+            if (supSlope > 0 && resSlope > 0) {
+                const resVal = tl.resVal;
+                const distFromCurrent = ((currentPrice - resVal) / resVal) * 100;
+                const prevClose = candles[candles.length - 2].close;
+                if (currentPrice < resVal && Math.abs(currentPrice - resVal) <= Math.abs(prevClose - resVal)) {
+                    patterns.push({
+                        type: 'channel_up', level: resVal,
+                        precision, gap: iEnd - tl.resX1,
+                        freshness: Math.max(1, n - tl.resX2),
+                        distFromCurrent,
+                        target: resVal + width, stop: resVal,
+                        ...linePts,
+                    });
+                }
+            }
+
+            if (supSlope < 0 && resSlope < 0) {
+                const supVal = tl.supVal;
+                const distFromCurrent = ((currentPrice - supVal) / supVal) * 100;
+                const prevClose = candles[candles.length - 2].close;
+                if (currentPrice > supVal && Math.abs(currentPrice - supVal) <= Math.abs(prevClose - supVal)) {
+                    patterns.push({
+                        type: 'channel_down', level: supVal,
+                        precision, gap: iEnd - tl.supX1,
+                        freshness: Math.max(1, n - tl.supX2),
+                        distFromCurrent,
+                        target: supVal - width, stop: supVal,
+                        ...linePts,
+                    });
+                }
+            }
+
+            return patterns;
+        };
+
         // ── DETECTOR 3: Third Touch (ported from third_touch.html) ─────────────
-        // resistance -> Long (bull), support -> Short (bear): vedi feedback_third_touch_logic.
+        // support -> Long (bull), resistance -> Short (bear): convenzione classica Triple Bottom/Top, vedi feedback_third_touch_logic.
         const findDoubleTouches = (candles, tol, freshN, currentPrice) => {
             const patterns = [];
             const n = candles.length;
@@ -488,8 +773,13 @@ createApp({
                     if (postViolated) continue;
                     const bouncedRes = candles.slice(j + 1).some(c => c.close <= level * (1 - tolFrac));
                     if (!bouncedRes) continue;
+                    // Short (resistance-type): breakout boundary = trough (lowest low) fra i due tocchi
+                    let breakoutLevel = Infinity;
+                    for (let k = i; k <= j; k++) breakoutLevel = Math.min(breakoutLevel, candles[k].low);
+                    const target = 2 * breakoutLevel - level;
+                    const stop   = breakoutLevel;
                     const freshness = n - 1 - j;
-                    patterns.push({ type:'resistance', level, precision: diff*100, gap, freshness: Math.max(1, freshness+1), distFromCurrent: ((currentPrice - level) / level) * 100 });
+                    patterns.push({ type:'resistance', level, precision: diff*100, gap, freshness: Math.max(1, freshness+1), distFromCurrent: ((currentPrice - level) / level) * 100, target, stop });
                 }
             }
 
@@ -522,10 +812,19 @@ createApp({
                     if (postViolated) continue;
                     const bouncedSup = candles.slice(j + 1).some(c => c.close >= level * (1 + tolFrac));
                     if (!bouncedSup) continue;
+                    // Long (support-type): breakout boundary = picco (highest high) fra i due tocchi
+                    let breakoutLevel = -Infinity;
+                    for (let k = i; k <= j; k++) breakoutLevel = Math.max(breakoutLevel, candles[k].high);
+                    const target = 2 * breakoutLevel - level;
+                    const stop   = breakoutLevel;
                     const freshness = n - 1 - j;
-                    patterns.push({ type:'support', level, precision: diff*100, gap, freshness: Math.max(1, freshness+1), distFromCurrent: ((currentPrice - level) / level) * 100 });
+                    patterns.push({ type:'support', level, precision: diff*100, gap, freshness: Math.max(1, freshness+1), distFromCurrent: ((currentPrice - level) / level) * 100, target, stop });
                 }
             }
+
+            patterns.push(...findCupHandle(candles, tol, currentPrice));
+            patterns.push(...findInverseCupHandle(candles, tol, currentPrice));
+            patterns.push(...findChannelPatterns(candles, currentPrice));
 
             const best = {};
             for (const p of patterns) {
@@ -548,7 +847,41 @@ createApp({
                 if (!best || Math.abs(p.distFromCurrent) < Math.abs(best.distFromCurrent)) best = p;
             }
             if (!best) return null;
-            return { dir: best.type === 'resistance' ? 'bull' : 'bear', metric: (best.distFromCurrent>=0?'+':'') + best.distFromCurrent.toFixed(2) + '%', level: best.level };
+            return {
+                dir: (best.type === 'resistance' || best.type === 'inv_cup_handle' || best.type === 'channel_down') ? 'bear' : 'bull',
+                metric: (best.distFromCurrent>=0?'+':'') + best.distFromCurrent.toFixed(2) + '%',
+                level: best.level, target: best.target, stop: best.stop, type: best.type,
+                supP1Time: best.supP1Time, supP1Price: best.supP1Price,
+                supP2Time: best.supP2Time, supP2Price: best.supP2Price,
+                resP1Time: best.resP1Time, resP1Price: best.resP1Price,
+                resP2Time: best.resP2Time, resP2Price: best.resP2Price,
+            };
+        };
+        // Toggle Mostra Target/Stop condivisi con third_touch.html (stesso localStorage key)
+        const thirdTouchDisplayCfg = () => {
+            try {
+                const c = JSON.parse(localStorage.getItem('third_touch_cfg') || '{}');
+                return { showTarget: c.showTarget !== false, showStop: c.showStop !== false };
+            } catch { return { showTarget: true, showStop: true }; }
+        };
+        // Retta per 2 punti (tempo,prezzo) estrapolata oltre l'ultima candela — usata
+        // per disegnare le rette inclinate di Channel Up/Down (mai bar-index, i popup
+        // rifetchano le candele a parte da quelle usate in scansione).
+        const CHN_EXTEND_BARS = 20;
+        const chnLineSeriesFromPts = (p1, p2, klines) => {
+            const slope = (p2.price - p1.price) / (p2.time - p1.time);
+            const pts = klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
+            if (pts.length >= 2 && klines.length >= 2) {
+                const step = klines[klines.length - 1].time - klines[klines.length - 2].time;
+                if (step > 0) {
+                    const lastT = pts[pts.length - 1].time;
+                    for (let i = 1; i <= CHN_EXTEND_BARS; i++) {
+                        const t = lastT + step * i;
+                        pts.push({ time: t, value: p1.price + slope * (t - p1.time) });
+                    }
+                }
+            }
+            return pts;
         };
 
         // ── DETECTOR 5: EMA223 Cross / flip (ported from ema223-flip.html) ──────
@@ -1106,7 +1439,13 @@ createApp({
                                         }
                                         if (en.third_touch) {
                                             const h = thirdTouchHit(candles, { tolerance: cfg.ttTolerance, proximity: cfg.ttProximity }, ticker.price);
-                                            if (h) addMatch(ticker.symbol, ticker, 'third_touch', tf, h.dir, h.metric, { level: h.level });
+                                            if (h) addMatch(ticker.symbol, ticker, 'third_touch', tf, h.dir, h.metric, {
+                                                level: h.level, target: h.target, stop: h.stop, type: h.type,
+                                                supP1Time: h.supP1Time, supP1Price: h.supP1Price,
+                                                supP2Time: h.supP2Time, supP2Price: h.supP2Price,
+                                                resP1Time: h.resP1Time, resP1Price: h.resP1Price,
+                                                resP2Time: h.resP2Time, resP2Price: h.resP2Price,
+                                            });
                                         }
                                         if (en.ema223_cross) {
                                             const h = ema223CrossHit(candles, { emaPeriod: cfg.e223Period, tolerancePct: cfg.e223Tol, lookbackBars: cfg.e223Lookback, klimit: cfg.klimitE223 });
@@ -1278,7 +1617,18 @@ createApp({
                         const d = g.draw;
                         if (!d) continue;
                         if (g.screener === 'third_touch' && d.level != null) {
-                            candleSeries.createPriceLine({ price: d.level, color: g.dir === 'bull' ? '#22d3ee' : '#f472b6', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'Touch' });
+                            const isChannel = (d.type === 'channel_up' || d.type === 'channel_down') && d.supP1Time != null;
+                            if (isChannel) {
+                                addS(chart, 'LineSeries', { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, color: 'rgba(16,185,129,0.9)', lineWidth: 2, lineStyle: 0 })
+                                    .setData(chnLineSeriesFromPts({ time: d.supP1Time, price: d.supP1Price }, { time: d.supP2Time, price: d.supP2Price }, klines));
+                                addS(chart, 'LineSeries', { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, color: 'rgba(239,68,68,0.9)', lineWidth: 2, lineStyle: 0 })
+                                    .setData(chnLineSeriesFromPts({ time: d.resP1Time, price: d.resP1Price }, { time: d.resP2Time, price: d.resP2Price }, klines));
+                            } else {
+                                candleSeries.createPriceLine({ price: d.level, color: g.dir === 'bull' ? '#22d3ee' : '#f472b6', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'Touch' });
+                            }
+                            const ttDisp = thirdTouchDisplayCfg();
+                            if (d.target != null && ttDisp.showTarget) candleSeries.createPriceLine({ price: d.target, color: '#4ade80', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Target' });
+                            if (d.stop != null && ttDisp.showStop)     candleSeries.createPriceLine({ price: d.stop,   color: '#f87171', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Stop' });
                         } else if (g.screener === 'ema223_cross' && d.flipTime != null) {
                             markers.push({ time: d.flipTime, position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#a78bfa', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Flip' });
                         } else if (g.screener === 'channel_breakout' && d.period) {
@@ -1412,7 +1762,18 @@ createApp({
                         const d = g.draw;
                         if (!d) continue;
                         if (g.screener === 'third_touch' && d.level != null) {
-                            candleSeries.createPriceLine({ price: d.level, color: g.dir === 'bull' ? '#22d3ee' : '#f472b6', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'Touch' });
+                            const isChannel = (d.type === 'channel_up' || d.type === 'channel_down') && d.supP1Time != null;
+                            if (isChannel) {
+                                addS(chart, 'LineSeries', { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, color: 'rgba(16,185,129,0.9)', lineWidth: 2, lineStyle: 0 })
+                                    .setData(chnLineSeriesFromPts({ time: d.supP1Time, price: d.supP1Price }, { time: d.supP2Time, price: d.supP2Price }, klines));
+                                addS(chart, 'LineSeries', { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, color: 'rgba(239,68,68,0.9)', lineWidth: 2, lineStyle: 0 })
+                                    .setData(chnLineSeriesFromPts({ time: d.resP1Time, price: d.resP1Price }, { time: d.resP2Time, price: d.resP2Price }, klines));
+                            } else {
+                                candleSeries.createPriceLine({ price: d.level, color: g.dir === 'bull' ? '#22d3ee' : '#f472b6', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'Touch' });
+                            }
+                            const ttDisp = thirdTouchDisplayCfg();
+                            if (d.target != null && ttDisp.showTarget) candleSeries.createPriceLine({ price: d.target, color: '#4ade80', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Target' });
+                            if (d.stop != null && ttDisp.showStop)     candleSeries.createPriceLine({ price: d.stop,   color: '#f87171', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Stop' });
                         } else if (g.screener === 'ema223_cross' && d.flipTime != null) {
                             markers.push({ time: d.flipTime, position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#a78bfa', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Flip' });
                         } else if (g.screener === 'channel_breakout' && d.period) {
@@ -1544,7 +1905,18 @@ createApp({
                     const d = g.draw;
                     if (!d) continue;
                     if (g.screener === 'third_touch' && d.level != null) {
-                        lines.push({ color: g.dir === 'bull' ? '#22d3ee' : '#f472b6', values: bars.map(() => d.level) });
+                        const isChannel = (d.type === 'channel_up' || d.type === 'channel_down') && d.supP1Time != null;
+                        if (isChannel) {
+                            const supSlope = (d.supP2Price - d.supP1Price) / (d.supP2Time - d.supP1Time);
+                            const resSlope = (d.resP2Price - d.resP1Price) / (d.resP2Time - d.resP1Time);
+                            lines.push({ color: 'rgba(16,185,129,0.9)', values: bars.map(b => d.supP1Price + supSlope * (b.time - d.supP1Time)) });
+                            lines.push({ color: 'rgba(239,68,68,0.9)', values: bars.map(b => d.resP1Price + resSlope * (b.time - d.resP1Time)) });
+                        } else {
+                            lines.push({ color: g.dir === 'bull' ? '#22d3ee' : '#f472b6', values: bars.map(() => d.level) });
+                        }
+                        const ttDisp = thirdTouchDisplayCfg();
+                        if (d.target != null && ttDisp.showTarget) lines.push({ color: '#4ade80', values: bars.map(() => d.target) });
+                        if (d.stop != null && ttDisp.showStop)     lines.push({ color: '#f87171', values: bars.map(() => d.stop) });
                     } else if (g.screener === 'channel_breakout' && d.period) {
                         const { upper, lower } = calcChannelArrConfl(klines, d.period);
                         fill = { upper: bars.map((_, i) => upper[offset + i]), lower: bars.map((_, i) => lower[offset + i]) };
