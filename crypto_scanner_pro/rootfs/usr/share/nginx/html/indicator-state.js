@@ -12,6 +12,7 @@
         grab:     { key: 'global_grab_active',       legacy: ['mtf_grab_active', 'ob_grab_active'] },
         bb:       { key: 'global_bb_active',         legacy: ['mtf_bb_active', 'ob_bb_active'] },
         roc:      { key: 'global_roc_active',        legacy: [] },
+        grabMidline: { key: 'global_grab_midline_active', legacy: [] },
     };
 
     // Migrazione one-time: se la chiave unica non esiste ancora, eredita '1' da

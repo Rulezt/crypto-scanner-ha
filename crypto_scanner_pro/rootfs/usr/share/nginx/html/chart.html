@@ -915,7 +915,7 @@ let fsAthLine = null, fsAtlLine = null, _fsAthVal = null, _fsAtlVal = null;
 let _fsBbSeries = { upper: null, mid: null, lower: null };
 let _fsChannelSeries = { upper: null, mid: null, lower: null }, _fsChannelData = null;
 let _fsGrabWaveS = { high: null, low: null, close: null }, _fsGrabMurreyS = { mid: null, lo: null, hi: null }, _fsGrabState = null;
-let _fsRocSeries = null, _fsRocZeroLine = null;
+let _fsRocSeries = null, _fsRocZeroLine = null, _fsRocMaxLine = null, _fsRocMinLine = null;
 const _fsIndSlot = {
     get chart() { return fsChart; },
     get candleS() { return fsCandleS; },
@@ -929,6 +929,8 @@ const _fsIndSlot = {
     get grabState() { return _fsGrabState; }, set grabState(v) { _fsGrabState = v; },
     get rocSeries() { return _fsRocSeries; }, set rocSeries(v) { _fsRocSeries = v; },
     get rocZeroLine() { return _fsRocZeroLine; }, set rocZeroLine(v) { _fsRocZeroLine = v; },
+    get rocMaxLine() { return _fsRocMaxLine; }, set rocMaxLine(v) { _fsRocMaxLine = v; },
+    get rocMinLine() { return _fsRocMinLine; }, set rocMinLine(v) { _fsRocMinLine = v; },
 };
 
 const IS_LANDSCAPE_MOBILE = window.matchMedia('(orientation: landscape) and (pointer: coarse) and (max-height: 700px)').matches;
@@ -1316,7 +1318,7 @@ function toggleBBAll() {
 // col prezzo, quindi va in un pannello dedicato sotto le candele (Panes API di
 // Lightweight Charts v5, mai usata altrove nel sito — vedi addSeries/paneIndex).
 const ROC_PANE_INDEX = 1;
-const DEFAULT_ROC_CFG = { length: 9, color: '#2962FF' };
+const DEFAULT_ROC_CFG = { length: 9, color: '#2962FF', areaFill: false, upColor: '#20B26C', downColor: '#EF454A', showExtremes: false };
 function getRocCfg() {
     try { const s = JSON.parse(localStorage.getItem('chart_roc_cfg')); if (s) return { ...DEFAULT_ROC_CFG, ...s }; } catch(e) {}
     return { ...DEFAULT_ROC_CFG };
@@ -1329,6 +1331,33 @@ function calcRoc(klines, length) {
     }
     return out;
 }
+// La serie ROC è sempre una BaselineSeries (mai LineSeries): quando "areaFill" è OFF
+// i fill sono trasparenti, così si evita di dover distruggere/ricreare la serie (e la
+// pane) al toggle dell'opzione — vedi commento su removePane() più sotto.
+function _rocFillOpts(rocCfg) {
+    const on = !!rocCfg.areaFill;
+    return {
+        baseValue: { type: 'price', price: 0 },
+        topLineColor: rocCfg.color, bottomLineColor: rocCfg.color,
+        topFillColor1: on ? _hexToRgba(rocCfg.upColor, 0.35) : 'rgba(0,0,0,0)',
+        topFillColor2: on ? _hexToRgba(rocCfg.upColor, 0.05) : 'rgba(0,0,0,0)',
+        bottomFillColor1: on ? _hexToRgba(rocCfg.downColor, 0.05) : 'rgba(0,0,0,0)',
+        bottomFillColor2: on ? _hexToRgba(rocCfg.downColor, 0.35) : 'rgba(0,0,0,0)',
+    };
+}
+// Linee sul minimo/massimo effettivamente raggiunti dai dati ROC caricati (non livelli
+// fissi): vanno ricreate ad ogni refresh insieme ai dati, non aggiornate in-place, per
+// coerenza con lo stesso pattern già usato per le altre price line periodiche (Livelli
+// Daily/ATH-ATL — vedi applyCfgToAllSlots).
+function _updateRocExtremeLines(s, rocCfg, data) {
+    if (s.rocMaxLine) { try { s.rocSeries.removePriceLine(s.rocMaxLine); } catch(e) {} s.rocMaxLine = null; }
+    if (s.rocMinLine) { try { s.rocSeries.removePriceLine(s.rocMinLine); } catch(e) {} s.rocMinLine = null; }
+    if (!rocCfg.showExtremes || !data.length) return;
+    let max = data[0].value, min = data[0].value;
+    for (const d of data) { if (d.value > max) max = d.value; if (d.value < min) min = d.value; }
+    s.rocMaxLine = s.rocSeries.createPriceLine({ price: max, color: rocCfg.upColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Max' });
+    s.rocMinLine = s.rocSeries.createPriceLine({ price: min, color: rocCfg.downColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Min' });
+}
 function applyRocToSlot(s, rocCfg) {
     // removePane() è un'operazione di layout pesante (ricalcola tutte le pane del
     // chart): chiamarla ad ogni refresh dati/cambio TF (prima si distruggeva e
@@ -1337,21 +1366,23 @@ function applyRocToSlot(s, rocCfg) {
     // TF consecutivi. Ora la pane si tocca SOLO su vera transizione ON<->OFF:
     // sui refresh dati si riusa la serie esistente con un semplice setData/color.
     if (!rocActive || !s.klines || s.klines.length <= rocCfg.length) {
-        if (s.rocSeries) { try { s.chart.removePane(ROC_PANE_INDEX); } catch(e) {} s.rocSeries = null; s.rocZeroLine = null; }
+        if (s.rocSeries) { try { s.chart.removePane(ROC_PANE_INDEX); } catch(e) {} s.rocSeries = null; s.rocZeroLine = null; s.rocMaxLine = null; s.rocMinLine = null; }
         return;
     }
     if (!s.rocSeries) {
-        s.rocSeries = addSeries(s.chart, 'LineSeries', {
+        s.rocSeries = addSeries(s.chart, 'BaselineSeries', {
             priceLineVisible: true, lastValueVisible: true, crosshairMarkerVisible: true,
-            color: rocCfg.color, lineWidth: 1,
+            lineWidth: 1, ..._rocFillOpts(rocCfg),
             priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
         }, ROC_PANE_INDEX);
         s.rocZeroLine = s.rocSeries.createPriceLine({ price: 0, color: '#787B86', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
         try { s.chart.panes()[ROC_PANE_INDEX].setStretchFactor(0.3); } catch(e) {}
     } else {
-        s.rocSeries.applyOptions({ color: rocCfg.color });
+        s.rocSeries.applyOptions(_rocFillOpts(rocCfg));
     }
-    s.rocSeries.setData(calcRoc(s.klines, rocCfg.length));
+    const _rocData = calcRoc(s.klines, rocCfg.length);
+    s.rocSeries.setData(_rocData);
+    _updateRocExtremeLines(s, rocCfg, _rocData);
 }
 function toggleRocAll() {
     rocActive = !rocActive;
@@ -1375,6 +1406,7 @@ let channelActive = window.getIndActive('channel'), obLevelsActive = window.getI
 let bbActive = window.getIndActive('bb');
 let rocActive = window.getIndActive('roc');
 let grabActive = false; // valorizzata più sotto, dopo il rispettivo const _DEFAULT_GRAB_CFG
+let grabMidlineActive = false; // toggle indipendente per vedere solo la midline GRaB senza attivare tutto l'indicatore
 // "Colora candele" — toggle GLOBALE condiviso su tutte le pagine (vedi candle-color.js).
 const _applyCandleStyle = window.applyCandleColorStyle;
 function toggleCandleColorAll() {
@@ -1540,9 +1572,16 @@ function applyGrabToSlot(s, cfg) {
     for (const k of ['mid','lo','hi']) {
         if (s.grabMurreyS[k]) { try { s.chart.removeSeries(s.grabMurreyS[k]); } catch(e) {} s.grabMurreyS[k] = null; }
     }
+    // Se il GRaB completo è OFF, la midline resta comunque disponibile tramite il
+    // toggle indipendente grabMidlineActive (pannello Indicatori, sotto EMA 223).
+    const midlineOn = grabActive ? cfg.showMidline : grabMidlineActive;
     if (!grabActive) {
         if (s.candleS && s.klines.length) s.candleS.setData(s.klines);
         s.grabState = null;
+        if (!midlineOn || !s.klines.length) return;
+        const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
+        s.grabMurreyS.mid = addSeries(s.chart,'LineSeries',{...lb,color:cfg.midlineColor, lineWidth:1});
+        if (s.klines.length >= cfg.murreyLength) s.grabMurreyS.mid.setData(calcMurrey(s.klines, cfg.murreyLength).mid);
         return;
     }
     const lb = {priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false};
@@ -1551,7 +1590,7 @@ function applyGrabToSlot(s, cfg) {
         s.grabWaveS.low   = addSeries(s.chart,'LineSeries',{...lb,color:cfg.emaLowColor,   lineWidth:1});
         s.grabWaveS.close = addSeries(s.chart,'LineSeries',{...lb,color:cfg.emaCloseColor, lineWidth:1});
     }
-    if (cfg.showMidline) s.grabMurreyS.mid = addSeries(s.chart,'LineSeries',{...lb,color:cfg.midlineColor, lineWidth:1});
+    if (midlineOn) s.grabMurreyS.mid = addSeries(s.chart,'LineSeries',{...lb,color:cfg.midlineColor, lineWidth:1});
     if (cfg.showRange) {
         s.grabMurreyS.lo = addSeries(s.chart,'LineSeries',{...lb,color:cfg.rangeColor, lineWidth:1});
         s.grabMurreyS.hi = addSeries(s.chart,'LineSeries',{...lb,color:cfg.rangeColor, lineWidth:1});
@@ -1572,36 +1611,46 @@ function applyGrabToSlot(s, cfg) {
         s.grabWaveS.low.setData(el);
         s.grabWaveS.close.setData(ec);
     }
-    if ((cfg.showMidline || cfg.showRange) && s.klines.length >= cfg.murreyLength) {
+    if ((midlineOn || cfg.showRange) && s.klines.length >= cfg.murreyLength) {
         const m = calcMurrey(s.klines, cfg.murreyLength);
-        if (cfg.showMidline) s.grabMurreyS.mid.setData(m.mid);
+        if (midlineOn) s.grabMurreyS.mid.setData(m.mid);
         if (cfg.showRange) { s.grabMurreyS.lo.setData(m.lo); s.grabMurreyS.hi.setData(m.hi); }
     }
 }
 function _grabLiveUpdate(s, candle, confirmed, cfg) {
-    if (!grabActive || !s.grabState) return;
-    const k = 2/(cfg.emaPeriod+1);
-    const liveEmaHigh  = candle.high  * k + s.grabState.emaHigh  * (1-k);
-    const liveEmaLow   = candle.low   * k + s.grabState.emaLow   * (1-k);
-    const liveEmaClose = candle.close * k + s.grabState.emaClose * (1-k);
-    const color = grabBarColor(candle.close, candle.open, liveEmaHigh, liveEmaLow, cfg);
-    try { s.candleS.update({...candle, color, wickColor:color, borderColor:color}); } catch(e) {}
-    if (cfg.showWave && s.grabWaveS.high) {
-        s.grabWaveS.high.update({time:candle.time, value:liveEmaHigh});
-        s.grabWaveS.low.update( {time:candle.time, value:liveEmaLow});
-        s.grabWaveS.close.update({time:candle.time, value:liveEmaClose});
+    const midlineOn = grabActive ? cfg.showMidline : grabMidlineActive;
+    if (grabActive && s.grabState) {
+        const k = 2/(cfg.emaPeriod+1);
+        const liveEmaHigh  = candle.high  * k + s.grabState.emaHigh  * (1-k);
+        const liveEmaLow   = candle.low   * k + s.grabState.emaLow   * (1-k);
+        const liveEmaClose = candle.close * k + s.grabState.emaClose * (1-k);
+        const color = grabBarColor(candle.close, candle.open, liveEmaHigh, liveEmaLow, cfg);
+        try { s.candleS.update({...candle, color, wickColor:color, borderColor:color}); } catch(e) {}
+        if (cfg.showWave && s.grabWaveS.high) {
+            s.grabWaveS.high.update({time:candle.time, value:liveEmaHigh});
+            s.grabWaveS.low.update( {time:candle.time, value:liveEmaLow});
+            s.grabWaveS.close.update({time:candle.time, value:liveEmaClose});
+        }
+        if (confirmed) { s.grabState.emaHigh = liveEmaHigh; s.grabState.emaLow = liveEmaLow; s.grabState.emaClose = liveEmaClose; }
     }
-    if (confirmed) { s.grabState.emaHigh = liveEmaHigh; s.grabState.emaLow = liveEmaLow; s.grabState.emaClose = liveEmaClose; }
-    if ((cfg.showMidline || cfg.showRange) && s.klines.length >= cfg.murreyLength) {
+    if ((midlineOn || (grabActive && cfg.showRange)) && s.klines.length >= cfg.murreyLength) {
         const win = s.klines.slice(-cfg.murreyLength);
         let h = -Infinity, l = Infinity;
         for (const c of win) { h = Math.max(h,c.high); l = Math.min(l,c.low); }
-        if (cfg.showMidline && s.grabMurreyS.mid) s.grabMurreyS.mid.update({time:candle.time, value:l+(h-l)/2});
-        if (cfg.showRange && s.grabMurreyS.lo) { s.grabMurreyS.lo.update({time:candle.time, value:l}); s.grabMurreyS.hi.update({time:candle.time, value:h}); }
+        if (midlineOn && s.grabMurreyS.mid) s.grabMurreyS.mid.update({time:candle.time, value:l+(h-l)/2});
+        if (grabActive && cfg.showRange && s.grabMurreyS.lo) { s.grabMurreyS.lo.update({time:candle.time, value:l}); s.grabMurreyS.hi.update({time:candle.time, value:h}); }
     }
+}
+function toggleGrabMidlineAll() {
+    grabMidlineActive = !grabMidlineActive;
+    window.setIndActive('grabMidline', grabMidlineActive);
+    const cfg = getGrabCfg();
+    slots.forEach(s => applyGrabToSlot(s, cfg));
+    if (fsChart) applyGrabToSlot(_fsIndSlot, cfg);
 }
 
 grabActive = window.getIndActive('grab');
+grabMidlineActive = window.getIndActive('grabMidline');
 
 // ── Toggle rapido gruppi di livelli (day/prev/ATH-ATL), riusa lo stesso cfg
 // (chart_levels_cfg / getLvCfg) del pannello Impostazioni Livelli — qui si tocca
@@ -1623,6 +1672,7 @@ const IND_LIST = [
     { label: 'EMA 10',  isOn: () => getEmaCfg().find(e => e.p === 10).enabled,  toggle: () => toggleEmaAll(10),  cfgKey: 'ema10',  col: 1 },
     { label: 'EMA 60',  isOn: () => getEmaCfg().find(e => e.p === 60).enabled,  toggle: () => toggleEmaAll(60),  cfgKey: 'ema60',  col: 1 },
     { label: 'EMA 223', isOn: () => getEmaCfg().find(e => e.p === 223).enabled, toggle: () => toggleEmaAll(223), cfgKey: 'ema223', col: 1 },
+    { label: 'Midline GRaB', isOn: () => grabMidlineActive, toggle: toggleGrabMidlineAll, col: 1 },
     { label: 'Canale SMA 20',        isOn: () => channelActive,               toggle: toggleChannelAll,      cfgKey: 'channel', col: 2 },
     { label: 'Bollinger Bands',      isOn: () => bbActive,                    toggle: toggleBBAll,           cfgKey: 'bb',      col: 2 },
     { label: 'Order Book Levels',    isOn: () => obLevelsActive,              toggle: toggleOBAll,            cfgKey: 'obLevels', col: 2 },
@@ -1748,6 +1798,10 @@ const IND_CFG_SCHEMAS = {
         fields: [
             { key:'length', label:'Periodo', type:'number', min:1, max:300, step:1 },
             { key:'color', label:'Colore', type:'color' },
+            { key:'areaFill', label:'Area colorata sopra/sotto 0', type:'checkbox' },
+            { key:'upColor', label:'Colore area sopra 0', type:'color' },
+            { key:'downColor', label:'Colore area sotto 0', type:'color' },
+            { key:'showExtremes', label:'Linee min/max raggiunti', type:'checkbox' },
         ],
         apply: cfg => { try { localStorage.setItem('chart_roc_cfg', JSON.stringify(cfg)); } catch(e) {} slots.forEach(s => applyRocToSlot(s, cfg)); if (fsChart) applyRocToSlot(_fsIndSlot, cfg); },
     },
@@ -2591,7 +2645,7 @@ const mtfEl = document.createElement('button');
             bbSeries: { upper: null, mid: null, lower: null }, klines: [],
             channelSeries: { upper: null, mid: null, lower: null }, channelData: null,
             grabWaveS: { high: null, low: null, close: null }, grabMurreyS: { mid: null, lo: null, hi: null }, grabState: null,
-            rocSeries: null, rocZeroLine: null,
+            rocSeries: null, rocZeroLine: null, rocMaxLine: null, rocMinLine: null,
         });
         const _s = slots[slots.length - 1];
         try { const _cdp = new _CountdownPrimitive(_s); candleS.attachPrimitive(_cdp); } catch(e) {}
@@ -3303,7 +3357,7 @@ function connectFsWS() {
                     _cdUpd(_fsChannelData.lower, liveL);
                 }
             }
-            if (grabActive) _grabLiveUpdate(_fsIndSlot, candle, confirmed, getGrabCfg());
+            if (grabActive || grabMidlineActive) _grabLiveUpdate(_fsIndSlot, candle, confirmed, getGrabCfg());
         }
     };
     sock.onerror = () => setFsWSDot('error');
@@ -3398,7 +3452,7 @@ function openWS() {
                     _cdUpd(s.channelData.lower, liveL);
                 }
             }
-            if (grabActive) _grabLiveUpdate(s, candle, confirmed, getGrabCfg());
+            if (grabActive || grabMidlineActive) _grabLiveUpdate(s, candle, confirmed, getGrabCfg());
         }
     };
     sock.onerror = () => setWSDot('error');

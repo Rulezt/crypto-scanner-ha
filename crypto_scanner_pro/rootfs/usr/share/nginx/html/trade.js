@@ -115,7 +115,7 @@ function calcBB(klines, period, mult) {
 // col prezzo, quindi va in un pannello dedicato sotto le candele (Panes API di
 // Lightweight Charts v5, mai usata altrove nel sito — vedi addSeries/paneIndex).
 const ROC_PANE_INDEX = 1;
-const DEFAULT_ROC_CFG = { length: 9, color: '#2962FF' };
+const DEFAULT_ROC_CFG = { length: 9, color: '#2962FF', areaFill: false, upColor: '#20B26C', downColor: '#EF454A', showExtremes: false };
 function getRocCfg() {
     try { const s = JSON.parse(localStorage.getItem('chart_roc_cfg')); if (s) return { ...DEFAULT_ROC_CFG, ...s }; } catch(e) {}
     return { ...DEFAULT_ROC_CFG };
@@ -127,6 +127,19 @@ function calcRoc(klines, length) {
         out.push({ time: klines[i].time, value: 100 * (klines[i].close - prev) / prev });
     }
     return out;
+}
+// Vedi chart.html: la serie ROC è sempre una BaselineSeries, fill trasparenti quando
+// areaFill è OFF, così si evita di ricreare serie/pane al toggle dell'opzione.
+function _rocFillOpts(cfg) {
+    const on = !!cfg.areaFill;
+    return {
+        baseValue: { type: 'price', price: 0 },
+        topLineColor: cfg.color, bottomLineColor: cfg.color,
+        topFillColor1: on ? _hexToRgba(cfg.upColor, 0.35) : 'rgba(0,0,0,0)',
+        topFillColor2: on ? _hexToRgba(cfg.upColor, 0.05) : 'rgba(0,0,0,0)',
+        bottomFillColor1: on ? _hexToRgba(cfg.downColor, 0.05) : 'rgba(0,0,0,0)',
+        bottomFillColor2: on ? _hexToRgba(cfg.downColor, 0.35) : 'rgba(0,0,0,0)',
+    };
 }
 
 // ── GRaB (Buy green Sell Red) — porting Pine "BGSR": Murrey Math midline/range
@@ -363,7 +376,19 @@ function toggleObBB() {
 }
 
 // ── ROC (Rate Of Change) ────────────────────────────────────────────────────────
-let _obRocActive = window.getIndActive('roc'), _obRocSeries = null, _obRocZeroLine = null;
+let _obRocActive = window.getIndActive('roc'), _obRocSeries = null, _obRocZeroLine = null, _obRocMaxLine = null, _obRocMinLine = null;
+
+// Vedi chart.html: linee su min/max effettivi dei dati caricati, ricreate ad ogni
+// refresh (non aggiornate in-place).
+function _updateRocExtremeLines(cfg, data) {
+    if (_obRocMaxLine) { try { _obRocSeries.removePriceLine(_obRocMaxLine); } catch(e) {} _obRocMaxLine = null; }
+    if (_obRocMinLine) { try { _obRocSeries.removePriceLine(_obRocMinLine); } catch(e) {} _obRocMinLine = null; }
+    if (!cfg.showExtremes || !data.length) return;
+    let max = data[0].value, min = data[0].value;
+    for (const d of data) { if (d.value > max) max = d.value; if (d.value < min) min = d.value; }
+    _obRocMaxLine = _obRocSeries.createPriceLine({ price: max, color: cfg.upColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Max' });
+    _obRocMinLine = _obRocSeries.createPriceLine({ price: min, color: cfg.downColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Min' });
+}
 
 function _obApplyRoc() {
     // removePane() è un'operazione di layout pesante: farla ad ogni refresh dati/cambio
@@ -371,21 +396,23 @@ function _obApplyRoc() {
     // (smette di renderizzare le candele dopo alcuni cambi TF) — vedi chart.html applyRocToSlot.
     const cfg = getRocCfg();
     if (!_obRocActive || !_obChart || !_obKlines.length || _obKlines.length <= cfg.length) {
-        if (_obRocSeries) { try { _obChart.removePane(ROC_PANE_INDEX); } catch(e) {} _obRocSeries = null; _obRocZeroLine = null; }
+        if (_obRocSeries) { try { _obChart.removePane(ROC_PANE_INDEX); } catch(e) {} _obRocSeries = null; _obRocZeroLine = null; _obRocMaxLine = null; _obRocMinLine = null; }
         return;
     }
     if (!_obRocSeries) {
-        _obRocSeries = addSeries(_obChart, 'LineSeries', {
+        _obRocSeries = addSeries(_obChart, 'BaselineSeries', {
             priceLineVisible: true, lastValueVisible: true, crosshairMarkerVisible: true,
-            color: cfg.color, lineWidth: 1,
+            lineWidth: 1, ..._rocFillOpts(cfg),
             priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
         }, ROC_PANE_INDEX);
         _obRocZeroLine = _obRocSeries.createPriceLine({ price: 0, color: '#787B86', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
         try { _obChart.panes()[ROC_PANE_INDEX].setStretchFactor(0.3); } catch(e) {}
     } else {
-        _obRocSeries.applyOptions({ color: cfg.color });
+        _obRocSeries.applyOptions(_rocFillOpts(cfg));
     }
-    _obRocSeries.setData(calcRoc(_obKlines, cfg.length));
+    const _rocData = calcRoc(_obKlines, cfg.length);
+    _obRocSeries.setData(_rocData);
+    _updateRocExtremeLines(cfg, _rocData);
 }
 
 function toggleObRoc() {
@@ -502,6 +529,7 @@ function toggleObChannel() {
 
 // ── GRaB (Buy green Sell Red) ───────────────────────────────────────────────────
 let _obGrabActive = window.getIndActive('grab');
+let _obGrabMidlineActive = window.getIndActive('grabMidline'); // toggle indipendente per vedere solo la midline GRaB senza attivare tutto l'indicatore
 let _obGrabWaveSeries = { high: null, low: null, close: null };
 let _obGrabMurreySeries = { mid: null, lo: null, hi: null };
 let _obGrabState = null;
@@ -513,19 +541,27 @@ function _obApplyGrab() {
     for (const k of ['mid', 'lo', 'hi']) {
         if (_obGrabMurreySeries[k]) { try { _obChart.removeSeries(_obGrabMurreySeries[k]); } catch(e) {} _obGrabMurreySeries[k] = null; }
     }
-    if (!_obGrabActive || !_obChart) {
+    if (!_obChart) { _obGrabState = null; return; }
+    const cfg = getGrabCfg();
+    // Se il GRaB completo è OFF, la midline resta comunque disponibile tramite il
+    // toggle indipendente _obGrabMidlineActive (pannello Indicatori, sotto EMA 223).
+    const midlineOn = _obGrabActive ? cfg.showMidline : _obGrabMidlineActive;
+    if (!_obGrabActive) {
         if (_obCandleS && _obKlines.length) _obCandleS.setData(_obKlines);
         _obGrabState = null;
+        if (!midlineOn || !_obKlines.length) return;
+        const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+        _obGrabMurreySeries.mid = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.midlineColor, lineWidth: 1 });
+        if (_obKlines.length >= cfg.murreyLength) _obGrabMurreySeries.mid.setData(calcMurrey(_obKlines, cfg.murreyLength).mid);
         return;
     }
-    const cfg = getGrabCfg();
     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
     if (cfg.showWave) {
         _obGrabWaveSeries.high  = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.emaHighColor,  lineWidth: 1 });
         _obGrabWaveSeries.low   = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.emaLowColor,   lineWidth: 1 });
         _obGrabWaveSeries.close = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.emaCloseColor, lineWidth: 1 });
     }
-    if (cfg.showMidline) _obGrabMurreySeries.mid = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.midlineColor, lineWidth: 1 });
+    if (midlineOn) _obGrabMurreySeries.mid = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.midlineColor, lineWidth: 1 });
     if (cfg.showRange) {
         _obGrabMurreySeries.lo = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.rangeColor, lineWidth: 1 });
         _obGrabMurreySeries.hi = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.rangeColor, lineWidth: 1 });
@@ -546,9 +582,9 @@ function _obApplyGrab() {
         _obGrabWaveSeries.low.setData(el);
         _obGrabWaveSeries.close.setData(ec);
     }
-    if ((cfg.showMidline || cfg.showRange) && _obKlines.length >= cfg.murreyLength) {
+    if ((midlineOn || cfg.showRange) && _obKlines.length >= cfg.murreyLength) {
         const m = calcMurrey(_obKlines, cfg.murreyLength);
-        if (cfg.showMidline) _obGrabMurreySeries.mid.setData(m.mid);
+        if (midlineOn) _obGrabMurreySeries.mid.setData(m.mid);
         if (cfg.showRange) { _obGrabMurreySeries.lo.setData(m.lo); _obGrabMurreySeries.hi.setData(m.hi); }
     }
 }
@@ -560,6 +596,11 @@ function toggleObGrab() {
     if (btn) btn.style.color = _obGrabActive ? '#f59e0b' : '#B2B5BE';
     const cfgBtn = document.getElementById('ob-grab-cfg-btn');
     if (cfgBtn) cfgBtn.style.display = _obGrabActive ? 'inline-flex' : 'none';
+    _obApplyGrab();
+}
+function toggleObGrabMidline() {
+    _obGrabMidlineActive = !_obGrabMidlineActive;
+    window.setIndActive('grabMidline', _obGrabMidlineActive);
     _obApplyGrab();
 }
 
@@ -590,12 +631,12 @@ function saveGrabCfgPanel() {
     cfg.emaPeriod    = Math.max(2,  Math.min(500, Math.round(cfg.emaPeriod)));
     setGrabCfg(cfg);
     closeGrabCfgPanel();
-    if (_obGrabActive) _obApplyGrab();
+    if (_obGrabActive || _obGrabMidlineActive) _obApplyGrab();
 }
 function resetGrabCfgPanel() {
     localStorage.removeItem('chart_grab_cfg');
     openGrabCfgPanel();
-    if (_obGrabActive) _obApplyGrab();
+    if (_obGrabActive || _obGrabMidlineActive) _obApplyGrab();
 }
 
 // Ricolora la candela riusando l'ultimo stato noto (no recompute) — per i punti ad
@@ -610,26 +651,28 @@ function _obGrabColorCandle(candle) {
 // Full recompute (live emaHigh/Low/Close + ricolora + wave/murrey) — per i punti
 // "ufficiali" (poll REST 3s, roll-forward nuova candela), mirror di _obChUpdateTail.
 function _obGrabUpdateTail(candle, confirmed) {
-    if (!_obGrabActive || !_obGrabState || !_obCandleS) return;
     const cfg = getGrabCfg();
-    const k = 2 / (cfg.emaPeriod + 1);
-    const liveEmaHigh  = candle.high  * k + _obGrabState.emaHigh  * (1 - k);
-    const liveEmaLow   = candle.low   * k + _obGrabState.emaLow   * (1 - k);
-    const liveEmaClose = candle.close * k + _obGrabState.emaClose * (1 - k);
-    const color = grabBarColor(candle.close, candle.open, liveEmaHigh, liveEmaLow, cfg);
-    try { _obCandleS.update({ ...candle, color, wickColor: color, borderColor: color }); } catch(e) {}
-    if (cfg.showWave && _obGrabWaveSeries.high) {
-        _obGrabWaveSeries.high.update({ time: candle.time, value: liveEmaHigh });
-        _obGrabWaveSeries.low.update( { time: candle.time, value: liveEmaLow });
-        _obGrabWaveSeries.close.update({ time: candle.time, value: liveEmaClose });
+    const midlineOn = _obGrabActive ? cfg.showMidline : _obGrabMidlineActive;
+    if (_obGrabActive && _obGrabState && _obCandleS) {
+        const k = 2 / (cfg.emaPeriod + 1);
+        const liveEmaHigh  = candle.high  * k + _obGrabState.emaHigh  * (1 - k);
+        const liveEmaLow   = candle.low   * k + _obGrabState.emaLow   * (1 - k);
+        const liveEmaClose = candle.close * k + _obGrabState.emaClose * (1 - k);
+        const color = grabBarColor(candle.close, candle.open, liveEmaHigh, liveEmaLow, cfg);
+        try { _obCandleS.update({ ...candle, color, wickColor: color, borderColor: color }); } catch(e) {}
+        if (cfg.showWave && _obGrabWaveSeries.high) {
+            _obGrabWaveSeries.high.update({ time: candle.time, value: liveEmaHigh });
+            _obGrabWaveSeries.low.update( { time: candle.time, value: liveEmaLow });
+            _obGrabWaveSeries.close.update({ time: candle.time, value: liveEmaClose });
+        }
+        if (confirmed) { _obGrabState.emaHigh = liveEmaHigh; _obGrabState.emaLow = liveEmaLow; _obGrabState.emaClose = liveEmaClose; }
     }
-    if (confirmed) { _obGrabState.emaHigh = liveEmaHigh; _obGrabState.emaLow = liveEmaLow; _obGrabState.emaClose = liveEmaClose; }
-    if ((cfg.showMidline || cfg.showRange) && _obKlines.length >= cfg.murreyLength) {
+    if ((midlineOn || (_obGrabActive && cfg.showRange)) && _obKlines.length >= cfg.murreyLength) {
         const win = _obKlines.slice(-cfg.murreyLength);
         let h = -Infinity, l = Infinity;
         for (const c of win) { h = Math.max(h, c.high); l = Math.min(l, c.low); }
-        if (cfg.showMidline && _obGrabMurreySeries.mid) _obGrabMurreySeries.mid.update({ time: candle.time, value: l + (h - l) / 2 });
-        if (cfg.showRange && _obGrabMurreySeries.lo)    { _obGrabMurreySeries.lo.update({ time: candle.time, value: l }); _obGrabMurreySeries.hi.update({ time: candle.time, value: h }); }
+        if (midlineOn && _obGrabMurreySeries.mid) _obGrabMurreySeries.mid.update({ time: candle.time, value: l + (h - l) / 2 });
+        if (_obGrabActive && cfg.showRange && _obGrabMurreySeries.lo) { _obGrabMurreySeries.lo.update({ time: candle.time, value: l }); _obGrabMurreySeries.hi.update({ time: candle.time, value: h }); }
     }
 }
 // Conferma lo stato EMA-H/L/C sulla candela appena chiusa — usa gli high/low REALI
@@ -3064,6 +3107,48 @@ createApp({
             }));
             if (sym === symbol.value) grabTfColors.value = results;
         };
+
+        // Striscia colori Canale SMA 20 per TF, stesso pattern/frequenza della striscia
+        // GRaB sopra: verde (lime GRaB) se il prezzo è sopra il canale, rosso se sotto.
+        // Se è dentro il canale, si riusano gli stessi colori/etichette configurati per
+        // GRaB "dentro range" (colorMidBull/colorMidBear), scegliendo bull/bear in base
+        // alla posizione rispetto alla linea mediana (mid, la SMA di riferimento del
+        // canale) anziché a close vs open come fa GRaB. SEMPRE attiva indipendente dal
+        // toggle Canale sul grafico, per lo stesso motivo della striscia GRaB.
+        const CHANNEL_TF_COLORS = { above: '#00FF00', below: '#EF454A' };
+        const CHANNEL_TF_LABEL  = { above: 'Prezzo sopra il canale', below: 'Prezzo sotto il canale', insideBull: 'Dentro range (rialzo)', insideBear: 'Dentro range (ribasso)' };
+        const channelTfColors = ref({});
+        const channelTfTitle = (tf) => {
+            const c = channelTfColors.value[tf.v];
+            return c ? CHANNEL_TF_LABEL[c.state] : '';
+        };
+        const _updateChannelTfStrip = async () => {
+            const period = OB_CH_PERIOD;
+            const need = period + 1;
+            const sym = symbol.value;
+            const grabCfg = getGrabCfg();
+            const results = {};
+            await Promise.all(TF_OPTIONS.map(async (tf) => {
+                try {
+                    const res = await fetch(`api/klines?symbol=${sym}&interval=${tf.v}`);
+                    const data = await res.json();
+                    if (!data.success || !data.data || data.data.length < need) return;
+                    const candles = data.data;
+                    const ch = calcSmaChannel(candles, period);
+                    if (!ch.upper.length) return;
+                    const last = candles[candles.length - 1];
+                    const upper = ch.upper[ch.upper.length - 1].value, lower = ch.lower[ch.lower.length - 1].value;
+                    const mid = ch.mid[ch.mid.length - 1].value;
+                    let state, color;
+                    if (last.close > upper) { state = 'above'; color = CHANNEL_TF_COLORS.above; }
+                    else if (last.close < lower) { state = 'below'; color = CHANNEL_TF_COLORS.below; }
+                    else if (last.close >= mid) { state = 'insideBull'; color = grabCfg.colorMidBull; }
+                    else { state = 'insideBear'; color = grabCfg.colorMidBear; }
+                    results[tf.v] = { color, state };
+                } catch(e) { /* skip tf */ }
+            }));
+            if (sym === symbol.value) channelTfColors.value = results;
+        };
         let lastConfirmedTime  = 0;
         let obKlineCount = 0;
         let hoverPriceLine = null;
@@ -3300,7 +3385,7 @@ createApp({
                 if (_obBbActive) _obApplyBB();
                 if (_obRocActive) _obApplyRoc();
                 if (_obChActive) _obApplyChannel();
-                if (_obGrabActive) _obApplyGrab();
+                if (_obGrabActive || _obGrabMidlineActive) _obApplyGrab();
                 _applyCandleStyle(candleS);
                 candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length - 1]?.close) });
 
@@ -3744,8 +3829,16 @@ createApp({
             const tf = chartTF.value;
             const barSecs = _OB_TF_SECS[tf] || (tf === 'D' ? 86400 : 0);
             if (!barSecs) return false;
-            const nowAdj = Math.floor(Date.now() / 1000) + _obTzOffset;
-            const expectedOpen = Math.floor(nowAdj / barSecs) * barSecs;
+            // Bybit allinea i bar boundary all'epoch UTC: bisogna arrotondare PRIMA in UTC
+            // e solo dopo applicare _obTzOffset. Arrotondare il tempo già shiftato (come
+            // prima) è sbagliato quando l'offset non è multiplo esatto di barSecs (es.
+            // offset +2h su barSecs=4h): produce un boundary sfasato di
+            // "_obTzOffset % barSecs" secondi rispetto a quello reale, e la candela WS
+            // autentica (correttamente allineata) arriva poi con un time "più vecchio" del
+            // boundary sintetico già scritto sulla serie — stesso bug/fix di
+            // _expectedBarOpen in mtf.html, mai portato qui.
+            const nowUtc = Math.floor(Date.now() / 1000);
+            const expectedOpen = Math.floor(nowUtc / barSecs) * barSecs + _obTzOffset;
             if (expectedOpen <= _obLiveCandle.time) return false;
 
             const prevClose = _obLiveCandle.close;
@@ -4170,6 +4263,7 @@ createApp({
                 // le candele sul grafico) — vedi commento su _updateGrabTfStrip.
                 _grabTfTick++;
                 if (_grabTfTick % 5 === 1) _updateGrabTfStrip();
+                if (_grabTfTick % 5 === 3) _updateChannelTfStrip();
             }, 1000);
             // Auth check + trade panel init
             (async () => {
@@ -4204,7 +4298,7 @@ createApp({
         return {
             t,
             symbol, symBase, symQuote, isStandalone,
-            ticker, TF_OPTIONS, chartTF, ohlc, chartContainerEl, grabTfColors, grabTfTitle,
+            ticker, TF_OPTIONS, chartTF, ohlc, chartContainerEl, grabTfColors, grabTfTitle, channelTfColors, channelTfTitle,
             displayLevels, grouping, groupingOptions,
             levelsDdOpen, groupingDdOpen, selectLevels, selectGrouping,
             displayAsks, displayBids, pressure,
@@ -4230,6 +4324,7 @@ const IND_LIST = [
     { label: 'EMA 10',  isOn: () => getEmaCfg().find(e=>e.p===10).enabled,  toggle: () => toggleEmaAll(10),  col: 1 },
     { label: 'EMA 60',  isOn: () => getEmaCfg().find(e=>e.p===60).enabled,  toggle: () => toggleEmaAll(60),  col: 1 },
     { label: 'EMA 223', isOn: () => getEmaCfg().find(e=>e.p===223).enabled, toggle: () => toggleEmaAll(223), col: 1 },
+    { label: 'Midline GRaB', isOn: () => _obGrabMidlineActive, toggle: toggleObGrabMidline, col: 1 },
     { label: 'Canale SMA 20',   isOn: () => _obChActive,  toggle: toggleObChannel, col: 2 },
     { label: 'Bollinger Bands', isOn: () => _obBbActive,  toggle: toggleObBB,      col: 2 },
     { label: 'GRaB',            isOn: () => _obGrabActive,toggle: toggleObGrab,    cfgOpen: openGrabCfgPanel, col: 2 },
