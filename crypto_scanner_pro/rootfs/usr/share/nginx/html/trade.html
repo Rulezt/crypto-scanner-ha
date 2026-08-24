@@ -8,6 +8,11 @@
     <link rel="stylesheet" href="trade-styles.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#101014">
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+    </script>
     <script src="/prefs-sync.js"></script>
     <script src="/i18n.js"></script>
     <script src="/candle-color.js"></script>

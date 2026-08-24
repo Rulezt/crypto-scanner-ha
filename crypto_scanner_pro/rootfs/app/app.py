@@ -2915,6 +2915,21 @@ def manifest():
     return send_file('/usr/share/nginx/html/manifest.json', mimetype='application/manifest+json')
 
 
+@app.route('/sw.js', methods=['GET'])
+def service_worker():
+    return send_file('/usr/share/nginx/html/sw.js', mimetype='application/javascript')
+
+
+@app.route('/icon-192.png', methods=['GET'])
+def icon_192():
+    return send_file('/usr/share/nginx/html/icon-192.png', mimetype='image/png')
+
+
+@app.route('/icon-512.png', methods=['GET'])
+def icon_512():
+    return send_file('/usr/share/nginx/html/icon-512.png', mimetype='image/png')
+
+
 @app.route('/', methods=['GET'])
 def index():
     return send_file('/usr/share/nginx/html/index.html')

@@ -20,6 +20,11 @@
     <link rel="canonical" href="https://cryptoscannerpro.com">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#101014">
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+    </script>
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
