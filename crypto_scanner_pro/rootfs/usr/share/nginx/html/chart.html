@@ -2630,6 +2630,18 @@ const mtfEl = document.createElement('button');
         trendCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:7;';
         body.appendChild(trendCanvas);
 
+        // Overlay "blocco grafico" — SOLO portrait: lightweight-charts cattura il touch
+        // sul canvas per pan/zoom candele, impedendo lo scroll nativo della pagina (bug
+        // segnalato 2026-08-24 su più tentativi con touch-action). Invece di inseguire il
+        // comportamento del touch della libreria, un overlay trasparente sopra il grafico
+        // intercetta il tocco e lo lascia semplicemente passare al contenitore scrollabile
+        // (nessun handler proprio = comportamento nativo). Doppio tap per sbloccare
+        // temporaneamente (richiesta esplicita dell'utente) — si riblocca da solo dopo
+        // qualche secondo di inattività sul grafico, vedi _wireChartLockOverlay().
+        const lockOverlay = document.createElement('div');
+        lockOverlay.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:8;pointer-events:' + (IS_PORTRAIT_MOBILE ? 'auto' : 'none') + ';';
+        body.appendChild(lockOverlay);
+
         const alertBtn = document.createElement('div');
         alertBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="20" height="20"><path fill="currentColor" d="M13.5 6a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM4 14.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z"/><path fill="currentColor" d="M9 14h4v-4h1v4h4v1h-4v4h-1v-4H9v-1z"/></svg>`;
         alertBtn.title = window.t('set_alert');
@@ -2683,7 +2695,7 @@ const mtfEl = document.createElement('button');
         });
 
         slots.push({
-            cell, hdr, chart, candleS, emaSeries, chartEl, rangeCanvas, rangeBtn, hlineCanvas, hlineBtn, trendCanvas, trendBtn, clearDrawBtn,
+            cell, hdr, chart, candleS, emaSeries, chartEl, lockOverlay, rangeCanvas, rangeBtn, hlineCanvas, hlineBtn, trendCanvas, trendBtn, clearDrawBtn,
             klineCount: 0,
             lastEMA: {5:null, 10:null, 60:null, 223:null},
             starEl, lockEl, sep4, titleEl, changeEl, volEl, candlePctEl, tfEl, tfBtnsEl, alertBtn, tradeEl,
@@ -2702,6 +2714,7 @@ const mtfEl = document.createElement('button');
             rocSeries: null, rocZeroLine: null, rocMaxLine: null, rocMinLine: null,
         });
         const _s = slots[slots.length - 1];
+        _wireChartLockOverlay(_s);
         try { const _cdp = new _CountdownPrimitive(_s); candleS.attachPrimitive(_cdp); } catch(e) {}
         try { const _cfp = new _ChannelFillPrimitive(_s, chart); candleS.attachPrimitive(_cfp); } catch(e) {}
         try { const _obp = new _ObBandFillPrimitive(_s); candleS.attachPrimitive(_obp); } catch(e) {}
@@ -2814,6 +2827,42 @@ function applyView() {
     document.getElementById('nav-prev').style.display=visible>1?'block':'none';
     document.getElementById('nav-next').style.display=visible>1?'block':'none';
     updateLayoutBtn();
+}
+
+// ── overlay blocco grafico (solo portrait) — doppio tap per sbloccare
+// temporaneamente l'interazione col grafico (pan/zoom/disegno), altrimenti
+// l'overlay resta sopra e lascia lo scroll della pagina libero di funzionare
+// anche toccando esattamente sul grafico. Si riblocca da solo dopo
+// CHART_RELOCK_MS di inattività sul grafico (non serve un secondo doppio tap
+// — richiesta utente 2026-08-24, era "una lock" con sblocco a doppio tap).
+const CHART_RELOCK_MS = 3000;
+function _wireChartLockOverlay(s) {
+    let lastTapTime = 0;
+    let relockTimer = null;
+    const isUnlocked = () => s.lockOverlay.style.pointerEvents === 'none';
+    const scheduleRelock = () => {
+        clearTimeout(relockTimer);
+        relockTimer = setTimeout(() => {
+            s.lockOverlay.style.pointerEvents = 'auto';
+            s.cell.style.outline = '';
+        }, CHART_RELOCK_MS);
+    };
+    const unlock = () => {
+        s.lockOverlay.style.pointerEvents = 'none';
+        s.cell.style.outline = '2px solid #FF9C2E';
+        s.cell.style.outlineOffset = '-2px';
+        scheduleRelock();
+    };
+    s.lockOverlay.addEventListener('touchend', () => {
+        const now = Date.now();
+        if (now - lastTapTime < 350) { unlock(); lastTapTime = 0; }
+        else lastTapTime = now;
+    }, { passive: true });
+    s.lockOverlay.addEventListener('dblclick', unlock);
+    // finché è sbloccato, ogni tocco sul grafico rimanda il ri-blocco automatico
+    // (capture: gira comunque anche se lightweight-charts consuma l'evento dopo)
+    s.chartEl.addEventListener('touchstart', () => { if (isUnlocked()) scheduleRelock(); }, { passive: true, capture: true });
+    s.chartEl.addEventListener('touchmove',  () => { if (isUnlocked()) scheduleRelock(); }, { passive: true, capture: true });
 }
 
 // ── portrait: altezza riga (1/3 di schermo) in px, calcolata dall'altezza REALE
