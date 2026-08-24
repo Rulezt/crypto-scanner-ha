@@ -2797,6 +2797,10 @@ function renderSlotTF(idx) {
 
 function toggleSlotTFDropdown(e, idx) {
     e.stopPropagation();
+    if (IS_PORTRAIT_MOBILE) {
+        openTfPopup(TIMEFRAMES, slots[idx].curTF, TF_LABEL, tf => switchSlotTF(idx, tf));
+        return;
+    }
     document.querySelectorAll('.slot-tf-dd-menu').forEach(m => m.remove());
     const btn = document.getElementById('tf-dd-' + idx);
     if (!btn) return;
@@ -3615,25 +3619,29 @@ function renderTFBar() {
 
 function toggleMainTFDropdown(e) {
     e.stopPropagation();
-    document.querySelectorAll('.main-tf-dd-menu').forEach(m => m.remove());
-    const btn = e.currentTarget;
-    const rect = btn.getBoundingClientRect();
-    const menu = document.createElement('div');
-    menu.className = 'main-tf-dd-menu';
-    menu.style.cssText = 'position:fixed;z-index:9999;background:#1E222D;border:1px solid #2A2E39;border-radius:6px;padding:4px 0;min-width:70px;box-shadow:0 8px 24px rgba(0,0,0,.6);';
-    menu.style.left = rect.left + 'px';
-    menu.style.top = (rect.bottom + 2) + 'px';
-    TIMEFRAMES.forEach(tf => {
-        const item = document.createElement('button');
-        item.textContent = TF_LABEL[tf];
-        const active = tf === curTF;
-        item.style.cssText = `display:block;width:100%;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${active?'#2563EB':'transparent'};color:${active?'#fff':'#B2B5BE'};text-align:left;`;
-        item.onclick = () => { menu.remove(); document.removeEventListener('click', _mainTfDdClose); switchTF(tf); };
-        menu.appendChild(item);
+    openTfPopup(TIMEFRAMES, curTF, TF_LABEL, switchTF);
+}
+
+let _genericTfSheet = null;
+function closeTfPopup() {
+    if (_genericTfSheet) { try { _genericTfSheet.remove(); } catch(e) {} _genericTfSheet = null; }
+}
+function openTfPopup(tfList, current, labelMap, onSelect) {
+    closeTfPopup();
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `<div class="fs-sheet-backdrop"></div>
+        <div class="fs-sheet-panel">
+            <div class="fs-sheet-title">${window.t('tf_label') || 'Timeframe'}</div>
+            ${tfList.map(tf => `<div class="fs-sheet-opt${tf===current?' active':''}" data-tf="${tf}">${labelMap[tf]}</div>`).join('')}
+            <div class="fs-sheet-opt fs-sheet-close" data-close="1">${window.t('sheet_close')}</div>
+        </div>`;
+    document.body.appendChild(wrap);
+    _genericTfSheet = wrap;
+    wrap.querySelector('.fs-sheet-backdrop').onclick = closeTfPopup;
+    wrap.querySelectorAll('[data-tf]').forEach(el => {
+        el.onclick = () => { onSelect(el.dataset.tf); closeTfPopup(); };
     });
-    document.body.appendChild(menu);
-    const _mainTfDdClose = ev => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('click', _mainTfDdClose); } };
-    setTimeout(() => document.addEventListener('click', _mainTfDdClose), 0);
+    wrap.querySelector('[data-close]').onclick = closeTfPopup;
 }
 
 const _CD_WARN_S  = {'1':30, '5':60, '30':300, '60':600, '240':300, 'D':3600, 'W':86400, 'M':86400};

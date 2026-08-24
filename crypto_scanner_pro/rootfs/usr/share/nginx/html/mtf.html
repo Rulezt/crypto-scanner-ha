@@ -81,6 +81,14 @@
   }
   @keyframes tfCdBlink { 50% { opacity: 0.25; } }
   .tf-cd-blink { animation: tfCdBlink 1s step-start infinite; }
+  /* Popup TF a schermo intero (portrait) — stesso linguaggio visivo di chart.html/trade.html */
+  .fs-sheet-backdrop { position:fixed; inset:0; z-index:799; background:rgba(0,0,0,0.65); backdrop-filter:blur(2px); }
+  .fs-sheet-panel { position:fixed; left:0; right:0; bottom:0; z-index:800; background:#161A1E; border-top:1px solid #2A2E39; border-radius:14px 14px 0 0; box-shadow:0 -10px 30px rgba(0,0,0,0.7); padding-bottom:env(safe-area-inset-bottom, 0); max-height:60vh; overflow-y:auto; }
+  .fs-sheet-title { padding:14px 16px 10px; font-size:13px; font-weight:700; color:#E5E7EB; text-align:center; border-bottom:1px solid #2A2E39; }
+  .fs-sheet-opt { display:flex; align-items:center; justify-content:center; padding:13px 18px; font-size:14px; color:#B2B5BE; cursor:pointer; user-select:none; border-bottom:1px solid #1E222D; }
+  .fs-sheet-opt:last-child { border-bottom:none; }
+  .fs-sheet-close { border-top:1px solid #2A2E39; color:#9CA3AF; font-weight:600; }
+  .fs-sheet-opt.active { color:#FF9C2E; font-weight:700; }
 </style>
 <style>#tv-attr-logo{display:none!important}</style>
 </head>
@@ -433,6 +441,28 @@ const FS_TFS = [
   {tf:'60',label:'1h'},{tf:'240',label:'4h'},{tf:'D',label:'D'},
   {tf:'W',label:'W'},{tf:'M',label:'M'},
 ];
+const IS_LANDSCAPE_MOBILE = window.matchMedia('(orientation: landscape) and (pointer: coarse) and (max-height: 700px)').matches;
+const IS_MOBILE = window.innerWidth < 640 || IS_LANDSCAPE_MOBILE;
+const IS_PORTRAIT_MOBILE = IS_MOBILE && !IS_LANDSCAPE_MOBILE;
+
+function openTfSheet(tfList, current, onSelect) {
+    document.querySelectorAll('.generic-tf-sheet').forEach(w => w.remove());
+    const wrap = document.createElement('div');
+    wrap.className = 'generic-tf-sheet';
+    wrap.innerHTML = `<div class="fs-sheet-backdrop"></div>
+        <div class="fs-sheet-panel">
+            <div class="fs-sheet-title">${window.t('tf_label') || 'Timeframe'}</div>
+            ${tfList.map(({tf, label}) => `<div class="fs-sheet-opt${tf===current?' active':''}" data-tf="${tf}">${label}</div>`).join('')}
+            <div class="fs-sheet-opt fs-sheet-close" data-close="1">${window.t('sheet_close')}</div>
+        </div>`;
+    document.body.appendChild(wrap);
+    const close = () => wrap.remove();
+    wrap.querySelector('.fs-sheet-backdrop').onclick = close;
+    wrap.querySelectorAll('[data-tf]').forEach(el => {
+        el.onclick = () => { close(); onSelect(el.dataset.tf); };
+    });
+    wrap.querySelector('[data-close]').onclick = close;
+}
 let obChart = null, obCandleS = null, obEmaS = {}, obLastEMA = {};
 let obTF = '30', obWS = null, obWsTimer = null;
 let obBidLine = null, obAskLine = null;
@@ -1835,7 +1865,17 @@ function initOBChart() {
 }
 
 function renderOBTFBar() {
-    document.getElementById('ob-tf-bar').innerHTML = OB_TFS.map(({tf, label}) => {
+    const bar = document.getElementById('ob-tf-bar');
+    if (IS_PORTRAIT_MOBILE) {
+        const cur = OB_TFS.find(o => o.tf === obTF);
+        bar.innerHTML = `<button onclick="openTfSheet(OB_TFS, obTF, switchOBTF)"
+            style="padding:3px 9px;border-radius:4px;border:none;cursor:pointer;background:#2A2E39;color:#FF9C2E;font-weight:700;font-size:13px;display:flex;align-items:center;gap:3px;">
+            ${cur ? cur.label : obTF}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>`;
+        return;
+    }
+    bar.innerHTML = OB_TFS.map(({tf, label}) => {
         const active = tf === obTF;
         return `<button onclick="switchOBTF('${tf}')" style="font-size:11px;padding:2px 7px;border-radius:3px;border:none;cursor:pointer;background:transparent;color:${active?'#FF9C2E':'#B2B5BE'};font-weight:${active?'700':'400'};">${label}</button>`;
     }).join('');
@@ -2045,7 +2085,17 @@ function initFSChart() {
 }
 
 function renderFSTFBar() {
-    document.getElementById('fs-tf-bar').innerHTML = FS_TFS.map(({tf, label}) => {
+    const bar = document.getElementById('fs-tf-bar');
+    if (IS_PORTRAIT_MOBILE) {
+        const cur = FS_TFS.find(o => o.tf === fsTF);
+        bar.innerHTML = `<button onclick="openTfSheet(FS_TFS, fsTF, switchFSTF)"
+            style="padding:3px 9px;border-radius:4px;border:none;cursor:pointer;background:#2A2E39;color:#FF9C2E;font-weight:700;font-size:13px;display:flex;align-items:center;gap:3px;">
+            ${cur ? cur.label : fsTF}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>`;
+        return;
+    }
+    bar.innerHTML = FS_TFS.map(({tf, label}) => {
         const active = tf === fsTF;
         return `<button onclick="switchFSTF('${tf}')" style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px 8px;border-radius:3px;border:none;cursor:pointer;background:transparent;color:${active?'#FF9C2E':'#B2B5BE'};font-weight:${active?'700':'400'};">
             <span style="font-size:11px;line-height:1.3;">${label}</span>

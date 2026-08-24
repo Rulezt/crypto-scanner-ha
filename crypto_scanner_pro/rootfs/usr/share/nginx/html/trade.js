@@ -3222,6 +3222,8 @@ createApp({
         const groupingOptions = ref([]);
         const levelsDdOpen    = ref(false);
         const groupingDdOpen  = ref(false);
+        const tfDdOpen        = ref(false);
+        const isPortraitMobile = _isPortraitMobile;
         const selectLevels = (val) => { displayLevels.value = val; levelsDdOpen.value = false; updateDisplay(); };
         const selectGrouping = (val) => { grouping.value = val; groupingDdOpen.value = false; updateDisplay(); };
         const displayAsks    = ref([]);
@@ -4301,6 +4303,7 @@ createApp({
             ticker, TF_OPTIONS, chartTF, ohlc, chartContainerEl, grabTfColors, grabTfTitle, channelTfColors, channelTfTitle,
             displayLevels, grouping, groupingOptions,
             levelsDdOpen, groupingDdOpen, selectLevels, selectGrouping,
+            tfDdOpen, isPortraitMobile,
             displayAsks, displayBids, pressure,
             cvdWindow, cvdData, CVD_WINDOWS,
             currentPrice, spread, priceColor,
