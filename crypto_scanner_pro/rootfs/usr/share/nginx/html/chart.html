@@ -121,11 +121,32 @@
             }
             #ob-modal > div:last-child { flex: 0 0 50% !important; }
 
-            /* Grid mobile portrait: 3 grafici in colonna */
+            /* Grid mobile portrait: feed scrollabile, un grafico a schermo (quasi) intero
+               per volta invece di schiacciarne 3 con le frecce laterali — vedi applyView()
+               per la logica IS_PORTRAIT_MOBILE che mostra tutti gli slot della pagina invece
+               di finestrarli a 3 con mobileChartIdx. display:flex qui vince su display:grid
+               (impostato inline) perché in cascata CSS un !important esterno batte uno stile
+               inline non-important, anche se applyView() lo riassegna via JS ad ogni resize. */
             #grid {
-                grid-template-columns: 1fr !important;
-                grid-template-rows: repeat(3, 1fr);
+                display: flex !important;
+                flex-direction: column !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                -webkit-overflow-scrolling: touch;
             }
+            #grid > div {
+                /* 100% risolve rispetto all'altezza (definita, flex:1) di #grid stesso —
+                   ogni grafico occupa esattamente lo spazio visibile, uno schermo per
+                   scroll, senza dover indovinare l'altezza dell'header in px. */
+                flex: 0 0 auto !important;
+                height: 100% !important;
+                min-height: 360px !important;
+                scroll-snap-align: start;
+            }
+            /* proximity, non mandatory: uno snap troppo aggressivo rischia di scattare
+               indietro mentre l'utente interagisce col grafico (pan/zoom candele) */
+            #grid { scroll-snap-type: y proximity; }
+            #nav-prev, #nav-next { display: none !important; }
             /* Slot header scrollabile su mobile */
             .slot-hdr {
                 overflow-x: auto !important;
@@ -939,6 +960,7 @@ const IS_PORTRAIT_MOBILE = IS_MOBILE && !IS_LANDSCAPE_MOBILE;
 let mobileChartIdx = 0;
 
 if (IS_PORTRAIT_MOBILE) {
+    _wirePortraitInfiniteScroll();
     // Bottoni MTF e F11 nell'header a schermo intero: non hanno senso in portrait
     // (MTF apre un'altra pagina intera su schermo piccolo, F11 è una funzione desktop).
     // Il separatore "|" fra MTF e F11 resta visibile apposta: senza i due bottoni in
@@ -2737,26 +2759,38 @@ function applyView() {
     const {cols,rows}=curLayout, visible=cols*rows;
     const grid=document.getElementById('grid');
 
-    if (IS_MOBILE) {
-        const mobileRows=IS_LANDSCAPE_MOBILE?1:Math.min(rows,3);
-        const step=mobileRows;
+    if (IS_LANDSCAPE_MOBILE) {
         grid.style.gridTemplateColumns='1fr';
-        grid.style.gridTemplateRows=IS_LANDSCAPE_MOBILE?'1fr':`repeat(${mobileRows}, 1fr)`;
-        if (IS_LANDSCAPE_MOBILE) {
-            let _s=document.getElementById('__lm_grid');
-            if (!_s){_s=document.createElement('style');_s.id='__lm_grid';document.head.appendChild(_s);}
-            _s.textContent='#grid{grid-template-rows:1fr!important;grid-template-columns:1fr!important}';
-        }
+        grid.style.gridTemplateRows='1fr';
+        let _s=document.getElementById('__lm_grid');
+        if (!_s){_s=document.createElement('style');_s.id='__lm_grid';document.head.appendChild(_s);}
+        _s.textContent='#grid{grid-template-rows:1fr!important;grid-template-columns:1fr!important}';
         slots.forEach((s,i)=>{
-            s.cell.style.display=(i>=mobileChartIdx&&i<mobileChartIdx+step&&i<visible)?'flex':'none';
+            s.cell.style.display=(i>=mobileChartIdx&&i<mobileChartIdx+1&&i<visible)?'flex':'none';
         });
         const _showNav = visible > 1;
         document.getElementById('nav-prev').style.display=_showNav?'block':'none';
         document.getElementById('nav-next').style.display=_showNav?'block':'none';
         const total=allCoins.length,first=curPage*visible+mobileChartIdx+1;
-        updateMobileNavIndicator(first,Math.min(first+step-1,total),total);
-        if(visible===1){const _ind=document.getElementById('mobile-chart-indicator');if(_ind)_ind.style.display='none';const _hdr=document.getElementById('main-header');if(_hdr)_hdr.style.display='none';if(!IS_LANDSCAPE_MOBILE)document.body.style.height='100dvh';slots.forEach(s=>{if(s.tradeEl)s.tradeEl.style.display='inline-block';});}
-        if(IS_LANDSCAPE_MOBILE){_forceLandscapeResize();setTimeout(_forceLandscapeResize,600);}
+        updateMobileNavIndicator(first,Math.min(first,total),total);
+        if(visible===1){const _ind=document.getElementById('mobile-chart-indicator');if(_ind)_ind.style.display='none';const _hdr=document.getElementById('main-header');if(_hdr)_hdr.style.display='none';slots.forEach(s=>{if(s.tradeEl)s.tradeEl.style.display='inline-block';});}
+        _forceLandscapeResize();setTimeout(_forceLandscapeResize,600);
+        return;
+    }
+
+    if (IS_PORTRAIT_MOBILE) {
+        // Feed scrollabile: tutti gli slot della pagina corrente sono mostrati impilati
+        // (niente più finestra di 3 con mobileChartIdx/frecce) — vedi CSS #grid in
+        // @media (max-width:639px) per l'altezza/scroll di ogni .cell, e
+        // _wirePortraitInfiniteScroll() per il caricamento della pagina successiva
+        // quando si scrolla in fondo.
+        grid.style.gridTemplateColumns='1fr';
+        slots.forEach((s,i)=>{ s.cell.style.display=(i<visible)?'flex':'none'; });
+        document.getElementById('nav-prev').style.display='none';
+        document.getElementById('nav-next').style.display='none';
+        const total=allCoins.length,loadedSoFar=Math.min(curPage*visible+visible,total);
+        updateMobileNavIndicator(curPage*visible+1,loadedSoFar,total);
+        if(visible===1){const _ind=document.getElementById('mobile-chart-indicator');if(_ind)_ind.style.display='none';const _hdr=document.getElementById('main-header');if(_hdr)_hdr.style.display='none';document.body.style.height='100dvh';slots.forEach(s=>{if(s.tradeEl)s.tradeEl.style.display='inline-block';});}
         return;
     }
 
@@ -2766,6 +2800,35 @@ function applyView() {
     document.getElementById('nav-prev').style.display=visible>1?'block':'none';
     document.getElementById('nav-next').style.display=visible>1?'block':'none';
     updateLayoutBtn();
+}
+
+// ── feed scrollabile portrait: carica la pagina successiva di monete quando si
+// arriva in fondo, al posto delle frecce laterali (richiesta utente 2026-08-24).
+// Ogni "pagina" resta quella già usata da loadPage() (curPage*visible..+visible,
+// stesso pool di 18 slot riusato dal desktop) — arrivati in fondo il contenuto
+// viene sostituito con la pagina successiva e lo scroll torna in cima, non è un
+// append infinito senza limiti (avrebbe richiesto creare slot/chart oltre i 18
+// fissi costruiti una volta da buildGrid — fuori scope per questa richiesta).
+let _portraitLoadingMore = false;
+function _wirePortraitInfiniteScroll() {
+    const grid = document.getElementById('grid');
+    if (!grid) return;
+    grid.addEventListener('scroll', async () => {
+        if (!IS_PORTRAIT_MOBILE || _portraitLoadingMore) return;
+        const nearBottom = grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 200;
+        if (!nearBottom) return;
+        const vis = (curLayout?.cols ?? 3) * (curLayout?.rows ?? 3);
+        const maxPage = Math.ceil(allCoins.length / vis) - 1;
+        if (curPage >= maxPage) return;
+        _portraitLoadingMore = true;
+        try {
+            curPage++;
+            await loadPage();
+            grid.scrollTop = 0;
+        } finally {
+            _portraitLoadingMore = false;
+        }
+    }, { passive: true });
 }
 
 function updateMobileNavIndicator(from, to, total) {

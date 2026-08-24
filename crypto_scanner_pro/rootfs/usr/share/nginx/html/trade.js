@@ -3544,6 +3544,16 @@ createApp({
                         const candles = j.data;
                         const last    = candles[candles.length - 1];
                         const prev    = candles[candles.length - 2];
+                        // Il buffer server-side (ws_manager) crea la barra nuova solo al primo
+                        // tick Bybit ricevuto per quel bar_start — per ~1-1.5s dopo ogni boundary
+                        // può quindi rispondere ancora con la barra VECCHIA come "last". Se nel
+                        // frattempo il roll lato client (_obRollNewBarIfNeeded, guidato dal book,
+                        // più reattivo) è già avanzato, applicare questa risposta stale
+                        // riporterebbe indietro _obLiveCandle: il prossimo roll riaprirebbe la
+                        // barra nuova da zero, cancellando il movimento reale già accumulato
+                        // (stesso bug/fix della kline WS diretta sopra, bug segnalato 2026-08-24,
+                        // qui però proveniva dal poll REST — non coperto dal primo fix).
+                        if (_obLiveCandle && last.time < _obLiveCandle.time) { chartPollTimer = setTimeout(poll, 3000); return; }
                         _cdLastPrice = last.close; _cdLastOpen = last.open; _obLiveCandle = { ...last };
                         // Update the last two candles (current forming + previous if just confirmed)
                         for (const k of candles.slice(-2)) {
@@ -3906,7 +3916,12 @@ createApp({
                 close: midPrice, volume: 0,
             };
             _obLiveCandle = newCandle;
-            if (!_obGrabActive) { try { candleS.update({ ...newCandle }); } catch(e) {} }
+            // Prima, con GRaB attivo, la barra appena aperta dal roll non veniva disegnata
+            // qui (il chiamante in processOrderBook salta il ramo _obGrabColorCandle quando
+            // il roll ha già "consumato" il tick con return true) — restava assente dalla
+            // serie fino al tick successivo del book, un giro perso non necessario.
+            if (_obGrabActive) _obGrabColorCandle(newCandle);
+            else { try { candleS.update({ ...newCandle }); } catch(e) {} }
             _cdLastPrice = newCandle.close; _cdLastOpen = newCandle.open;
 
             for (const { p } of EMA_CFG) {
