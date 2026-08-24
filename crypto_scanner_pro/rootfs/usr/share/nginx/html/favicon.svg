@@ -1,9 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#161A1E"/>
-  <rect x="4"  y="19" width="5" height="9"  rx="1" fill="#3b82f6"/>
-  <rect x="11" y="13" width="5" height="15" rx="1" fill="#8b5cf6"/>
-  <rect x="18" y="8"  width="5" height="20" rx="1" fill="#10b981"/>
-  <polyline points="4,23 11,17 18,11 26,5"
-    stroke="#fbbf24" stroke-width="1.8" fill="none"
-    stroke-linecap="round" stroke-linejoin="round"/>
+  <rect width="32" height="32" rx="4" fill="#0B0E11"/>
+  <line x1="1" y1="9" x2="31" y2="9" stroke="#1a3a4a" stroke-width="0.4"/>
+  <line x1="1" y1="17" x2="31" y2="17" stroke="#1a3a4a" stroke-width="0.4"/>
+  <line x1="1" y1="25" x2="31" y2="25" stroke="#1a3a4a" stroke-width="0.4"/>
+  <line x1="4" y1="7" x2="4" y2="29" stroke="#00C8FF" stroke-width="0.8"/>
+  <rect x="2.5" y="14" width="3" height="9" fill="#00C8FF"/>
+  <line x1="12" y1="3" x2="12" y2="26" stroke="#00C8FF" stroke-width="0.8"/>
+  <rect x="10.5" y="7" width="3" height="13" fill="#00C8FF"/>
+  <line x1="20" y1="6" x2="20" y2="28" stroke="#00C8FF" stroke-width="0.8"/>
+  <rect x="18.5" y="13" width="3" height="9" fill="#00C8FF"/>
+  <line x1="28" y1="10" x2="28" y2="30" stroke="#00C8FF" stroke-width="0.8"/>
+  <rect x="26.5" y="16" width="3" height="8" fill="#00C8FF"/>
+  <line x1="1" y1="30" x2="30" y2="2" stroke="#00C8FF" stroke-width="1.2"/>
+  <polygon points="30,2 24,5.5 26.5,8.5" fill="#00C8FF"/>
 </svg>
