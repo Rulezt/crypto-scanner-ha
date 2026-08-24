@@ -964,7 +964,6 @@ const IS_PORTRAIT_MOBILE = IS_MOBILE && !IS_LANDSCAPE_MOBILE;
 let mobileChartIdx = 0;
 
 if (IS_PORTRAIT_MOBILE) {
-    _wirePortraitInfiniteScroll();
     // Bottoni MTF e F11 nell'header a schermo intero: non hanno senso in portrait
     // (MTF apre un'altra pagina intera su schermo piccolo, F11 è una funzione desktop).
     // Il separatore "|" fra MTF e F11 resta visibile apposta: senza i due bottoni in
@@ -2817,7 +2816,18 @@ function applyView() {
         document.getElementById('nav-next').style.display='none';
         const total=allCoins.length,loadedSoFar=Math.min(curPage*visible+visible,total);
         updateMobileNavIndicator(curPage*visible+1,loadedSoFar,total);
-        if(visible===1){const _ind=document.getElementById('mobile-chart-indicator');if(_ind)_ind.style.display='none';const _hdr=document.getElementById('main-header');if(_hdr)_hdr.style.display='none';document.body.style.height='100dvh';slots.forEach(s=>{if(s.tradeEl)s.tradeEl.style.display='inline-block';});}
+        // "Carica altre monete" è un tap ESPLICITO sull'indicatore, mai automatico
+        // durante lo scroll (vedi _loadMorePortrait) — evita che il contenuto cambi
+        // sotto le dita dell'utente mentre sta ancora scorrendo quello attuale.
+        const _ind = document.getElementById('mobile-chart-indicator');
+        if (_ind && visible!==1) {
+            const _hasMore = loadedSoFar < total;
+            _ind.style.pointerEvents = _hasMore ? 'auto' : 'none';
+            _ind.style.cursor = _hasMore ? 'pointer' : 'default';
+            _ind.onclick = _hasMore ? _loadMorePortrait : null;
+            if (_hasMore) _ind.textContent += '  ·  altre ▾';
+        }
+        if(visible===1){if(_ind)_ind.style.display='none';const _hdr=document.getElementById('main-header');if(_hdr)_hdr.style.display='none';document.body.style.height='100dvh';slots.forEach(s=>{if(s.tradeEl)s.tradeEl.style.display='inline-block';});}
         return;
     }
 
@@ -2876,32 +2886,25 @@ function _setPortraitRowHeight() {
     grid.style.gridAutoRows = (grid.clientHeight / 3) + 'px';
 }
 
-// ── portrait: scroll in fondo alla pagina corrente → carica il batch di coin
-// successivo (sostituisce le frecce, richiesta utente 2026-08-24). Stesso pool di
-// 18 slot riusato dal desktop paging: arrivati in fondo il contenuto viene
-// sostituito con la pagina successiva e lo scroll torna in cima — non è un append
-// visivo senza limite (richiederebbe creare slot/chart oltre i 18 fissi costruiti
-// una volta da buildGrid, fuori scope).
+// ── portrait: carica il batch di coin successivo — SOLO su tap esplicito
+// sull'indicatore in basso (mai in automatico durante lo scroll: caricare la
+// pagina successiva mentre l'utente sta ancora scorrendo la corrente sostituiva
+// il contenuto e riportava lo scroll in cima, facendo sembrare che "non si
+// riesce a tornare indietro" — bug segnalato 2026-08-24, terza volta).
 let _portraitLoadingMore = false;
-function _wirePortraitInfiniteScroll() {
-    const grid = document.getElementById('grid');
-    if (!grid) return;
-    grid.addEventListener('scroll', async () => {
-        if (!IS_PORTRAIT_MOBILE || _portraitLoadingMore) return;
-        const nearBottom = grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 100;
-        if (!nearBottom) return;
-        const vis = (curLayout?.cols ?? 3) * (curLayout?.rows ?? 3);
-        const maxPage = Math.ceil(allCoins.length / vis) - 1;
-        if (curPage >= maxPage) return;
-        _portraitLoadingMore = true;
-        try {
-            curPage++;
-            await loadPage();
-            grid.scrollTop = 0;
-        } finally {
-            _portraitLoadingMore = false;
-        }
-    }, { passive: true });
+async function _loadMorePortrait() {
+    if (_portraitLoadingMore) return;
+    const vis = (curLayout?.cols ?? 3) * (curLayout?.rows ?? 3);
+    const maxPage = Math.ceil(allCoins.length / vis) - 1;
+    if (curPage >= maxPage) return;
+    _portraitLoadingMore = true;
+    try {
+        curPage++;
+        await loadPage();
+        document.getElementById('grid').scrollTop = 0;
+    } finally {
+        _portraitLoadingMore = false;
+    }
 }
 
 function updateMobileNavIndicator(from, to, total) {
