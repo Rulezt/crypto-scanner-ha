@@ -964,6 +964,7 @@ const IS_PORTRAIT_MOBILE = IS_MOBILE && !IS_LANDSCAPE_MOBILE;
 let mobileChartIdx = 0;
 
 if (IS_PORTRAIT_MOBILE) {
+    _wirePortraitInfiniteScroll();
     // Bottoni MTF e F11 nell'header a schermo intero: non hanno senso in portrait
     // (MTF apre un'altra pagina intera su schermo piccolo, F11 è una funzione desktop).
     // Il separatore "|" fra MTF e F11 resta visibile apposta: senza i due bottoni in
@@ -2805,29 +2806,22 @@ function applyView() {
         // da _setPortraitRowHeight()) faceva convivere due sizing diversi per le prime 3
         // righe e le successive → righe disallineate, terzo grafico tagliato (bug
         // segnalato 2026-08-24).
+        // pageSize (quante monete mostrare/scrollare) è indipendente dal layout desktop
+        // (visible=cols*rows) TRANNE nel caso 1x1 (bottone espandi), che deve restare un
+        // solo grafico anche in portrait — stessa formula di loadPage().
+        const pageSize = visible===1 ? 1 : Math.min(SLOTS_TOTAL, allCoins.length);
         grid.style.gridTemplateColumns='1fr';
         grid.style.gridTemplateRows='none';
         grid.classList.toggle('single-chart', visible===1);
         if (visible!==1) _setPortraitRowHeight();
         slots.forEach((s,i)=>{
-            s.cell.style.display=(i<visible)?'flex':'none';
+            s.cell.style.display=(i<pageSize)?'flex':'none';
         });
         document.getElementById('nav-prev').style.display='none';
         document.getElementById('nav-next').style.display='none';
-        const total=allCoins.length,loadedSoFar=Math.min(curPage*visible+visible,total);
-        updateMobileNavIndicator(curPage*visible+1,loadedSoFar,total);
-        // "Carica altre monete" è un tap ESPLICITO sull'indicatore, mai automatico
-        // durante lo scroll (vedi _loadMorePortrait) — evita che il contenuto cambi
-        // sotto le dita dell'utente mentre sta ancora scorrendo quello attuale.
-        const _ind = document.getElementById('mobile-chart-indicator');
-        if (_ind && visible!==1) {
-            const _hasMore = loadedSoFar < total;
-            _ind.style.pointerEvents = _hasMore ? 'auto' : 'none';
-            _ind.style.cursor = _hasMore ? 'pointer' : 'default';
-            _ind.onclick = _hasMore ? _loadMorePortrait : null;
-            if (_hasMore) _ind.textContent += '  ·  altre ▾';
-        }
-        if(visible===1){if(_ind)_ind.style.display='none';const _hdr=document.getElementById('main-header');if(_hdr)_hdr.style.display='none';document.body.style.height='100dvh';slots.forEach(s=>{if(s.tradeEl)s.tradeEl.style.display='inline-block';});}
+        const total=allCoins.length,loadedSoFar=Math.min(curPage*pageSize+pageSize,total);
+        updateMobileNavIndicator(curPage*pageSize+1,loadedSoFar,total);
+        if(visible===1){const _ind=document.getElementById('mobile-chart-indicator');if(_ind)_ind.style.display='none';const _hdr=document.getElementById('main-header');if(_hdr)_hdr.style.display='none';document.body.style.height='100dvh';slots.forEach(s=>{if(s.tradeEl)s.tradeEl.style.display='inline-block';});}
         return;
     }
 
@@ -2886,25 +2880,43 @@ function _setPortraitRowHeight() {
     grid.style.gridAutoRows = (grid.clientHeight / 3) + 'px';
 }
 
-// ── portrait: carica il batch di coin successivo — SOLO su tap esplicito
-// sull'indicatore in basso (mai in automatico durante lo scroll: caricare la
-// pagina successiva mentre l'utente sta ancora scorrendo la corrente sostituiva
-// il contenuto e riportava lo scroll in cima, facendo sembrare che "non si
-// riesce a tornare indietro" — bug segnalato 2026-08-24, terza volta).
+// ── portrait: carica automaticamente il batch di monete successivo — SOLO
+// quando lo scroll ha DAVVERO raggiunto il fondo (pochi px di tolleranza, non
+// una soglia larga "mi sto avvicinando"), e SENZA resettare lo scroll dopo.
+// pageSize ora arriva fino a SLOTS_TOTAL (18, vedi loadPage()) invece dei 9 del
+// layout desktop, quindi questo scatta molto meno spesso. Un trigger largo (o
+// un reset dello scroll a 0) faceva sembrare "non riesco a tornare indietro"
+// perché il contenuto cambiava sotto le dita mentre l'utente stava ancora
+// scorrendo verso l'ultimo grafico — bug segnalato 3 volte, 2026-08-24.
 let _portraitLoadingMore = false;
-async function _loadMorePortrait() {
-    if (_portraitLoadingMore) return;
-    const vis = (curLayout?.cols ?? 3) * (curLayout?.rows ?? 3);
-    const maxPage = Math.ceil(allCoins.length / vis) - 1;
-    if (curPage >= maxPage) return;
-    _portraitLoadingMore = true;
-    try {
-        curPage++;
-        await loadPage();
-        document.getElementById('grid').scrollTop = 0;
-    } finally {
-        _portraitLoadingMore = false;
-    }
+let _portraitWasAtBottom = false;
+function _wirePortraitInfiniteScroll() {
+    const grid = document.getElementById('grid');
+    if (!grid) return;
+    grid.addEventListener('scroll', async () => {
+        // Layout 1x1 (bottone espandi): un solo grafico, mai paginazione automatica.
+        if (((curLayout?.cols??3)*(curLayout?.rows??3))===1) return;
+        const atBottom = grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 4;
+        if (!atBottom) { _portraitWasAtBottom = false; return; }
+        // edge-triggered (solo sul FRONTE di arrivo in fondo, non ad ogni scroll event
+        // mentre ci si resta fermi): altrimenti, restando appoggiati in fondo dopo un
+        // caricamento, ogni tick di scroll residuo ne farebbe partire un altro subito
+        // dopo — cascata di pagine caricate in sequenza senza che l'utente scrolli.
+        if (_portraitWasAtBottom || _portraitLoadingMore) return;
+        _portraitWasAtBottom = true;
+        const pageSize = Math.min(SLOTS_TOTAL, allCoins.length);
+        const maxPage = Math.ceil(allCoins.length / pageSize) - 1;
+        if (curPage >= maxPage) return;
+        _portraitLoadingMore = true;
+        try {
+            curPage++;
+            await loadPage();
+            // scrollTop NON viene toccato: si resta dove si era, il nuovo batch
+            // continua sotto senza "riportare in cima" l'utente.
+        } finally {
+            _portraitLoadingMore = false;
+        }
+    }, { passive: true });
 }
 
 function updateMobileNavIndicator(from, to, total) {
@@ -2993,7 +3005,13 @@ async function loadPage() {
     closeWS();
     applyView();
 
-    const visible=(curLayout?.cols??3)*(curLayout?.rows??3);
+    // Portrait ignora il layout desktop (cols*rows, tipicamente 9): usa tutti i 18 slot
+    // fisici disponibili come dimensione di pagina, per scrollare più monete prima di
+    // dover ricaricare — vedi _wirePortraitInfiniteScroll per l'auto-caricamento in fondo.
+    const _layoutN = (curLayout?.cols??3)*(curLayout?.rows??3);
+    // Layout 1x1 (bottone espandi / ?layout=1x1&noheader=1) resta un solo grafico anche
+    // in portrait — la paginazione a 18 vale solo per la vista multi-coin normale.
+    const visible = (IS_PORTRAIT_MOBILE && _layoutN!==1) ? Math.min(SLOTS_TOTAL, allCoins.length) : _layoutN;
     const pageCoins=allCoins.slice(curPage*visible,curPage*visible+visible);
 
     const isEmpty = (curMode === 'favorites' || curMode === 'ico') && allCoins.length === 0;
