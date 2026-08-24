@@ -122,25 +122,30 @@
             #ob-modal > div:last-child { flex: 0 0 50% !important; }
 
             /* Grid mobile portrait: 3 grafici per schermata, scroll verticale per passare
-               al gruppo di 3 successivo (niente più frecce laterali). grid-auto-rows fa sì
-               che ogni riga sia 1/3 di schermo SENZA bisogno di raggruppare gli slot in
-               wrapper: lo scroll-snap-align:start su un elemento sì e due no (vedi
-               applyView(), i%3===0) fa scattare lo snap ogni 3 grafici invece che ad ognuno.
+               al gruppo di 3 successivo (niente più frecce laterali). Ogni riga = 1/3 di
+               schermo SENZA bisogno di raggruppare gli slot in wrapper: lo
+               scroll-snap-align:start su un elemento sì e due no (vedi applyView(),
+               i%3===0) fa scattare lo snap ogni 3 grafici invece che ad ognuno.
+               grid-auto-rows NON è qui (niente !important su questa proprietà): viene
+               impostato in px da _setPortraitRowHeight() via JS, calcolato dall'altezza
+               REALE di #grid — usare vh fisse (33.333vh) non funzionava perché, a
+               differenza di dvh usato su body, vh non segue la comparsa/scomparsa della
+               barra indirizzi del browser mobile: le 3 righe non combaciavano con lo
+               schermo reale e lo scroll-snap restava bloccato risalendo (bug segnalato
+               2026-08-24). scroll-snap-type:proximity (non mandatory) per lo stesso motivo:
+               uno snap troppo rigido su boundary imprecisi blocca lo scroll indietro.
                touch-action:pan-y sui canvas dei grafici: lightweight-charts marca
                verosimilmente il proprio canvas touch-action:none (per gestire da sé
                pan/pinch) — senza questa regola uno swipe che parte SUL grafico non
-               arriverebbe mai allo scroll nativo di #grid (bug segnalato 2026-08-24 col
-               tentativo precedente, che mostrava un solo grafico non scrollabile). Un
-               !important esterno batte l'inline anche se è lightweight-charts stessa a
-               impostarlo via JS sul proprio canvas. */
+               arriverebbe mai allo scroll nativo di #grid. Un !important esterno batte
+               l'inline anche se è lightweight-charts stessa a impostarlo via JS. */
             #grid {
                 display: grid !important;
                 grid-template-columns: 1fr !important;
-                grid-auto-rows: 33.333vh !important;
                 overflow-y: auto !important;
                 overflow-x: hidden !important;
                 -webkit-overflow-scrolling: touch;
-                scroll-snap-type: y mandatory;
+                scroll-snap-type: y proximity;
             }
             #grid canvas { touch-action: pan-y !important; }
             #nav-prev, #nav-next { display: none !important; }
@@ -2781,13 +2786,18 @@ function applyView() {
 
     if (IS_PORTRAIT_MOBILE) {
         // 3 grafici per schermata, scroll verticale (non frecce) per passare al gruppo di
-        // 3 successivo — vedi CSS #grid in @media (max-width:639px) per grid-auto-rows
-        // (1/3 di schermo a riga) e touch-action:pan-y sui canvas dei grafici (altrimenti
-        // lightweight-charts cattura il touch e lo scroll non parte, vedi commento lì).
+        // 3 successivo — touch-action:pan-y sui canvas dei grafici (CSS, @media max-width:
+        // 639px) evita che lightweight-charts catturi il touch impedendo lo scroll.
         // Tutti gli slot della pagina sono mostrati (niente più windowing con
         // mobileChartIdx) — lo snap scatta ogni 3 grazie a scroll-snap-align qui sotto.
+        // Altezza riga in px calcolata da _setPortraitRowHeight(), non in vh: le unità vh
+        // (a differenza di dvh usato su body) non seguono la comparsa/scomparsa della
+        // barra indirizzi del browser mobile, quindi 3×33.333vh non combaciava con
+        // l'altezza reale disponibile — le righe non si allineavano allo schermo e lo
+        // scroll-snap "mandatory" restava bloccato risalendo (bug segnalato 2026-08-24).
         grid.style.gridTemplateColumns='1fr';
         grid.classList.toggle('single-chart', visible===1);
+        if (visible!==1) _setPortraitRowHeight();
         slots.forEach((s,i)=>{
             s.cell.style.display=(i<visible)?'flex':'none';
             s.cell.style.scrollSnapAlign=(i%3===0)?'start':'none';
@@ -2806,6 +2816,17 @@ function applyView() {
     document.getElementById('nav-prev').style.display=visible>1?'block':'none';
     document.getElementById('nav-next').style.display=visible>1?'block':'none';
     updateLayoutBtn();
+}
+
+// ── portrait: altezza riga (1/3 di schermo) in px, calcolata dall'altezza REALE
+// di #grid invece che in vh fisse — vedi commento CSS #grid per il perché
+// (barra indirizzi mobile, dvh vs vh). Richiamata da applyView() e da un
+// resize/orientationchange (barra indirizzi che compare/scompare scrollando).
+function _setPortraitRowHeight() {
+    const grid = document.getElementById('grid');
+    if (!grid) return;
+    if (!grid.clientHeight) { requestAnimationFrame(_setPortraitRowHeight); return; }
+    grid.style.gridAutoRows = (grid.clientHeight / 3) + 'px';
 }
 
 // ── portrait: scroll in fondo alla pagina corrente → carica il batch di coin
@@ -4099,6 +4120,13 @@ async function init() {
 }
 
 init();
+
+if (IS_PORTRAIT_MOBILE) {
+    // La barra indirizzi del browser mobile che compare/scompare scrollando cambia
+    // l'altezza reale disponibile senza un resize "vero" in alcuni browser — ricalcolare
+    // comunque su resize (orientationchange fa già un reload completo, vedi sotto).
+    window.addEventListener('resize', () => setTimeout(_setPortraitRowHeight, 200));
+}
 
 if (IS_LANDSCAPE_MOBILE) {
     window.addEventListener('load',   () => setTimeout(forceResizeAllCharts, 500));
