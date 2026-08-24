@@ -3149,6 +3149,39 @@ createApp({
             }));
             if (sym === symbol.value) channelTfColors.value = results;
         };
+
+        // Striscia colori ROC per TF, stesso pattern/frequenza delle due strisce sopra:
+        // verde se l'ultimo valore ROC è sopra lo zero (momentum rialzista), rosso se
+        // sotto. Riusa i colori configurati dall'utente per l'indicatore ROC stesso
+        // (upColor/downColor di getRocCfg()) così resta coerente con eventuali
+        // personalizzazioni fatte nel pannello Indicatori. SEMPRE attiva, indipendente
+        // dal toggle ROC sul grafico, stesso motivo delle altre due strisce.
+        const ROC_TF_LABEL = { above: 'ROC sopra 0 (momentum rialzista)', below: 'ROC sotto 0 (momentum ribassista)' };
+        const rocTfColors = ref({});
+        const rocTfTitle = (tf) => {
+            const r = rocTfColors.value[tf.v];
+            return r ? ROC_TF_LABEL[r.state] : '';
+        };
+        const _updateRocTfStrip = async () => {
+            const cfg = getRocCfg();
+            const length = cfg.length;
+            const need = length + 2;
+            const sym = symbol.value;
+            const results = {};
+            await Promise.all(TF_OPTIONS.map(async (tf) => {
+                try {
+                    const res = await fetch(`api/klines?symbol=${sym}&interval=${tf.v}`);
+                    const data = await res.json();
+                    if (!data.success || !data.data || data.data.length < need) return;
+                    const roc = calcRoc(data.data, length);
+                    if (!roc.length) return;
+                    const last = roc[roc.length - 1].value;
+                    const state = last >= 0 ? 'above' : 'below';
+                    results[tf.v] = { color: state === 'above' ? cfg.upColor : cfg.downColor, state };
+                } catch(e) { /* skip tf */ }
+            }));
+            if (sym === symbol.value) rocTfColors.value = results;
+        };
         let lastConfirmedTime  = 0;
         let obKlineCount = 0;
         let hoverPriceLine = null;
@@ -3472,6 +3505,14 @@ createApp({
                     low:    parseFloat(b.low),  close: parseFloat(b.close),
                     volume: parseFloat(b.volume),
                 };
+                // Il confirm=true della barra appena chiusa può arrivare da Bybit con un
+                // filo di ritardo rispetto al roll lato client (_obRollNewBarIfNeeded, guidato
+                // dal book molto più frequente della kline WS): se nel frattempo _obLiveCandle
+                // è già avanzata alla barra nuova, questo messaggio "vecchio" va scartato —
+                // altrimenti riporta _obLiveCandle indietro e il prossimo roll riapre la barra
+                // nuova da zero, cancellando il movimento reale già accumulato (doji fantasma
+                // seguito dalla barra successiva coi dati veri, bug segnalato 2026-08-24).
+                if (_obLiveCandle && candle.time < _obLiveCandle.time) return;
                 if (_obGrabActive) _obGrabColorCandle(candle);
                 else try { candleS.update(candle); } catch(e) {}
                 // Canale SMA20: prima veniva aggiornato SOLO dal polling REST ogni 3s (sotto),
@@ -4266,6 +4307,7 @@ createApp({
                 _grabTfTick++;
                 if (_grabTfTick % 5 === 1) _updateGrabTfStrip();
                 if (_grabTfTick % 5 === 3) _updateChannelTfStrip();
+                if (_grabTfTick % 5 === 0) _updateRocTfStrip();
             }, 1000);
             // Auth check + trade panel init
             (async () => {
@@ -4300,7 +4342,7 @@ createApp({
         return {
             t,
             symbol, symBase, symQuote, isStandalone,
-            ticker, TF_OPTIONS, chartTF, ohlc, chartContainerEl, grabTfColors, grabTfTitle, channelTfColors, channelTfTitle,
+            ticker, TF_OPTIONS, chartTF, ohlc, chartContainerEl, grabTfColors, grabTfTitle, channelTfColors, channelTfTitle, rocTfColors, rocTfTitle,
             displayLevels, grouping, groupingOptions,
             levelsDdOpen, groupingDdOpen, selectLevels, selectGrouping,
             tfDdOpen, isPortraitMobile,

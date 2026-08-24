@@ -1484,6 +1484,14 @@ function openWS() {
       volume: parseFloat(b.volume) || 0,
     };
     const s = slots[idx];
+    // Il confirm=true della barra appena chiusa può arrivare da Bybit con un filo di
+    // ritardo rispetto al roll lato client (_mtfRollSlotIfNeeded, guidato dal book molto
+    // più frequente della kline WS): se nel frattempo s.klines è già avanzato alla barra
+    // nuova, questo messaggio "vecchio" va scartato — altrimenti push(...) lo accoderebbe
+    // fuori ordine cronologico e il prossimo roll riaprirebbe la barra nuova da zero,
+    // cancellando il movimento reale già accumulato (bug segnalato 2026-08-24, stesso
+    // meccanismo già corretto in trade.js — vedi _obRollNewBarIfNeeded).
+    if (s.klines.length && candleStart + TZ_OFFSET_S < s.klines[s.klines.length - 1].time) return;
     s.lastCandleStartUtc = candleStart;
     s.lastWsMs = Date.now();
     try { s.candleS.update(candle); } catch(e) { console.error('mtf WS update skipped ('+tf+'):', e); }
@@ -2317,6 +2325,10 @@ function connectFSWS() {
         if (!msg.topic || !msg.topic.startsWith('kline.')) return;
         const b = msg.data[0]; const confirmed = b.confirm === true || b.confirm === 'true';
         const candle = { time: Math.floor(parseInt(b.start)/1000) + TZ_OFFSET_S, open: parseFloat(b.open), high: parseFloat(b.high), low: parseFloat(b.low), close: parseFloat(b.close), volume: parseFloat(b.volume) || 0 };
+        // Vedi connectWS() sopra: un confirm=true in ritardo sul roll lato client
+        // (_mtfRollFSIfNeeded) va scartato, altrimenti push() lo accoda fuori ordine e il
+        // prossimo roll riapre la barra nuova da zero (bug segnalato 2026-08-24).
+        if (fsKlines.length && candle.time < fsKlines[fsKlines.length - 1].time) return;
         try { fsCandleS.update(candle); } catch(e) { console.error('mtf FS WS update skipped:', e); }
         fsLastPrice = candle.close; fsLastOpen = candle.open;
         for (const {p} of EMA_CFG) {
