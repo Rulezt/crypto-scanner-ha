@@ -121,27 +121,33 @@
             }
             #ob-modal > div:last-child { flex: 0 0 50% !important; }
 
-            /* Grid mobile portrait: 3 grafici in colonna (come prima) ma NON più schiacciati
-               a esattamente 1/3 di schermo (1fr) — altezza minima leggibile, e se i 3 non
-               ci stanno tutti si scrolla per vederli. Le frecce laterali restano (funzionano
-               sempre, indipendentemente dal tocco) perché uno swipe che parte SUL grafico
-               non arriva mai a #grid: lightweight-charts cattura il touch per pan/zoom
-               candele (probabile touch-action:none sul canvas), quindi lo scroll nativo
-               parte solo se il dito tocca l'header/i bordi della cella, non un'affidabile
-               sostituto delle frecce — bug segnalato 2026-08-24 dopo un primo tentativo che
-               le aveva rimosse (un solo grafico, per giunta non scrollabile). */
+            /* Grid mobile portrait: 3 grafici per schermata, scroll verticale per passare
+               al gruppo di 3 successivo (niente più frecce laterali). grid-auto-rows fa sì
+               che ogni riga sia 1/3 di schermo SENZA bisogno di raggruppare gli slot in
+               wrapper: lo scroll-snap-align:start su un elemento sì e due no (vedi
+               applyView(), i%3===0) fa scattare lo snap ogni 3 grafici invece che ad ognuno.
+               touch-action:pan-y sui canvas dei grafici: lightweight-charts marca
+               verosimilmente il proprio canvas touch-action:none (per gestire da sé
+               pan/pinch) — senza questa regola uno swipe che parte SUL grafico non
+               arriverebbe mai allo scroll nativo di #grid (bug segnalato 2026-08-24 col
+               tentativo precedente, che mostrava un solo grafico non scrollabile). Un
+               !important esterno batte l'inline anche se è lightweight-charts stessa a
+               impostarlo via JS sul proprio canvas. */
             #grid {
-                display: flex !important;
-                flex-direction: column !important;
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                grid-auto-rows: 33.333vh !important;
                 overflow-y: auto !important;
                 overflow-x: hidden !important;
                 -webkit-overflow-scrolling: touch;
+                scroll-snap-type: y mandatory;
             }
-            #grid > div {
-                flex: 0 0 auto !important;
-                height: 46vh !important;
-                min-height: 300px !important;
-            }
+            #grid canvas { touch-action: pan-y !important; }
+            #nav-prev, #nav-next { display: none !important; }
+            /* Layout 1x1 (bottone ⤢ "espandi", o ?layout=1x1&noheader=1): un solo grafico,
+               deve restare a schermo intero e non 1/3 come gli altri layout — vedi
+               applyView() che aggiunge questa classe solo quando visible===1. */
+            #grid.single-chart { grid-auto-rows: 100dvh !important; }
             /* Slot header scrollabile su mobile */
             .slot-hdr {
                 overflow-x: auto !important;
@@ -955,6 +961,7 @@ const IS_PORTRAIT_MOBILE = IS_MOBILE && !IS_LANDSCAPE_MOBILE;
 let mobileChartIdx = 0;
 
 if (IS_PORTRAIT_MOBILE) {
+    _wirePortraitInfiniteScroll();
     // Bottoni MTF e F11 nell'header a schermo intero: non hanno senso in portrait
     // (MTF apre un'altra pagina intera su schermo piccolo, F11 è una funzione desktop).
     // Il separatore "|" fra MTF e F11 resta visibile apposta: senza i due bottoni in
@@ -2773,21 +2780,22 @@ function applyView() {
     }
 
     if (IS_PORTRAIT_MOBILE) {
-        // 3 grafici alla volta come da sempre (mobileChartIdx/frecce, invariato), ma senza
-        // schiacciarli a 1/3 di schermo — vedi CSS #grid in @media (max-width:639px): ogni
-        // cella ha un'altezza minima leggibile (46vh) e se i 3 non ci stanno si scrolla.
-        // Le frecce restano l'unico modo AFFIDABILE di cambiare gruppo di 3: un tocco che
-        // parte sul grafico stesso non fa scrollare #grid (vedi commento CSS).
-        const step=3;
+        // 3 grafici per schermata, scroll verticale (non frecce) per passare al gruppo di
+        // 3 successivo — vedi CSS #grid in @media (max-width:639px) per grid-auto-rows
+        // (1/3 di schermo a riga) e touch-action:pan-y sui canvas dei grafici (altrimenti
+        // lightweight-charts cattura il touch e lo scroll non parte, vedi commento lì).
+        // Tutti gli slot della pagina sono mostrati (niente più windowing con
+        // mobileChartIdx) — lo snap scatta ogni 3 grazie a scroll-snap-align qui sotto.
         grid.style.gridTemplateColumns='1fr';
+        grid.classList.toggle('single-chart', visible===1);
         slots.forEach((s,i)=>{
-            s.cell.style.display=(i>=mobileChartIdx&&i<mobileChartIdx+step&&i<visible)?'flex':'none';
+            s.cell.style.display=(i<visible)?'flex':'none';
+            s.cell.style.scrollSnapAlign=(i%3===0)?'start':'none';
         });
-        const _showNav = visible > 1;
-        document.getElementById('nav-prev').style.display=_showNav?'block':'none';
-        document.getElementById('nav-next').style.display=_showNav?'block':'none';
-        const total=allCoins.length,first=curPage*visible+mobileChartIdx+1;
-        updateMobileNavIndicator(first,Math.min(first+step-1,total),total);
+        document.getElementById('nav-prev').style.display='none';
+        document.getElementById('nav-next').style.display='none';
+        const total=allCoins.length,loadedSoFar=Math.min(curPage*visible+visible,total);
+        updateMobileNavIndicator(curPage*visible+1,loadedSoFar,total);
         if(visible===1){const _ind=document.getElementById('mobile-chart-indicator');if(_ind)_ind.style.display='none';const _hdr=document.getElementById('main-header');if(_hdr)_hdr.style.display='none';document.body.style.height='100dvh';slots.forEach(s=>{if(s.tradeEl)s.tradeEl.style.display='inline-block';});}
         return;
     }
@@ -2798,6 +2806,34 @@ function applyView() {
     document.getElementById('nav-prev').style.display=visible>1?'block':'none';
     document.getElementById('nav-next').style.display=visible>1?'block':'none';
     updateLayoutBtn();
+}
+
+// ── portrait: scroll in fondo alla pagina corrente → carica il batch di coin
+// successivo (sostituisce le frecce, richiesta utente 2026-08-24). Stesso pool di
+// 18 slot riusato dal desktop paging: arrivati in fondo il contenuto viene
+// sostituito con la pagina successiva e lo scroll torna in cima — non è un append
+// visivo senza limite (richiederebbe creare slot/chart oltre i 18 fissi costruiti
+// una volta da buildGrid, fuori scope).
+let _portraitLoadingMore = false;
+function _wirePortraitInfiniteScroll() {
+    const grid = document.getElementById('grid');
+    if (!grid) return;
+    grid.addEventListener('scroll', async () => {
+        if (!IS_PORTRAIT_MOBILE || _portraitLoadingMore) return;
+        const nearBottom = grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 100;
+        if (!nearBottom) return;
+        const vis = (curLayout?.cols ?? 3) * (curLayout?.rows ?? 3);
+        const maxPage = Math.ceil(allCoins.length / vis) - 1;
+        if (curPage >= maxPage) return;
+        _portraitLoadingMore = true;
+        try {
+            curPage++;
+            await loadPage();
+            grid.scrollTop = 0;
+        } finally {
+            _portraitLoadingMore = false;
+        }
+    }, { passive: true });
 }
 
 function updateMobileNavIndicator(from, to, total) {
