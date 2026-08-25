@@ -781,6 +781,21 @@
     </div>
 </div>
 
+<!-- Indicatori: pannello impostazioni generico (porting da chart.html) -->
+<div id="ind-cfg-panel" style="display:none;position:fixed;inset:0;z-index:2010;background:rgba(0,0,0,.55);" onclick="closeIndCfgOutside(event)">
+    <div style="position:absolute;top:56px;left:50%;transform:translateX(-50%);width:300px;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);" onclick="event.stopPropagation()">
+        <div style="padding:11px 14px;border-bottom:1px solid #2A2E39;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+            <span id="ind-cfg-title" style="font-size:13px;font-weight:700;color:#E5E7EB;"></span>
+            <button onclick="closeIndCfgPanel()" style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:6px 14px;" id="ind-cfg-rows"></div>
+        <div style="padding:10px 14px;border-top:1px solid #2A2E39;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
+            <button onclick="resetIndCfg()" style="padding:5px 12px;border-radius:5px;border:1px solid #2A2E39;background:#1E222D;color:#9CA3AF;font-size:12px;cursor:pointer;">Reset</button>
+            <button onclick="saveIndCfgPanel()" style="padding:5px 12px;border-radius:5px;border:none;background:#2563EB;color:#fff;font-size:12px;cursor:pointer;font-weight:600;">Salva</button>
+        </div>
+    </div>
+</div>
+
 <script>
 (function(){
     let _csCache = null, _csTimer = null;

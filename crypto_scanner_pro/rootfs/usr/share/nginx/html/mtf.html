@@ -400,6 +400,7 @@ let channelActive = false;
 let grabActive = false;
 let grabMidlineActive = false; // toggle indipendente per vedere solo la midline GRaB senza attivare tutto l'indicatore
 let obLevelsActive = false;
+let emaCustomActive = false;
 // "Colora candele" — toggle GLOBALE condiviso su tutte le pagine (vedi candle-color.js).
 const _applyCandleStyle = window.applyCandleColorStyle;
 function toggleCandleColorAll() {
@@ -420,6 +421,7 @@ function _restorePersistedIndicators() {
   if (window.getIndActive('grab')) toggleGrab();
   if (window.getIndActive('grabMidline')) toggleGrabMidlineAll();
   if (window.getIndActive('obLevels')) toggleOBLevelsAll();
+  if (window.getIndActive('emaCustom')) toggleEmaCustomAll();
 }
 let _obLevelsTimer = null, _obLevelsBidVal = null, _obLevelsAskVal = null;
 let fsObLevBidLine = null, fsObLevAskLine = null;
@@ -641,6 +643,78 @@ function toggleRoc() {
   const cfg = getRocCfg();
   slots.forEach(s => _applyRocToChart(s.chart, s, cfg));
   if (fsChart) applyFsRoc();
+}
+
+// ── EMA personalizzata (overlay singolo, lunghezza configurabile — porting Pine
+// "Moving Average Exponential", solo il core: lunghezza/colore/stile, niente
+// smoothing/BB secondari, scope confermato con l'utente) ───────────────────────
+const DEFAULT_EMA_CUSTOM_CFG = { length: 9, color: '#00E5FF', width: 1.5, style: 0, tf: '', waitClose: true };
+function getEmaCustomCfg() {
+  try { const s = JSON.parse(localStorage.getItem('chart_ema_custom_cfg')); if (s) return { ...DEFAULT_EMA_CUSTOM_CFG, ...s }; } catch(e) {}
+  return { ...DEFAULT_EMA_CUSTOM_CFG };
+}
+// ── Timeframe di calcolo (porting Pine indicator(timeframe=..., timeframe_gaps=...)):
+// vedi commento gemello in chart.html per il dettaglio — qui SYM è unico per pagina
+// (mtf.html è "una coin, più TF"), non serve un symbol per-slot.
+function _projectMtfEma(hostKlines, auxKlines, auxEma, waitClose) {
+  if (!hostKlines.length || !auxKlines.length || !auxEma.length) return [];
+  const out = [];
+  let ai = 0;
+  for (const hk of hostKlines) {
+    while (ai + 1 < auxKlines.length && auxKlines[ai + 1].time <= hk.time) ai++;
+    const isLastAux = ai === auxKlines.length - 1;
+    const idx = (waitClose && isLastAux) ? ai - 1 : ai;
+    if (idx >= 0 && auxEma[idx]) out.push({ time: hk.time, value: auxEma[idx].value });
+  }
+  return out;
+}
+async function _fetchAuxKlines(tf) {
+  try {
+    const r = await fetch(`api/klines?symbol=${SYM}&interval=${tf}`);
+    const j = await r.json();
+    return (j.success && j.data) ? j.data : [];
+  } catch(e) { return []; }
+}
+function _applyEmaCustomToChart(chart, s, cfg) {
+  if (s.emaCustomSeries) { try { chart.removeSeries(s.emaCustomSeries); } catch(e) {} s.emaCustomSeries = null; }
+  s.lastEmaCustom = null;
+  s._emaCustomMtfSeq = (s._emaCustomMtfSeq || 0) + 1;
+  if (!emaCustomActive || !chart || !s.klines || !s.klines.length) return;
+  const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+  s.emaCustomSeries = addS(chart, 'LineSeries', { ...lb, color: cfg.color, lineWidth: cfg.width, lineStyle: cfg.style ?? 0 });
+  if (!cfg.tf) {
+    const ema = calcEMA(s.klines, cfg.length);
+    s.emaCustomSeries.setData(ema);
+    s.lastEmaCustom = ema[ema.length - 1].value;
+    return;
+  }
+  const mySeq = s._emaCustomMtfSeq;
+  (async () => {
+   try {
+    const auxKlines = await _fetchAuxKlines(cfg.tf);
+    if (s._emaCustomMtfSeq !== mySeq || !s.emaCustomSeries) return;
+    if (!auxKlines.length) { console.warn('EMA personalizzata: nessun dato per TF', cfg.tf); return; }
+    const auxEma = calcEMA(auxKlines, cfg.length);
+    const projected = _projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose);
+    s.emaCustomSeries.setData(projected);
+   } catch(e) { console.error('EMA personalizzata (MTF) errore:', e); }
+  })();
+}
+let _fsEmaCustomMtfTimer = null;
+function _syncFsEmaCustomMtfTimer() {
+  clearInterval(_fsEmaCustomMtfTimer); _fsEmaCustomMtfTimer = null;
+  const cfg = getEmaCustomCfg();
+  if (emaCustomActive && cfg.tf && fsChart) {
+    _fsEmaCustomMtfTimer = setInterval(applyFsEmaCustom, 5000);
+  }
+}
+function toggleEmaCustomAll() {
+  emaCustomActive = !emaCustomActive;
+  window.setIndActive('emaCustom', emaCustomActive);
+  const cfg = getEmaCustomCfg();
+  slots.forEach(s => _applyEmaCustomToChart(s.chart, s, cfg));
+  if (fsChart) applyFsEmaCustom();
+  _syncFsEmaCustomMtfTimer();
 }
 
 // ── SMA Channel indicator (SMA20 close/high/low → canale a 3 linee) ────────────
@@ -890,6 +964,7 @@ const IND_LIST = [
   { label: 'EMA 60',  isOn: () => getEmaCfg().find(e=>e.p===60).enabled,  toggle: () => toggleEmaAll(60),  col: 1 },
   { label: 'EMA 223', isOn: () => getEmaCfg().find(e=>e.p===223).enabled, toggle: () => toggleEmaAll(223), col: 1 },
   { label: 'Midline GRaB', isOn: () => grabMidlineActive, toggle: toggleGrabMidlineAll, col: 1 },
+  { label: 'EMA personalizzata', isOn: () => emaCustomActive, toggle: toggleEmaCustomAll, cfgOpen: () => openIndCfgPanel('emaCustom'), col: 1 },
   { label: 'Canale SMA 20',   isOn: () => channelActive, toggle: toggleChannel, col: 2 },
   { label: 'Bollinger Bands', isOn: () => bbActive,      toggle: toggleBB,      col: 2 },
   { label: 'GRaB',            isOn: () => grabActive,    toggle: toggleGrab,      cfgOpen: openGrabCfgPanel, col: 2 },
@@ -933,6 +1008,77 @@ function renderIndPanel() {
 function openIndPanel() { renderIndPanel(); document.getElementById('ind-panel').style.display = 'block'; }
 function closeIndPanel() { document.getElementById('ind-panel').style.display = 'none'; }
 function closeIndPanelOutside(ev) { if (ev.target.id === 'ind-panel') closeIndPanel(); }
+
+// ── Pannello impostazioni generico per gli indicatori configurabili (porting da
+// chart.html) — qui usato solo da EMA personalizzata, ma riusabile per futuri indicatori.
+const IND_CFG_SCHEMAS = {
+  emaCustom: {
+    title: 'EMA personalizzata', getCfg: getEmaCustomCfg, defaults: DEFAULT_EMA_CUSTOM_CFG,
+    fields: [
+      { key:'length', label:'Lunghezza', type:'number', min:1, max:500, step:1 },
+      { key:'color', label:'Colore', type:'color' },
+      { key:'width', label:'Spessore', type:'number', min:1, max:5, step:0.5 },
+      { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+      { key:'tf', label:'Timeframe', type:'select', raw:true, options:[['','Grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'waitClose', label:'Attendi la chiusura del timeframe', type:'checkbox' },
+    ],
+    apply: cfg => {
+      try { localStorage.setItem('chart_ema_custom_cfg', JSON.stringify(cfg)); } catch(e) {}
+      slots.forEach(s => _applyEmaCustomToChart(s.chart, s, cfg));
+      if (fsChart) applyFsEmaCustom();
+      _syncFsEmaCustomMtfTimer();
+    },
+  },
+};
+let _indCfgKey = null, _indCfgWorking = null;
+function openIndCfgPanel(key) {
+  _indCfgKey = key;
+  const schema = IND_CFG_SCHEMAS[key];
+  _indCfgWorking = schema.getCfg();
+  const titleEl = document.getElementById('ind-cfg-title');
+  if (titleEl) titleEl.textContent = schema.title;
+  renderIndCfgRows(schema);
+  document.getElementById('ind-cfg-panel').style.display = 'block';
+}
+function renderIndCfgRows(schema) {
+  const el = document.getElementById('ind-cfg-rows');
+  if (!el) return;
+  el.innerHTML = schema.fields.map(f => {
+    const val = _indCfgWorking[f.key];
+    let input;
+    if (f.type === 'color') input = `<input type="color" data-cfg-key="${f.key}" value="${val}" style="width:36px;height:22px;border:none;background:none;cursor:pointer;">`;
+    else if (f.type === 'checkbox') input = `<input type="checkbox" data-cfg-key="${f.key}" ${val ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;">`;
+    else if (f.type === 'select') input = `<select data-cfg-key="${f.key}" style="background:#1E222D;color:#E5E7EB;border:1px solid #2A2E39;border-radius:4px;font-size:11px;padding:2px 4px;">${f.options.map(([v,l]) => `<option value="${v}" ${v==val?'selected':''}>${l}</option>`).join('')}</select>`;
+    else input = `<input type="number" data-cfg-key="${f.key}" value="${val}" min="${f.min ?? ''}" max="${f.max ?? ''}" step="${f.step ?? 1}" style="width:64px;background:#1E222D;color:#E5E7EB;border:1px solid #2A2E39;border-radius:4px;font-size:11px;padding:2px 4px;">`;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;">
+      <span style="font-size:11px;color:#9CA3AF;">${f.label}</span>
+      ${input}
+    </div>`;
+  }).join('');
+}
+function closeIndCfgPanel() { document.getElementById('ind-cfg-panel').style.display = 'none'; }
+function closeIndCfgOutside(ev) { if (ev.target.id === 'ind-cfg-panel') closeIndCfgPanel(); }
+function resetIndCfg() {
+  const schema = IND_CFG_SCHEMAS[_indCfgKey];
+  _indCfgWorking = { ...schema.defaults };
+  renderIndCfgRows(schema);
+}
+function saveIndCfgPanel() {
+  const schema = IND_CFG_SCHEMAS[_indCfgKey];
+  const el = document.getElementById('ind-cfg-rows');
+  el.querySelectorAll('[data-cfg-key]').forEach(input => {
+    const key = input.dataset.cfgKey;
+    const field = schema.fields.find(f => f.key === key);
+    let v;
+    if (field.type === 'checkbox') v = input.checked;
+    else if (field.type === 'select') v = field.raw ? input.value : parseInt(input.value, 10);
+    else if (field.type === 'number') v = parseFloat(input.value);
+    else v = input.value;
+    _indCfgWorking[key] = v;
+  });
+  schema.apply(_indCfgWorking);
+  closeIndCfgPanel();
+}
 
 // ── Order Book Levels — overlay bid/ask sul chart principale (portato da chart.html,
 // dove è per-simbolo; qui un solo fetch per SYM basta per tutti gli 8 pannelli TF) ──
@@ -1327,6 +1473,7 @@ const fsBtn = document.createElement('button');
       alertLines: new Map(),
       bbSeries: {upper:null, mid:null, lower:null},
       rocSeries: null, rocZeroLine: null, rocMaxLine: null, rocMinLine: null,
+      emaCustomSeries: null, lastEmaCustom: null,
       channelSeries: {upper:null, mid:null, lower:null}, channelData: null,
       grabWaveS: {high:null, low:null, close:null},
       grabMurreyS: {mid:null, lo:null, hi:null},
@@ -1532,6 +1679,13 @@ function openWS() {
         s.rocSeries.update({time:candle.time, value:100*(candle.close-_rocPrev)/_rocPrev});
       }
     }
+    if (emaCustomActive && s.emaCustomSeries && s.lastEmaCustom != null) {
+      const _ec = getEmaCustomCfg();
+      const k = 2/(_ec.length+1);
+      const live = candle.close * k + s.lastEmaCustom * (1-k);
+      s.emaCustomSeries.update({time:candle.time, value:live});
+      if (confirmed) s.lastEmaCustom = live;
+    }
     if (channelActive && s.channelSeries.upper && s.klines.length >= getChannelCfg().period) {
       const _cper = getChannelCfg().period;
       const csl = s.klines.slice(-_cper);
@@ -1656,70 +1810,105 @@ function _mtfRollSlotIfNeeded(s, midPrice) {
   if (!s.candleS || !klines.length) return false;
   const barSecs = TF_SECONDS[s.cfg.tf];
   if (!barSecs) return false;
-  const last = klines[klines.length - 1];
   const expectedOpen = _expectedBarOpen(s.cfg.tf, barSecs);
-  if (expectedOpen <= last.time) return false;
+  if (expectedOpen <= klines[klines.length - 1].time) return false;
 
-  const prevClose = last.close;
-  for (const { p } of EMA_CFG) {
-    if (s.lastEMA[p] == null) continue;
-    const k = 2 / (p + 1);
-    s.lastEMA[p] = prevClose * k + s.lastEMA[p] * (1 - k);
-  }
-  if (grabActive && s.grabState) {
-    // A differenza di lastEMA (EMA di close), qui usiamo gli high/low REALI dell'ultima
-    // candela chiusa (non prevClose) — s.grabState traccia EMA(high)/EMA(low) separate.
-    const _gk = 2 / (getGrabCfg().emaPeriod + 1);
-    s.grabState.emaHigh  = last.high  * _gk + s.grabState.emaHigh  * (1 - _gk);
-    s.grabState.emaLow   = last.low   * _gk + s.grabState.emaLow   * (1 - _gk);
-    s.grabState.emaClose = prevClose * _gk + s.grabState.emaClose * (1 - _gk);
-  }
+  // Se il book resta silenzioso per più di un boundary (mercato calmo, tab in background),
+  // saltare direttamente a "adesso" lasciava un buco visivo: le barre intermedie mai aperte
+  // semplicemente non esistevano fra l'ultima candela reale e quella corrente (bug
+  // segnalato 2026-08-25, screenshot). Fix: si itera un boundary alla volta, riempiendo
+  // ogni barra mancante con una candela piatta al prezzo di chiusura precedente — solo
+  // l'ultima (quella corrente) riflette davvero midPrice. Il TF mensile ('M') ha boundary
+  // a lunghezza variabile (28-31 giorni): niente iterazione a passo fisso, resta il salto
+  // diretto originale (caso estremo, richiederebbe un tab aperto a cavallo di fine mese).
+  const isMonthly = s.cfg.tf === 'M';
+  const MAX_FILL_BARS = 300;
+  const missingBars = (expectedOpen - klines[klines.length - 1].time) / barSecs;
+  let boundary = isMonthly ? expectedOpen
+    : (missingBars > MAX_FILL_BARS ? expectedOpen - MAX_FILL_BARS * barSecs : klines[klines.length - 1].time + barSecs);
 
-  const newCandle = {
-    time: expectedOpen, open: prevClose,
-    high: Math.max(prevClose, midPrice), low: Math.min(prevClose, midPrice),
-    close: midPrice, volume: 0,
-  };
-  klines.push({ ...newCandle });
-  s.lastPrice = newCandle.close; s.lastOpen = newCandle.open;
-  if (!grabActive) { try { s.candleS.update(newCandle); } catch(e) {} }
-
-  for (const { p } of EMA_CFG) {
-    if (s.lastEMA[p] == null) continue;
-    const k    = 2 / (p + 1);
-    const live = newCandle.close * k + s.lastEMA[p] * (1 - k);
-    try { s.emaS[p].update({ time: newCandle.time, value: live }); } catch(e) {}
-  }
-  if (bbActive && s.bbSeries.upper && klines.length >= getBbCfg().period) {
-    const _bb = getBbCfg();
-    const sl = klines.slice(-_bb.period);
-    const mean = sl.reduce((a,c)=>a+c.close,0)/_bb.period;
-    const std  = Math.sqrt(sl.reduce((a,c)=>a+(c.close-mean)**2,0)/_bb.period);
-    s.bbSeries.upper.update({time:newCandle.time, value:mean+_bb.mult*std});
-    s.bbSeries.mid.update(  {time:newCandle.time, value:mean});
-    s.bbSeries.lower.update({time:newCandle.time, value:mean-_bb.mult*std});
-  }
-  if (rocActive && s.rocSeries && klines.length > getRocCfg().length) {
-    const _roc = getRocCfg();
-    const _rocPrev = klines[klines.length - 1 - _roc.length].close;
-    s.rocSeries.update({time:newCandle.time, value:100*(newCandle.close-_rocPrev)/_rocPrev});
-  }
-  if (channelActive && s.channelSeries.upper && klines.length >= getChannelCfg().period) {
-    const _cper = getChannelCfg().period;
-    const csl = klines.slice(-_cper);
-    let sumC=0, sumH=0, sumL=0;
-    for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
-    const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
-    s.channelSeries.mid.update(  {time:newCandle.time, value:liveC});
-    s.channelSeries.upper.update({time:newCandle.time, value:liveH});
-    s.channelSeries.lower.update({time:newCandle.time, value:liveL});
-    if (s.channelData) {
-      const _cdUpd = (arr, val) => { const last = arr[arr.length-1], pt = {time:newCandle.time, value:val}; if (last && last.time === newCandle.time) arr[arr.length-1] = pt; else arr.push(pt); };
-      _cdUpd(s.channelData.upper, liveH);
-      _cdUpd(s.channelData.lower, liveL);
+  while (true) {
+    const last = klines[klines.length - 1];
+    const isNowBar = isMonthly || boundary >= expectedOpen;
+    const prevClose = last.close;
+    for (const { p } of EMA_CFG) {
+      if (s.lastEMA[p] == null) continue;
+      const k = 2 / (p + 1);
+      s.lastEMA[p] = prevClose * k + s.lastEMA[p] * (1 - k);
     }
+    if (s.lastEmaCustom != null) {
+      const _eck = 2 / (getEmaCustomCfg().length + 1);
+      s.lastEmaCustom = prevClose * _eck + s.lastEmaCustom * (1 - _eck);
+    }
+    if (grabActive && s.grabState) {
+      // A differenza di lastEMA (EMA di close), qui usiamo gli high/low REALI dell'ultima
+      // candela chiusa (non prevClose) — s.grabState traccia EMA(high)/EMA(low) separate.
+      const _gk = 2 / (getGrabCfg().emaPeriod + 1);
+      s.grabState.emaHigh  = last.high  * _gk + s.grabState.emaHigh  * (1 - _gk);
+      s.grabState.emaLow   = last.low   * _gk + s.grabState.emaLow   * (1 - _gk);
+      s.grabState.emaClose = prevClose * _gk + s.grabState.emaClose * (1 - _gk);
+    }
+
+    const newCandle = isNowBar ? {
+      time: expectedOpen, open: prevClose,
+      high: Math.max(prevClose, midPrice), low: Math.min(prevClose, midPrice),
+      close: midPrice, volume: 0,
+    } : {
+      time: boundary, open: prevClose, high: prevClose, low: prevClose, close: prevClose, volume: 0,
+    };
+    klines.push({ ...newCandle });
+    s.lastPrice = newCandle.close; s.lastOpen = newCandle.open;
+    if (!grabActive) { try { s.candleS.update(newCandle); } catch(e) {} }
+
+    for (const { p } of EMA_CFG) {
+      if (s.lastEMA[p] == null) continue;
+      const k    = 2 / (p + 1);
+      const live = newCandle.close * k + s.lastEMA[p] * (1 - k);
+      try { s.emaS[p].update({ time: newCandle.time, value: live }); } catch(e) {}
+    }
+    if (bbActive && s.bbSeries.upper && klines.length >= getBbCfg().period) {
+      const _bb = getBbCfg();
+      const sl = klines.slice(-_bb.period);
+      const mean = sl.reduce((a,c)=>a+c.close,0)/_bb.period;
+      const std  = Math.sqrt(sl.reduce((a,c)=>a+(c.close-mean)**2,0)/_bb.period);
+      s.bbSeries.upper.update({time:newCandle.time, value:mean+_bb.mult*std});
+      s.bbSeries.mid.update(  {time:newCandle.time, value:mean});
+      s.bbSeries.lower.update({time:newCandle.time, value:mean-_bb.mult*std});
+    }
+    if (rocActive && s.rocSeries && klines.length > getRocCfg().length) {
+      const _roc = getRocCfg();
+      const _rocPrev = klines[klines.length - 1 - _roc.length].close;
+      s.rocSeries.update({time:newCandle.time, value:100*(newCandle.close-_rocPrev)/_rocPrev});
+    }
+    if (emaCustomActive && s.emaCustomSeries && s.lastEmaCustom != null) {
+      // Stesso schema di EMA_CFG sopra: lastEmaCustom è già stato "confermato" sul prevClose
+      // (decadimento prima della creazione di newCandle) — qui si calcola solo il valore da
+      // disegnare per la barra corrente (midPrice o, per una filler, lo stesso prevClose),
+      // senza persisterlo: verrà confermato al prossimo roll.
+      const _eck2 = 2 / (getEmaCustomCfg().length + 1);
+      const live2 = newCandle.close * _eck2 + s.lastEmaCustom * (1 - _eck2);
+      try { s.emaCustomSeries.update({ time: newCandle.time, value: live2 }); } catch(e) {}
+    }
+    if (channelActive && s.channelSeries.upper && klines.length >= getChannelCfg().period) {
+      const _cper = getChannelCfg().period;
+      const csl = klines.slice(-_cper);
+      let sumC=0, sumH=0, sumL=0;
+      for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
+      const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
+      s.channelSeries.mid.update(  {time:newCandle.time, value:liveC});
+      s.channelSeries.upper.update({time:newCandle.time, value:liveH});
+      s.channelSeries.lower.update({time:newCandle.time, value:liveL});
+      if (s.channelData) {
+        const _cdUpd = (arr, val) => { const lastP = arr[arr.length-1], pt = {time:newCandle.time, value:val}; if (lastP && lastP.time === newCandle.time) arr[arr.length-1] = pt; else arr.push(pt); };
+        _cdUpd(s.channelData.upper, liveH);
+        _cdUpd(s.channelData.lower, liveL);
+      }
+    }
+    if (grabActive || grabMidlineActive) _grabLiveUpdate(s, newCandle, false, getGrabCfg());
+
+    if (isNowBar) break;
+    boundary += barSecs;
   }
-  if (grabActive || grabMidlineActive) _grabLiveUpdate(s, newCandle, false, getGrabCfg());
   return true;
 }
 
@@ -1760,68 +1949,93 @@ function _mtfRollFSIfNeeded(midPrice) {
   if (!fsCandleS || !fsKlines.length) return false;
   const barSecs = TF_SECONDS[fsTF];
   if (!barSecs) return false;
-  const last = fsKlines[fsKlines.length - 1];
   const expectedOpen = _expectedBarOpen(fsTF, barSecs);
-  if (expectedOpen <= last.time) return false;
+  if (expectedOpen <= fsKlines[fsKlines.length - 1].time) return false;
 
-  const prevClose = last.close;
-  for (const { p } of EMA_CFG) {
-    if (fsLastEMA[p] == null) continue;
-    const k = 2 / (p + 1);
-    fsLastEMA[p] = prevClose * k + fsLastEMA[p] * (1 - k);
-  }
-  if (grabActive && fsGrabState) {
-    const _gk = 2 / (getGrabCfg().emaPeriod + 1);
-    fsGrabState.emaHigh  = last.high  * _gk + fsGrabState.emaHigh  * (1 - _gk);
-    fsGrabState.emaLow   = last.low   * _gk + fsGrabState.emaLow   * (1 - _gk);
-    fsGrabState.emaClose = prevClose * _gk + fsGrabState.emaClose * (1 - _gk);
-  }
+  // Stesso fix di _mtfRollSlotIfNeeded (buco visivo se il book resta silenzioso per più
+  // di un boundary) — vedi commento lì per il dettaglio.
+  const isMonthly = fsTF === 'M';
+  const MAX_FILL_BARS = 300;
+  const missingBars = (expectedOpen - fsKlines[fsKlines.length - 1].time) / barSecs;
+  let boundary = isMonthly ? expectedOpen
+    : (missingBars > MAX_FILL_BARS ? expectedOpen - MAX_FILL_BARS * barSecs : fsKlines[fsKlines.length - 1].time + barSecs);
 
-  const newCandle = {
-    time: expectedOpen, open: prevClose,
-    high: Math.max(prevClose, midPrice), low: Math.min(prevClose, midPrice),
-    close: midPrice, volume: 0,
-  };
-  fsKlines.push({ ...newCandle });
-  fsLastPrice = newCandle.close; fsLastOpen = newCandle.open;
-  if (!grabActive) { try { fsCandleS.update(newCandle); } catch(e) {} }
-
-  for (const { p } of EMA_CFG) {
-    if (fsLastEMA[p] == null) continue;
-    const k    = 2 / (p + 1);
-    const live = newCandle.close * k + fsLastEMA[p] * (1 - k);
-    try { fsEmaS[p].update({ time: newCandle.time, value: live }); } catch(e) {}
-  }
-  if (bbActive && fsBbSeries.upper && fsKlines.length >= getBbCfg().period) {
-    const _bb = getBbCfg();
-    const sl = fsKlines.slice(-_bb.period);
-    const mean = sl.reduce((a,c)=>a+c.close,0)/_bb.period;
-    const std  = Math.sqrt(sl.reduce((a,c)=>a+(c.close-mean)**2,0)/_bb.period);
-    fsBbSeries.upper.update({time:newCandle.time, value:mean+_bb.mult*std});
-    fsBbSeries.mid.update(  {time:newCandle.time, value:mean});
-    fsBbSeries.lower.update({time:newCandle.time, value:mean-_bb.mult*std});
-  }
-  if (rocActive && fsRocSeries && fsKlines.length > getRocCfg().length) {
-    const _roc = getRocCfg();
-    const _rocPrev = fsKlines[fsKlines.length - 1 - _roc.length].close;
-    fsRocSeries.update({time:newCandle.time, value:100*(newCandle.close-_rocPrev)/_rocPrev});
-  }
-  if (channelActive && fsChannelSeries.upper && fsKlines.length >= getChannelCfg().period) {
-    const _cper = getChannelCfg().period;
-    const csl = fsKlines.slice(-_cper);
-    let sumC=0, sumH=0, sumL=0;
-    for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
-    const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
-    fsChannelSeries.mid.update(  {time:newCandle.time, value:liveC});
-    fsChannelSeries.upper.update({time:newCandle.time, value:liveH});
-    fsChannelSeries.lower.update({time:newCandle.time, value:liveL});
-    if (fsChannelData) {
-      const _cdUpd = (arr, val) => { const last = arr[arr.length-1], pt = {time:newCandle.time, value:val}; if (last && last.time === newCandle.time) arr[arr.length-1] = pt; else arr.push(pt); };
-      _cdUpd(fsChannelData.upper, liveH);
-      _cdUpd(fsChannelData.lower, liveL);
+  while (true) {
+    const last = fsKlines[fsKlines.length - 1];
+    const isNowBar = isMonthly || boundary >= expectedOpen;
+    const prevClose = last.close;
+    for (const { p } of EMA_CFG) {
+      if (fsLastEMA[p] == null) continue;
+      const k = 2 / (p + 1);
+      fsLastEMA[p] = prevClose * k + fsLastEMA[p] * (1 - k);
     }
+    if (fsLastEmaCustom != null) {
+      const _eck = 2 / (getEmaCustomCfg().length + 1);
+      fsLastEmaCustom = prevClose * _eck + fsLastEmaCustom * (1 - _eck);
+    }
+    if (grabActive && fsGrabState) {
+      const _gk = 2 / (getGrabCfg().emaPeriod + 1);
+      fsGrabState.emaHigh  = last.high  * _gk + fsGrabState.emaHigh  * (1 - _gk);
+      fsGrabState.emaLow   = last.low   * _gk + fsGrabState.emaLow   * (1 - _gk);
+      fsGrabState.emaClose = prevClose * _gk + fsGrabState.emaClose * (1 - _gk);
+    }
+
+    const newCandle = isNowBar ? {
+      time: expectedOpen, open: prevClose,
+      high: Math.max(prevClose, midPrice), low: Math.min(prevClose, midPrice),
+      close: midPrice, volume: 0,
+    } : {
+      time: boundary, open: prevClose, high: prevClose, low: prevClose, close: prevClose, volume: 0,
+    };
+    fsKlines.push({ ...newCandle });
+    fsLastPrice = newCandle.close; fsLastOpen = newCandle.open;
+    if (!grabActive) { try { fsCandleS.update(newCandle); } catch(e) {} }
+
+    for (const { p } of EMA_CFG) {
+      if (fsLastEMA[p] == null) continue;
+      const k    = 2 / (p + 1);
+      const live = newCandle.close * k + fsLastEMA[p] * (1 - k);
+      try { fsEmaS[p].update({ time: newCandle.time, value: live }); } catch(e) {}
+    }
+    if (bbActive && fsBbSeries.upper && fsKlines.length >= getBbCfg().period) {
+      const _bb = getBbCfg();
+      const sl = fsKlines.slice(-_bb.period);
+      const mean = sl.reduce((a,c)=>a+c.close,0)/_bb.period;
+      const std  = Math.sqrt(sl.reduce((a,c)=>a+(c.close-mean)**2,0)/_bb.period);
+      fsBbSeries.upper.update({time:newCandle.time, value:mean+_bb.mult*std});
+      fsBbSeries.mid.update(  {time:newCandle.time, value:mean});
+      fsBbSeries.lower.update({time:newCandle.time, value:mean-_bb.mult*std});
+    }
+    if (rocActive && fsRocSeries && fsKlines.length > getRocCfg().length) {
+      const _roc = getRocCfg();
+      const _rocPrev = fsKlines[fsKlines.length - 1 - _roc.length].close;
+      fsRocSeries.update({time:newCandle.time, value:100*(newCandle.close-_rocPrev)/_rocPrev});
+    }
+    if (emaCustomActive && fsEmaCustomSeries && fsLastEmaCustom != null) {
+      const _eck2 = 2 / (getEmaCustomCfg().length + 1);
+      const live2 = newCandle.close * _eck2 + fsLastEmaCustom * (1 - _eck2);
+      try { fsEmaCustomSeries.update({ time: newCandle.time, value: live2 }); } catch(e) {}
+    }
+    if (channelActive && fsChannelSeries.upper && fsKlines.length >= getChannelCfg().period) {
+      const _cper = getChannelCfg().period;
+      const csl = fsKlines.slice(-_cper);
+      let sumC=0, sumH=0, sumL=0;
+      for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
+      const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
+      fsChannelSeries.mid.update(  {time:newCandle.time, value:liveC});
+      fsChannelSeries.upper.update({time:newCandle.time, value:liveH});
+      fsChannelSeries.lower.update({time:newCandle.time, value:liveL});
+      if (fsChannelData) {
+        const _cdUpd = (arr, val) => { const lastP = arr[arr.length-1], pt = {time:newCandle.time, value:val}; if (lastP && lastP.time === newCandle.time) arr[arr.length-1] = pt; else arr.push(pt); };
+        _cdUpd(fsChannelData.upper, liveH);
+        _cdUpd(fsChannelData.lower, liveL);
+      }
+    }
+    if (grabActive || grabMidlineActive) _grabLiveUpdate(fsGrabSlot, newCandle, false, getGrabCfg());
+
+    if (isNowBar) break;
+    boundary += barSecs;
   }
-  if (grabActive || grabMidlineActive) _grabLiveUpdate(fsGrabSlot, newCandle, false, getGrabCfg());
   return true;
 }
 
@@ -2040,6 +2254,13 @@ const fsRocSlot = {
   get rocMinLine() { return fsRocMinLine; }, set rocMinLine(v) { fsRocMinLine = v; },
 };
 function applyFsRoc() { _applyRocToChart(fsChart, fsRocSlot, getRocCfg()); }
+let fsEmaCustomSeries = null, fsLastEmaCustom = null;
+const fsEmaCustomSlot = {
+  get klines() { return fsKlines; },
+  get emaCustomSeries() { return fsEmaCustomSeries; }, set emaCustomSeries(v) { fsEmaCustomSeries = v; },
+  get lastEmaCustom() { return fsLastEmaCustom; }, set lastEmaCustom(v) { fsLastEmaCustom = v; },
+};
+function applyFsEmaCustom() { _applyEmaCustomToChart(fsChart, fsEmaCustomSlot, getEmaCustomCfg()); }
 let fsChannelSeries = { upper: null, mid: null, lower: null }, fsChannelData = null;
 let fsGrabWaveS = { high: null, low: null, close: null };
 let fsGrabMurreyS = { mid: null, lo: null, hi: null };
@@ -2126,6 +2347,8 @@ async function switchFSTF(tf) {
         if (fsChannelSeries[k]) { try { fsChart.removeSeries(fsChannelSeries[k]); } catch(e) {} fsChannelSeries[k] = null; }
     }
     if (fsRocSeries) { try { fsRocSeries.setData([]); } catch(e) {} }
+    if (fsEmaCustomSeries) { try { fsChart.removeSeries(fsEmaCustomSeries); } catch(e) {} fsEmaCustomSeries = null; }
+    fsLastEmaCustom = null;
     for (const k of ['high','low','close']) { if (fsGrabWaveS[k]) { try { fsChart.removeSeries(fsGrabWaveS[k]); } catch(e) {} fsGrabWaveS[k] = null; } }
     for (const k of ['mid','lo','hi'])      { if (fsGrabMurreyS[k]) { try { fsChart.removeSeries(fsGrabMurreyS[k]); } catch(e) {} fsGrabMurreyS[k] = null; } }
     fsGrabState = null;
@@ -2293,6 +2516,8 @@ async function loadFSData() {
         applyFsEma();
         applyFsBB();
         applyFsRoc();
+        applyFsEmaCustom();
+        _syncFsEmaCustomMtfTimer();
         applyFsChannel();
         applyFsGrab();
         _applyCandleStyle(fsCandleS);
@@ -2363,6 +2588,13 @@ function connectFSWS() {
                     fsRocSeries.update({time:candle.time, value:100*(candle.close-_rocPrev)/_rocPrev});
                 }
             }
+            if (emaCustomActive && fsEmaCustomSeries && fsLastEmaCustom != null) {
+                const _ec = getEmaCustomCfg();
+                const k = 2/(_ec.length+1);
+                const live = candle.close * k + fsLastEmaCustom * (1-k);
+                fsEmaCustomSeries.update({time:candle.time, value:live});
+                if (confirmed) fsLastEmaCustom = live;
+            }
             if (channelActive && fsChannelSeries.upper && fsKlines.length >= getChannelCfg().period) {
                 const _cper = getChannelCfg().period;
                 const csl = fsKlines.slice(-_cper);
@@ -2422,6 +2654,7 @@ function openFSModal(idx) {
 }
 
 function closeFSModal() {
+    clearInterval(_fsEmaCustomMtfTimer); _fsEmaCustomMtfTimer = null;
     if (fsRangeActive) toggleFsRange();
     if (fsHlineActive) toggleFsHline();
     if (fsTrendActive) toggleFsTrend();
@@ -3542,6 +3775,21 @@ if (isMobile) {
             <button onclick="closeIndPanel()" style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
         </div>
         <div style="overflow-y:auto;flex:1;padding:6px 0;" id="ind-rows"></div>
+    </div>
+</div>
+
+<!-- Indicatori: pannello impostazioni generico (porting da chart.html) -->
+<div id="ind-cfg-panel" style="display:none;position:fixed;inset:0;z-index:2010;background:rgba(0,0,0,.55);" onclick="closeIndCfgOutside(event)">
+    <div style="position:absolute;top:56px;left:50%;transform:translateX(-50%);width:300px;background:#161A1E;border:1px solid #2A2E39;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:calc(100vh - 80px);" onclick="event.stopPropagation()">
+        <div style="padding:11px 14px;border-bottom:1px solid #2A2E39;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+            <span id="ind-cfg-title" style="font-size:13px;font-weight:700;color:#E5E7EB;"></span>
+            <button onclick="closeIndCfgPanel()" style="background:none;border:none;color:#6B7280;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:6px 14px;" id="ind-cfg-rows"></div>
+        <div style="padding:10px 14px;border-top:1px solid #2A2E39;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
+            <button onclick="resetIndCfg()" style="padding:5px 12px;border-radius:5px;border:1px solid #2A2E39;background:#1E222D;color:#9CA3AF;font-size:12px;cursor:pointer;">Reset</button>
+            <button onclick="saveIndCfgPanel()" style="padding:5px 12px;border-radius:5px;border:none;background:#2563EB;color:#fff;font-size:12px;cursor:pointer;font-weight:600;">Salva</button>
+        </div>
     </div>
 </div>
 

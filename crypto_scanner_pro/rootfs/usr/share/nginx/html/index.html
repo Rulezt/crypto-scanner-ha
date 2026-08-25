@@ -110,6 +110,15 @@
         @media (orientation: landscape) and (pointer: coarse) and (max-height: 700px) {
             .preview-icon        { cursor: pointer !important; }
         }
+        @media (max-width: 639px) and (orientation: portrait) {
+            .col-preview     { display: none !important; }
+            .coin-name-cell  { cursor: pointer !important; }
+            #content-gainers table,
+            #content-losers table,
+            #content-stock table,
+            #content-commodity table,
+            #content-ico table { table-layout: fixed; }
+        }
     </style>
 <style>@keyframes mail-pulse{0%,100%{box-shadow:0 0 0 0 rgba(96,165,250,0.7)}50%{box-shadow:0 0 0 6px rgba(96,165,250,0)}}#user-btn-alert{animation:mail-pulse 1.2s ease-in-out infinite!important;border:1px solid #3b82f6!important;color:#60a5fa!important;}</style><style>#tv-attr-logo{display:none!important}</style>
 </head>
@@ -265,6 +274,7 @@
                     <svg id="hm-chevron" class="w-4 h-4 text-gray-400 transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </div>
                 <div id="hm-container" class="p-3 hidden">
+                    <div id="hm-tabs" class="hidden flex border-b border-dark-border text-xs mb-2"></div>
                     <div id="hm-grid" style="position:relative;height:300px;"></div>
                 </div>
             </div>
@@ -325,7 +335,7 @@
                                 <tr>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left cursor-pointer select-none hover:text-gray-300" onclick="sortTable('gainers-tbody','coin')">Coin<span id="sa-gainers-tbody-coin" class="text-gray-700"> ↕</span></th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center" data-i18n="col_preview">Anteprima</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center col-preview" data-i18n="col_preview">Anteprima</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden sm:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('gainers-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-gainers-tbody-price" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('gainers-tbody','change')" data-i18n="col_change_24h">Var. 24h<span id="sa-gainers-tbody-change" class="text-gray-400"> ↓</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('gainers-tbody','volume')" data-i18n="col_volume">Volume<span id="sa-gainers-tbody-volume" class="text-gray-700"> ↕</span></th>
@@ -345,7 +355,7 @@
                                 <tr>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left cursor-pointer select-none hover:text-gray-300" onclick="sortTable('losers-tbody','coin')">Coin<span id="sa-losers-tbody-coin" class="text-gray-700"> ↕</span></th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center" data-i18n="col_preview">Anteprima</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center col-preview" data-i18n="col_preview">Anteprima</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden sm:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('losers-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-losers-tbody-price" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('losers-tbody','change')" data-i18n="col_change_24h">Var. 24h<span id="sa-losers-tbody-change" class="text-gray-400"> ↑</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('losers-tbody','volume')" data-i18n="col_volume">Volume<span id="sa-losers-tbody-volume" class="text-gray-700"> ↕</span></th>
@@ -367,7 +377,7 @@
                                     <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                         <tr>
                                             <th class="px-3 py-2 text-left" data-i18n="col_asset">Strumento</th>
-                                            <th class="px-3 py-2 text-center" data-i18n="col_preview">Anteprima</th>
+                                            <th class="px-3 py-2 text-center col-preview" data-i18n="col_preview">Anteprima</th>
                                             <th class="px-3 py-2 text-right hidden sm:table-cell" data-i18n="col_price">Prezzo</th>
                                             <th class="px-3 py-2 text-right" data-i18n="col_change_24h">Var. 24h</th>
                                             <th class="px-3 py-2 text-right hidden md:table-cell" data-i18n="col_volume">Volume</th>
@@ -385,7 +395,7 @@
                                     <thead class="bg-dark-hover text-xs text-gray-500 uppercase">
                                         <tr>
                                             <th class="px-3 py-2 text-left" data-i18n="col_asset">Strumento</th>
-                                            <th class="px-3 py-2 text-center" data-i18n="col_preview">Anteprima</th>
+                                            <th class="px-3 py-2 text-center col-preview" data-i18n="col_preview">Anteprima</th>
                                             <th class="px-3 py-2 text-right hidden sm:table-cell" data-i18n="col_price">Prezzo</th>
                                             <th class="px-3 py-2 text-right" data-i18n="col_change_24h">Var. 24h</th>
                                             <th class="px-3 py-2 text-right hidden md:table-cell" data-i18n="col_volume">Volume</th>
@@ -407,7 +417,7 @@
                                 <tr>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left cursor-pointer select-none hover:text-gray-300" onclick="sortTable('commodity-tbody','coin')" data-i18n="col_asset">Strumento<span id="sa-commodity-tbody-coin" class="text-gray-700"> ↕</span></th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center" data-i18n="col_preview">Anteprima</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center col-preview" data-i18n="col_preview">Anteprima</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden sm:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('commodity-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-commodity-tbody-price" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('commodity-tbody','change')" data-i18n="col_change_24h">Var. 24h<span id="sa-commodity-tbody-change" class="text-gray-400"> ↓</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('commodity-tbody','volume')" data-i18n="col_volume">Volume<span id="sa-commodity-tbody-volume" class="text-gray-700"> ↕</span></th>
@@ -427,7 +437,7 @@
                                 <tr>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left hidden sm:table-cell">#</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-left cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','coin')">Coin<span id="sa-ico-tbody-coin" class="text-gray-700"> ↕</span></th>
-                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center" data-i18n="col_preview">Anteprima</th>
+                                    <th class="px-3 py-2 sm:px-4 sm:py-3 text-center col-preview" data-i18n="col_preview">Anteprima</th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden sm:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','price')" data-i18n="col_price">Prezzo<span id="sa-ico-tbody-price" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','change')" data-i18n="col_change_24h">Var. 24h<span id="sa-ico-tbody-change" class="text-gray-700"> ↕</span></th>
                                     <th class="px-3 py-2 sm:px-4 sm:py-3 text-right hidden md:table-cell cursor-pointer select-none hover:text-gray-300" onclick="sortTable('ico-tbody','volume')" data-i18n="col_volume">Volume<span id="sa-ico-tbody-volume" class="text-gray-700"> ↕</span></th>
@@ -568,7 +578,7 @@
         function chartUrl(symbol) {
             const isMobile = window.innerWidth < 640 ||
                 window.matchMedia('(orientation: landscape) and (pointer: coarse) and (max-height: 700px)').matches;
-            return (isMobile ? 'chart' : 'mtf') + '?symbol=' + symbol;
+            return isMobile ? `chart?symbol=${symbol}&layout=1x1` : `mtf?symbol=${symbol}`;
         }
 
         let _tipTimer = null;
@@ -610,6 +620,16 @@
 
         // ── Squarified treemap ────────────────────────────────────────────────
         let _hmCoins = [];
+        let _hmActiveCat = 'crypto';
+
+        function _isPortraitMobile() {
+            return window.matchMedia('(max-width: 639px) and (orientation: portrait)').matches;
+        }
+
+        function switchHeatmapTab(cat) {
+            _hmActiveCat = cat;
+            if (_hmCoins.length) renderHeatmap(_hmCoins);
+        }
 
         function _sqWorst(row, side) {
             if (!row.length) return Infinity;
@@ -695,8 +715,7 @@
 
             const commodityCoins = coins.filter(c =>  commSymsAll.has(c.symbol));
             const stockCoins     = coins.filter(c =>  stockSymsAll.has(c.symbol));
-            const icoCoins       = coins.filter(c => !commSymsAll.has(c.symbol) && !stockSymsAll.has(c.symbol) && _icoSyms.has(c.symbol));
-            const cryptoCoins    = coins.filter(c => !commSymsAll.has(c.symbol) && !stockSymsAll.has(c.symbol) && !_icoSyms.has(c.symbol));
+            const cryptoCoins    = coins.filter(c => !commSymsAll.has(c.symbol) && !stockSymsAll.has(c.symbol));
 
             const LABEL_H = 16;
             const SEC_GAP = 3;
@@ -711,24 +730,43 @@
             const totalVol = coins.reduce((s, c) => s + (c.volume_24h || 1), 0);
             const _secW = (scoins, minPct) => Math.round(Math.max(W * minPct, W * scoins.reduce((s,c) => s+(c.volume_24h||1),0) / totalVol));
 
-            let html = '';
             const hasStock = stockCoins.length > 0;
             const hasComm  = commodityCoins.length > 0;
-            const hasIco   = icoCoins.length > 0;
 
-            if (!hasStock && !hasComm && !hasIco) {
-                html = _sectorHtml('Crypto', cryptoCoins, 0, 0, W, H);
+            const tabsEl = document.getElementById('hm-tabs');
+            const categories = [{ key: 'crypto', label: 'Crypto', coins: cryptoCoins }];
+            if (hasStock) categories.push({ key: 'stock',     label: 'Stock',     coins: stockCoins });
+            if (hasComm)  categories.push({ key: 'commodity', label: 'Commodity', coins: commodityCoins });
+
+            let html = '';
+            if (_isPortraitMobile() && categories.length > 1) {
+                if (!categories.some(c => c.key === _hmActiveCat)) _hmActiveCat = categories[0].key;
+                if (tabsEl) {
+                    tabsEl.classList.remove('hidden');
+                    tabsEl.innerHTML = categories.map(c => {
+                        const active = c.key === _hmActiveCat;
+                        const cls = active
+                            ? 'flex-1 py-1.5 font-medium text-blue-400 border-b-2 border-blue-400'
+                            : 'flex-1 py-1.5 font-medium text-gray-400 hover:text-gray-300';
+                        return `<button onclick="switchHeatmapTab('${c.key}')" class="${cls}">${c.label}</button>`;
+                    }).join('');
+                }
+                const activeCoins = categories.find(c => c.key === _hmActiveCat).coins;
+                html = _renderCells(activeCoins, 0, 0, W, H);
             } else {
-                const stockW = hasStock ? _secW(stockCoins,      0.12) : 0;
-                const commW  = hasComm  ? _secW(commodityCoins,  0.08) : 0;
-                const icoW   = hasIco   ? _secW(icoCoins,        0.08) : 0;
-                const gaps   = [hasStock, hasComm, hasIco].filter(Boolean).length * SEC_GAP;
-                const cryptoW = W - stockW - commW - icoW - gaps;
-                let curX = 0;
-                html  = _sectorHtml('Crypto',    cryptoCoins,   curX, 0, cryptoW, H); curX += cryptoW;
-                if (hasStock) { curX += SEC_GAP; html += _sectorHtml('Stock',     stockCoins,    curX, 0, stockW, H); curX += stockW; }
-                if (hasComm)  { curX += SEC_GAP; html += _sectorHtml('Commodity', commodityCoins,curX, 0, commW,  H); curX += commW;  }
-                if (hasIco)   { curX += SEC_GAP; html += _sectorHtml('ICO',       icoCoins,      curX, 0, icoW,   H); }
+                if (tabsEl) { tabsEl.classList.add('hidden'); tabsEl.innerHTML = ''; }
+                if (categories.length === 1) {
+                    html = _sectorHtml('Crypto', cryptoCoins, 0, 0, W, H);
+                } else {
+                    const stockW = hasStock ? _secW(stockCoins,      0.12) : 0;
+                    const commW  = hasComm  ? _secW(commodityCoins,  0.08) : 0;
+                    const gaps   = [hasStock, hasComm].filter(Boolean).length * SEC_GAP;
+                    const cryptoW = W - stockW - commW - gaps;
+                    let curX = 0;
+                    html  = _sectorHtml('Crypto',    cryptoCoins,   curX, 0, cryptoW, H); curX += cryptoW;
+                    if (hasStock) { curX += SEC_GAP; html += _sectorHtml('Stock',     stockCoins,    curX, 0, stockW, H); curX += stockW; }
+                    if (hasComm)  { curX += SEC_GAP; html += _sectorHtml('Commodity', commodityCoins,curX, 0, commW,  H); curX += commW;  }
+                }
             }
             grid.innerHTML = html;
         }
@@ -747,10 +785,7 @@
                 const data = await res.json();
                 if (data && data.data) {
                     const sorted = [...data.data].sort((a,b) => (b.volume_24h||0) - (a.volume_24h||0));
-                    const top    = sorted.slice(0, 120);
-                    const topSet = new Set(top.map(c => c.symbol));
-                    const icoExtra = sorted.filter(c => _icoSyms.has(c.symbol) && !topSet.has(c.symbol));
-                    renderHeatmap([...top, ...icoExtra]);
+                    renderHeatmap(sorted.slice(0, 120));
                 }
             } catch(e) {
                 console.error('Heatmap load error:', e);
@@ -1135,8 +1170,8 @@
                 return `
                     <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-gray-500 hidden sm:table-cell">${index + 1}</td>
-                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium">${coin.symbol.replace('USDT', '')}</td>
-                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-center">
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium coin-name-cell" onclick="nameTapPreview('${coin.symbol}',this,event)">${coin.symbol.replace('USDT', '')}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-center col-preview">
                             <span class="preview-icon" onclick="toggleInlinePreview('${coin.symbol}',this,event)" style="cursor:default;display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
                         </td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-300 text-sm hidden sm:table-cell">$${formatPrice(coin.price)}</td>
@@ -1174,8 +1209,8 @@
                 return `
                     <tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-gray-500 hidden sm:table-cell">${index + 1}</td>
-                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium">${coin.name || coin.symbol.replace('USDT', '')}</td>
-                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-center">
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 font-medium coin-name-cell" onclick="nameTapPreview('${coin.symbol}',this,event)">${coin.name || coin.symbol.replace('USDT', '')}</td>
+                        <td class="px-3 py-2 sm:px-4 sm:py-3 text-center col-preview">
                             <span class="preview-icon" onclick="toggleInlinePreview('${coin.symbol}',this,event)" style="cursor:default;display:inline-flex;color:#6b7280;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
                         </td>
                         <td class="px-3 py-2 sm:px-4 sm:py-3 text-right text-gray-300 text-sm hidden sm:table-cell">$${formatPrice(coin.price)}</td>
@@ -1203,8 +1238,8 @@
                 const volColor = coin.volume_24h >= 10e6 ? 'text-emerald-400' : coin.volume_24h >= 5e6 ? 'text-orange-400' : 'text-red-400';
                 const previewIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>`;
                 return `<tr class="border-b border-dark-border hover:bg-dark-hover transition-colors">
-                    <td class="px-3 py-2 font-medium">${coin.name || coin.symbol.replace('USDT','')}</td>
-                    <td class="px-3 py-2 text-center"><span class="preview-icon" onclick="toggleInlinePreview('${coin.symbol}',this,event)" style="cursor:default;display:inline-flex;color:#6b7280;">${previewIcon}</span></td>
+                    <td class="px-3 py-2 font-medium coin-name-cell" onclick="nameTapPreview('${coin.symbol}',this,event)">${coin.name || coin.symbol.replace('USDT','')}</td>
+                    <td class="px-3 py-2 text-center col-preview"><span class="preview-icon" onclick="toggleInlinePreview('${coin.symbol}',this,event)" style="cursor:default;display:inline-flex;color:#6b7280;">${previewIcon}</span></td>
                     <td class="px-3 py-2 text-right text-gray-300 text-sm hidden sm:table-cell">$${formatPrice(coin.price)}</td>
                     <td class="px-3 py-2 text-right"><span class="${cls} px-1.5 py-0.5 rounded text-xs font-medium">${isPos?'+':''}${coin.change_24h.toFixed(2)}%</span></td>
                     <td class="px-3 py-2 text-right ${volColor} text-sm hidden md:table-cell">$${formatVolume(coin.volume_24h)}</td>
@@ -1255,7 +1290,9 @@
                 ]);
                 const ji = { result: { list: instruments } };
                 const jt = await rt.json();
-                _stockSyms = new Set(ji.result.list.filter(x => x.symbolType === 'stock').map(x => x.symbol));
+                // Bybit classifica QQQUSDT/SPYUSDT come symbolType "ETF" (categoria distinta
+                // da "stock") ma in questa app vanno comunque sotto "Stock", vedi INSTRUMENT_NAMES.
+                _stockSyms = new Set(ji.result.list.filter(x => x.symbolType === 'stock' || x.symbolType === 'ETF').map(x => x.symbol));
                 _commSyms  = new Set(ji.result.list.filter(x => x.symbolType === 'commodity').map(x => x.symbol));
                 jt.result.list.forEach(x => { if (x.lastPrice) _coinChangeMap[x.symbol] = parseFloat(x.price24hPcnt) * 100; });
                 const stockSyms = _stockSyms;
@@ -1619,6 +1656,11 @@
           _inlinePreviewRow = null; _inlinePreviewSeries = null; _inlinePreviewEmaS = null; _inlinePreviewSymbol = null;
         }
 
+        function nameTapPreview(symbol, nameEl, evt) {
+          if (!window.matchMedia('(max-width: 639px) and (orientation: portrait)').matches) return;
+          toggleInlinePreview(symbol, nameEl, evt);
+        }
+
         async function toggleInlinePreview(symbol, iconEl, evt) {
           if (evt) evt.stopPropagation();
           const row = iconEl.closest('tr');
@@ -1626,7 +1668,7 @@
           const wasOpenForThisRow = row.nextElementSibling === _inlinePreviewRow;
           closeInlinePreview();
           if (wasOpenForThisRow) return;
-          const colspan = row.children.length;
+          const colspan = Array.from(row.children).filter(td => getComputedStyle(td).display !== 'none').length;
           const tr = document.createElement('tr');
           const tfBtns = _INLINE_TF_LIST.map(([tf, lbl]) =>
             `<button data-inline-tf="${tf}" onclick="switchInlineTF('${symbol}','${tf}')" class="px-2 rounded text-xs font-medium transition-colors ${tf==='D'?'btn-tf-active':'btn-tf-idle'}" style="display:flex;flex-direction:column;align-items:center;padding:2px 8px;gap:1px;"><span style="line-height:1.3;">${lbl}</span></button>`

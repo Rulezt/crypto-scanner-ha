@@ -727,6 +727,14 @@
     const ICON_HLINE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="15" height="15" fill="currentColor" style="flex-shrink:0"><rect x="2" y="13" width="7" height="2" rx="1"/><circle cx="13" cy="14" r="3"/><rect x="19" y="13" width="7" height="2" rx="1"/></svg>';
     const ICON_RANGE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="15" height="15" style="flex-shrink:0"><g fill="currentColor"><path fill-rule="nonzero" d="M4 5h16.5v-1h-16.5zM25 24h-16.5v1h16.5z"></path><path fill-rule="nonzero" d="M6.5 26c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5s1.119-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5zM22.5 6c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm0 1c-1.381 0-2.5-1.119-2.5-2.5z"></path><path fill-rule="nonzero" d="M14 9v14h1v-14z"></path><path d="M14.5 6l2.5 3h-5z"></path></g></svg>';
     const ICON_CLEAR = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" style="flex-shrink:0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>';
+    const ICON_CLOSE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" style="flex-shrink:0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+    // Su touch, il tap "fuori dal menu" per chiuderlo spesso cade sul canvas del grafico:
+    // lightweight-charts fa preventDefault sul proprio touchstart (per pan/zoom), il che
+    // sopprime il click sintetico che il browser genererebbe normalmente dopo il touch —
+    // lo stesso motivo per cui il lockOverlay di chart.html serviva. Risultato: il listener
+    // `document click → closeToolMenu` spesso non scatta mai su mobile. Voce "Chiudi"
+    // esplicita nel menu, visibile solo su touch, come via di uscita affidabile.
+    const IS_TOUCH_DT = window.matchMedia('(pointer: coarse)').matches;
 
     // opts: { isAnyToolActive(): bool, onTrend, onHline, onRange, onClear?, hasDrawings()?: bool,
     //         labels?: {trend,hline,range,clear} }
@@ -738,12 +746,18 @@
             e.preventDefault();
             const tt = (k, fb) => (window.t ? window.t(k) : '') || fb;
             const showClear = opts.onClear && (!opts.hasDrawings || opts.hasDrawings());
-            showToolMenu(e.clientX, e.clientY, [
+            const items = [
                 { label: (opts.labels && opts.labels.trend) || tt('trend_tool', 'Trendline'), icon: ICON_TREND, onClick: opts.onTrend },
                 { label: (opts.labels && opts.labels.hline) || tt('hline_tool', 'Linea orizzontale'), icon: ICON_HLINE, onClick: opts.onHline },
                 { label: (opts.labels && opts.labels.range) || tt('price_range', 'Range prezzo'), icon: ICON_RANGE, onClick: opts.onRange },
                 { label: (opts.labels && opts.labels.clear) || tt('clear_drawings', 'Cancella disegni'), icon: ICON_CLEAR, onClick: showClear ? opts.onClear : null },
-            ]);
+            ];
+            if (IS_TOUCH_DT) {
+                items.push({ label: (opts.labels && opts.labels.close) || tt('sheet_close', 'Chiudi'), icon: ICON_CLOSE, onClick: () => {
+                    try { document.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })); } catch (e) {}
+                } });
+            }
+            showToolMenu(e.clientX, e.clientY, items);
         }, true);
         // Equivalente touch del tasto destro: pressione prolungata su un punto vuoto del
         // grafico (nessun tool attivo) apre lo stesso menu. Non si arma se un tool è già

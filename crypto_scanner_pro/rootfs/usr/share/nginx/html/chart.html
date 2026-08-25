@@ -941,6 +941,7 @@ let _fsBbSeries = { upper: null, mid: null, lower: null };
 let _fsChannelSeries = { upper: null, mid: null, lower: null }, _fsChannelData = null;
 let _fsGrabWaveS = { high: null, low: null, close: null }, _fsGrabMurreyS = { mid: null, lo: null, hi: null }, _fsGrabState = null;
 let _fsRocSeries = null, _fsRocZeroLine = null, _fsRocMaxLine = null, _fsRocMinLine = null;
+let _fsEmaCustomSeries = null, _fsLastEmaCustom = null;
 const _fsIndSlot = {
     get chart() { return fsChart; },
     get candleS() { return fsCandleS; },
@@ -956,11 +957,17 @@ const _fsIndSlot = {
     get rocZeroLine() { return _fsRocZeroLine; }, set rocZeroLine(v) { _fsRocZeroLine = v; },
     get rocMaxLine() { return _fsRocMaxLine; }, set rocMaxLine(v) { _fsRocMaxLine = v; },
     get rocMinLine() { return _fsRocMinLine; }, set rocMinLine(v) { _fsRocMinLine = v; },
+    get emaCustomSeries() { return _fsEmaCustomSeries; }, set emaCustomSeries(v) { _fsEmaCustomSeries = v; },
+    get lastEmaCustom() { return _fsLastEmaCustom; }, set lastEmaCustom(v) { _fsLastEmaCustom = v; },
 };
 
 const IS_LANDSCAPE_MOBILE = window.matchMedia('(orientation: landscape) and (pointer: coarse) and (max-height: 700px)').matches;
 const IS_MOBILE = window.innerWidth < 640 || IS_LANDSCAPE_MOBILE;
 const IS_PORTRAIT_MOBILE = IS_MOBILE && !IS_LANDSCAPE_MOBILE;
+// letto qui (prima di buildGrid/applyView) perché il lockOverlay va creato già
+// sbloccato quando c'è un solo grafico a schermo — niente feed da scrollare,
+// il doppio tap per sbloccare non ha motivo di esistere in questo layout.
+const IS_SINGLE_CHART_URL = new URLSearchParams(location.search).get('layout') === '1x1';
 let mobileChartIdx = 0;
 
 if (IS_PORTRAIT_MOBILE) {
@@ -1419,6 +1426,91 @@ function toggleRocAll() {
     if (fsChart) applyRocToSlot(_fsIndSlot, cfg);
 }
 
+// ── EMA personalizzata (overlay singolo, lunghezza configurabile — porting Pine
+// "Moving Average Exponential", solo il core: lunghezza/colore/stile, niente
+// smoothing/BB secondari, scope confermato con l'utente) ───────────────────────
+const DEFAULT_EMA_CUSTOM_CFG = { length: 9, color: '#00E5FF', width: 1.5, style: 0, tf: '', waitClose: true };
+function getEmaCustomCfg() {
+    try { const s = JSON.parse(localStorage.getItem('chart_ema_custom_cfg')); if (s) return { ...DEFAULT_EMA_CUSTOM_CFG, ...s }; } catch(e) {}
+    return { ...DEFAULT_EMA_CUSTOM_CFG };
+}
+// ── Timeframe di calcolo (porting Pine indicator(timeframe=..., timeframe_gaps=...)):
+// quando cfg.tf è un TF diverso da quello del grafico, l'EMA va calcolata su una serie
+// dati SEPARATA di quel TF e "proiettata" sulle candele del grafico corrente (ogni
+// candela del grafico prende il valore dell'ultima barra HTF chiusa che la contiene —
+// esattamente come una security() Pine su timeframe superiore vista su un grafico più
+// fine). L'ultimo elemento restituito da /api/klines è sempre la barra IN FORMAZIONE
+// (mai chiusa): con "Attendi la chiusura del timeframe" attivo si ignora e si usa il
+// valore della barra precedente finché quella corrente non chiude (comportamento
+// non-repaint); disattivato, si usa anche il valore ancora provvisorio (repaint).
+function _projectMtfEma(hostKlines, auxKlines, auxEma, waitClose) {
+    if (!hostKlines.length || !auxKlines.length || !auxEma.length) return [];
+    const out = [];
+    let ai = 0;
+    for (const hk of hostKlines) {
+        while (ai + 1 < auxKlines.length && auxKlines[ai + 1].time <= hk.time) ai++;
+        const isLastAux = ai === auxKlines.length - 1;
+        const idx = (waitClose && isLastAux) ? ai - 1 : ai;
+        if (idx >= 0 && auxEma[idx]) out.push({ time: hk.time, value: auxEma[idx].value });
+    }
+    return out;
+}
+async function _fetchAuxKlines(symbol, tf) {
+    try {
+        const r = await fetch(`api/klines?symbol=${symbol}&interval=${tf}`);
+        const j = await r.json();
+        return (j.success && j.data) ? j.data : [];
+    } catch(e) { return []; }
+}
+function applyEmaCustomToSlot(s, cfg) {
+    if (s.emaCustomSeries) { try { s.chart.removeSeries(s.emaCustomSeries); } catch(e) {} s.emaCustomSeries = null; }
+    s.lastEmaCustom = null;
+    s._emaCustomMtfSeq = (s._emaCustomMtfSeq || 0) + 1;
+    if (!emaCustomActive || (hideIndMiniActive && slots.includes(s)) || !s.klines || !s.klines.length) return;
+    const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+    s.emaCustomSeries = addSeries(s.chart, 'LineSeries', { ...lb, color: cfg.color, lineWidth: cfg.width, lineStyle: cfg.style ?? 0 });
+    if (!cfg.tf) {
+        // Grafico (default): calcolo diretto sulle candele host, con update live tick-by-tick
+        // (vedi lastEmaCustom nei blocchi WS/roll) — nessun fetch aggiuntivo.
+        const ema = calcEMA(s.klines, cfg.length);
+        s.emaCustomSeries.setData(ema);
+        s.lastEmaCustom = ema[ema.length - 1].value;
+        return;
+    }
+    // Multi-timeframe: lastEmaCustom resta null (i blocchi di update live tick-by-tick lo
+    // saltano automaticamente) — l'aggiornamento in tempo reale, dove previsto, passa dal
+    // timer di polling (_syncFsEmaCustomMtfTimer), non da qui.
+    const mySeq = s._emaCustomMtfSeq;
+    const symbol = s.symbol;
+    if (!symbol) return;
+    (async () => {
+        try {
+            const auxKlines = await _fetchAuxKlines(symbol, cfg.tf);
+            if (s._emaCustomMtfSeq !== mySeq || !s.emaCustomSeries) return; // superato (TF/coin cambiati nel frattempo)
+            if (!auxKlines.length) { console.warn('EMA personalizzata: nessun dato per TF', cfg.tf, symbol); return; }
+            const auxEma = calcEMA(auxKlines, cfg.length);
+            const projected = _projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose);
+            s.emaCustomSeries.setData(projected);
+        } catch(e) { console.error('EMA personalizzata (MTF) errore:', e); }
+    })();
+}
+let _fsEmaCustomMtfTimer = null;
+function _syncFsEmaCustomMtfTimer() {
+    clearInterval(_fsEmaCustomMtfTimer); _fsEmaCustomMtfTimer = null;
+    const cfg = getEmaCustomCfg();
+    if (emaCustomActive && cfg.tf && fsChart) {
+        _fsEmaCustomMtfTimer = setInterval(() => applyEmaCustomToSlot(_fsIndSlot, getEmaCustomCfg()), 5000);
+    }
+}
+function toggleEmaCustomAll() {
+    emaCustomActive = !emaCustomActive;
+    window.setIndActive('emaCustom', emaCustomActive);
+    const cfg = getEmaCustomCfg();
+    slots.forEach(s => applyEmaCustomToSlot(s, cfg));
+    if (fsChart) applyEmaCustomToSlot(_fsIndSlot, cfg);
+    _syncFsEmaCustomMtfTimer();
+}
+
 // ── SMA Channel indicator (SMA20 close/high/low → canale a 3 linee) ────────────
 const DEFAULT_CHANNEL_CFG = { period: 20, color: '#ffffff', width: 1, style: 0, bgColor: '#ffffff', bgOpacity: 10 };
 function getChannelCfg() {
@@ -1432,6 +1524,7 @@ let CHANNEL_CFG = getChannelCfg();
 let channelActive = window.getIndActive('channel'), obLevelsActive = window.getIndActive('obLevels');
 let bbActive = window.getIndActive('bb');
 let rocActive = window.getIndActive('roc');
+let emaCustomActive = window.getIndActive('emaCustom');
 let grabActive = false; // valorizzata più sotto, dopo il rispettivo const _DEFAULT_GRAB_CFG
 let grabMidlineActive = false; // toggle indipendente per vedere solo la midline GRaB senza attivare tutto l'indicatore
 // Nasconde TUTTI gli indicatori/livelli SOLO nei mini-chart della griglia (mai nel
@@ -1456,6 +1549,7 @@ function toggleHideIndMiniAll() {
     hideIndMiniActive = !hideIndMiniActive;
     window.setIndActive('hideIndMini', hideIndMiniActive);
     slots.forEach(applyEmaToSlot);
+    slots.forEach(s => applyEmaCustomToSlot(s, getEmaCustomCfg()));
     slots.forEach(s => applyBBToSlot(s, getBbCfg()));
     slots.forEach(s => applyRocToSlot(s, getRocCfg()));
     slots.forEach(applyChannelToSlot);
@@ -1724,6 +1818,7 @@ const IND_LIST = [
     { label: 'EMA 60',  isOn: () => getEmaCfg().find(e => e.p === 60).enabled,  toggle: () => toggleEmaAll(60),  cfgKey: 'ema60',  col: 1 },
     { label: 'EMA 223', isOn: () => getEmaCfg().find(e => e.p === 223).enabled, toggle: () => toggleEmaAll(223), cfgKey: 'ema223', col: 1 },
     { label: 'Midline GRaB', isOn: () => grabMidlineActive, toggle: toggleGrabMidlineAll, col: 1 },
+    { label: 'EMA personalizzata', isOn: () => emaCustomActive, toggle: toggleEmaCustomAll, cfgKey: 'emaCustom', col: 1 },
     { label: 'Canale SMA 20',        isOn: () => channelActive,               toggle: toggleChannelAll,      cfgKey: 'channel', col: 2 },
     { label: 'Bollinger Bands',      isOn: () => bbActive,                    toggle: toggleBBAll,           cfgKey: 'bb',      col: 2 },
     { label: 'Order Book Levels',    isOn: () => obLevelsActive,              toggle: toggleOBAll,            cfgKey: 'obLevels', col: 2 },
@@ -1933,6 +2028,23 @@ const IND_CFG_SCHEMAS = {
     ema10:  _emaCfgSchema(10),
     ema60:  _emaCfgSchema(60),
     ema223: _emaCfgSchema(223),
+    emaCustom: {
+        title: 'EMA personalizzata', getCfg: getEmaCustomCfg, defaults: DEFAULT_EMA_CUSTOM_CFG,
+        fields: [
+            { key:'length', label:'Lunghezza', type:'number', min:1, max:500, step:1 },
+            { key:'color', label:'Colore', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:0.5 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+            { key:'tf', label:'Timeframe', type:'select', raw:true, options:[['','Grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'waitClose', label:'Attendi la chiusura del timeframe', type:'checkbox' },
+        ],
+        apply: cfg => {
+            try { localStorage.setItem('chart_ema_custom_cfg', JSON.stringify(cfg)); } catch(e) {}
+            slots.forEach(s => applyEmaCustomToSlot(s, cfg));
+            if (fsChart) applyEmaCustomToSlot(_fsIndSlot, cfg);
+            _syncFsEmaCustomMtfTimer();
+        },
+    },
 };
 let _indCfgKey = null, _indCfgWorking = null;
 function openIndCfgPanel(key) {
@@ -2639,7 +2751,7 @@ const mtfEl = document.createElement('button');
         // temporaneamente (richiesta esplicita dell'utente) — si riblocca da solo dopo
         // qualche secondo di inattività sul grafico, vedi _wireChartLockOverlay().
         const lockOverlay = document.createElement('div');
-        lockOverlay.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:8;pointer-events:' + (IS_PORTRAIT_MOBILE ? 'auto' : 'none') + ';';
+        lockOverlay.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:8;pointer-events:' + ((IS_PORTRAIT_MOBILE && !IS_SINGLE_CHART_URL) ? 'auto' : 'none') + ';';
         body.appendChild(lockOverlay);
 
         const alertBtn = document.createElement('div');
@@ -2698,6 +2810,7 @@ const mtfEl = document.createElement('button');
             cell, hdr, chart, candleS, emaSeries, chartEl, lockOverlay, rangeCanvas, rangeBtn, hlineCanvas, hlineBtn, trendCanvas, trendBtn, clearDrawBtn,
             klineCount: 0,
             lastEMA: {5:null, 10:null, 60:null, 223:null},
+            emaCustomSeries: null, lastEmaCustom: null,
             starEl, lockEl, sep4, titleEl, changeEl, volEl, candlePctEl, tfEl, tfBtnsEl, alertBtn, tradeEl,
             symbol: null, coin: null, curTF, lastPrice: null, lastOpen: null, crosshairPrice: null,
             alertLines: new Map(),
@@ -2841,6 +2954,10 @@ function applyView() {
 // — richiesta utente 2026-08-24, era "una lock" con sblocco a doppio tap).
 const CHART_RELOCK_MS = 3000;
 function _wireChartLockOverlay(s) {
+    // Un solo grafico a schermo (layout=1x1): niente feed da proteggere con lo
+    // scroll, il lockOverlay resta permanentemente sbloccato (pointer-events:none
+    // impostato in buildGrid) e qui non c'è nulla da agganciare.
+    if (IS_SINGLE_CHART_URL) return;
     let lastTapTime = 0;
     let relockTimer = null;
     const isUnlocked = () => s.lockOverlay.style.pointerEvents === 'none';
@@ -2995,6 +3112,8 @@ async function switchSlotTF(idx, tf) {
     s.candleS.setData([]);
     for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
     s.lastEMA = {5:null, 10:null, 60:null, 223:null};
+    if (s.emaCustomSeries) { try { s.chart.removeSeries(s.emaCustomSeries); } catch(e) {} s.emaCustomSeries = null; }
+    s.lastEmaCustom = null;
     await loadSlotData(idx);
     if (ws && ws.readyState === WebSocket.OPEN)
         ws.send(JSON.stringify({ op:'subscribe', args:[`kline.${tf}.${s.symbol}`] }));
@@ -3059,6 +3178,8 @@ async function loadPage() {
         s.candleS.setData([]);
         for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
         s.lastEMA = {5:null, 10:null, 60:null, 223:null};
+        if (s.emaCustomSeries) { try { s.chart.removeSeries(s.emaCustomSeries); } catch(e) {} s.emaCustomSeries = null; }
+        s.lastEmaCustom = null;
     }
 
     if (!isEmpty) {
@@ -3167,6 +3288,7 @@ async function loadSlotData(idx) {
         s.dayPrimitive = attachDayLines(s.candleS, s.chart, klines, s.curTF, s.dayPrimitive);
         s.candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
         applyEmaToSlot(s);
+        applyEmaCustomToSlot(s, getEmaCustomCfg());
         const _sn = TF_DEFAULT_N[s.curTF] || 80;
         const _sr = () => s.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, s.klineCount - _sn), to: s.klineCount + 3 });
         _sr(); requestAnimationFrame(_sr);
@@ -3298,6 +3420,7 @@ async function openFullscreen(idx) {
 }
 
 function closeFullscreen() {
+    clearInterval(_fsEmaCustomMtfTimer); _fsEmaCustomMtfTimer = null;
     if (fsRangeActive) toggleFsRange();
     if (fsHlineActive) toggleFsHline();
     if (fsTrendActive) toggleFsTrend();
@@ -3446,6 +3569,8 @@ async function loadFsData() {
         applyRocToSlot(_fsIndSlot, getRocCfg());
         applyChannelToSlot(_fsIndSlot);
         applyGrabToSlot(_fsIndSlot, getGrabCfg());
+        applyEmaCustomToSlot(_fsIndSlot, getEmaCustomCfg());
+        _syncFsEmaCustomMtfTimer();
         fsKlineCount = klines.length;
         const _fn = TF_DEFAULT_N[fsTF] || 80;
         const _fr = () => fsChart.timeScale().setVisibleLogicalRange({ from: Math.max(0, fsKlineCount - _fn), to: fsKlineCount + 3 });
@@ -3532,6 +3657,13 @@ function connectFsWS() {
             if (rocActive && _fsRocSeries && fsKlines.length > _fsRoc.length) {
                 const _fsRocPrev = fsKlines[fsKlines.length - 1 - _fsRoc.length].close;
                 _fsRocSeries.update({ time: candle.time, value: 100 * (candle.close - _fsRocPrev) / _fsRocPrev });
+            }
+            if (emaCustomActive && _fsEmaCustomSeries && _fsLastEmaCustom != null) {
+                const _fsEc = getEmaCustomCfg();
+                const k = 2 / (_fsEc.length + 1);
+                const live = candle.close * k + _fsLastEmaCustom * (1 - k);
+                _fsEmaCustomSeries.update({ time: candle.time, value: live });
+                if (confirmed) _fsLastEmaCustom = live;
             }
             if (channelActive && _fsChannelSeries.upper && fsKlines.length >= CHANNEL_CFG.period) {
                 const csl = fsKlines.slice(-CHANNEL_CFG.period);
@@ -3627,6 +3759,13 @@ function openWS() {
             if (rocActive && s.rocSeries && s.klines.length > _roc.length) {
                 const _rocPrev = s.klines[s.klines.length - 1 - _roc.length].close;
                 s.rocSeries.update({ time: candle.time, value: 100 * (candle.close - _rocPrev) / _rocPrev });
+            }
+            if (emaCustomActive && s.emaCustomSeries && s.lastEmaCustom != null) {
+                const _ec = getEmaCustomCfg();
+                const k = 2 / (_ec.length + 1);
+                const live = candle.close * k + s.lastEmaCustom * (1 - k);
+                s.emaCustomSeries.update({ time: candle.time, value: live });
+                if (confirmed) s.lastEmaCustom = live;
             }
             if (channelActive && s.channelSeries.upper && s.klines.length >= CHANNEL_CFG.period) {
                 const csl = s.klines.slice(-CHANNEL_CFG.period);
@@ -3935,7 +4074,11 @@ async function fetchCoins() {
             fetch('https://api.bybit.com/v5/market/tickers?category=linear'),
         ]);
         const ji = await ri.json(); const jt = await rt.json();
-        const syms = new Set(ji.result.list.filter(x => x.symbolType === type).map(x => x.symbol));
+        // Bybit classifica alcuni strumenti (es. QQQUSDT/SPYUSDT) come symbolType "ETF",
+        // categoria distinta da "stock" ma che in questa app va comunque sotto "Stock"
+        // (INSTRUMENT_NAMES li elenca come "Nasdaq ETF"/"S&P 500") — altrimenti spariscono
+        // dalla lista anche se bloccati/preferiti.
+        const syms = new Set(ji.result.list.filter(x => x.symbolType === type || (type === 'stock' && x.symbolType === 'ETF')).map(x => x.symbol));
         allCoins = jt.result.list
             .filter(x => syms.has(x.symbol) && x.lastPrice)
             .map(x => ({
@@ -4975,6 +5118,7 @@ function applyCfgToAllSlots() {
         applyBBToSlot(s, getBbCfg());
         applyRocToSlot(s, getRocCfg());
         applyChannelToSlot(s);
+        applyEmaCustomToSlot(s, getEmaCustomCfg());
     }
 }
 
