@@ -224,6 +224,15 @@
                         <a href="ema223-flip" class="mt-2 block text-xs text-violet-500 hover:text-violet-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
                     </div>
 
+                    <!-- EMA Personalizzata Flip Scanner (solo visuale, nessun polling backend) -->
+                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-cyan-500 transition-all">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-cyan-400 text-xs sm:text-sm font-medium">EMA Personalizzata Flip</div>
+                        </div>
+                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_ecf_desc">Prima candela che apre/chiude dall'altro lato della EMA personalizzata (stesso motore dell'indicatore, con TF di calcolo per timeframe)</div>
+                        <a href="ema-custom-flip" class="mt-2 block text-xs text-cyan-500 hover:text-cyan-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
+                    </div>
+
                     <!-- EMA Touch Scanner -->
                     <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-emerald-500 transition-all">
                         <div class="flex items-center justify-between mb-2">
@@ -255,60 +264,6 @@
                         </div>
                         <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_confl_desc">Coin segnalate da 2+ screener diversi contemporaneamente</div>
                         <a href="confluence" class="mt-2 block text-xs text-indigo-500 hover:text-indigo-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
-                    </div>
-
-                    <!-- Channel Breakout Scanner (solo visuale, nessun polling backend) -->
-                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-sky-500 transition-all">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-sky-400 text-xs sm:text-sm font-medium">Channel Breakout</div>
-                        </div>
-                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_chb_desc">Breakout del canale SMA20 (close/high/low): apertura dentro/fuori canale, chiusura oltre</div>
-                        <a href="channel-breakout" class="mt-2 block text-xs text-sky-500 hover:text-sky-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
-                    </div>
-
-                    <!-- Volume Inefficiency Scanner (solo visuale, nessun polling backend) -->
-                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-rose-500 transition-all">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-rose-400 text-xs sm:text-sm font-medium">Volume Inefficiency</div>
-                        </div>
-                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_vinef_desc">Inefficienze nel volume (LVN, Climax, Squeeze) che anticipano un movimento di tendenza</div>
-                        <a href="vol-inefficiency" class="mt-2 block text-xs text-rose-500 hover:text-rose-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
-                    </div>
-
-                    <!-- BB Squeeze Scanner (solo visuale, nessun polling backend) -->
-                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-orange-500 transition-all">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-orange-400 text-xs sm:text-sm font-medium">BB Squeeze</div>
-                        </div>
-                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_bbsq_desc">Bollinger BandWidth ai minimi storici: bassa volatilità, breakout in arrivo</div>
-                        <a href="bb-squeeze" class="mt-2 block text-xs text-orange-500 hover:text-orange-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
-                    </div>
-
-                    <!-- RVOL Scanner (solo visuale, nessun polling backend) -->
-                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-yellow-500 transition-all">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-yellow-400 text-xs sm:text-sm font-medium">RVOL</div>
-                        </div>
-                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_rvol_desc">Volume anomalo rispetto alla media recente: possibile accumulo/distribuzione prima di un movimento esplosivo</div>
-                        <a href="rvol" class="mt-2 block text-xs text-yellow-500 hover:text-yellow-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
-                    </div>
-
-                    <!-- Midline Breakout Scanner (solo visuale, nessun polling backend) -->
-                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-teal-500 transition-all">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-teal-400 text-xs sm:text-sm font-medium">Midline Breakout</div>
-                        </div>
-                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_midbrk_desc">Rottura in chiusura della midline Murrey Math (stessa formula di GRaB): possibile cambio di trend di breve termine</div>
-                        <a href="midline-breakout" class="mt-2 block text-xs text-teal-500 hover:text-teal-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
-                    </div>
-
-                    <!-- Trendline Breakout Scanner (solo visuale, nessun polling backend) -->
-                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-indigo-500 transition-all">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-indigo-400 text-xs sm:text-sm font-medium">Trendline S/R</div>
-                        </div>
-                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_trdln_desc">Rottura della trendline dinamica di supporto/resistenza (2 pivot recenti + 2 pivot storici), estesa a destra</div>
-                        <a href="trendline" class="mt-2 block text-xs text-indigo-500 hover:text-indigo-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
                     </div>
                 </div>
 

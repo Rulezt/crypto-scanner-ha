@@ -5,8 +5,8 @@
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-PSD4H66Z89"></script>
     <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-PSD4H66Z89');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Volume Inefficiency Scanner - Crypto Scanner Pro</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxyZWN0IHg9IjYiIHk9IjE4IiB3aWR0aD0iMyIgaGVpZ2h0PSI4IiBmaWxsPSIjZjQzZjVlIi8+CiAgPHJlY3QgeD0iMTEiIHk9IjEwIiB3aWR0aD0iMyIgaGVpZ2h0PSIxNiIgZmlsbD0iIzMzMzMzMyIvPgogIDxyZWN0IHg9IjE2IiB5PSIxNCIgd2lkdGg9IjMiIGhlaWdodD0iMTIiIGZpbGw9IiNmNDNmNWUiLz4KICA8cmVjdCB4PSIyMSIgeT0iNiIgd2lkdGg9IjMiIGhlaWdodD0iMjAiIGZpbGw9IiNmYjcxODUiLz4KPC9zdmc+">
+    <title>EMA Personalizzata Flip Scanner - Crypto Scanner Pro</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxwYXRoIGQ9Ik0yIDIwIEM4IDIwIDEwIDEyIDE2IDEyIEMyMiAxMiAyNCAyMCAzMCAyMCIgc3Ryb2tlPSIjMDBFNUZGIiBzdHJva2Utd2lkdGg9IjEuNiIgZmlsbD0ibm9uZSIvPgogIDxwYXRoIGQ9Ik0xNiA2IEwxNiAyNiIgc3Ryb2tlPSIjZjlmYWZiIiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWRhc2hhcnJheT0iMiwyIi8+Cjwvc3ZnPg==">
     <script src="/prefs-sync.js"></script>
     <script src="/i18n.js"></script>
     <script src="/candle-color.js"></script>
@@ -21,38 +21,40 @@
         .header h1 { font-size: 1rem; color: #f9fafb; white-space: nowrap; }
         .status { color: #6b7280; font-size: 0.75rem; }
         .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        select, input[type="number"] { background: #1f2937; color: #f9fafb; border: 1px solid #374151; border-radius: 4px; padding: 5px 8px; font-size: 0.8rem; cursor: pointer; }
+        input[type="number"] { width: 65px; }
         label { font-size: 0.75rem; color: #9ca3af; white-space: nowrap; }
         .btn { background: #374151; color: #f9fafb; border: 1px solid #4b5563; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; white-space: nowrap; transition: background 0.15s; text-decoration: none; }
         .btn:hover { background: #4b5563; }
-        .btn.primary { background: #e11d48; border-color: #e11d48; }
-        .btn.primary:hover { background: #be123c; }
+        .btn.primary { background: #0891b2; border-color: #0891b2; }
+        .btn.primary:hover { background: #0e7490; }
         .btn.danger { background: #7f1d1d; border-color: #991b1b; }
         .btn.danger:hover { background: #991b1b; }
         .progress-wrap { height: 3px; background: #1E222D; }
-        .progress-fill { height: 100%; background: #f43f5e; transition: width 0.3s; }
+        .progress-fill { height: 100%; background: #00E5FF; transition: width 0.3s; }
         .filter-bar { display: flex; gap: 8px; padding: 7px 16px; background: #1E2329; border-bottom: 1px solid #1E222D; flex-wrap: wrap; align-items: center; position: sticky; top: var(--sticky-top, 60px); z-index: 90; }
         .filter-label { font-size: 0.7rem; color: #6b7280; }
         .filt-btn { font-size: 0.7rem; padding: 2px 10px; border-radius: 10px; cursor: pointer; border: 1px solid #374151; background: transparent; color: #9ca3af; transition: all 0.15s; }
         .filt-btn:hover { background: #1f2937; }
         .filt-btn.active { background: #374151; color: #f9fafb; border-color: #4b5563; }
-        .filt-btn.bull.active { background: rgba(16,185,129,0.2); border-color: #10b981; color: #34d399; }
-        .filt-btn.bear.active { background: rgba(239,68,68,0.2); border-color: #ef4444; color: #f87171; }
+        .filt-btn.above.active { background: rgba(16,185,129,0.2); border-color: #10b981; color: #34d399; }
+        .filt-btn.below.active { background: rgba(239,68,68,0.2); border-color: #ef4444; color: #f87171; }
         .divider { width: 1px; height: 18px; background: #2a2a2a; }
         .table-wrap { padding-bottom: 30px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
         .draggable-th { cursor: grab; user-select: none; }
         .draggable-th:active { cursor: grabbing; }
-        .draggable-th.drag-over { background: rgba(244,63,94,0.12) !important; border-left: 2px solid #f43f5e; }
+        .draggable-th.drag-over { background: rgba(0,229,255,0.12) !important; border-left: 2px solid #00E5FF; }
         thead th { position: sticky; top: var(--thead-top, 92px); z-index: 50; background: #161A1E; color: #6b7280; font-weight: 600; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 9px 12px; border-bottom: 1px solid #2A2E39; white-space: nowrap; cursor: pointer; user-select: none; }
         thead th:hover { color: #B2B5BE; }
         .sa { margin-left: 3px; color: #4b5563; }
-        thead th.sorted .sa { color: #f43f5e; }
+        thead th.sorted .sa { color: #00E5FF; }
         tbody tr { border-bottom: 1px solid rgba(42,46,57,0.4); transition: background 0.1s; }
         tbody tr:hover { background: rgba(30,34,45,0.6); }
         td { padding: 9px 12px; white-space: nowrap; }
         .td-sym { font-weight: 700; }
         .td-sym a { color: #e5e7eb; text-decoration: none; }
-        .td-sym a:hover { color: #f43f5e; }
+        .td-sym a:hover { color: #00E5FF; }
         .fav-star { cursor: pointer; font-size: 0.95rem; color: #4B5563; margin-right: 5px; user-select: none; }
         .fav-star.active { color: #fbbf24; }
         .td-num { text-align: right; font-family: 'Monaco','Consolas',monospace; font-size: 0.76rem; color: #D1D5DB; }
@@ -63,12 +65,8 @@
         .side-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.63rem; font-weight: 700; letter-spacing: 0.04em; }
         .side-above { background: rgba(16,185,129,0.18); color: #34d399; }
         .side-below { background: rgba(239,68,68,0.18); color: #f87171; }
-        .type-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.63rem; font-weight: 700; letter-spacing: 0.03em; }
-        .type-lvn     { background: rgba(168,85,247,0.2); color: #c084fc; }
-        .type-climax  { background: rgba(245,158,11,0.2); color: #fbbf24; }
-        .type-squeeze { background: rgba(34,211,238,0.2); color: #67e8f9; }
         .loading-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; gap: 14px; color: #6b7280; }
-        .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.08); border-top-color: #f43f5e; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.08); border-top-color: #00E5FF; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .lwc-popup-overlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; pointer-events: none; opacity: 0; transition: opacity 0.13s ease; }
         .lwc-popup-overlay.visible { opacity: 1; }
@@ -80,26 +78,15 @@
         .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: #6b7280; }
         .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
         .legend-line { width: 14px; height: 2px; }
-        .cfg-scroll { max-height: 62vh; overflow-y: auto; padding-right: 4px; }
-        .cfg-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .cfg-scroll { max-height: 75vh; overflow-y: auto; overflow-x: hidden; padding-right: 4px; }
+        .cfg-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
         .cfg-row label { font-size: 0.76rem; color: #9CA3AF; }
-        .cfg-row input[type="number"] { width: 76px; background: #1f2937; color: #f9fafb; border: 1px solid #374151; border-radius: 4px; padding: 5px 8px; font-size: 0.8rem; }
-        .cfg-sep { border-top: 1px solid #2A2E39; margin: 4px 0; }
-        .cfg-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-        .cfg-toggle input[type="checkbox"] { width: 15px; height: 15px; accent-color: #f43f5e; cursor: pointer; }
-        .vinef-help {
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 14px; height: 14px; border-radius: 50%; background: #2A2E39; color: #6B7280;
-            font-size: 10px; font-weight: 700; cursor: help; flex-shrink: 0;
-        }
-        .vinef-help:hover { background: #374151; color: #D1D5DB; }
-        .vinef-tooltip {
-            position: fixed; width: 260px; background: #1a1d23; border: 1px solid #374151;
-            border-radius: 6px; padding: 10px 12px; font-size: 11px; line-height: 1.6;
-            color: #D1D5DB; z-index: 9500; box-shadow: 0 4px 16px rgba(0,0,0,0.6);
-            pointer-events: none;
-        }
-        .vinef-tooltip b { color: #fb7185; }
+        .cfg-row input[type="number"] { width: 76px; background: #1f2937; color: #f9fafb; border: 1px solid #374151; border-radius: 4px; padding: 5px 8px; font-size: 0.8rem; flex-shrink: 0; }
+        .cfg-row select { max-width: 100%; flex-shrink: 0; }
+        .cfg-row-tf { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+        .cfg-row-tf label { font-size: 0.76rem; color: #9CA3AF; }
+        .cfg-row-tf select { width: 100%; }
+        .cfg-sep { border-top: 1px solid #2A2E39; margin: 4px 0 2px; padding-top: 10px; font-size: 0.68rem; color: #4b5563; text-transform: uppercase; letter-spacing: 0.05em; }
         @media (max-width: 639px) and (orientation: portrait) {
         }
     </style>
@@ -113,7 +100,7 @@
     <div class="header">
         <div class="header-left">
             <a href="screener" title="Screener" style="display:inline-flex;align-items:center;justify-content:center;color:#6b7280;flex-shrink:0;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M19 12H5"/><path d="m12 5-7 7 7 7"/></svg></a>
-            <h1 style="color:#f43f5e">{{ t('vinef_title') }}</h1>
+            <h1 style="color:#00E5FF">{{ t('ecf_title') }}</h1>
             <span class="status" v-html="displayMsg"></span>
         </div>
         <div class="controls">
@@ -123,11 +110,11 @@
                 <button data-lang-btn="en" onclick="switchLang('en')" style="font-size:11px;background:none;border:none;cursor:pointer;padding:0;color:#9CA3AF;font-family:inherit;">EN</button>
             </div>
             <button @click="startScan" :disabled="scanning" class="btn primary" style="display:inline-flex;align-items:center;gap:6px">
-                <span v-if="scanning">{{ t('vinef_scanning') }}</span>
-                <span v-else style="display:inline-flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> {{ t('vinef_scan') }}</span>
+                <span v-if="scanning">{{ t('ecf_scanning') }}</span>
+                <span v-else style="display:inline-flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> {{ t('ecf_scan') }}</span>
             </button>
-            <button v-if="scanning" @click="stopScan" class="btn danger">{{ t('vinef_stop') }}</button>
-            <button @click="cfgOpen=true" class="btn" style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;" :title="t('vinef_cfg_title')">
+            <button v-if="scanning" @click="stopScan" class="btn danger">{{ t('dt_stop') }}</button>
+            <button @click="cfgOpen=true" class="btn" style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;" :title="t('ecf_cfg_title')">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
         </div>
@@ -142,35 +129,30 @@
     <!-- FILTER BAR -->
     <div class="filter-bar" v-if="initialDone || scanning">
         <template v-if="results.length > 0">
-            <span class="filter-label">{{ t('vinef_type_lbl') }}</span>
-            <button @click="typeFilter='all'"     :class="['filt-btn', typeFilter==='all'     ? 'active':'']">{{ t('vinef_all') }} ({{ results.length }})</button>
-            <button @click="typeFilter='lvn'"     :class="['filt-btn', typeFilter==='lvn'     ? 'active':'']">{{ t('vinef_type_lvn') }} ({{ countType('lvn') }})</button>
-            <button @click="typeFilter='climax'"  :class="['filt-btn', typeFilter==='climax'  ? 'active':'']">{{ t('vinef_type_climax') }} ({{ countType('climax') }})</button>
-            <button @click="typeFilter='squeeze'" :class="['filt-btn', typeFilter==='squeeze' ? 'active':'']">{{ t('vinef_type_squeeze') }} ({{ countType('squeeze') }})</button>
+            <span class="filter-label">{{ t('ecf_dir_lbl') }}</span>
+            <button @click="dirFilter='all'"   :class="['filt-btn', dirFilter==='all'   ? 'active':'']">{{ t('ecf_all') }} ({{ results.length }})</button>
+            <button @click="dirFilter='above'" :class="['filt-btn above', dirFilter==='above' ? 'active':'']">{{ t('ecf_dir_above') }} ({{ countAbove }})</button>
+            <button @click="dirFilter='below'" :class="['filt-btn below', dirFilter==='below' ? 'active':'']">{{ t('ecf_dir_below') }} ({{ countBelow }})</button>
             <div class="divider"></div>
-            <span class="filter-label">{{ t('vinef_dir_lbl') }}</span>
-            <button @click="dirFilter='all'"  :class="['filt-btn', dirFilter==='all'  ? 'active':'']">{{ t('vinef_all') }}</button>
-            <button @click="dirFilter='bull'" :class="['filt-btn bull', dirFilter==='bull' ? 'active':'']">{{ t('btn_long') }} ({{ countBull }})</button>
-            <button @click="dirFilter='bear'" :class="['filt-btn bear', dirFilter==='bear' ? 'active':'']">{{ t('btn_short') }} ({{ countBear }})</button>
-            <div class="divider"></div>
-            <span class="filter-label">{{ t('vinef_sort') }}</span>
-            <button @click="setSortBy('age')"    :class="['filt-btn', sortBy==='age'    ? 'active':'']">{{ t('vinef_sort_age') }} <span class="sa">{{ sa('age') }}</span></button>
+            <span class="filter-label">{{ t('ecf_sort') }}</span>
+            <button @click="setSortBy('age')"    :class="['filt-btn', sortBy==='age'    ? 'active':'']">{{ t('emax_sort_age') }} <span class="sa">{{ sa('age') }}</span></button>
+            <button @click="setSortBy('gap')"    :class="['filt-btn', sortBy==='gap'    ? 'active':'']">{{ t('emax_sort_gap') }} <span class="sa">{{ sa('gap') }}</span></button>
             <button @click="setSortBy('volume')" :class="['filt-btn', sortBy==='volume' ? 'active':'']">{{ t('dt_volume') }} <span class="sa">{{ sa('volume') }}</span></button>
-            <button @click="setSortBy('change')" :class="['filt-btn', sortBy==='change' ? 'active':'']">{{ t('vinef_col_change') }} <span class="sa">{{ sa('change') }}</span></button>
+            <button @click="setSortBy('change')" :class="['filt-btn', sortBy==='change' ? 'active':'']">{{ t('ecf_col_change') }} <span class="sa">{{ sa('change') }}</span></button>
             <div class="divider"></div>
         </template>
         <span class="filter-label">TF:</span>
-        <button @click="tfFilter='all'" :class="['filt-btn', tfFilter==='all' ? 'active':'']">{{ t('vinef_all') }}</button>
+        <button @click="tfFilter='all'" :class="['filt-btn', tfFilter==='all' ? 'active':'']">{{ t('ecf_all') }}</button>
         <button v-for="tf in ALL_TFS" :key="tf" @click="tfFilter=tf" :class="['filt-btn', tfFilter===tf ? 'active':'']">{{ TF_LABEL[tf] }}</button>
     </div>
 
     <!-- INITIAL STATE -->
     <div v-if="!scanning && !initialDone" class="loading-overlay">
-        <p style="font-weight:600;color:#e5e7eb;">{{ t('vinef_title') }}</p>
-        <p style="font-size:0.78rem;color:#4b5563;max-width:560px;text-align:center;line-height:1.6">{{ t('vinef_desc') }}</p>
+        <p style="font-weight:600;color:#e5e7eb;">{{ t('ecf_title') }}</p>
+        <p style="font-size:0.78rem;color:#4b5563;max-width:480px;text-align:center;line-height:1.6">{{ t('ecf_desc') }}</p>
         <button @click="startScan" class="btn primary" style="margin-top:8px;display:inline-flex;align-items:center;gap:6px">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            {{ t('vinef_scan') }}
+            {{ t('ecf_scan') }}
         </button>
     </div>
 
@@ -183,7 +165,7 @@
     <!-- EMPTY AFTER SCAN -->
     <div v-if="!scanning && initialDone && filteredResults.length === 0" class="loading-overlay">
         <span style="font-size:2rem;">🔍</span>
-        <span style="font-size:0.85rem;color:#6b7280;">{{ t('vinef_no_results') }}</span>
+        <span style="font-size:0.85rem;color:#6b7280;">{{ t('ecf_no_results') }}</span>
     </div>
 
     <!-- TABLE -->
@@ -206,7 +188,7 @@
                 </tr>
             </thead>
             <tbody>
-                <template v-for="(row, idx) in filteredResults" :key="row.symbol+row.tf+row.type">
+                <template v-for="(row, idx) in filteredResults" :key="row.symbol+row.tf">
                 <tr>
                     <td class="td-num muted" style="text-align:center;font-size:0.7rem;">{{ idx+1 }}</td>
                     <td v-for="col in columns" :key="col.key" :data-col="col.key" :class="col.tdClass(row)">
@@ -222,21 +204,19 @@
                         <template v-else-if="col.key==='tf'">
                             <span style="font-size:0.72rem;font-weight:600;color:#60a5fa;">{{ TF_LABEL[row.tf] }}</span>
                         </template>
-                        <template v-else-if="col.key==='type'">
-                            <span class="type-badge" :class="'type-'+row.type">{{ t('vinef_type_'+row.type) }}</span>
-                        </template>
                         <template v-else-if="col.key==='dir'">
-                            <span class="side-badge" :class="row.dir==='bull'?'side-above':'side-below'">{{ row.dir==='bull' ? t('btn_long') : t('btn_short') }}</span>
+                            <span class="side-badge" :class="row.dir==='above'?'side-above':'side-below'">{{ row.dir==='above' ? t('ecf_side_above') : t('ecf_side_below') }}</span>
                         </template>
                         <template v-else-if="col.key==='age'">{{ row.age }}</template>
-                        <template v-else-if="col.key==='metric'">{{ row.metric }}</template>
+                        <template v-else-if="col.key==='gap'"><span :class="row.gap>=0?'positive':'negative'">{{ row.gap>=0?'+':'' }}{{ row.gap.toFixed(2) }}%</span></template>
+                        <template v-else-if="col.key==='ema'">{{ formatPrice(row.ema) }}</template>
                         <template v-else-if="col.key==='change'">{{ row.change>=0?'+':'' }}{{ row.change.toFixed(2) }}%</template>
                         <template v-else-if="col.key==='volume'">{{ formatVolume(row.volume) }}</template>
                     </td>
                 </tr>
-                <tr v-if="mobilePreviewSymbol===row.symbol+row.tf+row.type" class="mobile-preview-row">
+                <tr v-if="mobilePreviewSymbol===row.symbol+row.tf" class="mobile-preview-row">
                     <td :colspan="columns.length+1" style="padding:8px 12px;background:#0B0E11;">
-                        <div :id="'mp-chart-'+row.symbol+row.tf+row.type" style="width:100%;aspect-ratio:2/1;min-height:150px;max-height:280px;"></div>
+                        <div :id="'mp-chart-'+row.symbol+row.tf" style="width:100%;aspect-ratio:2/1;min-height:150px;max-height:280px;"></div>
                     </td>
                 </tr>
                 </template>
@@ -266,7 +246,7 @@
             <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
                 <span id="lwc-popup-candle-pct" style="font-family:monospace;font-size:0.75rem;min-width:52px;text-align:right;white-space:nowrap;"></span>
                 <span style="color:#374151;font-size:0.72rem;">|</span>
-                <span id="lwc-popup-tf" style="font-size:0.72rem;color:#f43f5e;font-weight:700;white-space:nowrap;"></span>
+                <span id="lwc-popup-tf" style="font-size:0.72rem;color:#00E5FF;font-weight:700;white-space:nowrap;"></span>
                 <span id="lwc-popup-close" @click="closeThumbPopup" style="cursor:pointer;color:#6b7280;font-size:16px;line-height:1;padding:0 2px;">×</span>
             </div>
         </div>
@@ -276,43 +256,62 @@
 
     <!-- LEGEND -->
     <div class="legend" v-if="filteredResults.length > 0">
-        <div class="legend-item"><span class="legend-line" style="background:#ef4444"></span> EMA5</div>
-        <div class="legend-item"><span class="legend-line" style="background:#fbbf24"></span> EMA10</div>
-        <div class="legend-item"><span class="legend-line" style="background:#3b82f6"></span> EMA60</div>
-        <div class="legend-item"><span class="legend-line" style="background:#a855f7"></span> EMA223</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#c084fc"></span> {{ t('vinef_type_lvn') }}</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#fbbf24"></span> {{ t('vinef_type_climax') }}</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#67e8f9"></span> {{ t('vinef_type_squeeze') }}</div>
-        <div class="legend-item" style="margin-left:auto;color:#374151">{{ filteredResults.length }} segnali</div>
+        <div class="legend-item"><span class="legend-line" :style="{background: emaColor}"></span> {{ t('ecf_leg_ema') }}</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#10b981"></span> {{ t('ecf_leg_above') }}</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> {{ t('ecf_leg_below') }}</div>
+        <div class="legend-item" style="margin-left:auto;color:#374151">{{ filteredResults.length }} flip</div>
     </div>
 
     <!-- CONFIG MODAL -->
     <div v-if="cfgOpen" @click.self="cfgOpen=false" style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:flex;align-items:center;justify-content:center;">
-        <div style="background:#161A1E;border:1px solid #2A2E39;border-radius:10px;padding:24px 22px;width:340px;position:relative;">
+        <div style="background:#161A1E;border:1px solid #2A2E39;border-radius:10px;padding:24px 22px;width:min(380px, calc(100vw - 32px));max-width:100%;box-sizing:border-box;position:relative;">
             <button @click="cfgOpen=false" style="position:absolute;top:10px;right:14px;background:none;border:none;color:#6B7280;cursor:pointer;font-size:20px;line-height:1;">×</button>
-            <div style="font-size:0.85rem;font-weight:700;color:#E5E7EB;margin-bottom:14px;">⚙ {{ t('vinef_cfg_title') }}</div>
+            <div style="font-size:0.85rem;font-weight:700;color:#E5E7EB;margin-bottom:14px;">⚙ {{ t('ecf_cfg_title') }}</div>
             <div class="cfg-scroll" style="display:flex;flex-direction:column;gap:11px;">
-                <label class="cfg-toggle"><input type="checkbox" v-model="enableLVN"><span>{{ t('vinef_type_lvn') }}</span><span class="vinef-help" @mouseenter="showInfo($event,'lvn')" @mouseleave="hideInfo">i</span></label>
-                <label class="cfg-toggle"><input type="checkbox" v-model="enableClimax"><span>{{ t('vinef_type_climax') }}</span><span class="vinef-help" @mouseenter="showInfo($event,'climax')" @mouseleave="hideInfo">i</span></label>
-                <label class="cfg-toggle"><input type="checkbox" v-model="enableSqueeze"><span>{{ t('vinef_type_squeeze') }}</span><span class="vinef-help" @mouseenter="showInfo($event,'squeeze')" @mouseleave="hideInfo">i</span></label>
-                <div class="cfg-sep"></div>
-                <div class="cfg-row"><label>{{ t('vinef_history') }}</label><input type="number" v-model.number="historyBars" min="100" max="1000" step="50"></div>
-                <div class="cfg-row"><label>{{ t('vinef_vol') }}</label><input type="number" v-model.number="minVolM" min="0" max="1000" step="1"></div>
+                <!-- Stessi campi dell'indicatore "EMA personalizzata" (chart.html/mtf.html/trade.js) -->
+                <div class="cfg-row"><label>{{ t('ecf_length') }}</label><input type="number" v-model.number="emaLength" min="1" max="500" step="1"></div>
+                <div class="cfg-row"><label>{{ t('ecf_color') }}</label><input type="color" v-model="emaColor" style="width:36px;height:22px;border:none;background:none;cursor:pointer;padding:0;"></div>
+                <div class="cfg-row"><label>{{ t('ecf_width') }}</label><input type="number" v-model.number="emaWidth" min="1" max="5" step="0.5"></div>
+                <div class="cfg-row">
+                    <label>{{ t('ecf_style') }}</label>
+                    <select v-model.number="emaStyle">
+                        <option :value="0">{{ t('ecf_style_solid') }}</option>
+                        <option :value="1">{{ t('ecf_style_dashed') }}</option>
+                        <option :value="2">{{ t('ecf_style_dotted') }}</option>
+                    </select>
+                </div>
+                <div class="cfg-row"><label>{{ t('ecf_waitclose') }}</label><input type="checkbox" v-model="waitClose" style="width:16px;height:16px;cursor:pointer;"></div>
+
+                <div class="cfg-sep">{{ t('ecf_tf_section') }}</div>
+                <div class="cfg-row-tf" v-for="tf in ALL_TFS" :key="tf">
+                    <label>{{ t('ecf_tf_label') }} {{ TF_LABEL[tf] }}</label>
+                    <select v-model="tfMap[tf]">
+                        <option value="">{{ t('ecf_tf_same') }}</option>
+                        <option value="1">1m</option>
+                        <option value="5">5m</option>
+                        <option value="30">30m</option>
+                        <option value="60">1h</option>
+                        <option value="240">4h</option>
+                        <option value="D">D</option>
+                        <option value="W">W</option>
+                        <option value="M">M</option>
+                    </select>
+                </div>
+
+                <div class="cfg-sep">{{ t('ecf_scan_section') }}</div>
+                <div class="cfg-row"><label>{{ t('ecf_tol') }}</label><input type="number" v-model.number="tolerancePct" min="0" max="5" step="0.05"></div>
+                <div class="cfg-row"><label>{{ t('ecf_lookback') }}</label><input type="number" v-model.number="lookbackBars" min="1" max="50" step="1"></div>
+                <div class="cfg-row"><label>{{ t('emax_history') }}</label><input type="number" v-model.number="historyBars" min="100" max="1200" step="50"></div>
+                <div class="cfg-row"><label>{{ t('ecf_vol') }}</label><input type="number" v-model.number="minVolM" min="0" max="1000" step="1"></div>
                 <div class="cfg-row"><label>{{ t('scr_min_var') }}</label><input type="number" v-model.number="minVarPct" min="0" max="1000" step="0.5"></div>
             </div>
             <button @click="cfgOpen=false" class="btn primary" style="width:100%;margin-top:18px;justify-content:center;">OK</button>
         </div>
     </div>
 
-    <!-- INFO TOOLTIP (detector help) -->
-    <div v-if="infoType" class="vinef-tooltip" :style="{ top: infoPos.top+'px', left: infoPos.left+'px' }">
-        <b>{{ t('vinef_type_'+infoType) }}</b><br>
-        {{ t('vinef_info_'+infoType) }}
-    </div>
-
 </div>
 <script>
-const { createApp, ref, computed, onMounted } = Vue;
+const { createApp, ref, reactive, computed, onMounted } = Vue;
 
 const _appLang = ref(window._cspLang || 'en');
 const _origSwitch = window.switchLang;
@@ -320,36 +319,31 @@ window.switchLang = function(l) { _origSwitch(l); _appLang.value = l; };
 
 createApp({
     setup() {
+        // TF standard del sito (mai 15m) — vedi memoria feedback_tf_standard.
         const ALL_TFS  = ['D','240','60','30','5','1'];
         const TF_LABEL = { '1':'1m','5':'5m','30':'30m','60':'1h','240':'4h','D':'D' };
 
         const t = (key) => { _appLang.value; return window.T[key] || key; };
 
+        // ── CONFIG (indipendente dall'indicatore live, propria chiave localStorage
+        // 'ecf_cfg' — stessa convenzione di tutti gli altri scanner del sito) ────────
         const cfgOpen = ref(false);
-
-        // ── info tooltip per-detector nel modal config ────────────────────────
-        const infoType = ref('');
-        const infoPos  = ref({ top: 0, left: 0 });
-        const showInfo = (ev, type) => {
-            infoType.value = type;
-            const r = ev.currentTarget.getBoundingClientRect();
-            const TW = 260, margin = 10;
-            let left = r.right + 8;
-            if (left + TW > window.innerWidth - margin) left = r.left - TW - 8;
-            let top = r.top - 4;
-            const TH_EST = 120;
-            if (top + TH_EST > window.innerHeight - margin) top = window.innerHeight - margin - TH_EST;
-            infoPos.value = { top: Math.max(margin, top), left: Math.max(margin, left) };
-        };
-        const hideInfo = () => { infoType.value = ''; };
-
-        const _cfgB = (() => { try { return JSON.parse(localStorage.getItem('vinef_cfg') || '{}'); } catch { return {}; } })();
-        const enableLVN        = ref(_cfgB.enableLVN        ?? true);
-        const enableClimax     = ref(_cfgB.enableClimax     ?? true);
-        const enableSqueeze    = ref(_cfgB.enableSqueeze    ?? true);
-        const historyBars      = ref(_cfgB.historyBars      ?? 300);
-        const minVolM          = ref(_cfgB.minVolM          ?? 10);
-        const minVarPct        = ref(_cfgB.minVarPct        ?? 5);
+        const _cfgE = (() => { try { return JSON.parse(localStorage.getItem('ecf_cfg') || '{}'); } catch { return {}; } })();
+        // Stessi default dell'indicatore "EMA personalizzata" (chart_ema_custom_cfg).
+        const emaLength    = ref(_cfgE.emaLength    ?? 9);
+        const emaColor     = ref(_cfgE.emaColor     ?? '#00E5FF');
+        const emaWidth     = ref(_cfgE.emaWidth     ?? 1.5);
+        const emaStyle     = ref(_cfgE.emaStyle     ?? 0);
+        const waitClose    = ref(_cfgE.waitClose    ?? true);
+        const tfMap = reactive({
+            '1': '', '5': '', '30': '', '60': '', '240': '', 'D': '',
+            ...(_cfgE.tfMap || {}),
+        });
+        const tolerancePct = ref(_cfgE.tolerancePct ?? 0.1);
+        const lookbackBars = ref(_cfgE.lookbackBars ?? 10);
+        const historyBars  = ref(_cfgE.historyBars  ?? 300);
+        const minVolM      = ref(_cfgE.minVolM      ?? 10);
+        const minVarPct    = ref(_cfgE.minVarPct    ?? 5);
 
         const scanning    = ref(false);
         const stopFlag    = ref(false);
@@ -371,24 +365,24 @@ createApp({
             _appLang.value;
             if (_scanResult.value && !scanning.value) {
                 const { count, coins, time } = _scanResult.value;
-                return `${SVG_CHECK}${count} ${t('vinef_found')} ${coins} · ${time}`;
+                return `${SVG_CHECK}${count} ${t('ecf_found')} ${coins} · ${time}`;
             }
-            return statusMsg.value || t('vinef_ready');
+            return statusMsg.value || t('ecf_ready');
         });
 
         // ── COLUMNS (drag & drop) ─────────────────────────────────────────────
-        const STORAGE_KEY_VINEF = 'vinef_columns_order';
-        let _colKey_vinef = STORAGE_KEY_VINEF;
+        const STORAGE_KEY_ECF = 'ecf_columns_order';
+        let _colKey_ecf = STORAGE_KEY_ECF;
         const columnsDef = [
-            { key:'symbol',  labelKey:'vinef_col_symbol', sortKey:null,     align:'left',   tdClass:()=>'td-sym' },
-            { key:'preview', labelKey:'col_preview',      sortKey:null,     align:'center', tdClass:()=>'td-center' },
-            { key:'tf',      labelKey:'TF',               sortKey:'tf',     align:'center', tdClass:()=>'td-center' },
-            { key:'type',    labelKey:'vinef_col_type',   sortKey:null,     align:'center', tdClass:()=>'td-center' },
-            { key:'dir',     labelKey:'vinef_col_dir',    sortKey:null,     align:'center', tdClass:()=>'td-center' },
-            { key:'age',     labelKey:'vinef_col_age',    sortKey:'age',    align:'right',  tdClass:()=>'td-num muted' },
-            { key:'metric',  labelKey:'vinef_col_metric', sortKey:null,     align:'right',  tdClass:()=>'td-num' },
-            { key:'change',  labelKey:'vinef_col_change', sortKey:'change', align:'right',  tdClass:(r)=>r.change>=0?'td-num positive':'td-num negative' },
-            { key:'volume',  labelKey:'vinef_col_vol24h', sortKey:'volume', align:'right',  tdClass:()=>'td-num muted' },
+            { key:'symbol',   labelKey:'ecf_col_symbol',   sortKey:null,     align:'left',   tdClass:()=>'td-sym' },
+            { key:'preview', labelKey:'col_preview', sortKey:null, align:'center', tdClass:()=>'td-center' },
+            { key:'tf',       labelKey:'ecf_col_tf',       sortKey:'tf',     align:'center', tdClass:()=>'td-center' },
+            { key:'dir',      labelKey:'ecf_col_dir',      sortKey:null,     align:'center', tdClass:()=>'td-center' },
+            { key:'age',      labelKey:'ecf_col_age',      sortKey:'age',    align:'right',  tdClass:()=>'td-num muted' },
+            { key:'gap',      labelKey:'ecf_col_gap',      sortKey:'gap',    align:'right',  tdClass:()=>'td-num' },
+            { key:'ema',      labelKey:'ecf_col_ema',      sortKey:null,     align:'right',  tdClass:()=>'td-num muted' },
+            { key:'change',   labelKey:'ecf_col_change',   sortKey:'change', align:'right',  tdClass:(r)=>r.change>=0?'td-num positive':'td-num negative' },
+            { key:'volume',   labelKey:'ecf_col_vol24h',   sortKey:'volume', align:'right',  tdClass:()=>'td-num muted' },
         ];
         const columns = ref([...columnsDef]);
         let dragKey = null;
@@ -403,16 +397,15 @@ createApp({
             const toIdx   = cols.findIndex(c => c.key === targetKey);
             if (fromIdx === -1 || toIdx === -1) { onDragEnd(); return; }
             cols.splice(toIdx, 0, cols.splice(fromIdx, 1)[0]);
-            try { localStorage.setItem(_colKey_vinef, JSON.stringify(cols.map(c => c.key))); } catch {}
+            try { localStorage.setItem(_colKey_ecf, JSON.stringify(cols.map(c => c.key))); } catch {}
             onDragEnd();
         };
 
         // ── FILTER & SORT ──────────────────────────────────────────────────────
-        const dirFilter  = ref('all');
-        const typeFilter = ref('all');
-        const tfFilter   = ref('all');
-        const sortBy     = ref('age');
-        const sortDir    = ref(1);
+        const dirFilter = ref('all');
+        const tfFilter  = ref('all');
+        const sortBy    = ref('age');
+        const sortDir   = ref(1);
 
         const setSortBy = (key) => {
             if (sortBy.value === key) sortDir.value *= -1;
@@ -423,19 +416,19 @@ createApp({
             return sortDir.value === 1 ? '↑' : '↓';
         };
 
-        const countBull = computed(() => results.value.filter(r => r.dir === 'bull').length);
-        const countBear = computed(() => results.value.filter(r => r.dir === 'bear').length);
-        const countType = (type) => results.value.filter(r => r.type === type).length;
+        const countAbove = computed(() => results.value.filter(r => r.dir === 'above').length);
+        const countBelow = computed(() => results.value.filter(r => r.dir === 'below').length);
 
         const filteredResults = computed(() => {
             let list = [...results.value];
-            if (dirFilter.value  !== 'all') list = list.filter(r => r.dir === dirFilter.value);
-            if (typeFilter.value !== 'all') list = list.filter(r => r.type === typeFilter.value);
-            if (tfFilter.value   !== 'all') list = list.filter(r => r.tf === tfFilter.value);
+            list = list.filter(r => r.age <= lookbackBars.value);
+            if (dirFilter.value !== 'all') list = list.filter(r => r.dir === dirFilter.value);
+            if (tfFilter.value  !== 'all') list = list.filter(r => r.tf === tfFilter.value);
             list.sort((a, b) => {
                 let va, vb;
                 switch(sortBy.value) {
                     case 'age':    va = a.age;              vb = b.age;              break;
+                    case 'gap':    va = Math.abs(a.gap);    vb = Math.abs(b.gap);    break;
                     case 'volume': va = a.volume;           vb = b.volume;           break;
                     case 'change': va = Math.abs(a.change); vb = Math.abs(b.change); break;
                     case 'tf':     va = a.tf;                vb = b.tf;               break;
@@ -448,121 +441,112 @@ createApp({
             return list;
         });
 
-        // ── VOLUME INEFFICIENCY ENGINE ───────────────────────────────────────────
-        // 4 rilevatori indipendenti, ognuno cerca un tipo diverso di "inefficienza"
-        // nel volume che anticipa un movimento direzionale nel breve termine.
-
-        // 1) Low Volume Node: zona di prezzo con volume scambiato molto basso
-        // (un "buco" nel profilo volumi) tra due zone ad alto volume — il prezzo
-        // tende ad attraversarla rapidamente per mancanza di liquidità/resistenza.
-        const LVN_BINS = 24, LVN_RATIO = 0.3, LVN_APPROACH_PCT = 1.5;
-        const detectLVN = (candles) => {
-            const n = candles.length;
-            if (n < 60) return null;
-            const period = candles.slice(Math.max(0, n - historyBars.value));
-            let lo = Infinity, hi = -Infinity;
-            for (const c of period) { if (c.low < lo) lo = c.low; if (c.high > hi) hi = c.high; }
-            if (!(hi > lo)) return null;
-            const binSize = (hi - lo) / LVN_BINS;
-            if (binSize <= 0) return null;
-            const vol = new Array(LVN_BINS).fill(0);
-            for (const c of period) {
-                let loI = Math.floor((c.low - lo) / binSize), hiI = Math.floor((c.high - lo) / binSize);
-                loI = Math.max(0, Math.min(LVN_BINS - 1, loI));
-                hiI = Math.max(0, Math.min(LVN_BINS - 1, hiI));
-                const span = Math.max(1, hiI - loI + 1);
-                for (let b = loI; b <= hiI; b++) vol[b] += c.volume / span;
-            }
-            const avg = vol.reduce((a, b) => a + b, 0) / LVN_BINS;
-            if (avg <= 0) return null;
-            const isLow = vol.map(v => v < LVN_RATIO * avg);
-            const zones = [];
-            let i = 0;
-            while (i < LVN_BINS) {
-                if (isLow[i]) { let j = i; while (j < LVN_BINS && isLow[j]) j++; zones.push([i, j - 1]); i = j; }
-                else i++;
-            }
-            const validZones = zones.filter(([a, b]) => a > 0 && b < LVN_BINS - 1 && vol[a - 1] >= avg && vol[b + 1] >= avg);
-            if (!validZones.length) return null;
-            const price = candles[n - 1].close;
-            let best = null, bestDist = Infinity;
-            for (const [a, b] of validZones) {
-                const zoneLo = lo + a * binSize, zoneHi = lo + (b + 1) * binSize;
-                let dist, dir;
-                if (price > zoneHi)      { dist = (price - zoneHi) / price * 100; dir = 'bear'; }
-                else if (price < zoneLo) { dist = (zoneLo - price) / price * 100; dir = 'bull'; }
-                else continue;
-                if (dist <= LVN_APPROACH_PCT && dist < bestDist) { bestDist = dist; best = { zoneLo, zoneHi, dist, dir }; }
-            }
-            if (!best) return null;
-            return { idx: n - 1, age: 0, dir: best.dir, zoneLo: best.zoneLo, zoneHi: best.zoneHi, dist: best.dist };
+        // ── EMA PERSONALIZZATA — STESSO MOTORE DELL'INDICATORE OVERLAY ──────────
+        // Copia 1:1 di calcEMA/_projectMtfEma/_fetchAuxKlines da chart.html (indicatore
+        // "EMA personalizzata"): EMA seedata su bars[0].close (non SMA warmup) e proiezione
+        // multi-timeframe quando per un TF scansionato è configurato un TF di calcolo diverso
+        // (tfMap[tf]) — esattamente come sul grafico, incluso "Attendi la chiusura del TF".
+        const calcEMA = (bars, period) => {
+            const k = 2 / (period + 1);
+            let v = bars[0].close;
+            return bars.map((b, i) => {
+                if (i > 0) v = b.close * k + v * (1 - k);
+                return { time: b.time, value: v };
+            });
         };
-
-        // 2) Volume Climax: volume anomalo molto sopra la media con range/corpo
-        // compresso — tanto scambiato senza che il prezzo si sia mosso (effort
-        // vs result), tipico di accumulo/distribuzione nascosta pre-esplosione.
-        // Controlla SOLO la candela attuale (in formazione) — un climax di N
-        // candele fa è già superato, il movimento che anticipava è già partito.
-        const CLIMAX_VOL_MULT = 3, CLIMAX_RANGE_MULT = 0.6, CLIMAX_AVG_PERIOD = 20;
-        const detectClimax = (candles) => {
-            const n = candles.length;
-            const i = n - 1;
-            if (i < CLIMAX_AVG_PERIOD) return null;
-            let sumVol = 0, sumRange = 0;
-            for (let j = i - CLIMAX_AVG_PERIOD; j < i; j++) { sumVol += candles[j].volume; sumRange += (candles[j].high - candles[j].low); }
-            const avgVol = sumVol / CLIMAX_AVG_PERIOD, avgRange = sumRange / CLIMAX_AVG_PERIOD;
-            if (avgVol <= 0 || avgRange <= 0) return null;
-            const c = candles[i];
-            const range = c.high - c.low;
-            if (c.volume >= CLIMAX_VOL_MULT * avgVol && range <= CLIMAX_RANGE_MULT * avgRange) {
-                const dir = c.close >= c.open ? 'bull' : 'bear';
-                return { idx: i, age: 0, dir, volMult: c.volume / avgVol };
+        const _projectMtfEma = (hostKlines, auxKlines, auxEma, wClose) => {
+            if (!hostKlines.length || !auxKlines.length || !auxEma.length) return [];
+            const out = [];
+            let ai = 0;
+            for (const hk of hostKlines) {
+                while (ai + 1 < auxKlines.length && auxKlines[ai + 1].time <= hk.time) ai++;
+                const isLastAux = ai === auxKlines.length - 1;
+                const idx = (wClose && isLastAux) ? ai - 1 : ai;
+                if (idx >= 0 && auxEma[idx]) out.push({ time: hk.time, value: auxEma[idx].value });
             }
+            return out;
+        };
+        const _auxKlinesCache = new Map();
+        async function _fetchAuxKlines(symbol, tf) {
+            const key = symbol + '|' + tf;
+            if (_auxKlinesCache.has(key)) return _auxKlinesCache.get(key);
+            let data = [];
+            try {
+                const r = await fetch(`api/klines?symbol=${symbol}&interval=${tf}`);
+                const j = await r.json();
+                data = (j.success && j.data) ? j.data : [];
+            } catch(e) { data = []; }
+            _auxKlinesCache.set(key, data);
+            return data;
+        }
+        // Array EMA allineato 1:1 alle candele host (null dove la barra ausiliaria MTF non è
+        // ancora disponibile — trattata come "candela ambigua" da candleSide/isCrossCandle,
+        // stessa semantica dei null di warmup di altri scanner del sito).
+        async function buildEmaArr(candles, tf, symbol) {
+            const auxTf = tfMap[tf] || '';
+            if (!auxTf) return calcEMA(candles, emaLength.value).map(p => p.value);
+            const auxKlines = await _fetchAuxKlines(symbol, auxTf);
+            if (!auxKlines.length) return candles.map(() => null);
+            const auxEma = calcEMA(auxKlines, emaLength.value);
+            const projected = _projectMtfEma(candles, auxKlines, auxEma, waitClose.value);
+            const map = new Map(projected.map(p => [p.time, p.value]));
+            return candles.map(c => map.has(c.time) ? map.get(c.time) : null);
+        }
+
+        // ── FLIP ENGINE — trova la PRIMA candela dello streak tuttora in corso ──
+        // (stesso schema di detectFlip/isCrossCandle/candleSide del sito, senza filtro
+        // di trend aggiuntivo: qui l'unico scopo è "prima chiusura dall'altro lato").
+        const candleSide = (candle, emaVal, tolPct) => {
+            if (emaVal == null) return null;
+            const hiThresh = emaVal * (1 + tolPct / 100);
+            const loThresh = emaVal * (1 - tolPct / 100);
+            if (candle.open > hiThresh && candle.close > hiThresh) return 'above';
+            if (candle.open < loThresh && candle.close < loThresh) return 'below';
             return null;
         };
-
-        // 3) Volume Squeeze: volume in prosciugamento + range compresso per K
-        // candele consecutive rispetto a una finestra più ampia — la "molla"
-        // prima di un'esplosione di volatilità.
-        const SQ_K = 6, SQ_VOL_DRY_RATIO = 0.55, SQ_RANGE_DRY_RATIO = 0.55;
-        const _sqCond = (candles, i) => {
-            const widerN = SQ_K * 4;
-            if (i - SQ_K - widerN + 1 < 0) return null;
-            let sumRecent = 0; for (let j = i - SQ_K + 1; j <= i; j++) sumRecent += candles[j].volume;
-            const pf = i - SQ_K - widerN + 1, pt = i - SQ_K;
-            let sumPrior = 0; for (let j = pf; j <= pt; j++) sumPrior += candles[j].volume;
-            const avgRecent = sumRecent / SQ_K, avgPrior = sumPrior / (pt - pf + 1);
-            if (avgPrior <= 0 || avgRecent / avgPrior > SQ_VOL_DRY_RATIO) return null;
-            let hiR = -Infinity, loR = Infinity;
-            for (let j = i - SQ_K + 1; j <= i; j++) { hiR = Math.max(hiR, candles[j].high); loR = Math.min(loR, candles[j].low); }
-            let hiP = -Infinity, loP = Infinity;
-            for (let j = Math.max(0, i - widerN + 1); j <= i; j++) { hiP = Math.max(hiP, candles[j].high); loP = Math.min(loP, candles[j].low); }
-            const rangeRecent = (hiR - loR) / candles[i].close, rangeWider = (hiP - loP) / candles[i].close;
-            if (rangeWider <= 0 || rangeRecent / rangeWider > SQ_RANGE_DRY_RATIO) return null;
-            return { hiR, loR };
+        const isCrossCandle = (candle, emaVal, tolPct) => {
+            if (emaVal == null) return null;
+            const hiThresh = emaVal * (1 + tolPct / 100);
+            const loThresh = emaVal * (1 - tolPct / 100);
+            if (candle.open < loThresh && candle.close > hiThresh) return 'above';
+            if (candle.open > hiThresh && candle.close < loThresh) return 'below';
+            return null;
         };
-        const detectSqueeze = (candles) => {
+        const detectFlip = (candles, emaArr, cfg) => {
             const n = candles.length;
-            const i = n - 1;
-            const cond = _sqCond(candles, i);
-            if (!cond) return null;
-            let dur = 0, x = i;
-            while (x >= SQ_K + SQ_K * 4 - 1 && _sqCond(candles, x)) { dur++; x--; }
-            const mid = (cond.hiR + cond.loR) / 2;
-            const dir = candles[i].close >= mid ? 'bull' : 'bear';
-            return { idx: i, age: dur, dir, hiR: cond.hiR, loR: cond.loR };
+            let flipIdx = -1, flipDir = null;
+            for (let i = 0; i < n; i++) {
+                const cross = isCrossCandle(candles[i], emaArr[i], cfg.tolerancePct);
+                if (cross == null) continue;
+                flipIdx = i; flipDir = cross;
+            }
+            if (flipIdx === -1) return null;
+
+            // coerenza: il lato deve restare "vivo" da flipIdx fino all'ultima candela.
+            let lastConfirmedDir = flipDir;
+            for (let i = flipIdx; i < n; i++) {
+                const s = candleSide(candles[i], emaArr[i], cfg.tolerancePct);
+                if (s != null) lastConfirmedDir = s;
+            }
+            if (lastConfirmedDir !== flipDir) return null;
+
+            const lastIdx = n - 1;
+            const age = lastIdx - flipIdx;
+            if (age > cfg.lookbackBars) return null;
+            return { flipIdx, dir: flipDir, age };
         };
 
-        const TYPE_LABEL = { lvn: 'LVN', climax: 'Climax', squeeze: 'Squeeze' };
-
-        const buildRow = (ticker, tf, candles, type, sig) => {
-            const price = candles[candles.length - 1].close;
-            const sigTime = candles[sig.idx].time;
-            const row = { symbol: ticker.symbol, tf, type, dir: sig.dir, age: sig.age, price, change: ticker.change, volume: ticker.volume, sigTime };
-            if (type === 'lvn') { row.zoneLo = sig.zoneLo; row.zoneHi = sig.zoneHi; row.metric = sig.dist.toFixed(2) + '%'; }
-            else if (type === 'climax') { row.metric = sig.volMult.toFixed(1) + 'x'; }
-            else if (type === 'squeeze') { row.hiR = sig.hiR; row.loR = sig.loR; row.metric = sig.age + 'b'; }
-            return row;
+        const buildRow = (ticker, tf, candles, emaArr, flip) => {
+            const lastIdx = candles.length - 1;
+            const price = candles[lastIdx].close;
+            const emaVal = emaArr[lastIdx];
+            const gapPct = (price - emaVal) / emaVal * 100;
+            return {
+                symbol: ticker.symbol, tf, dir: flip.dir,
+                age: flip.age, gap: gapPct, ema: emaVal,
+                price, change: ticker.change, volume: ticker.volume,
+                flipTime: candles[flip.flipIdx].time,
+            };
         };
 
         // ── SCAN ───────────────────────────────────────────────────────────────
@@ -578,10 +562,16 @@ createApp({
                 _scanResult.value = null;
                 results.value     = [];
             }
+            _auxKlinesCache.clear();
             const collected = [];
             progressDone.value  = 0;
             progressTotal.value = 0;
-            statusMsg.value   = `${SVG_SEARCH}${t('vinef_fetching')}`;
+            statusMsg.value   = `${SVG_SEARCH}${t('ecf_fetching')}`;
+
+            const cfg = {
+                tolerancePct: tolerancePct.value,
+                lookbackBars: lookbackBars.value,
+            };
 
             try {
                 const resp = await fetch('https://api.bybit.com/v5/market/tickers?category=linear');
@@ -601,12 +591,13 @@ createApp({
                     .sort((a, b) => b.volume - a.volume);
 
                 progressTotal.value = tickers.length;
-                statusMsg.value = `${SVG_SEARCH}${t('vinef_progress')} ${tickers.length} ${t('dt_coin')}…`;
+                statusMsg.value = `${SVG_SEARCH}${t('emax_progress')} ${tickers.length} ${t('dt_coin')}…`;
 
-                const KLIMIT = Math.min(1000, historyBars.value + 30);
-                const BATCH  = 4;
+                const KLIMIT     = Math.min(1000, historyBars.value + 30);
+                const WARMUP_MIN = Math.max(emaLength.value, 5) + cfg.lookbackBars + 5;
+                const BATCH = 4;
                 for (let i = 0; i < tickers.length; i += BATCH) {
-                    if (stopFlag.value) { statusMsg.value = t('vinef_stopped'); break; }
+                    if (stopFlag.value) { statusMsg.value = t('emax_stopped'); break; }
                     const batch = tickers.slice(i, i + BATCH);
                     await Promise.all(batch.map(async (ticker) => {
                         try {
@@ -626,21 +617,15 @@ createApp({
                                         volume: parseFloat(c[5]),
                                     })).filter(c => isFinite(c.close) && c.close > 0);
 
-                                    if (candles.length < 60) return;
+                                    if (candles.length < WARMUP_MIN) return;
 
-                                    const detectors = [
-                                        ['lvn',     enableLVN.value,        detectLVN],
-                                        ['climax',  enableClimax.value,     detectClimax],
-                                        ['squeeze', enableSqueeze.value,    detectSqueeze],
-                                    ];
-                                    for (const [type, enabled, fn] of detectors) {
-                                        if (!enabled) continue;
-                                        const sig = fn(candles);
-                                        if (sig) {
-                                            const row = buildRow(ticker, tf, candles, type, sig);
-                                            collected.push(row);
-                                            if (!silent) results.value.push(row);
-                                        }
+                                    const emaArr = await buildEmaArr(candles, tf, ticker.symbol);
+                                    if (emaArr[emaArr.length - 1] == null) return;
+                                    const flip = detectFlip(candles, emaArr, cfg);
+                                    if (flip) {
+                                        const row = buildRow(ticker, tf, candles, emaArr, flip);
+                                        collected.push(row);
+                                        if (!silent) results.value.push(row);
                                     }
                                 } catch(e) { /* skip tf */ }
                             }));
@@ -665,38 +650,23 @@ createApp({
 
 
         // ── POPUP CHART ────────────────────────────────────────────────────────
-        const EMA_CONFIG = [
-            { period: 5,   color: '#ef4444', width: 1.5 },
-            { period: 10,  color: '#fbbf24', width: 1.5 },
-            { period: 60,  color: '#3b82f6', width: 3   },
-            { period: 223, color: '#a855f7', width: 1.5 },
-        ];
-
+        // Anteprima: solo candele + EMA personalizzata (nessuna EMA standard 5/10/60/223).
         let popupChart = null, buildSession = 0;
 
         const LC = LightweightCharts;
         const addS = (chart, seriesType, options) => {
-            // LineSeries qui = sempre indicatori overlay (EMA/canale): escluderli dall'autoscale
-            // evita che un indicatore lontano dal prezzo schiacci le candele in una riga piatta.
             if (seriesType === 'LineSeries') options = { ...options, autoscaleInfoProvider: () => null };
             if (typeof chart.addSeries === 'function' && LC[seriesType]) return chart.addSeries(LC[seriesType], options);
             const fnName = 'add' + seriesType.replace('Series', '') + 'Series';
             return chart[fnName](options);
         };
 
-        const calcEMASeriesTV = (klines, per) => {
-            const closes = klines.map(c => c.close);
-            if (closes.length < per) return [];
-            const k = 2 / (per + 1);
-            let sum = 0; for (let i = 0; i < per; i++) sum += closes[i];
-            let ema = sum / per;
-            const out = [{ time: klines[per - 1].time, value: ema }];
-            for (let i = per; i < closes.length; i++) {
-                ema = closes[i] * k + ema * (1 - k);
-                out.push({ time: klines[i].time, value: ema });
-            }
-            return out;
-        };
+        // EMA personalizzata per il popup/thumbnail: stesso calcEMA del motore di scan, sul
+        // TF della riga. Se per quel TF è configurato un TF di calcolo diverso (tfMap), qui si
+        // mostra comunque il calcolo diretto sul TF della riga (senza rifare il fetch MTF, per
+        // restare leggero in una preview) — il rilevamento nello scan usa invece SEMPRE la
+        // proiezione MTF fedele all'indicatore (buildEmaArr).
+        const calcCustomEmaLine = (klines) => calcEMA(klines, emaLength.value);
 
         const destroyPopupChart = () => {
             if (popupChart) { try { popupChart.remove(); } catch(e) {} popupChart = null; }
@@ -760,38 +730,18 @@ createApp({
                     }
                 });
 
-                for (const c of EMA_CONFIG) {
-                    const line = calcEMASeriesTV(klines, c.period);
-                    if (line.length) addS(chart, 'LineSeries', { color: c.color, lineWidth: c.width, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }).setData(line);
-                }
+                // Solo la EMA personalizzata (nessuna EMA standard 5/10/60/223 in anteprima).
+                const emaLine = calcCustomEmaLine(klines);
+                if (emaLine.length) addS(chart, 'LineSeries', { color: emaColor.value, lineWidth: emaWidth.value, lineStyle: emaStyle.value, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }).setData(emaLine);
 
-                // row.sigTime/p1Time/p2Time vengono dallo scan (fetch diretto a Bybit,
-                // timestamp UTC grezzo); api/klines invece applica l'offset del fuso
-                // orario configurato (utc_offset_s) a ogni candela — senza questa
-                // correzione i marker finirebbero su una candela sbagliata.
-                const tzOff = data.utc_offset_s || 0;
-                const _sigTimeAdj = row.sigTime != null ? row.sigTime + tzOff : null;
-
-                if (row.type === 'lvn') {
-                    try {
-                        candleSeries.createPriceLine({ price: row.zoneHi, color: '#a855f7', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'LVN' });
-                        candleSeries.createPriceLine({ price: row.zoneLo, color: '#a855f7', lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: '' });
-                    } catch(e) {}
-                } else if (row.type === 'squeeze') {
-                    try {
-                        candleSeries.createPriceLine({ price: row.hiR, color: '#22d3ee', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Squeeze' });
-                        candleSeries.createPriceLine({ price: row.loR, color: '#22d3ee', lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: '' });
-                    } catch(e) {}
-                }
-
-                if (_sigTimeAdj && LC.createSeriesMarkers) {
+                if (row.flipTime && LC.createSeriesMarkers) {
                     try {
                         LC.createSeriesMarkers(candleSeries, [{
-                            time: _sigTimeAdj,
-                            position: row.dir === 'bull' ? 'belowBar' : 'aboveBar',
-                            color: row.dir === 'bull' ? '#10b981' : '#ef4444',
-                            shape: row.dir === 'bull' ? 'arrowUp' : 'arrowDown',
-                            text: TYPE_LABEL[row.type],
+                            time: row.flipTime,
+                            position: row.dir === 'above' ? 'belowBar' : 'aboveBar',
+                            color: row.dir === 'above' ? '#10b981' : '#ef4444',
+                            shape: row.dir === 'above' ? 'arrowUp' : 'arrowDown',
+                            text: 'Flip',
                         }]);
                     } catch(e) { /* marker best-effort */ }
                 }
@@ -810,7 +760,7 @@ createApp({
         };
         const toggleMobilePreview = async (row) => {
             if (!isMobilePreview()) return;
-            const key = row.symbol + row.tf + row.type;
+            const key = row.symbol + row.tf;
             if (mobilePreviewSymbol.value === key) {
                 mobilePreviewSymbol.value = null;
                 destroyMobilePreviewChart();
@@ -822,10 +772,11 @@ createApp({
             const container = document.getElementById('mp-chart-' + key);
             if (!container) return;
             try {
-                const res = await fetch(`api/klines?symbol=${row.symbol}&interval=${row.tf}`);
+                const res  = await fetch(`api/klines?symbol=${row.symbol}&interval=${row.tf}`);
                 if (!res.ok) return;
                 const data = await res.json();
                 if (!data.success || !data.data?.length || mobilePreviewSymbol.value !== key) return;
+
                 const seen = new Set();
                 const klines = data.data.filter(c => {
                     if (seen.has(c.time)) return false;
@@ -852,34 +803,18 @@ createApp({
                 candleSeries.setData(klines);
                 window.applyCandleColorStyle(candleSeries);
 
-                for (const c of EMA_CONFIG) {
-                    const line = calcEMASeriesTV(klines, c.period);
-                    if (line.length) addS(chart, 'LineSeries', { color: c.color, lineWidth: c.width, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }).setData(line);
-                }
+                // Solo la EMA personalizzata (nessuna EMA standard 5/10/60/223 in anteprima).
+                const emaLine = calcCustomEmaLine(klines);
+                if (emaLine.length) addS(chart, 'LineSeries', { color: emaColor.value, lineWidth: emaWidth.value, lineStyle: emaStyle.value, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }).setData(emaLine);
 
-                const tzOff = data.utc_offset_s || 0;
-                const _sigTimeAdj = row.sigTime != null ? row.sigTime + tzOff : null;
-
-                if (row.type === 'lvn') {
-                    try {
-                        candleSeries.createPriceLine({ price: row.zoneHi, color: '#a855f7', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'LVN' });
-                        candleSeries.createPriceLine({ price: row.zoneLo, color: '#a855f7', lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: '' });
-                    } catch(e) {}
-                } else if (row.type === 'squeeze') {
-                    try {
-                        candleSeries.createPriceLine({ price: row.hiR, color: '#22d3ee', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Squeeze' });
-                        candleSeries.createPriceLine({ price: row.loR, color: '#22d3ee', lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: '' });
-                    } catch(e) {}
-                }
-
-                if (_sigTimeAdj && LC.createSeriesMarkers && mobilePreviewSymbol.value === key) {
+                if (row.flipTime && LC.createSeriesMarkers) {
                     try {
                         LC.createSeriesMarkers(candleSeries, [{
-                            time: _sigTimeAdj,
-                            position: row.dir === 'bull' ? 'belowBar' : 'aboveBar',
-                            color: row.dir === 'bull' ? '#10b981' : '#ef4444',
-                            shape: row.dir === 'bull' ? 'arrowUp' : 'arrowDown',
-                            text: TYPE_LABEL[row.type],
+                            time: row.flipTime,
+                            position: row.dir === 'above' ? 'belowBar' : 'aboveBar',
+                            color: row.dir === 'above' ? '#10b981' : '#ef4444',
+                            shape: row.dir === 'above' ? 'arrowUp' : 'arrowDown',
+                            text: 'Flip',
                         }]);
                     } catch(e) { /* marker best-effort */ }
                 }
@@ -913,13 +848,12 @@ createApp({
         };
 
         // ── GRAFICO thumbnail (desktop): "foto" statica del grafico al posto dell'icona ─
-        // Poche candele (THUMB_BARS) + zona LVN/Squeeze (per tipo) + EMA, scala verticale
-        // basata SOLO sulle candele (linee troppo lontane tagliate dal bordo del canvas).
         const viewIsMobile = ref(isMobilePreview());
         window.addEventListener('resize', () => { viewIsMobile.value = isMobilePreview(); });
 
         const THUMB_BARS = 20;
         const thumbCache = new Map();
+        const thumbMounted = new Set();
         let thumbObserver = null;
         function ensureThumbObserver() {
             if (thumbObserver) return thumbObserver;
@@ -933,21 +867,13 @@ createApp({
             }, { rootMargin: '150px' });
             return thumbObserver;
         }
-        function prepThumbData(klines, row) {
+        function prepThumbData(klines) {
             const bars = klines.slice(-THUMB_BARS);
             if (!bars.length) return null;
-            const lines = EMA_CONFIG.map(c => {
-                const line = calcEMASeriesTV(klines, c.period);
-                const map = new Map(line.map(p => [p.time, p.value]));
-                return { color: c.color, values: bars.map(b => map.has(b.time) ? map.get(b.time) : null) };
-            });
-            if (row.type === 'lvn') {
-                lines.push({ color: '#a855f7', dashed: true, values: bars.map(() => row.zoneHi) });
-                lines.push({ color: '#a855f7', dashed: true, values: bars.map(() => row.zoneLo) });
-            } else if (row.type === 'squeeze') {
-                lines.push({ color: '#22d3ee', dashed: true, values: bars.map(() => row.hiR) });
-                lines.push({ color: '#22d3ee', dashed: true, values: bars.map(() => row.loR) });
-            }
+            // Solo la EMA personalizzata (nessuna EMA standard 5/10/60/223 in anteprima).
+            const line = calcCustomEmaLine(klines);
+            const map = new Map(line.map(p => [p.time, p.value]));
+            const lines = [{ color: emaColor.value, values: bars.map(b => map.has(b.time) ? map.get(b.time) : null) }];
             return { bars, lines };
         }
         function drawThumb(canvas, bundle) {
@@ -1007,12 +933,12 @@ createApp({
         async function loadThumb(canvas) {
             const row = canvas.__thumbRow;
             if (!row) return;
-            const key = row.symbol + row.tf + row.type;
+            const key = row.symbol + row.tf;
             try {
                 const res  = await fetch(`api/klines?symbol=${row.symbol}&interval=${row.tf}`);
                 const data = await res.json();
                 if (!data.success || !data.data?.length) return;
-                const bundle = prepThumbData(data.data, row);
+                const bundle = prepThumbData(data.data);
                 if (!bundle) return;
                 thumbCache.set(key, bundle);
                 if (document.body.contains(canvas)) drawThumb(canvas, bundle);
@@ -1021,10 +947,18 @@ createApp({
         const registerThumb = (el, row) => {
             if (!el) return;
             el.__thumbRow = row;
-            const cached = thumbCache.get(row.symbol + row.tf + row.type);
+            thumbMounted.add(el);
+            const cached = thumbCache.get(row.symbol + row.tf);
             if (cached) { drawThumb(el, cached); return; }
             ensureThumbObserver().observe(el);
         };
+        // emaLength/emaColor sono configurabili e globali a tutte le righe: al cambio,
+        // ricarica le miniature già montate invece di aspettare uno scroll.
+        const { watch: _watchThumbEcf } = Vue;
+        _watchThumbEcf([emaLength, emaColor], () => {
+            thumbCache.clear();
+            for (const el of thumbMounted) { if (document.body.contains(el)) loadThumb(el); }
+        });
 
         const openThumbPopup = (row) => showPopup(row);
         const closeThumbPopup = () => {
@@ -1051,21 +985,22 @@ createApp({
             document.documentElement.style.setProperty('--thead-top', (wh + fh) + 'px');
         };
         const { watch, nextTick } = Vue;
-        watch([enableLVN, enableClimax, enableSqueeze, historyBars, minVolM, minVarPct], () => {
-            try { localStorage.setItem('vinef_cfg', JSON.stringify({
-                enableLVN: enableLVN.value, enableClimax: enableClimax.value,
-                enableSqueeze: enableSqueeze.value,
+        watch([emaLength, emaColor, emaWidth, emaStyle, waitClose, tolerancePct, lookbackBars, historyBars, minVolM, minVarPct, tfMap], () => {
+            try { localStorage.setItem('ecf_cfg', JSON.stringify({
+                emaLength: emaLength.value, emaColor: emaColor.value, emaWidth: emaWidth.value, emaStyle: emaStyle.value,
+                waitClose: waitClose.value, tfMap: { ...tfMap },
+                tolerancePct: tolerancePct.value, lookbackBars: lookbackBars.value,
                 historyBars: historyBars.value, minVolM: minVolM.value, minVarPct: minVarPct.value,
             })); } catch {}
-        });
+        }, { deep: true });
         watch(filteredResults, () => nextTick(updateStickyOffsets));
         onMounted(() => { updateStickyOffsets(); window.addEventListener('resize', updateStickyOffsets); });
         onMounted(async () => {
             try {
                 const d = await fetch('/api/auth/status').then(r => r.json());
                 const prefix = d.logged_in ? (d.username || 'guest') : 'guest';
-                _colKey_vinef = prefix + '_' + STORAGE_KEY_VINEF;
-                const saved = JSON.parse(localStorage.getItem(_colKey_vinef) || 'null');
+                _colKey_ecf = prefix + '_' + STORAGE_KEY_ECF;
+                const saved = JSON.parse(localStorage.getItem(_colKey_ecf) || 'null');
                 if (saved) {
                     const merged = [...saved];
                     for (const col of columnsDef) {
@@ -1127,14 +1062,14 @@ createApp({
         return {
             ALL_TFS, TF_LABEL, t,
             favoriteSymbols, isFav, toggleFav,
-            enableLVN, enableClimax, enableSqueeze,
-            historyBars, minVolM, minVarPct,
+            emaLength, emaColor, emaWidth, emaStyle, waitClose, tfMap,
+            tolerancePct, lookbackBars, historyBars, minVolM, minVarPct,
             columns, dragOver, onDragStart, onDragOver, onDrop, onDragEnd,
             scanning, statusMsg, displayMsg, initialDone,
             results, filteredResults, progressDone, progressTotal, progressPct,
-            dirFilter, typeFilter, tfFilter, sortBy, sortDir,
-            countBull, countBear, countType,
-            cfgOpen, infoType, infoPos, showInfo, hideInfo, setSortBy, sa,
+            dirFilter, tfFilter, sortBy, sortDir,
+            countAbove, countBelow,
+            cfgOpen, setSortBy, sa,
             startScan, stopScan,
             showPopup,
             viewIsMobile, registerThumb, openThumbPopup, closeThumbPopup,

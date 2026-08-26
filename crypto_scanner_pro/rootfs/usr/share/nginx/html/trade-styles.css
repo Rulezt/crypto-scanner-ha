@@ -457,6 +457,15 @@ body.orderbook-page #app {
         padding: 4px 8px;
         font-size: 10px;
     }
+    /* Popup Indicatori: larghezza fissa (600px/300px) overflow su schermi portrait */
+    #ind-panel > div, #ind-cfg-panel > div {
+        width: calc(100vw - 24px) !important;
+        max-width: calc(100vw - 24px) !important;
+    }
+    /* Griglia interna a 3 colonne pensata per 600px: su portrait tronca le label, impila in verticale */
+    #ind-rows > div { flex-direction: column !important; }
+    #ind-rows > div > div { border-left: none !important; }
+    #ind-rows > div > div:not(:first-child) { border-top: 1px solid #2A2E39; }
 }
 /* ========== LAYOUT ========== */
 .orderbook-wrapper {
@@ -855,6 +864,10 @@ body.orderbook-page #app {
     .ob-split .ob-book-panel .book-row > *:nth-child(5) {
         display: none;
     }
+    /* book: nascondi solo lo spread, resta visibile il prezzo corrente */
+    .ob-split .ob-book-panel .spread-value {
+        display: none;
+    }
     .ob-split.book-hidden {
         grid-template-columns: 1fr;
         grid-template-areas:
@@ -964,6 +977,13 @@ body.orderbook-page #app {
     box-sizing: border-box;
     min-width: 70px;
     justify-content: space-between;
+}
+.fs-dd-btn-tf {
+    min-width: 0;
+    justify-content: center;
+    padding: 6px 8px;
+    background: transparent;
+    border: none;
 }
 .fs-dd-arrow {
     color: #6B7280;

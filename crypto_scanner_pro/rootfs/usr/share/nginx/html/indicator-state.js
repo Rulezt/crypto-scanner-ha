@@ -15,6 +15,7 @@
         grabMidline: { key: 'global_grab_midline_active', legacy: [] },
         hideIndMini: { key: 'global_hide_ind_mini_active', legacy: [] },
         emaCustom: { key: 'global_ema_custom_active', legacy: [] },
+        emaCustom2: { key: 'global_ema_custom2_active', legacy: [] },
     };
 
     // Migrazione one-time: se la chiave unica non esiste ancora, eredita '1' da

@@ -426,9 +426,25 @@ function toggleObRoc() {
 // ── EMA personalizzata (overlay singolo, lunghezza configurabile — porting Pine
 // "Moving Average Exponential", solo il core: lunghezza/colore/stile, niente
 // smoothing/BB secondari, scope confermato con l'utente) ───────────────────────
-const DEFAULT_EMA_CUSTOM_CFG = { length: 9, color: '#00E5FF', width: 1.5, style: 0, tf: '', waitClose: true };
+const DEFAULT_EMA_CUSTOM_CFG = {
+    length: 9, color: '#00E5FF', width: 1.5, style: 0, waitClose: true,
+    // TF di calcolo indipendente per ogni TF del grafico OB (chiave 'tf_<TF grafico>'):
+    // '' = segue il grafico (comportamento storico), altrimenti proietta da quel TF fisso.
+    tf_1: '', tf_5: '', tf_30: '', tf_60: '', tf_240: '', tf_D: '', tf_W: '', tf_M: '',
+};
 function getEmaCustomCfg() {
-    try { const s = JSON.parse(localStorage.getItem('chart_ema_custom_cfg')); if (s) return { ...DEFAULT_EMA_CUSTOM_CFG, ...s }; } catch(e) {}
+    try {
+        const s = JSON.parse(localStorage.getItem('chart_ema_custom_cfg'));
+        if (s) {
+            // Migrazione one-time: prima esisteva un solo campo `tf` globale (vedi chart.html).
+            if (s.tf !== undefined && s.tf_1 === undefined) {
+                for (const k of ['tf_1','tf_5','tf_30','tf_60','tf_240','tf_D','tf_W','tf_M']) s[k] = s.tf;
+                delete s.tf;
+                try { localStorage.setItem('chart_ema_custom_cfg', JSON.stringify(s)); } catch(e) {}
+            }
+            return { ...DEFAULT_EMA_CUSTOM_CFG, ...s };
+        }
+    } catch(e) {}
     return { ...DEFAULT_EMA_CUSTOM_CFG };
 }
 // ── Timeframe di calcolo (porting Pine indicator(timeframe=..., timeframe_gaps=...)):
@@ -459,7 +475,8 @@ let _obEmaCustomMtfSeq = 0, _obEmaCustomMtfTimer = null;
 function _syncObEmaCustomMtfTimer() {
     clearInterval(_obEmaCustomMtfTimer); _obEmaCustomMtfTimer = null;
     const cfg = getEmaCustomCfg();
-    if (_obEmaCustomActive && cfg.tf && _obChart) {
+    const effectiveTf = cfg['tf_' + _obChartTF] || '';
+    if (_obEmaCustomActive && effectiveTf && _obChart) {
         _obEmaCustomMtfTimer = setInterval(_obApplyEmaCustom, 5000);
     }
 }
@@ -471,7 +488,11 @@ function _obApplyEmaCustom() {
     const cfg = getEmaCustomCfg();
     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
     _obEmaCustomSeries = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.color, lineWidth: cfg.width, lineStyle: cfg.style ?? 0 });
-    if (!cfg.tf) {
+    // TF di calcolo indipendente per TF del grafico OB (vedi DEFAULT_EMA_CUSTOM_CFG):
+    // rilegge sempre la voce giusta da _obChartTF, così cambiare TF sul grafico applica in
+    // automatico il TF di calcolo configurato per quel TF, senza toccare le impostazioni.
+    const effectiveTf = cfg['tf_' + _obChartTF] || '';
+    if (!effectiveTf) {
         const ema = calcEMA(_obKlines, cfg.length);
         _obEmaCustomSeries.setData(ema);
         _obLastEmaCustom = ema[ema.length - 1].value;
@@ -482,9 +503,9 @@ function _obApplyEmaCustom() {
     if (!sym) return;
     (async () => {
       try {
-        const auxKlines = await _fetchAuxKlines(sym, cfg.tf);
+        const auxKlines = await _fetchAuxKlines(sym, effectiveTf);
         if (_obEmaCustomMtfSeq !== mySeq || !_obEmaCustomSeries) return;
-        if (!auxKlines.length) { console.warn('EMA personalizzata: nessun dato per TF', cfg.tf, sym); return; }
+        if (!auxKlines.length) { console.warn('EMA personalizzata: nessun dato per TF', effectiveTf, sym); return; }
         const auxEma = calcEMA(auxKlines, cfg.length);
         const projected = _projectMtfEma(_obKlines, auxKlines, auxEma, cfg.waitClose);
         _obEmaCustomSeries.setData(projected);
@@ -498,8 +519,76 @@ function toggleObEmaCustom() {
     _syncObEmaCustomMtfTimer();
 }
 
-// ── Canale EMA20 (EMA di high/close/low → 3 linee + riempimento) ───────────────
-const OB_CH_PERIOD = 20, OB_CH_COLOR = '#22d3ee';
+// ── EMA personalizzata 2 — seconda istanza indipendente, copia 1:1 della prima
+// (vedi commenti sopra) con suffisso "2", stessi helper _projectMtfEma/_fetchAuxKlines.
+const DEFAULT_EMA_CUSTOM2_CFG = {
+    length: 21, color: '#FF6EC7', width: 1.5, style: 0, waitClose: true,
+    tf_1: '', tf_5: '', tf_30: '', tf_60: '', tf_240: '', tf_D: '', tf_W: '', tf_M: '',
+};
+function getEmaCustom2Cfg() {
+    try {
+        const s = JSON.parse(localStorage.getItem('chart_ema_custom2_cfg'));
+        if (s) return { ...DEFAULT_EMA_CUSTOM2_CFG, ...s };
+    } catch(e) {}
+    return { ...DEFAULT_EMA_CUSTOM2_CFG };
+}
+let _obEmaCustom2Active = window.getIndActive('emaCustom2'), _obEmaCustom2Series = null, _obLastEmaCustom2 = null;
+let _obEmaCustom2MtfSeq = 0, _obEmaCustom2MtfTimer = null;
+function _syncObEmaCustom2MtfTimer() {
+    clearInterval(_obEmaCustom2MtfTimer); _obEmaCustom2MtfTimer = null;
+    const cfg = getEmaCustom2Cfg();
+    const effectiveTf = cfg['tf_' + _obChartTF] || '';
+    if (_obEmaCustom2Active && effectiveTf && _obChart) {
+        _obEmaCustom2MtfTimer = setInterval(_obApplyEmaCustom2, 5000);
+    }
+}
+function _obApplyEmaCustom2() {
+    if (_obEmaCustom2Series) { try { _obChart.removeSeries(_obEmaCustom2Series); } catch(e) {} _obEmaCustom2Series = null; }
+    _obLastEmaCustom2 = null;
+    _obEmaCustom2MtfSeq++;
+    if (!_obEmaCustom2Active || !_obChart || !_obKlines.length) return;
+    const cfg = getEmaCustom2Cfg();
+    const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+    _obEmaCustom2Series = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.color, lineWidth: cfg.width, lineStyle: cfg.style ?? 0 });
+    const effectiveTf = cfg['tf_' + _obChartTF] || '';
+    if (!effectiveTf) {
+        const ema = calcEMA(_obKlines, cfg.length);
+        _obEmaCustom2Series.setData(ema);
+        _obLastEmaCustom2 = ema[ema.length - 1].value;
+        return;
+    }
+    const mySeq = _obEmaCustom2MtfSeq;
+    const sym = _obSymbol;
+    if (!sym) return;
+    (async () => {
+      try {
+        const auxKlines = await _fetchAuxKlines(sym, effectiveTf);
+        if (_obEmaCustom2MtfSeq !== mySeq || !_obEmaCustom2Series) return;
+        if (!auxKlines.length) { console.warn('EMA personalizzata 2: nessun dato per TF', effectiveTf, sym); return; }
+        const auxEma = calcEMA(auxKlines, cfg.length);
+        const projected = _projectMtfEma(_obKlines, auxKlines, auxEma, cfg.waitClose);
+        _obEmaCustom2Series.setData(projected);
+      } catch(e) { console.error('EMA personalizzata 2 (MTF) errore:', e); }
+    })();
+}
+function toggleObEmaCustom2() {
+    _obEmaCustom2Active = !_obEmaCustom2Active;
+    window.setIndActive('emaCustom2', _obEmaCustom2Active);
+    _obApplyEmaCustom2();
+    _syncObEmaCustom2MtfTimer();
+}
+
+// ── Canale SMA 20 (SMA di high/close/low → 3 linee + riempimento) ──────────────
+// Config condivisa con chart.html/mtf.html (stessa chiave localStorage
+// chart_channel_cfg) — OB_CH_COLOR resta solo per il colore fisso del bottone
+// nella toolbar (stesso pattern del bottone Canale su chart.html/mtf.html, che
+// non riflette il colore configurato della linea).
+const OB_CH_COLOR = '#22d3ee';
+const DEFAULT_CHANNEL_CFG = { period: 20, color: '#ffffff', width: 1, style: 0, bgColor: '#ffffff', bgOpacity: 10 };
+function getChannelCfg() {
+    try { const s = JSON.parse(localStorage.getItem('chart_channel_cfg')); if (s) return { ...DEFAULT_CHANNEL_CFG, ...s }; } catch(e) {}
+    return { ...DEFAULT_CHANNEL_CFG };
+}
 let _obChActive = window.getIndActive('channel'), _obChSeries = { upper: null, mid: null, lower: null }, _obChData = null;
 
 function calcSmaChannel(klines, period) {
@@ -518,8 +607,9 @@ function calcSmaChannel(klines, period) {
 // stesso approccio di ricalcolo-finestra già usato per BB — costo trascurabile su
 // _obKlines che è comunque limitato a poche decine/centinaia di candele).
 function _obChTail(klines) {
-    if (klines.length < OB_CH_PERIOD) return null;
-    const c = calcSmaChannel(klines, OB_CH_PERIOD);
+    const period = getChannelCfg().period;
+    if (klines.length < period) return null;
+    const c = calcSmaChannel(klines, period);
     return { upper: c.upper[c.upper.length - 1], mid: c.mid[c.mid.length - 1], lower: c.lower[c.lower.length - 1] };
 }
 
@@ -563,7 +653,7 @@ class _ObChannelFillPrimitive {
                     if (x == null || y == null) continue;
                     ctx.lineTo(x * horizontalPixelRatio, y * verticalPixelRatio);
                 }
-                if (started) { ctx.closePath(); ctx.fillStyle = 'rgba(34,211,238,0.08)'; ctx.fill(); }
+                if (started) { const _chCfg = getChannelCfg(); ctx.closePath(); ctx.fillStyle = _hexToRgba(_chCfg.bgColor, (_chCfg.bgOpacity ?? 10) / 100); ctx.fill(); }
                 ctx.restore();
             })
         };
@@ -581,12 +671,13 @@ function _obApplyChannel() {
     }
     _obChData = null;
     if (!_obChActive || !_obChart) return;
+    const cfg = getChannelCfg();
     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
-    _obChSeries.upper = addSeries(_obChart, 'LineSeries', { ...lb, color: OB_CH_COLOR, lineWidth: 1 });
-    _obChSeries.mid   = addSeries(_obChart, 'LineSeries', { ...lb, color: OB_CH_COLOR, lineWidth: 1, lineStyle: 2 });
-    _obChSeries.lower = addSeries(_obChart, 'LineSeries', { ...lb, color: OB_CH_COLOR, lineWidth: 1 });
-    if (_obKlines.length >= OB_CH_PERIOD) {
-        const c = calcSmaChannel(_obKlines, OB_CH_PERIOD);
+    _obChSeries.upper = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.color, lineWidth: cfg.width, lineStyle: cfg.style });
+    _obChSeries.mid   = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.color, lineWidth: cfg.width, lineStyle: 2 });
+    _obChSeries.lower = addSeries(_obChart, 'LineSeries', { ...lb, color: cfg.color, lineWidth: cfg.width, lineStyle: cfg.style });
+    if (_obKlines.length >= cfg.period) {
+        const c = calcSmaChannel(_obKlines, cfg.period);
         _obChSeries.upper.setData(c.upper);
         _obChSeries.mid.setData(c.mid);
         _obChSeries.lower.setData(c.lower);
@@ -3198,7 +3289,7 @@ createApp({
             return c ? CHANNEL_TF_LABEL[c.state] : '';
         };
         const _updateChannelTfStrip = async () => {
-            const period = OB_CH_PERIOD;
+            const period = getChannelCfg().period;
             const need = period + 1;
             const sym = symbol.value;
             const grabCfg = getGrabCfg();
@@ -3454,6 +3545,9 @@ createApp({
             window.toggleAthAtlAll     = toggleAthAtlAll;
             window.toggleObLines       = toggleObLines;
             window._obShowLinesValue   = () => showObLines.value;
+            window._obApplyDayPrevLines = _applyDayPrevLines;
+            window._obApplyAthAtlLines  = _applyAthAtlLines;
+            window._obUpdateObLines     = updateObLines;
             _obRestoreDrawings();
             if (_obTrendlines.length || _obTrendActive) _obTrendEnsureRAF();
             initSlTpDrag();
@@ -3496,6 +3590,8 @@ createApp({
                 if (_obRocActive) _obApplyRoc();
                 if (_obEmaCustomActive) _obApplyEmaCustom();
                 _syncObEmaCustomMtfTimer();
+                if (_obEmaCustom2Active) _obApplyEmaCustom2();
+                _syncObEmaCustom2MtfTimer();
                 if (_obChActive) _obApplyChannel();
                 if (_obGrabActive || _obGrabMidlineActive) _obApplyGrab();
                 _applyCandleStyle(candleS);
@@ -3648,6 +3744,10 @@ createApp({
                                 const eck = 2 / (getEmaCustomCfg().length + 1);
                                 _obLastEmaCustom = prev.close * eck + _obLastEmaCustom * (1 - eck);
                             }
+                            if (_obLastEmaCustom2 != null) {
+                                const eckB = 2 / (getEmaCustom2Cfg().length + 1);
+                                _obLastEmaCustom2 = prev.close * eckB + _obLastEmaCustom2 * (1 - eckB);
+                            }
                             _obGrabConfirmPrev(prev);
                             lastConfirmedTime = prev.time;
                         }
@@ -3662,6 +3762,11 @@ createApp({
                             const eck2 = 2 / (getEmaCustomCfg().length + 1);
                             const live2 = last.close * eck2 + _obLastEmaCustom * (1 - eck2);
                             try { _obEmaCustomSeries.update({ time: last.time, value: live2 }); } catch(e) {}
+                        }
+                        if (_obEmaCustom2Active && _obEmaCustom2Series && _obLastEmaCustom2 != null) {
+                            const eckB2 = 2 / (getEmaCustom2Cfg().length + 1);
+                            const liveB2 = last.close * eckB2 + _obLastEmaCustom2 * (1 - eckB2);
+                            try { _obEmaCustom2Series.update({ time: last.time, value: liveB2 }); } catch(e) {}
                         }
                         // Keep _obKlines in sync (rolling window per il ricalcolo BB)
                         if (_obKlines.length) {
@@ -3723,6 +3828,8 @@ createApp({
             if (_obRocSeries) try { _obRocSeries.setData([]); } catch(e) {}
             if (_obEmaCustomSeries) try { _obEmaCustomSeries.setData([]); } catch(e) {}
             _obLastEmaCustom = null;
+            if (_obEmaCustom2Series) try { _obEmaCustom2Series.setData([]); } catch(e) {}
+            _obLastEmaCustom2 = null;
             ohlc.value = { o: '', h: '', l: '', c: '', pct: '', color: '#9ca3af' };
             loadChartData(tf);
         };
@@ -4013,6 +4120,10 @@ createApp({
                         const eck = 2 / (getEmaCustomCfg().length + 1);
                         _obLastEmaCustom = prevClose * eck + _obLastEmaCustom * (1 - eck);
                     }
+                    if (_obLastEmaCustom2 != null) {
+                        const eckB = 2 / (getEmaCustom2Cfg().length + 1);
+                        _obLastEmaCustom2 = prevClose * eckB + _obLastEmaCustom2 * (1 - eckB);
+                    }
                     _obGrabConfirmPrev(_obLiveCandle);
                     lastConfirmedTime = _obLiveCandle.time;
                 }
@@ -4064,6 +4175,11 @@ createApp({
                     const eck2 = 2 / (getEmaCustomCfg().length + 1);
                     const live2 = newCandle.close * eck2 + _obLastEmaCustom * (1 - eck2);
                     try { _obEmaCustomSeries.update({ time: newCandle.time, value: live2 }); } catch(e) {}
+                }
+                if (_obEmaCustom2Active && _obEmaCustom2Series && _obLastEmaCustom2 != null) {
+                    const eckB2 = 2 / (getEmaCustom2Cfg().length + 1);
+                    const liveB2 = newCandle.close * eckB2 + _obLastEmaCustom2 * (1 - eckB2);
+                    try { _obEmaCustom2Series.update({ time: newCandle.time, value: liveB2 }); } catch(e) {}
                 }
                 if (_obKlines.length) _obChUpdateTail([..._obKlines, newCandle]);
                 _obGrabUpdateTail(newCandle, false);
@@ -4473,6 +4589,7 @@ createApp({
             clearInterval(_cdRepaintTimer);
             clearInterval(_tradePollT); _tradePollT = null;
             clearInterval(_obEmaCustomMtfTimer); _obEmaCustomMtfTimer = null;
+            clearInterval(_obEmaCustom2MtfTimer); _obEmaCustom2MtfTimer = null;
         });
 
         return {
@@ -4501,20 +4618,21 @@ createApp({
 // ── Indicatori panel (popup unico, stesso pattern di chart.html/mtf.html) ──────
 const _GEAR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
 const IND_LIST = [
-    { label: 'EMA 5',   isOn: () => getEmaCfg().find(e=>e.p===5).enabled,   toggle: () => toggleEmaAll(5),   col: 1 },
-    { label: 'EMA 10',  isOn: () => getEmaCfg().find(e=>e.p===10).enabled,  toggle: () => toggleEmaAll(10),  col: 1 },
-    { label: 'EMA 60',  isOn: () => getEmaCfg().find(e=>e.p===60).enabled,  toggle: () => toggleEmaAll(60),  col: 1 },
-    { label: 'EMA 223', isOn: () => getEmaCfg().find(e=>e.p===223).enabled, toggle: () => toggleEmaAll(223), col: 1 },
+    { label: 'EMA 5',   isOn: () => getEmaCfg().find(e=>e.p===5).enabled,   toggle: () => toggleEmaAll(5),   cfgKey: 'ema5',   col: 1 },
+    { label: 'EMA 10',  isOn: () => getEmaCfg().find(e=>e.p===10).enabled,  toggle: () => toggleEmaAll(10),  cfgKey: 'ema10',  col: 1 },
+    { label: 'EMA 60',  isOn: () => getEmaCfg().find(e=>e.p===60).enabled,  toggle: () => toggleEmaAll(60),  cfgKey: 'ema60',  col: 1 },
+    { label: 'EMA 223', isOn: () => getEmaCfg().find(e=>e.p===223).enabled, toggle: () => toggleEmaAll(223), cfgKey: 'ema223', col: 1 },
     { label: 'Midline GRaB', isOn: () => _obGrabMidlineActive, toggle: toggleObGrabMidline, col: 1 },
     { label: 'EMA personalizzata', isOn: () => _obEmaCustomActive, toggle: toggleObEmaCustom, cfgOpen: () => openIndCfgPanel('emaCustom'), col: 1 },
-    { label: 'Canale SMA 20',   isOn: () => _obChActive,  toggle: toggleObChannel, col: 2 },
-    { label: 'Bollinger Bands', isOn: () => _obBbActive,  toggle: toggleObBB,      col: 2 },
+    { label: 'EMA personalizzata 2', isOn: () => _obEmaCustom2Active, toggle: toggleObEmaCustom2, cfgOpen: () => openIndCfgPanel('emaCustom2'), col: 1 },
+    { label: 'Canale SMA 20',   isOn: () => _obChActive,  toggle: toggleObChannel, cfgKey: 'channel', col: 2 },
+    { label: 'Bollinger Bands', isOn: () => _obBbActive,  toggle: toggleObBB,      cfgKey: 'bb', col: 2 },
     { label: 'GRaB',            isOn: () => _obGrabActive,toggle: toggleObGrab,    cfgOpen: openGrabCfgPanel, col: 2 },
-    { label: 'ROC',             isOn: () => _obRocActive, toggle: toggleObRoc,     col: 2 },
-    { label: 'Order Book Levels', isOn: () => window._obShowLinesValue ? window._obShowLinesValue() : false, toggle: () => window.toggleObLines && window.toggleObLines(), col: 2 },
-    { label: 'Livelli Daily',          isOn: () => getLvCfg().dayHigh.vis.ob,  toggle: () => window.toggleDayLevelsAll  && window.toggleDayLevelsAll(),  col: 3 },
-    { label: 'Massimi/Minimi Storici', isOn: () => getLvCfg().ath.vis.ob,     toggle: () => window.toggleAthAtlAll     && window.toggleAthAtlAll(),     col: 3 },
-    { label: 'Livelli Giorno Prec.',   isOn: () => getLvCfg().prevHigh.vis.ob,toggle: () => window.togglePrevLevelsAll && window.togglePrevLevelsAll(), col: 3 },
+    { label: 'ROC',             isOn: () => _obRocActive, toggle: toggleObRoc,     cfgKey: 'roc', col: 2 },
+    { label: 'Order Book Levels', isOn: () => window._obShowLinesValue ? window._obShowLinesValue() : false, toggle: () => window.toggleObLines && window.toggleObLines(), cfgKey: 'obLevels', col: 2 },
+    { label: 'Livelli Daily',          isOn: () => getLvCfg().dayHigh.vis.ob,  toggle: () => window.toggleDayLevelsAll  && window.toggleDayLevelsAll(),  cfgKey: 'dayLevels',  col: 3 },
+    { label: 'Massimi/Minimi Storici', isOn: () => getLvCfg().ath.vis.ob,     toggle: () => window.toggleAthAtlAll     && window.toggleAthAtlAll(),     cfgKey: 'athAtl',     col: 3 },
+    { label: 'Livelli Giorno Prec.',   isOn: () => getLvCfg().prevHigh.vis.ob,toggle: () => window.togglePrevLevelsAll && window.togglePrevLevelsAll(), cfgKey: 'prevLevels', col: 3 },
     { label: 'Colora candele',         isOn: () => window.isCandleColorActive(), toggle: toggleObCandleColor, col: 3 },
 ];
 function renderIndPanel() {
@@ -4522,7 +4640,7 @@ function renderIndPanel() {
     if (!el) return;
     const renderRow = (it, idx) => {
         const on = it.isOn();
-        const gear = it.cfgOpen ? `<span data-ind-idx-gear="${idx}" title="Impostazioni" style="margin-right:6px;color:#6B7280;cursor:pointer;display:flex;align-items:center;">${_GEAR_SVG}</span>` : '';
+        const gear = (it.cfgKey || it.cfgOpen) ? `<span data-ind-idx-gear="${idx}" title="Impostazioni" style="margin-right:6px;color:#6B7280;cursor:pointer;display:flex;align-items:center;">${_GEAR_SVG}</span>` : '';
         return `<div data-ind-idx="${idx}" style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;cursor:pointer;gap:6px;">
             <span style="font-size:11px;color:#E5E7EB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.label}</span>
             <span style="display:flex;align-items:center;flex-shrink:0;">
@@ -4540,7 +4658,13 @@ function renderIndPanel() {
     </div>`;
     el.onclick = ev => {
         const gearEl = ev.target.closest('[data-ind-idx-gear]');
-        if (gearEl) { ev.stopPropagation(); IND_LIST[+gearEl.dataset.indIdxGear].cfgOpen(); closeIndPanel(); return; }
+        if (gearEl) {
+            ev.stopPropagation();
+            const it = IND_LIST[+gearEl.dataset.indIdxGear];
+            if (it.cfgOpen) it.cfgOpen(); else openIndCfgPanel(it.cfgKey);
+            closeIndPanel();
+            return;
+        }
         const row = ev.target.closest('[data-ind-idx]');
         if (!row) return;
         IND_LIST[+row.dataset.indIdx].toggle();
@@ -4552,8 +4676,149 @@ function closeIndPanel() { document.getElementById('ind-panel').style.display = 
 function closeIndPanelOutside(ev) { if (ev.target.id === 'ind-panel') closeIndPanel(); }
 
 // ── Pannello impostazioni generico per gli indicatori configurabili (porting da
-// chart.html) — qui usato solo da EMA personalizzata, ma riusabile per futuri indicatori.
+// chart.html) ───────────────────────────────────────────────────────────────
+function _emaCfgSchema(period) {
+    const d = DEFAULT_EMA_CFG.find(x => x.p === period);
+    return {
+        title: `EMA ${period}`,
+        getCfg: () => { const e = getEmaCfg().find(x => x.p === period); return { color: e.color, width: e.width, style: e.style }; },
+        defaults: { color: d.color, width: d.width, style: d.style },
+        fields: [
+            { key:'color', label:'Colore', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:0.5 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+        ],
+        apply: cfg => {
+            const arr = getEmaCfg();
+            const e = arr.find(x => x.p === period);
+            e.color = cfg.color; e.width = cfg.width; e.style = cfg.style;
+            try { localStorage.setItem('chart_ema_cfg', JSON.stringify(arr)); } catch(err) {}
+            EMA_CFG = arr;
+            if (_obEmaS[period]) _obEmaS[period].applyOptions({ color: cfg.color, lineWidth: cfg.width + 0.5, lineStyle: cfg.style });
+        },
+    };
+}
 const IND_CFG_SCHEMAS = {
+    channel: {
+        title: 'Canale SMA 20', getCfg: getChannelCfg, defaults: DEFAULT_CHANNEL_CFG,
+        fields: [
+            { key:'period', label:'Periodo', type:'number', min:2, max:300, step:1 },
+            { key:'color', label:'Colore linee', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:1 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+            { key:'bgColor', label:'Colore sfondo', type:'color' },
+            { key:'bgOpacity', label:'Opacità sfondo %', type:'number', min:0, max:100, step:1 },
+        ],
+        apply: cfg => {
+            try { localStorage.setItem('chart_channel_cfg', JSON.stringify(cfg)); } catch(e) {}
+            _obApplyChannel();
+        },
+    },
+    bb: {
+        title: 'Bollinger Bands', getCfg: getBbCfg, defaults: DEFAULT_BB_CFG,
+        fields: [
+            { key:'period', label:'Periodo', type:'number', min:2, max:300, step:1 },
+            { key:'mult', label:'Moltiplicatore Dev.Std', type:'number', min:0.5, max:5, step:0.1 },
+            { key:'color', label:'Colore', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:1 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+        ],
+        apply: cfg => {
+            try { localStorage.setItem('chart_bb_cfg', JSON.stringify(cfg)); } catch(e) {}
+            _obApplyBB();
+        },
+    },
+    roc: {
+        title: 'ROC (Rate Of Change)', getCfg: getRocCfg, defaults: DEFAULT_ROC_CFG,
+        fields: [
+            { key:'length', label:'Periodo', type:'number', min:1, max:300, step:1 },
+            { key:'color', label:'Colore', type:'color' },
+            { key:'areaFill', label:'Area colorata sopra/sotto 0', type:'checkbox' },
+            { key:'upColor', label:'Colore area sopra 0', type:'color' },
+            { key:'downColor', label:'Colore area sotto 0', type:'color' },
+            { key:'showExtremes', label:'Linee min/max raggiunti', type:'checkbox' },
+        ],
+        apply: cfg => {
+            try { localStorage.setItem('chart_roc_cfg', JSON.stringify(cfg)); } catch(e) {}
+            _obApplyRoc();
+        },
+    },
+    dayLevels: {
+        title: 'Livelli Daily',
+        getCfg: () => { const lv = getLvCfg(); return { highColor: lv.dayHigh.color, lowColor: lv.dayLow.color, width: lv.dayHigh.width, style: lv.dayHigh.style }; },
+        defaults: { highColor: DEFAULT_LEVELS_CFG.dayHigh.color, lowColor: DEFAULT_LEVELS_CFG.dayLow.color, width: DEFAULT_LEVELS_CFG.dayHigh.width, style: DEFAULT_LEVELS_CFG.dayHigh.style },
+        fields: [
+            { key:'highColor', label:'Colore Massimo', type:'color' },
+            { key:'lowColor', label:'Colore Minimo', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:1 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+        ],
+        apply: cfg => {
+            const lv = getLvCfg();
+            lv.dayHigh.color = cfg.highColor; lv.dayHigh.width = cfg.width; lv.dayHigh.style = cfg.style;
+            lv.dayLow.color  = cfg.lowColor;  lv.dayLow.width  = cfg.width; lv.dayLow.style  = cfg.style;
+            try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+            if (window._obApplyDayPrevLines) window._obApplyDayPrevLines();
+        },
+    },
+    prevLevels: {
+        title: 'Livelli Giorno Precedente',
+        getCfg: () => { const lv = getLvCfg(); return { highColor: lv.prevHigh.color, lowColor: lv.prevLow.color, width: lv.prevHigh.width, style: lv.prevHigh.style }; },
+        defaults: { highColor: DEFAULT_LEVELS_CFG.prevHigh.color, lowColor: DEFAULT_LEVELS_CFG.prevLow.color, width: DEFAULT_LEVELS_CFG.prevHigh.width, style: DEFAULT_LEVELS_CFG.prevHigh.style },
+        fields: [
+            { key:'highColor', label:'Colore Massimo', type:'color' },
+            { key:'lowColor', label:'Colore Minimo', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:1 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+        ],
+        apply: cfg => {
+            const lv = getLvCfg();
+            lv.prevHigh.color = cfg.highColor; lv.prevHigh.width = cfg.width; lv.prevHigh.style = cfg.style;
+            lv.prevLow.color  = cfg.lowColor;  lv.prevLow.width  = cfg.width; lv.prevLow.style  = cfg.style;
+            try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+            if (window._obApplyDayPrevLines) window._obApplyDayPrevLines();
+        },
+    },
+    athAtl: {
+        title: 'Massimi/Minimi Storici',
+        getCfg: () => { const lv = getLvCfg(); return { athColor: lv.ath.color, atlColor: lv.atl.color, width: lv.ath.width, style: lv.ath.style }; },
+        defaults: { athColor: DEFAULT_LEVELS_CFG.ath.color, atlColor: DEFAULT_LEVELS_CFG.atl.color, width: DEFAULT_LEVELS_CFG.ath.width, style: DEFAULT_LEVELS_CFG.ath.style },
+        fields: [
+            { key:'athColor', label:'Colore ATH', type:'color' },
+            { key:'atlColor', label:'Colore ATL', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:1 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+        ],
+        apply: cfg => {
+            const lv = getLvCfg();
+            lv.ath.color = cfg.athColor; lv.ath.width = cfg.width; lv.ath.style = cfg.style;
+            lv.atl.color = cfg.atlColor; lv.atl.width = cfg.width; lv.atl.style = cfg.style;
+            try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+            if (window._obApplyAthAtlLines) window._obApplyAthAtlLines();
+        },
+    },
+    obLevels: {
+        title: 'Order Book Levels',
+        getCfg: () => { const lv = getLvCfg(); return { bidColor: lv.obBid.color, askColor: lv.obAsk.color, width: lv.obBid.width, style: lv.obBid.style }; },
+        defaults: { bidColor: DEFAULT_LEVELS_CFG.obBid.color, askColor: DEFAULT_LEVELS_CFG.obAsk.color, width: DEFAULT_LEVELS_CFG.obBid.width, style: DEFAULT_LEVELS_CFG.obBid.style },
+        fields: [
+            { key:'bidColor', label:'Colore Bid', type:'color' },
+            { key:'askColor', label:'Colore Ask', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:1 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+        ],
+        apply: cfg => {
+            const lv = getLvCfg();
+            lv.obBid.color = cfg.bidColor; lv.obBid.width = cfg.width; lv.obBid.style = cfg.style;
+            lv.obAsk.color = cfg.askColor; lv.obAsk.width = cfg.width; lv.obAsk.style = cfg.style;
+            try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+            if (window._obUpdateObLines) window._obUpdateObLines();
+        },
+    },
+    ema5:   _emaCfgSchema(5),
+    ema10:  _emaCfgSchema(10),
+    ema60:  _emaCfgSchema(60),
+    ema223: _emaCfgSchema(223),
     emaCustom: {
         title: 'EMA personalizzata', getCfg: getEmaCustomCfg, defaults: DEFAULT_EMA_CUSTOM_CFG,
         fields: [
@@ -4561,13 +4826,39 @@ const IND_CFG_SCHEMAS = {
             { key:'color', label:'Colore', type:'color' },
             { key:'width', label:'Spessore', type:'number', min:1, max:5, step:0.5 },
             { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
-            { key:'tf', label:'Timeframe', type:'select', raw:true, options:[['','Grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D']] },
+            { key:'tf_1',   label:'TF calcolo — grafico 1m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_5',   label:'TF calcolo — grafico 5m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_30',  label:'TF calcolo — grafico 30m', type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_60',  label:'TF calcolo — grafico 1h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_240', label:'TF calcolo — grafico 4h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_D',   label:'TF calcolo — grafico D',   type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
             { key:'waitClose', label:'Attendi la chiusura del timeframe', type:'checkbox' },
         ],
         apply: cfg => {
             try { localStorage.setItem('chart_ema_custom_cfg', JSON.stringify(cfg)); } catch(e) {}
             _obApplyEmaCustom();
             _syncObEmaCustomMtfTimer();
+        },
+    },
+    emaCustom2: {
+        title: 'EMA personalizzata 2', getCfg: getEmaCustom2Cfg, defaults: DEFAULT_EMA_CUSTOM2_CFG,
+        fields: [
+            { key:'length', label:'Lunghezza', type:'number', min:1, max:500, step:1 },
+            { key:'color', label:'Colore', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:0.5 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+            { key:'tf_1',   label:'TF calcolo — grafico 1m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_5',   label:'TF calcolo — grafico 5m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_30',  label:'TF calcolo — grafico 30m', type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_60',  label:'TF calcolo — grafico 1h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_240', label:'TF calcolo — grafico 4h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_D',   label:'TF calcolo — grafico D',   type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'waitClose', label:'Attendi la chiusura del timeframe', type:'checkbox' },
+        ],
+        apply: cfg => {
+            try { localStorage.setItem('chart_ema_custom2_cfg', JSON.stringify(cfg)); } catch(e) {}
+            _obApplyEmaCustom2();
+            _syncObEmaCustom2MtfTimer();
         },
     },
 };

@@ -2818,40 +2818,10 @@ def ema223_flip_page():
     return send_file('/usr/share/nginx/html/ema223-flip.html')
 
 
-@app.route('/channel-breakout', methods=['GET'])
-@app.route('/channel-breakout.html', methods=['GET'])
-def channel_breakout_page():
-    return send_file('/usr/share/nginx/html/channel-breakout.html')
-
-
-@app.route('/vol-inefficiency', methods=['GET'])
-@app.route('/vol-inefficiency.html', methods=['GET'])
-def vol_inefficiency_page():
-    return send_file('/usr/share/nginx/html/vol-inefficiency.html')
-
-
-@app.route('/bb-squeeze', methods=['GET'])
-@app.route('/bb-squeeze.html', methods=['GET'])
-def bb_squeeze_page():
-    return send_file('/usr/share/nginx/html/bb-squeeze.html')
-
-
-@app.route('/rvol', methods=['GET'])
-@app.route('/rvol.html', methods=['GET'])
-def rvol_page():
-    return send_file('/usr/share/nginx/html/rvol.html')
-
-
-@app.route('/midline-breakout', methods=['GET'])
-@app.route('/midline-breakout.html', methods=['GET'])
-def midline_breakout_page():
-    return send_file('/usr/share/nginx/html/midline-breakout.html')
-
-
-@app.route('/trendline', methods=['GET'])
-@app.route('/trendline.html', methods=['GET'])
-def trendline_scanner_page():
-    return send_file('/usr/share/nginx/html/trendline.html')
+@app.route('/ema-custom-flip', methods=['GET'])
+@app.route('/ema-custom-flip.html', methods=['GET'])
+def ema_custom_flip_page():
+    return send_file('/usr/share/nginx/html/ema-custom-flip.html')
 
 
 @app.route('/confluence', methods=['GET'])

@@ -4,9 +4,10 @@
   var FIXED_KEYS = [
     'csp_lang', 'chart_source', 'chart_candles_per_tf', 'ibkr_symbols',
     'chart_ema_cfg', 'chart_levels_cfg', 'chart_bb_cfg', 'chart_channel_cfg', 'chart_grab_cfg',
+    'chart_roc_cfg', 'chart_ema_custom_cfg', 'chart_ema_custom2_cfg',
     'bot_cfg_draft', 'bot_channel_visibility', 'ob_book_w_pct',
-    'ath_atl_cfg', 'chb_cfg', 'bbsq_cfg', 'e223f_cfg', 'ico_cfg',
-    'midbrk_cfg', 'rvol_cfg', 'vinef_cfg', 'third_touch_cfg', 'ema60_cfg', 'trdln_cfg',
+    'ath_atl_cfg', 'e223f_cfg', 'ecf_cfg', 'ico_cfg',
+    'third_touch_cfg', 'ema60_cfg',
     'confl_cfg', 'mtf_drawings', 'ob_drawings', 'inline_drawings', 'lockedStockSymbols', 'chart_grid_drawings'
   ];
   var SUFFIX_MATCH = '_columns_order';

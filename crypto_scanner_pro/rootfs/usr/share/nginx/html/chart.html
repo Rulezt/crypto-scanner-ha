@@ -942,6 +942,7 @@ let _fsChannelSeries = { upper: null, mid: null, lower: null }, _fsChannelData =
 let _fsGrabWaveS = { high: null, low: null, close: null }, _fsGrabMurreyS = { mid: null, lo: null, hi: null }, _fsGrabState = null;
 let _fsRocSeries = null, _fsRocZeroLine = null, _fsRocMaxLine = null, _fsRocMinLine = null;
 let _fsEmaCustomSeries = null, _fsLastEmaCustom = null;
+let _fsEmaCustom2Series = null, _fsLastEmaCustom2 = null;
 const _fsIndSlot = {
     get chart() { return fsChart; },
     get candleS() { return fsCandleS; },
@@ -959,6 +960,8 @@ const _fsIndSlot = {
     get rocMinLine() { return _fsRocMinLine; }, set rocMinLine(v) { _fsRocMinLine = v; },
     get emaCustomSeries() { return _fsEmaCustomSeries; }, set emaCustomSeries(v) { _fsEmaCustomSeries = v; },
     get lastEmaCustom() { return _fsLastEmaCustom; }, set lastEmaCustom(v) { _fsLastEmaCustom = v; },
+    get emaCustom2Series() { return _fsEmaCustom2Series; }, set emaCustom2Series(v) { _fsEmaCustom2Series = v; },
+    get lastEmaCustom2() { return _fsLastEmaCustom2; }, set lastEmaCustom2(v) { _fsLastEmaCustom2 = v; },
 };
 
 const IS_LANDSCAPE_MOBILE = window.matchMedia('(orientation: landscape) and (pointer: coarse) and (max-height: 700px)').matches;
@@ -1429,14 +1432,35 @@ function toggleRocAll() {
 // ── EMA personalizzata (overlay singolo, lunghezza configurabile — porting Pine
 // "Moving Average Exponential", solo il core: lunghezza/colore/stile, niente
 // smoothing/BB secondari, scope confermato con l'utente) ───────────────────────
-const DEFAULT_EMA_CUSTOM_CFG = { length: 9, color: '#00E5FF', width: 1.5, style: 0, tf: '', waitClose: true };
+const DEFAULT_EMA_CUSTOM_CFG = {
+    length: 9, color: '#00E5FF', width: 1.5, style: 0, waitClose: true,
+    // TF di calcolo indipendente per ogni TF del grafico host (chiave 'tf_<TF grafico>'):
+    // '' = segue il grafico (comportamento storico), altrimenti proietta da quel TF fisso.
+    // Cambiare TF sul grafico rilegge automaticamente la voce giusta (vedi applyEmaCustomToSlot).
+    tf_1: '', tf_5: '', tf_30: '', tf_60: '', tf_240: '', tf_D: '', tf_W: '', tf_M: '',
+};
 function getEmaCustomCfg() {
-    try { const s = JSON.parse(localStorage.getItem('chart_ema_custom_cfg')); if (s) return { ...DEFAULT_EMA_CUSTOM_CFG, ...s }; } catch(e) {}
+    try {
+        const s = JSON.parse(localStorage.getItem('chart_ema_custom_cfg'));
+        if (s) {
+            // Migrazione one-time: prima esisteva un solo campo `tf` globale per ogni TF del
+            // grafico; ora ogni TF ha la propria voce (tf_1, tf_5, ...) — vedi DEFAULT_EMA_CUSTOM_CFG.
+            // Se troviamo ancora il vecchio formato, applichiamo lo stesso TF a tutte le voci
+            // per non perdere la configurazione già fatta dall'utente.
+            if (s.tf !== undefined && s.tf_1 === undefined) {
+                for (const k of ['tf_1','tf_5','tf_30','tf_60','tf_240','tf_D','tf_W','tf_M']) s[k] = s.tf;
+                delete s.tf;
+                try { localStorage.setItem('chart_ema_custom_cfg', JSON.stringify(s)); } catch(e) {}
+            }
+            return { ...DEFAULT_EMA_CUSTOM_CFG, ...s };
+        }
+    } catch(e) {}
     return { ...DEFAULT_EMA_CUSTOM_CFG };
 }
 // ── Timeframe di calcolo (porting Pine indicator(timeframe=..., timeframe_gaps=...)):
-// quando cfg.tf è un TF diverso da quello del grafico, l'EMA va calcolata su una serie
-// dati SEPARATA di quel TF e "proiettata" sulle candele del grafico corrente (ogni
+// quando la voce cfg['tf_'+TF grafico] è un TF diverso da quello del grafico, l'EMA va
+// calcolata su una serie dati SEPARATA di quel TF e "proiettata" sulle candele del
+// grafico corrente (ogni
 // candela del grafico prende il valore dell'ultima barra HTF chiusa che la contiene —
 // esattamente come una security() Pine su timeframe superiore vista su un grafico più
 // fine). L'ultimo elemento restituito da /api/klines è sempre la barra IN FORMAZIONE
@@ -1469,9 +1493,13 @@ function applyEmaCustomToSlot(s, cfg) {
     if (!emaCustomActive || (hideIndMiniActive && slots.includes(s)) || !s.klines || !s.klines.length) return;
     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
     s.emaCustomSeries = addSeries(s.chart, 'LineSeries', { ...lb, color: cfg.color, lineWidth: cfg.width, lineStyle: cfg.style ?? 0 });
-    if (!cfg.tf) {
-        // Grafico (default): calcolo diretto sulle candele host, con update live tick-by-tick
-        // (vedi lastEmaCustom nei blocchi WS/roll) — nessun fetch aggiuntivo.
+    // TF di calcolo indipendente per TF del grafico host (vedi DEFAULT_EMA_CUSTOM_CFG):
+    // rilegge sempre la voce giusta da s.curTF, così cambiare TF sul grafico applica in
+    // automatico il TF di calcolo configurato per quel TF, senza toccare le impostazioni.
+    const effectiveTf = cfg['tf_' + s.curTF] || '';
+    if (!effectiveTf) {
+        // Grafico (default per questo TF): calcolo diretto sulle candele host, con update live
+        // tick-by-tick (vedi lastEmaCustom nei blocchi WS/roll) — nessun fetch aggiuntivo.
         const ema = calcEMA(s.klines, cfg.length);
         s.emaCustomSeries.setData(ema);
         s.lastEmaCustom = ema[ema.length - 1].value;
@@ -1485,9 +1513,9 @@ function applyEmaCustomToSlot(s, cfg) {
     if (!symbol) return;
     (async () => {
         try {
-            const auxKlines = await _fetchAuxKlines(symbol, cfg.tf);
+            const auxKlines = await _fetchAuxKlines(symbol, effectiveTf);
             if (s._emaCustomMtfSeq !== mySeq || !s.emaCustomSeries) return; // superato (TF/coin cambiati nel frattempo)
-            if (!auxKlines.length) { console.warn('EMA personalizzata: nessun dato per TF', cfg.tf, symbol); return; }
+            if (!auxKlines.length) { console.warn('EMA personalizzata: nessun dato per TF', effectiveTf, symbol); return; }
             const auxEma = calcEMA(auxKlines, cfg.length);
             const projected = _projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose);
             s.emaCustomSeries.setData(projected);
@@ -1498,7 +1526,8 @@ let _fsEmaCustomMtfTimer = null;
 function _syncFsEmaCustomMtfTimer() {
     clearInterval(_fsEmaCustomMtfTimer); _fsEmaCustomMtfTimer = null;
     const cfg = getEmaCustomCfg();
-    if (emaCustomActive && cfg.tf && fsChart) {
+    const effectiveTf = cfg['tf_' + _fsIndSlot.curTF] || '';
+    if (emaCustomActive && effectiveTf && fsChart) {
         _fsEmaCustomMtfTimer = setInterval(() => applyEmaCustomToSlot(_fsIndSlot, getEmaCustomCfg()), 5000);
     }
 }
@@ -1509,6 +1538,62 @@ function toggleEmaCustomAll() {
     slots.forEach(s => applyEmaCustomToSlot(s, cfg));
     if (fsChart) applyEmaCustomToSlot(_fsIndSlot, cfg);
     _syncFsEmaCustomMtfTimer();
+}
+
+// ── EMA personalizzata 2 — seconda istanza indipendente, stessa logica/TF-map della
+// prima (vedi commenti sopra), copia 1:1 con suffisso "2" per non toccare la prima.
+const DEFAULT_EMA_CUSTOM2_CFG = {
+    length: 21, color: '#FF6EC7', width: 1.5, style: 0, waitClose: true,
+    tf_1: '', tf_5: '', tf_30: '', tf_60: '', tf_240: '', tf_D: '', tf_W: '', tf_M: '',
+};
+function getEmaCustom2Cfg() {
+    try { const s = JSON.parse(localStorage.getItem('chart_ema_custom2_cfg')); if (s) return { ...DEFAULT_EMA_CUSTOM2_CFG, ...s }; } catch(e) {}
+    return { ...DEFAULT_EMA_CUSTOM2_CFG };
+}
+function applyEmaCustom2ToSlot(s, cfg) {
+    if (s.emaCustom2Series) { try { s.chart.removeSeries(s.emaCustom2Series); } catch(e) {} s.emaCustom2Series = null; }
+    s.lastEmaCustom2 = null;
+    s._emaCustom2MtfSeq = (s._emaCustom2MtfSeq || 0) + 1;
+    if (!emaCustom2Active || (hideIndMiniActive && slots.includes(s)) || !s.klines || !s.klines.length) return;
+    const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+    s.emaCustom2Series = addSeries(s.chart, 'LineSeries', { ...lb, color: cfg.color, lineWidth: cfg.width, lineStyle: cfg.style ?? 0 });
+    const effectiveTf = cfg['tf_' + s.curTF] || '';
+    if (!effectiveTf) {
+        const ema = calcEMA(s.klines, cfg.length);
+        s.emaCustom2Series.setData(ema);
+        s.lastEmaCustom2 = ema[ema.length - 1].value;
+        return;
+    }
+    const mySeq = s._emaCustom2MtfSeq;
+    const symbol = s.symbol;
+    if (!symbol) return;
+    (async () => {
+        try {
+            const auxKlines = await _fetchAuxKlines(symbol, effectiveTf);
+            if (s._emaCustom2MtfSeq !== mySeq || !s.emaCustom2Series) return;
+            if (!auxKlines.length) { console.warn('EMA personalizzata 2: nessun dato per TF', effectiveTf, symbol); return; }
+            const auxEma = calcEMA(auxKlines, cfg.length);
+            const projected = _projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose);
+            s.emaCustom2Series.setData(projected);
+        } catch(e) { console.error('EMA personalizzata 2 (MTF) errore:', e); }
+    })();
+}
+let _fsEmaCustom2MtfTimer = null;
+function _syncFsEmaCustom2MtfTimer() {
+    clearInterval(_fsEmaCustom2MtfTimer); _fsEmaCustom2MtfTimer = null;
+    const cfg = getEmaCustom2Cfg();
+    const effectiveTf = cfg['tf_' + _fsIndSlot.curTF] || '';
+    if (emaCustom2Active && effectiveTf && fsChart) {
+        _fsEmaCustom2MtfTimer = setInterval(() => applyEmaCustom2ToSlot(_fsIndSlot, getEmaCustom2Cfg()), 5000);
+    }
+}
+function toggleEmaCustom2All() {
+    emaCustom2Active = !emaCustom2Active;
+    window.setIndActive('emaCustom2', emaCustom2Active);
+    const cfg = getEmaCustom2Cfg();
+    slots.forEach(s => applyEmaCustom2ToSlot(s, cfg));
+    if (fsChart) applyEmaCustom2ToSlot(_fsIndSlot, cfg);
+    _syncFsEmaCustom2MtfTimer();
 }
 
 // ── SMA Channel indicator (SMA20 close/high/low → canale a 3 linee) ────────────
@@ -1525,6 +1610,7 @@ let channelActive = window.getIndActive('channel'), obLevelsActive = window.getI
 let bbActive = window.getIndActive('bb');
 let rocActive = window.getIndActive('roc');
 let emaCustomActive = window.getIndActive('emaCustom');
+let emaCustom2Active = window.getIndActive('emaCustom2');
 let grabActive = false; // valorizzata più sotto, dopo il rispettivo const _DEFAULT_GRAB_CFG
 let grabMidlineActive = false; // toggle indipendente per vedere solo la midline GRaB senza attivare tutto l'indicatore
 // Nasconde TUTTI gli indicatori/livelli SOLO nei mini-chart della griglia (mai nel
@@ -1550,6 +1636,7 @@ function toggleHideIndMiniAll() {
     window.setIndActive('hideIndMini', hideIndMiniActive);
     slots.forEach(applyEmaToSlot);
     slots.forEach(s => applyEmaCustomToSlot(s, getEmaCustomCfg()));
+    slots.forEach(s => applyEmaCustom2ToSlot(s, getEmaCustom2Cfg()));
     slots.forEach(s => applyBBToSlot(s, getBbCfg()));
     slots.forEach(s => applyRocToSlot(s, getRocCfg()));
     slots.forEach(applyChannelToSlot);
@@ -1819,6 +1906,7 @@ const IND_LIST = [
     { label: 'EMA 223', isOn: () => getEmaCfg().find(e => e.p === 223).enabled, toggle: () => toggleEmaAll(223), cfgKey: 'ema223', col: 1 },
     { label: 'Midline GRaB', isOn: () => grabMidlineActive, toggle: toggleGrabMidlineAll, col: 1 },
     { label: 'EMA personalizzata', isOn: () => emaCustomActive, toggle: toggleEmaCustomAll, cfgKey: 'emaCustom', col: 1 },
+    { label: 'EMA personalizzata 2', isOn: () => emaCustom2Active, toggle: toggleEmaCustom2All, cfgKey: 'emaCustom2', col: 1 },
     { label: 'Canale SMA 20',        isOn: () => channelActive,               toggle: toggleChannelAll,      cfgKey: 'channel', col: 2 },
     { label: 'Bollinger Bands',      isOn: () => bbActive,                    toggle: toggleBBAll,           cfgKey: 'bb',      col: 2 },
     { label: 'Order Book Levels',    isOn: () => obLevelsActive,              toggle: toggleOBAll,            cfgKey: 'obLevels', col: 2 },
@@ -2035,7 +2123,14 @@ const IND_CFG_SCHEMAS = {
             { key:'color', label:'Colore', type:'color' },
             { key:'width', label:'Spessore', type:'number', min:1, max:5, step:0.5 },
             { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
-            { key:'tf', label:'Timeframe', type:'select', raw:true, options:[['','Grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_1',   label:'TF calcolo — grafico 1m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_5',   label:'TF calcolo — grafico 5m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_30',  label:'TF calcolo — grafico 30m', type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_60',  label:'TF calcolo — grafico 1h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_240', label:'TF calcolo — grafico 4h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_D',   label:'TF calcolo — grafico D',   type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_W',   label:'TF calcolo — grafico W',   type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_M',   label:'TF calcolo — grafico M',   type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
             { key:'waitClose', label:'Attendi la chiusura del timeframe', type:'checkbox' },
         ],
         apply: cfg => {
@@ -2043,6 +2138,30 @@ const IND_CFG_SCHEMAS = {
             slots.forEach(s => applyEmaCustomToSlot(s, cfg));
             if (fsChart) applyEmaCustomToSlot(_fsIndSlot, cfg);
             _syncFsEmaCustomMtfTimer();
+        },
+    },
+    emaCustom2: {
+        title: 'EMA personalizzata 2', getCfg: getEmaCustom2Cfg, defaults: DEFAULT_EMA_CUSTOM2_CFG,
+        fields: [
+            { key:'length', label:'Lunghezza', type:'number', min:1, max:500, step:1 },
+            { key:'color', label:'Colore', type:'color' },
+            { key:'width', label:'Spessore', type:'number', min:1, max:5, step:0.5 },
+            { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
+            { key:'tf_1',   label:'TF calcolo — grafico 1m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_5',   label:'TF calcolo — grafico 5m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_30',  label:'TF calcolo — grafico 30m', type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_60',  label:'TF calcolo — grafico 1h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_240', label:'TF calcolo — grafico 4h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_D',   label:'TF calcolo — grafico D',   type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_W',   label:'TF calcolo — grafico W',   type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_M',   label:'TF calcolo — grafico M',   type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'waitClose', label:'Attendi la chiusura del timeframe', type:'checkbox' },
+        ],
+        apply: cfg => {
+            try { localStorage.setItem('chart_ema_custom2_cfg', JSON.stringify(cfg)); } catch(e) {}
+            slots.forEach(s => applyEmaCustom2ToSlot(s, cfg));
+            if (fsChart) applyEmaCustom2ToSlot(_fsIndSlot, cfg);
+            _syncFsEmaCustom2MtfTimer();
         },
     },
 };
@@ -2811,6 +2930,7 @@ const mtfEl = document.createElement('button');
             klineCount: 0,
             lastEMA: {5:null, 10:null, 60:null, 223:null},
             emaCustomSeries: null, lastEmaCustom: null,
+            emaCustom2Series: null, lastEmaCustom2: null,
             starEl, lockEl, sep4, titleEl, changeEl, volEl, candlePctEl, tfEl, tfBtnsEl, alertBtn, tradeEl,
             symbol: null, coin: null, curTF, lastPrice: null, lastOpen: null, crosshairPrice: null,
             alertLines: new Map(),
@@ -3059,7 +3179,7 @@ function renderSlotTF(idx) {
     // If header content overflows, collapse TF bar to a dropdown trigger
     if (s.hdr && s.hdr.scrollWidth > s.hdr.clientWidth + 1) {
         const lbl = tfLabel(s.curTF);
-        s.tfBtnsEl.innerHTML = `<button id="tf-dd-${idx}" onclick="toggleSlotTFDropdown(event,${idx})" style="font-size:12px;padding:1px 5px;border-radius:2px;border:none;cursor:pointer;background:#1E222D;color:#FF9C2E;font-weight:700;white-space:nowrap;">${lbl} &#9660;</button>`;
+        s.tfBtnsEl.innerHTML = `<button id="tf-dd-${idx}" onclick="toggleSlotTFDropdown(event,${idx})" style="font-size:12px;padding:1px 5px;border-radius:2px;border:none;cursor:pointer;background:#1E222D;color:#FF9C2E;font-weight:700;white-space:nowrap;">${lbl}</button>`;
     }
 }
 
@@ -3114,6 +3234,8 @@ async function switchSlotTF(idx, tf) {
     s.lastEMA = {5:null, 10:null, 60:null, 223:null};
     if (s.emaCustomSeries) { try { s.chart.removeSeries(s.emaCustomSeries); } catch(e) {} s.emaCustomSeries = null; }
     s.lastEmaCustom = null;
+    if (s.emaCustom2Series) { try { s.chart.removeSeries(s.emaCustom2Series); } catch(e) {} s.emaCustom2Series = null; }
+    s.lastEmaCustom2 = null;
     await loadSlotData(idx);
     if (ws && ws.readyState === WebSocket.OPEN)
         ws.send(JSON.stringify({ op:'subscribe', args:[`kline.${tf}.${s.symbol}`] }));
@@ -3180,6 +3302,8 @@ async function loadPage() {
         s.lastEMA = {5:null, 10:null, 60:null, 223:null};
         if (s.emaCustomSeries) { try { s.chart.removeSeries(s.emaCustomSeries); } catch(e) {} s.emaCustomSeries = null; }
         s.lastEmaCustom = null;
+        if (s.emaCustom2Series) { try { s.chart.removeSeries(s.emaCustom2Series); } catch(e) {} s.emaCustom2Series = null; }
+        s.lastEmaCustom2 = null;
     }
 
     if (!isEmpty) {
@@ -3289,6 +3413,7 @@ async function loadSlotData(idx) {
         s.candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
         applyEmaToSlot(s);
         applyEmaCustomToSlot(s, getEmaCustomCfg());
+        applyEmaCustom2ToSlot(s, getEmaCustom2Cfg());
         const _sn = TF_DEFAULT_N[s.curTF] || 80;
         const _sr = () => s.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, s.klineCount - _sn), to: s.klineCount + 3 });
         _sr(); requestAnimationFrame(_sr);
@@ -3421,6 +3546,7 @@ async function openFullscreen(idx) {
 
 function closeFullscreen() {
     clearInterval(_fsEmaCustomMtfTimer); _fsEmaCustomMtfTimer = null;
+    clearInterval(_fsEmaCustom2MtfTimer); _fsEmaCustom2MtfTimer = null;
     if (fsRangeActive) toggleFsRange();
     if (fsHlineActive) toggleFsHline();
     if (fsTrendActive) toggleFsTrend();
@@ -3571,6 +3697,8 @@ async function loadFsData() {
         applyGrabToSlot(_fsIndSlot, getGrabCfg());
         applyEmaCustomToSlot(_fsIndSlot, getEmaCustomCfg());
         _syncFsEmaCustomMtfTimer();
+        applyEmaCustom2ToSlot(_fsIndSlot, getEmaCustom2Cfg());
+        _syncFsEmaCustom2MtfTimer();
         fsKlineCount = klines.length;
         const _fn = TF_DEFAULT_N[fsTF] || 80;
         const _fr = () => fsChart.timeScale().setVisibleLogicalRange({ from: Math.max(0, fsKlineCount - _fn), to: fsKlineCount + 3 });
@@ -3664,6 +3792,13 @@ function connectFsWS() {
                 const live = candle.close * k + _fsLastEmaCustom * (1 - k);
                 _fsEmaCustomSeries.update({ time: candle.time, value: live });
                 if (confirmed) _fsLastEmaCustom = live;
+            }
+            if (emaCustom2Active && _fsEmaCustom2Series && _fsLastEmaCustom2 != null) {
+                const _fsEc2 = getEmaCustom2Cfg();
+                const k2 = 2 / (_fsEc2.length + 1);
+                const live2 = candle.close * k2 + _fsLastEmaCustom2 * (1 - k2);
+                _fsEmaCustom2Series.update({ time: candle.time, value: live2 });
+                if (confirmed) _fsLastEmaCustom2 = live2;
             }
             if (channelActive && _fsChannelSeries.upper && fsKlines.length >= CHANNEL_CFG.period) {
                 const csl = fsKlines.slice(-CHANNEL_CFG.period);
@@ -3766,6 +3901,13 @@ function openWS() {
                 const live = candle.close * k + s.lastEmaCustom * (1 - k);
                 s.emaCustomSeries.update({ time: candle.time, value: live });
                 if (confirmed) s.lastEmaCustom = live;
+            }
+            if (emaCustom2Active && s.emaCustom2Series && s.lastEmaCustom2 != null) {
+                const _ec2 = getEmaCustom2Cfg();
+                const k2 = 2 / (_ec2.length + 1);
+                const live2 = candle.close * k2 + s.lastEmaCustom2 * (1 - k2);
+                s.emaCustom2Series.update({ time: candle.time, value: live2 });
+                if (confirmed) s.lastEmaCustom2 = live2;
             }
             if (channelActive && s.channelSeries.upper && s.klines.length >= CHANNEL_CFG.period) {
                 const csl = s.klines.slice(-CHANNEL_CFG.period);
@@ -3916,7 +4058,7 @@ function renderTFBar() {
     };
     document.getElementById('tf-bar').innerHTML = IS_PORTRAIT_MOBILE
         ? `<button onclick="toggleMainTFDropdown(event)" class="px-2 rounded text-xs font-medium transition-colors btn-tf-active" style="display:flex;flex-direction:column;align-items:center;padding:2px 8px;gap:1px;">
-               <span style="line-height:1.3;">${TF_LABEL[curTF]} &#9660;</span>
+               <span style="line-height:1.3;">${TF_LABEL[curTF]}</span>
                <span id="tf-cd-${curTF}" style="font-size:11px;font-family:monospace;color:#F3F4F6;line-height:1;min-width:28px;text-align:center;"></span>
            </button>`
         : TIMEFRAMES.map(tfBtnHtml).join('');
@@ -5119,6 +5261,7 @@ function applyCfgToAllSlots() {
         applyRocToSlot(s, getRocCfg());
         applyChannelToSlot(s);
         applyEmaCustomToSlot(s, getEmaCustomCfg());
+        applyEmaCustom2ToSlot(s, getEmaCustom2Cfg());
     }
 }
 

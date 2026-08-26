@@ -299,14 +299,8 @@ createApp({
             { key:'ema_touch',    label:'EMA Touch',    short:'EMA-T',  color:'#10b981' },
             { key:'third_touch',  label:'Third Touch',  short:'3RD',    color:'#22d3ee' },
             { key:'ema223_cross', label:'EMA223 Cross', short:'223-X',  color:'#a78bfa' },
-            { key:'channel_breakout', label:'Channel Breakout', short:'CH-BRK', color:'#14b8a6' },
-            { key:'vol_inefficiency', label:'Volume Inefficiency', short:'V-INEF', color:'#f43f5e' },
             { key:'ath_atl',      label:'ATH/ATL',      short:'ATH',    color:'#fbbf24' },
             { key:'ico',          label:'ICO Levels',   short:'ICO',    color:'#f472b6' },
-            { key:'bb_squeeze',   label:'BB Squeeze',   short:'BB-SQ',  color:'#fb923c' },
-            { key:'rvol',         label:'RVOL',         short:'RVOL',   color:'#facc15' },
-            { key:'midline_breakout', label:'Midline Breakout', short:'MID-BRK', color:'#2dd4bf' },
-            { key:'trendline_active', label:'Trendline S/R', short:'TRD-SR', color:'#818cf8' },
         ];
         const SCREENER_DEFS = Object.fromEntries(SCREENER_LIST.map(d => [d.key, d]));
         const SCREENER_KEYS = SCREENER_LIST.map(d => d.key);
@@ -934,356 +928,6 @@ createApp({
             return { dir: flip.dir === 'above' ? 'bull' : 'bear', metric: 'age ' + flip.age, flipTime: tail[flip.flipIdx].time };
         };
 
-        // ── DETECTOR 7: Channel Breakout (ported from channel-breakout.html) ───
-        // Canale SMA(period) su close/high/low; segnale sulla candela i confrontato
-        // col canale della candela PRECEDENTE (i-1). Scarta candele "di continuazione"
-        // (vedi channel-breakout.html per il razionale completo).
-        const calcChannelArrConfl = (candles, per) => {
-            const n = candles.length;
-            const upper = new Array(n).fill(null), lower = new Array(n).fill(null);
-            let sumC = 0, sumH = 0, sumL = 0;
-            for (let i = 0; i < n; i++) {
-                sumC += candles[i].close; sumH += candles[i].high; sumL += candles[i].low;
-                if (i >= per) { sumC -= candles[i-per].close; sumH -= candles[i-per].high; sumL -= candles[i-per].low; }
-                if (i >= per - 1) { upper[i] = sumH/per; lower[i] = sumL/per; }
-            }
-            return { upper, lower };
-        };
-        const detectChannelBreakout = (candles, upperArr, lowerArr, cfg) => {
-            const n = candles.length;
-            const minIdx = Math.max(cfg.period, 1);
-            const from = Math.max(minIdx, n - cfg.lookbackBars);
-            for (let i = n - 1; i >= from; i--) {
-                const uPrev = upperArr[i-1], lPrev = lowerArr[i-1];
-                if (uPrev == null || lPrev == null) continue;
-                const o = candles[i].open, c = candles[i].close;
-                let type = null, dir = null;
-                if (o < lPrev && c > uPrev)      { type = 'strong'; dir = 'bull'; }
-                else if (o > uPrev && c < lPrev) { type = 'strong'; dir = 'bear'; }
-                else if (o >= lPrev && o <= uPrev && c > uPrev) { type = 'normal'; dir = 'bull'; }
-                else if (o >= lPrev && o <= uPrev && c < lPrev) { type = 'normal'; dir = 'bear'; }
-                if (!type) continue;
-                if (i >= 1) {
-                    const uPrev2 = upperArr[i-2], lPrev2 = lowerArr[i-2];
-                    const prevClose = candles[i-1].close;
-                    if (uPrev2 != null && lPrev2 != null) {
-                        if (dir === 'bull' && prevClose > uPrev2) continue;
-                        if (dir === 'bear' && prevClose < lPrev2) continue;
-                    }
-                }
-                return { idx: i, age: n - 1 - i, type, dir };
-            }
-            return null;
-        };
-        const channelBreakoutHit = (candles, cfg) => {
-            const WARMUP_MIN = cfg.period + cfg.lookbackBars + 5;
-            if (candles.length < WARMUP_MIN) return null;
-            const { upper, lower } = calcChannelArrConfl(candles, cfg.period);
-            const sig = detectChannelBreakout(candles, upper, lower, cfg);
-            if (!sig) return null;
-            return { dir: sig.dir, metric: (sig.type === 'strong' ? 'Strong' : 'Normal') + ' age ' + sig.age, sigTime: candles[sig.idx].time, period: cfg.period };
-        };
-
-        // ── Volume Inefficiency (LVN / Climax / Squeeze) — porting verbatim da vol-inefficiency.html ──
-        const VI_LVN_BINS = 24, VI_LVN_RATIO = 0.3, VI_LVN_APPROACH_PCT = 1.5;
-        const detectVI_LVN = (candles, cfg) => {
-            const n = candles.length;
-            if (n < 60) return null;
-            const period = candles.slice(Math.max(0, n - cfg.viHistoryBars));
-            let lo = Infinity, hi = -Infinity;
-            for (const c of period) { if (c.low < lo) lo = c.low; if (c.high > hi) hi = c.high; }
-            if (!(hi > lo)) return null;
-            const binSize = (hi - lo) / VI_LVN_BINS;
-            if (binSize <= 0) return null;
-            const vol = new Array(VI_LVN_BINS).fill(0);
-            for (const c of period) {
-                let loI = Math.floor((c.low - lo) / binSize), hiI = Math.floor((c.high - lo) / binSize);
-                loI = Math.max(0, Math.min(VI_LVN_BINS - 1, loI));
-                hiI = Math.max(0, Math.min(VI_LVN_BINS - 1, hiI));
-                const span = Math.max(1, hiI - loI + 1);
-                for (let b = loI; b <= hiI; b++) vol[b] += c.volume / span;
-            }
-            const avg = vol.reduce((a, b) => a + b, 0) / VI_LVN_BINS;
-            if (avg <= 0) return null;
-            const isLow = vol.map(v => v < VI_LVN_RATIO * avg);
-            const zones = [];
-            let i = 0;
-            while (i < VI_LVN_BINS) {
-                if (isLow[i]) { let j = i; while (j < VI_LVN_BINS && isLow[j]) j++; zones.push([i, j - 1]); i = j; }
-                else i++;
-            }
-            const validZones = zones.filter(([a, b]) => a > 0 && b < VI_LVN_BINS - 1 && vol[a - 1] >= avg && vol[b + 1] >= avg);
-            if (!validZones.length) return null;
-            const price = candles[n - 1].close;
-            let best = null, bestDist = Infinity;
-            for (const [a, b] of validZones) {
-                const zoneLo = lo + a * binSize, zoneHi = lo + (b + 1) * binSize;
-                let dist, dir;
-                if (price > zoneHi)      { dist = (price - zoneHi) / price * 100; dir = 'bear'; }
-                else if (price < zoneLo) { dist = (zoneLo - price) / price * 100; dir = 'bull'; }
-                else continue;
-                if (dist <= VI_LVN_APPROACH_PCT && dist < bestDist) { bestDist = dist; best = { zoneLo, zoneHi, dist, dir }; }
-            }
-            if (!best) return null;
-            return { idx: n - 1, dir: best.dir, metric: 'LVN ' + best.dist.toFixed(2) + '%', zoneLo: best.zoneLo, zoneHi: best.zoneHi };
-        };
-
-        const VI_CLIMAX_VOL_MULT = 3, VI_CLIMAX_RANGE_MULT = 0.6, VI_CLIMAX_AVG_PERIOD = 20;
-        const detectVI_Climax = (candles) => {
-            const n = candles.length;
-            const i = n - 1;
-            if (i < VI_CLIMAX_AVG_PERIOD) return null;
-            let sumVol = 0, sumRange = 0;
-            for (let j = i - VI_CLIMAX_AVG_PERIOD; j < i; j++) { sumVol += candles[j].volume; sumRange += (candles[j].high - candles[j].low); }
-            const avgVol = sumVol / VI_CLIMAX_AVG_PERIOD, avgRange = sumRange / VI_CLIMAX_AVG_PERIOD;
-            if (avgVol <= 0 || avgRange <= 0) return null;
-            const c = candles[i];
-            const range = c.high - c.low;
-            if (c.volume >= VI_CLIMAX_VOL_MULT * avgVol && range <= VI_CLIMAX_RANGE_MULT * avgRange) {
-                const dir = c.close >= c.open ? 'bull' : 'bear';
-                return { idx: i, dir, metric: 'Climax ' + (c.volume / avgVol).toFixed(1) + 'x' };
-            }
-            return null;
-        };
-
-        const VI_SQ_K = 6, VI_SQ_VOL_DRY_RATIO = 0.55, VI_SQ_RANGE_DRY_RATIO = 0.55;
-        const viSqCond = (candles, i) => {
-            const widerN = VI_SQ_K * 4;
-            if (i - VI_SQ_K - widerN + 1 < 0) return null;
-            let sumRecent = 0; for (let j = i - VI_SQ_K + 1; j <= i; j++) sumRecent += candles[j].volume;
-            const pf = i - VI_SQ_K - widerN + 1, pt = i - VI_SQ_K;
-            let sumPrior = 0; for (let j = pf; j <= pt; j++) sumPrior += candles[j].volume;
-            const avgRecent = sumRecent / VI_SQ_K, avgPrior = sumPrior / (pt - pf + 1);
-            if (avgPrior <= 0 || avgRecent / avgPrior > VI_SQ_VOL_DRY_RATIO) return null;
-            let hiR = -Infinity, loR = Infinity;
-            for (let j = i - VI_SQ_K + 1; j <= i; j++) { hiR = Math.max(hiR, candles[j].high); loR = Math.min(loR, candles[j].low); }
-            let hiP = -Infinity, loP = Infinity;
-            for (let j = Math.max(0, i - widerN + 1); j <= i; j++) { hiP = Math.max(hiP, candles[j].high); loP = Math.min(loP, candles[j].low); }
-            const rangeRecent = (hiR - loR) / candles[i].close, rangeWider = (hiP - loP) / candles[i].close;
-            if (rangeWider <= 0 || rangeRecent / rangeWider > VI_SQ_RANGE_DRY_RATIO) return null;
-            return { hiR, loR };
-        };
-        const detectVI_Squeeze = (candles) => {
-            const n = candles.length;
-            const i = n - 1;
-            const cond = viSqCond(candles, i);
-            if (!cond) return null;
-            let dur = 0, x = i;
-            while (x >= VI_SQ_K + VI_SQ_K * 4 - 1 && viSqCond(candles, x)) { dur++; x--; }
-            const mid = (cond.hiR + cond.loR) / 2;
-            const dir = candles[i].close >= mid ? 'bull' : 'bear';
-            return { idx: i, dir, metric: 'Squeeze ' + dur + 'b', hiR: cond.hiR, loR: cond.loR };
-        };
-
-        // Volume Inefficiency può generare fino a 3 match indipendenti sullo stesso (symbol,tf) —
-        // a differenza degli altri screener (1 hit max), qui si ritorna un array e si chiama
-        // addMatch una volta per ciascun sotto-rilevatore che ha scattato.
-        const volIneffHits = (candles, cfg) => {
-            const out = [];
-            const detectors = [
-                ['lvn',     cfg.viEnableLVN,        () => detectVI_LVN(candles, cfg)],
-                ['climax',  cfg.viEnableClimax,     () => detectVI_Climax(candles)],
-                ['squeeze', cfg.viEnableSqueeze,    () => detectVI_Squeeze(candles)],
-            ];
-            for (const [type, en, fn] of detectors) {
-                if (!en) continue;
-                const sig = fn();
-                if (!sig) continue;
-                const draw = { type, sigTime: candles[sig.idx].time };
-                if (type === 'lvn') { draw.zoneLo = sig.zoneLo; draw.zoneHi = sig.zoneHi; }
-                else if (type === 'squeeze') { draw.hiR = sig.hiR; draw.loR = sig.loR; }
-                out.push({ dir: sig.dir, metric: sig.metric, draw });
-            }
-            return out;
-        };
-
-        // ── BB Squeeze (ported from bb-squeeze.html) — solo lo stato "fired" (rottura
-        // dopo compressione) genera match: "squeeze" da solo non ha una direzione, e
-        // Confluence esiste per trovare accordo DIREZIONALE tra screener diversi.
-        const calcBBSeriesConfl = (candles, per, m) => {
-            const n = candles.length;
-            const upper = new Array(n).fill(null), mid = new Array(n).fill(null), lower = new Array(n).fill(null), width = new Array(n).fill(null);
-            let sum = 0, sumSq = 0;
-            for (let i = 0; i < n; i++) {
-                const c = candles[i].close;
-                sum += c; sumSq += c * c;
-                if (i >= per) { const old = candles[i-per].close; sum -= old; sumSq -= old * old; }
-                if (i >= per - 1) {
-                    const mean = sum / per;
-                    const variance = Math.max(0, sumSq / per - mean * mean);
-                    const std = Math.sqrt(variance);
-                    mid[i] = mean; upper[i] = mean + m * std; lower[i] = mean - m * std;
-                    width[i] = mean !== 0 ? (upper[i] - lower[i]) / mean : 0;
-                }
-            }
-            return { upper, mid, lower, width };
-        };
-        const _bbRankAt = (widthArr, i, rankPeriod) => {
-            let higher = 0, count = 0;
-            for (let k = i - rankPeriod; k < i; k++) {
-                if (k < 0 || widthArr[k] == null) continue;
-                count++;
-                if (widthArr[k] > widthArr[i]) higher++;
-            }
-            return count > 0 ? (higher / count) * 100 : null;
-        };
-        const detectBBSqueeze = (candles, bb, cfg) => {
-            const { upper, lower, width } = bb;
-            const n = candles.length;
-            const minIdx = Math.max(cfg.bbPeriod + cfg.bbRankPeriod, 1);
-            if (n - 1 < minIdx) return null;
-            const lastIdx = n - 1;
-            const from = Math.max(minIdx, lastIdx - cfg.bbFreshBars - 1);
-            for (let i = lastIdx - 1; i >= from; i--) {
-                if (width[i] == null) continue;
-                const rank = _bbRankAt(width, i, cfg.bbRankPeriod);
-                if (rank == null || rank < cfg.bbPctThreshold) continue;
-                if (upper[i] == null || lower[i] == null) break;
-                for (let j = i + 1; j <= lastIdx; j++) {
-                    if (candles[j].close > upper[i]) return { idx: j, dir: 'bull' };
-                    if (candles[j].close < lower[i]) return { idx: j, dir: 'bear' };
-                }
-                break;
-            }
-            return null;
-        };
-        const bbSqueezeHit = (candles, cfg) => {
-            const WARMUP_MIN = cfg.bbPeriod + cfg.bbRankPeriod + 5;
-            if (candles.length < WARMUP_MIN) return null;
-            const bb = calcBBSeriesConfl(candles, cfg.bbPeriod, cfg.bbMult);
-            const sig = detectBBSqueeze(candles, bb, cfg);
-            if (!sig) return null;
-            return { dir: sig.dir, metric: 'Fired', sigTime: candles[sig.idx].time, period: cfg.bbPeriod, mult: cfg.bbMult };
-        };
-
-        // ── RVOL (ported from rvol.html) — ranking puro sul volume, nessuna richiesta
-        // di range compresso (diverso da Climax di Volume Inefficiency).
-        const rvolHit = (candles, cfg) => {
-            const n = candles.length;
-            const i = n - 1;
-            if (i < cfg.rvolAvgPeriod) return null;
-            let sumVol = 0;
-            for (let j = i - cfg.rvolAvgPeriod; j < i; j++) sumVol += candles[j].volume;
-            const avgVol = sumVol / cfg.rvolAvgPeriod;
-            if (avgVol <= 0) return null;
-            const rvol = candles[i].volume / avgVol;
-            if (rvol < cfg.rvolMin) return null;
-            const dir = candles[i].close >= candles[i].open ? 'bull' : 'bear';
-            return { dir, metric: 'RVOL ' + rvol.toFixed(1) + 'x', sigTime: candles[i].time };
-        };
-
-        // ── Midline Breakout (ported from midline-breakout.html) — stessa formula
-        // Murrey Math dell'indicatore GRaB (vedi mtf.html/trade.js calcMurrey).
-        const calcMidlineArrConfl = (candles, length) => {
-            const n = candles.length;
-            const mid = new Array(n).fill(null);
-            for (let i = length - 1; i < n; i++) {
-                let h = -Infinity, l = Infinity;
-                for (let j = i - length + 1; j <= i; j++) { h = Math.max(h, candles[j].high); l = Math.min(l, candles[j].low); }
-                mid[i] = l + (h - l) / 2;
-            }
-            return mid;
-        };
-        const detectMidlineBreakoutConfl = (candles, midArr, cfg) => {
-            const n = candles.length;
-            const minIdx = Math.max(cfg.midMurreyLength, 1);
-            const from = Math.max(minIdx, n - cfg.midLookback);
-            for (let i = n - 1; i >= from; i--) {
-                const line = midArr[i - 1];
-                if (line == null) continue;
-                const prevClose = candles[i - 1].close, curClose = candles[i].close;
-                let dir = null;
-                if (prevClose <= line && curClose > line) dir = 'bull';
-                else if (prevClose >= line && curClose < line) dir = 'bear';
-                if (!dir) continue;
-                return { idx: i, dir, midline: line };
-            }
-            return null;
-        };
-        const midlineBreakoutHit = (candles, cfg) => {
-            const WARMUP_MIN = cfg.midMurreyLength + 5;
-            if (candles.length < WARMUP_MIN) return null;
-            const midArr = calcMidlineArrConfl(candles, cfg.midMurreyLength);
-            const sig = detectMidlineBreakoutConfl(candles, midArr, cfg);
-            if (!sig) return null;
-            return { dir: sig.dir, metric: 'Midline', sigTime: candles[sig.idx].time, murreyLength: cfg.midMurreyLength };
-        };
-
-        // ── Trendline S/R attiva (stessa tecnica a 2 pivot di trendline.html, vedi
-        // memoria project_trendline_breakout_scanner) — segnala le rette ancora valide
-        // (mai invalidate in chiusura da quando esistono), non più le rotture.
-        const pivotExtremeConfl = (candles, iEnd, offFrom, offTo) => {
-            let lowVal = Infinity, lowOff = null, highVal = -Infinity, highOff = null;
-            for (let off = offFrom; off <= offTo; off++) {
-                const idx = iEnd - off;
-                if (idx < 0) return null;
-                const c = candles[idx];
-                if (c.low  < lowVal)  { lowVal  = c.low;  lowOff  = off; }
-                if (c.high > highVal) { highVal = c.high; highOff = off; }
-            }
-            return { lowVal, lowOff, highVal, highOff };
-        };
-        const trendlineAtConfl = (candles, iEnd, shortPeriod, longPeriod) => {
-            if (iEnd - longPeriod < 0) return null;
-            const rec = pivotExtremeConfl(candles, iEnd, 1, shortPeriod);
-            const old = pivotExtremeConfl(candles, iEnd, shortPeriod + 1, longPeriod);
-            if (!rec || !old) return null;
-            const supX1 = iEnd - old.lowOff,  supY1 = old.lowVal,  supX2 = iEnd - rec.lowOff,  supY2 = rec.lowVal;
-            const resX1 = iEnd - old.highOff, resY1 = old.highVal, resX2 = iEnd - rec.highOff, resY2 = rec.highVal;
-            const supSlope = (supY2 - supY1) / (supX2 - supX1);
-            const resSlope = (resY2 - resY1) / (resX2 - resX1);
-            return {
-                supX1, supY1, supX2, supY2, supSlope, supVal: supY2 + supSlope * (iEnd - supX2),
-                resX1, resY1, resX2, resY2, resSlope, resVal: resY2 + resSlope * (iEnd - resX2),
-            };
-        };
-        // Slope/lineVal qui in spazio BAR-INDEX (idx - x1Idx), coerente con trendlineAtConfl
-        // — mai candles[idx].time con questa slope (unità diverse, vedi trendline.html).
-        const isLineValidConfl = (candles, x1Idx, y1, slope, kind, tolerancePct) => {
-            for (let idx = x1Idx; idx < candles.length; idx++) {
-                const lineVal = y1 + slope * (idx - x1Idx);
-                const tol = Math.abs(lineVal) * (tolerancePct / 100);
-                if (kind === 'support'    && candles[idx].close < lineVal - tol) return false;
-                if (kind === 'resistance' && candles[idx].close > lineVal + tol) return false;
-            }
-            return true;
-        };
-        const trendlineActiveHits = (candles, cfg) => {
-            const WARMUP_MIN = cfg.trdlnLongPeriod + 5;
-            if (candles.length < WARMUP_MIN) return [];
-            const iEnd = candles.length - 1;
-            const cur = trendlineAtConfl(candles, iEnd, cfg.trdlnShortPeriod, cfg.trdlnLongPeriod);
-            if (!cur) return [];
-            const toPt = (idx, price) => ({ time: candles[idx].time, price });
-            const sup = { p1: toPt(cur.supX1, cur.supY1), p2: toPt(cur.supX2, cur.supY2) };
-            const res = { p1: toPt(cur.resX1, cur.resY1), p2: toPt(cur.resX2, cur.resY2) };
-            const hits = [];
-            if (isLineValidConfl(candles, cur.supX1, cur.supY1, cur.supSlope, 'support', cfg.trdlnTolerancePct))
-                hits.push({ dir: 'bull', metric: 'Support', kind: 'support', sup, res });
-            if (isLineValidConfl(candles, cur.resX1, cur.resY1, cur.resSlope, 'resistance', cfg.trdlnTolerancePct))
-                hits.push({ dir: 'bear', metric: 'Resistance', kind: 'resistance', sup, res });
-            return hits;
-        };
-        const lineSlopeConfl = (p1, p2) => (p2.price - p1.price) / (p2.time - p1.time);
-        const TRENDLINE_SR_EXTEND_BARS = 30;
-        const lineSeriesFromPtsConfl = (p1, p2, klines) => {
-            const slope = lineSlopeConfl(p1, p2);
-            const pts = klines.filter(k => k.time >= p1.time).map(k => ({ time: k.time, value: p1.price + slope * (k.time - p1.time) }));
-            // Estende la linea oltre l'ultima candela reale invece di troncarla lì: un raggio
-            // continuo, non un segmento che si interrompe di colpo sull'ultimo dato disponibile.
-            if (pts.length >= 2 && klines.length >= 2) {
-                const step = klines[klines.length - 1].time - klines[klines.length - 2].time;
-                if (step > 0) {
-                    const lastT = pts[pts.length - 1].time;
-                    for (let i = 1; i <= TRENDLINE_SR_EXTEND_BARS; i++) {
-                        const t = lastT + step * i;
-                        pts.push({ time: t, value: p1.price + slope * (t - p1.time) });
-                    }
-                }
-            }
-            return pts;
-        };
-
         // ── SCAN ───────────────────────────────────────────────────────────────
         const stopScan = () => { stopFlag.value = true; };
 
@@ -1310,13 +954,7 @@ createApp({
                 touchProx: 1.5, touchTol: 0.05,
                 ttTolerance: 0.5, ttProximity: 2,
                 e223Period: 223, e223Tol: 0.5, e223Lookback: 10, klimitE223: 730,
-                cbPeriod: 20, cbLookback: 3,
                 thrAth: 5, thrAtl: 20, icoThreshold: 5,
-                viHistoryBars: 300, viEnableLVN: true, viEnableClimax: true, viEnableSqueeze: true,
-                bbPeriod: 20, bbMult: 2, bbRankPeriod: 100, bbPctThreshold: 90, bbFreshBars: 5,
-                rvolAvgPeriod: 20, rvolMin: 2.5,
-                midMurreyLength: 100, midLookback: 20,
-                trdlnShortPeriod: 30, trdlnLongPeriod: 100, trdlnTolerancePct: 0.3,
             };
             // Riusa le soglie già configurate dall'utente sulle pagine originali, se presenti.
             try {
@@ -1338,39 +976,6 @@ createApp({
             } catch {}
             try { const c = JSON.parse(localStorage.getItem('ath_atl_cfg') || '{}'); if (c.thrAth != null) cfg.thrAth = c.thrAth; if (c.thrAtl != null) cfg.thrAtl = c.thrAtl; } catch {}
             try { const c = JSON.parse(localStorage.getItem('ico_cfg') || '{}'); if (c.threshold != null) cfg.icoThreshold = c.threshold; } catch {}
-            try { const c = JSON.parse(localStorage.getItem('chb_cfg') || '{}'); if (c.period != null) cfg.cbPeriod = c.period; if (c.lookbackBars != null) cfg.cbLookback = c.lookbackBars; } catch {}
-            try {
-                const c = JSON.parse(localStorage.getItem('vinef_cfg') || '{}');
-                if (c.historyBars != null) cfg.viHistoryBars = c.historyBars;
-                if (c.enableLVN != null) cfg.viEnableLVN = c.enableLVN;
-                if (c.enableClimax != null) cfg.viEnableClimax = c.enableClimax;
-                if (c.enableSqueeze != null) cfg.viEnableSqueeze = c.enableSqueeze;
-            } catch {}
-            try {
-                const c = JSON.parse(localStorage.getItem('bbsq_cfg') || '{}');
-                if (c.period != null) cfg.bbPeriod = c.period;
-                if (c.mult != null) cfg.bbMult = c.mult;
-                if (c.rankPeriod != null) cfg.bbRankPeriod = c.rankPeriod;
-                if (c.pctThreshold != null) cfg.bbPctThreshold = c.pctThreshold;
-                if (c.freshBars != null) cfg.bbFreshBars = c.freshBars;
-            } catch {}
-            try {
-                const c = JSON.parse(localStorage.getItem('rvol_cfg') || '{}');
-                if (c.avgPeriod != null) cfg.rvolAvgPeriod = c.avgPeriod;
-                if (c.minRvol != null) cfg.rvolMin = c.minRvol;
-            } catch {}
-            try {
-                const c = JSON.parse(localStorage.getItem('midbrk_cfg') || '{}');
-                if (c.murreyLength != null) cfg.midMurreyLength = c.murreyLength;
-                if (c.lookbackBars != null) cfg.midLookback = c.lookbackBars;
-            } catch {}
-            try {
-                const c = JSON.parse(localStorage.getItem('trdln_cfg') || '{}');
-                if (c.shortPeriod != null) cfg.trdlnShortPeriod = c.shortPeriod;
-                if (c.longPeriod != null) cfg.trdlnLongPeriod = c.longPeriod;
-                if (c.tolerancePct != null) cfg.trdlnTolerancePct = c.tolerancePct;
-            } catch {}
-
             try {
                 const resp = await fetch('https://api.bybit.com/v5/market/tickers?category=linear');
                 const data = await resp.json();
@@ -1413,7 +1018,7 @@ createApp({
                 progressTotal.value = tickers.length;
                 statusMsg.value = `${SVG_SEARCH}${t('emax_progress')} ${tickers.length} ${t('dt_coin')}…`;
 
-                const anyClientEnabled = en.ema_touch || en.third_touch || en.ema223_cross || en.channel_breakout || en.vol_inefficiency || en.bb_squeeze || en.rvol || en.midline_breakout || en.trendline_active;
+                const anyClientEnabled = en.ema_touch || en.third_touch || en.ema223_cross;
                 if (anyClientEnabled) {
                     const BATCH = 5;
                     for (let i = 0; i < tickers.length; i += BATCH) {
@@ -1450,30 +1055,6 @@ createApp({
                                         if (en.ema223_cross) {
                                             const h = ema223CrossHit(candles, { emaPeriod: cfg.e223Period, tolerancePct: cfg.e223Tol, lookbackBars: cfg.e223Lookback, klimit: cfg.klimitE223 });
                                             if (h) addMatch(ticker.symbol, ticker, 'ema223_cross', tf, h.dir, h.metric, { flipTime: h.flipTime });
-                                        }
-                                        if (en.channel_breakout) {
-                                            const h = channelBreakoutHit(candles, { period: cfg.cbPeriod, lookbackBars: cfg.cbLookback });
-                                            if (h) addMatch(ticker.symbol, ticker, 'channel_breakout', tf, h.dir, h.metric, { sigTime: h.sigTime, period: h.period });
-                                        }
-                                        if (en.vol_inefficiency) {
-                                            const hits = volIneffHits(candles, cfg);
-                                            for (const h of hits) addMatch(ticker.symbol, ticker, 'vol_inefficiency', tf, h.dir, h.metric, h.draw);
-                                        }
-                                        if (en.bb_squeeze) {
-                                            const h = bbSqueezeHit(candles, cfg);
-                                            if (h) addMatch(ticker.symbol, ticker, 'bb_squeeze', tf, h.dir, h.metric, { sigTime: h.sigTime, period: h.period, mult: h.mult });
-                                        }
-                                        if (en.rvol) {
-                                            const h = rvolHit(candles, cfg);
-                                            if (h) addMatch(ticker.symbol, ticker, 'rvol', tf, h.dir, h.metric, { sigTime: h.sigTime });
-                                        }
-                                        if (en.midline_breakout) {
-                                            const h = midlineBreakoutHit(candles, cfg);
-                                            if (h) addMatch(ticker.symbol, ticker, 'midline_breakout', tf, h.dir, h.metric, { sigTime: h.sigTime, murreyLength: h.murreyLength });
-                                        }
-                                        if (en.trendline_active && tf !== '1' && tf !== '5' && tf !== 'D') {
-                                            const hits = trendlineActiveHits(candles, cfg);
-                                            for (const h of hits) addMatch(ticker.symbol, ticker, 'trendline_active', tf, h.dir, h.metric, { sup: h.sup, res: h.res, kind: h.kind });
                                         }
                                     } catch(e) { /* skip tf */ }
                                 }));
@@ -1607,7 +1188,7 @@ createApp({
                 }
 
                 // ── Disegni specifici per ciascuno screener che ha generato match su questa riga ──
-                // (livello Third Touch, marker Cross/Flip, canale Channel Breakout, linee ATH/ATL/ICO)
+                // (livello Third Touch, marker Cross/Flip, linee ATH/ATL/ICO)
                 // — le candele qui sono fetchate a parte da quelle dello scan, quindi tutto è
                 // disegnato per TEMPO, mai per indice barra.
                 if (row.screenerGroups) {
@@ -1631,68 +1212,12 @@ createApp({
                             if (d.stop != null && ttDisp.showStop)     candleSeries.createPriceLine({ price: d.stop,   color: '#f87171', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Stop' });
                         } else if (g.screener === 'ema223_cross' && d.flipTime != null) {
                             markers.push({ time: d.flipTime, position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#a78bfa', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Flip' });
-                        } else if (g.screener === 'channel_breakout' && d.period) {
-                            const chCandles = klines.map(k => ({ time: k.time, open: k.open, high: k.high, low: k.low, close: k.close }));
-                            const { upper, lower } = calcChannelArrConfl(chCandles, d.period);
-                            const upperData = klines.map((k,i) => ({ time: k.time, value: upper[i] })).filter(p => p.value != null);
-                            const lowerData = klines.map((k,i) => ({ time: k.time, value: lower[i] })).filter(p => p.value != null);
-                            if (upperData.length) addS(chart, 'LineSeries', { ...lb, color: '#ffffff', lineWidth: 1 }).setData(upperData);
-                            if (lowerData.length) addS(chart, 'LineSeries', { ...lb, color: '#ffffff', lineWidth: 1 }).setData(lowerData);
-                            if (d.sigTime != null) {
-                                // sigTime viene dallo scan (Bybit diretto, UTC grezzo); api/klines applica
-                                // l'offset del fuso orario configurato — stessa correzione già fatta in
-                                // channel-breakout.html per evitare che il marker finisca sulla candela sbagliata.
-                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Channel' });
-                            }
-                        } else if (g.screener === 'vol_inefficiency' && d.type) {
-                            // Solo il draw del primo sotto-rilevatore che ha scattato viene disegnato
-                            // (se più di uno matcha sullo stesso symbol/tf, gli altri restano solo nel
-                            // testo del tooltip) — stessa semplificazione già in uso per gli altri screener.
-                            const viColor = '#f43f5e';
-                            if (d.type === 'lvn') {
-                                candleSeries.createPriceLine({ price: d.zoneHi, color: viColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'LVN' });
-                                candleSeries.createPriceLine({ price: d.zoneLo, color: viColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: '' });
-                            } else if (d.type === 'squeeze') {
-                                candleSeries.createPriceLine({ price: d.hiR, color: viColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Squeeze' });
-                                candleSeries.createPriceLine({ price: d.loR, color: viColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: '' });
-                            }
-                            if (d.sigTime != null) {
-                                const viLabel = { lvn: 'LVN', climax: 'Climax', squeeze: 'Squeeze' }[d.type];
-                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: viLabel });
-                            }
                         } else if (g.screener === 'ath_atl') {
                             if (d.ath) candleSeries.createPriceLine({ price: d.ath, color: '#fbbf24', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'ATH' });
                             if (d.atl) candleSeries.createPriceLine({ price: d.atl, color: '#60a5fa', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'ATL' });
                         } else if (g.screener === 'ico') {
                             if (d.first_high) candleSeries.createPriceLine({ price: d.first_high, color: '#fbbf24', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
                             if (d.first_low)  candleSeries.createPriceLine({ price: d.first_low,  color: '#60a5fa', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
-                        } else if (g.screener === 'bb_squeeze' && d.period) {
-                            const bb = calcBBSeriesConfl(klines, d.period, d.mult);
-                            const upperData = klines.map((k,i) => ({ time: k.time, value: bb.upper[i] })).filter(p => p.value != null);
-                            const lowerData = klines.map((k,i) => ({ time: k.time, value: bb.lower[i] })).filter(p => p.value != null);
-                            if (upperData.length) addS(chart, 'LineSeries', { ...lb, color: '#fb923c', lineWidth: 1 }).setData(upperData);
-                            if (lowerData.length) addS(chart, 'LineSeries', { ...lb, color: '#fb923c', lineWidth: 1 }).setData(lowerData);
-                            if (d.sigTime != null) {
-                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'BB Fired' });
-                            }
-                        } else if (g.screener === 'rvol' && d.sigTime != null) {
-                            markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#facc15', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'RVOL' });
-                        } else if (g.screener === 'midline_breakout' && d.murreyLength) {
-                            const midArr = calcMidlineArrConfl(klines, d.murreyLength);
-                            const midData = klines.map((k,i) => ({ time: k.time, value: midArr[i] })).filter(p => p.value != null);
-                            if (midData.length) addS(chart, 'LineSeries', { ...lb, color: '#f9fafb', lineWidth: 1.5 }).setData(midData);
-                            if (d.sigTime != null) {
-                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Midline' });
-                            }
-                        } else if (g.screener === 'trendline_active' && d.sup && d.res) {
-                            const supData = lineSeriesFromPtsConfl(d.sup.p1, d.sup.p2, klines);
-                            const resData = lineSeriesFromPtsConfl(d.res.p1, d.res.p2, klines);
-                            if (supData.length) addS(chart, 'LineSeries', { ...lb, color: '#10b981', lineWidth: d.kind === 'support' ? 2.5 : 1 }).setData(supData);
-                            if (resData.length) addS(chart, 'LineSeries', { ...lb, color: '#ef4444', lineWidth: d.kind === 'resistance' ? 2.5 : 1 }).setData(resData);
-                            const activePts = d.kind === 'support' ? d.sup : d.res;
-                            const ptColor = d.kind === 'support' ? '#10b981' : '#ef4444';
-                            markers.push({ time: activePts.p1.time + (data.utc_offset_s || 0), position: 'inBar', color: ptColor, shape: 'circle', text: '' });
-                            markers.push({ time: activePts.p2.time + (data.utc_offset_s || 0), position: 'inBar', color: ptColor, shape: 'circle', text: '' });
                         }
                     }
                     if (markers.length && LC.createSeriesMarkers) { try { LC.createSeriesMarkers(candleSeries, markers); } catch(e) {} }
@@ -1776,62 +1301,12 @@ createApp({
                             if (d.stop != null && ttDisp.showStop)     candleSeries.createPriceLine({ price: d.stop,   color: '#f87171', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Stop' });
                         } else if (g.screener === 'ema223_cross' && d.flipTime != null) {
                             markers.push({ time: d.flipTime, position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#a78bfa', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Flip' });
-                        } else if (g.screener === 'channel_breakout' && d.period) {
-                            const chCandles = klines.map(k => ({ time: k.time, open: k.open, high: k.high, low: k.low, close: k.close }));
-                            const { upper, lower } = calcChannelArrConfl(chCandles, d.period);
-                            const upperData = klines.map((k,i) => ({ time: k.time, value: upper[i] })).filter(p => p.value != null);
-                            const lowerData = klines.map((k,i) => ({ time: k.time, value: lower[i] })).filter(p => p.value != null);
-                            if (upperData.length) addS(chart, 'LineSeries', { ...lb, color: '#ffffff', lineWidth: 1 }).setData(upperData);
-                            if (lowerData.length) addS(chart, 'LineSeries', { ...lb, color: '#ffffff', lineWidth: 1 }).setData(lowerData);
-                            if (d.sigTime != null) {
-                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Channel' });
-                            }
-                        } else if (g.screener === 'vol_inefficiency' && d.type) {
-                            const viColor = '#f43f5e';
-                            if (d.type === 'lvn') {
-                                candleSeries.createPriceLine({ price: d.zoneHi, color: viColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'LVN' });
-                                candleSeries.createPriceLine({ price: d.zoneLo, color: viColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: '' });
-                            } else if (d.type === 'squeeze') {
-                                candleSeries.createPriceLine({ price: d.hiR, color: viColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Squeeze' });
-                                candleSeries.createPriceLine({ price: d.loR, color: viColor, lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: '' });
-                            }
-                            if (d.sigTime != null) {
-                                const viLabel = { lvn: 'LVN', climax: 'Climax', squeeze: 'Squeeze' }[d.type];
-                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: viLabel });
-                            }
                         } else if (g.screener === 'ath_atl') {
                             if (d.ath) candleSeries.createPriceLine({ price: d.ath, color: '#fbbf24', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'ATH' });
                             if (d.atl) candleSeries.createPriceLine({ price: d.atl, color: '#60a5fa', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'ATL' });
                         } else if (g.screener === 'ico') {
                             if (d.first_high) candleSeries.createPriceLine({ price: d.first_high, color: '#fbbf24', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
                             if (d.first_low)  candleSeries.createPriceLine({ price: d.first_low,  color: '#60a5fa', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
-                        } else if (g.screener === 'bb_squeeze' && d.period) {
-                            const bb = calcBBSeriesConfl(klines, d.period, d.mult);
-                            const upperData = klines.map((k,i) => ({ time: k.time, value: bb.upper[i] })).filter(p => p.value != null);
-                            const lowerData = klines.map((k,i) => ({ time: k.time, value: bb.lower[i] })).filter(p => p.value != null);
-                            if (upperData.length) addS(chart, 'LineSeries', { ...lb, color: '#fb923c', lineWidth: 1 }).setData(upperData);
-                            if (lowerData.length) addS(chart, 'LineSeries', { ...lb, color: '#fb923c', lineWidth: 1 }).setData(lowerData);
-                            if (d.sigTime != null) {
-                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'BB Fired' });
-                            }
-                        } else if (g.screener === 'rvol' && d.sigTime != null) {
-                            markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: '#facc15', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'RVOL' });
-                        } else if (g.screener === 'midline_breakout' && d.murreyLength) {
-                            const midArr = calcMidlineArrConfl(klines, d.murreyLength);
-                            const midData = klines.map((k,i) => ({ time: k.time, value: midArr[i] })).filter(p => p.value != null);
-                            if (midData.length) addS(chart, 'LineSeries', { ...lb, color: '#f9fafb', lineWidth: 1.5 }).setData(midData);
-                            if (d.sigTime != null) {
-                                markers.push({ time: d.sigTime + (data.utc_offset_s || 0), position: g.dir === 'bull' ? 'belowBar' : 'aboveBar', color: g.dir === 'bull' ? '#10b981' : '#ef4444', shape: g.dir === 'bull' ? 'arrowUp' : 'arrowDown', text: 'Midline' });
-                            }
-                        } else if (g.screener === 'trendline_active' && d.sup && d.res) {
-                            const supData = lineSeriesFromPtsConfl(d.sup.p1, d.sup.p2, klines);
-                            const resData = lineSeriesFromPtsConfl(d.res.p1, d.res.p2, klines);
-                            if (supData.length) addS(chart, 'LineSeries', { ...lb, color: '#10b981', lineWidth: d.kind === 'support' ? 2.5 : 1 }).setData(supData);
-                            if (resData.length) addS(chart, 'LineSeries', { ...lb, color: '#ef4444', lineWidth: d.kind === 'resistance' ? 2.5 : 1 }).setData(resData);
-                            const activePts = d.kind === 'support' ? d.sup : d.res;
-                            const ptColor = d.kind === 'support' ? '#10b981' : '#ef4444';
-                            markers.push({ time: activePts.p1.time + (data.utc_offset_s || 0), position: 'inBar', color: ptColor, shape: 'circle', text: '' });
-                            markers.push({ time: activePts.p2.time + (data.utc_offset_s || 0), position: 'inBar', color: ptColor, shape: 'circle', text: '' });
                         }
                     }
                     if (markers.length && LC.createSeriesMarkers && mobilePreviewSymbol.value === key) { try { LC.createSeriesMarkers(candleSeries, markers); } catch(e) {} }
@@ -1917,34 +1392,12 @@ createApp({
                         const ttDisp = thirdTouchDisplayCfg();
                         if (d.target != null && ttDisp.showTarget) lines.push({ color: '#4ade80', values: bars.map(() => d.target) });
                         if (d.stop != null && ttDisp.showStop)     lines.push({ color: '#f87171', values: bars.map(() => d.stop) });
-                    } else if (g.screener === 'channel_breakout' && d.period) {
-                        const { upper, lower } = calcChannelArrConfl(klines, d.period);
-                        fill = { upper: bars.map((_, i) => upper[offset + i]), lower: bars.map((_, i) => lower[offset + i]) };
-                    } else if (g.screener === 'vol_inefficiency' && d.type) {
-                        const viColor = '#f43f5e';
-                        if (d.type === 'lvn') {
-                            lines.push({ color: viColor, dashed: true, values: bars.map(() => d.zoneHi) });
-                            lines.push({ color: viColor, dashed: true, values: bars.map(() => d.zoneLo) });
-                        } else if (d.type === 'squeeze') {
-                            lines.push({ color: viColor, dashed: true, values: bars.map(() => d.hiR) });
-                            lines.push({ color: viColor, dashed: true, values: bars.map(() => d.loR) });
-                        }
                     } else if (g.screener === 'ath_atl') {
                         if (d.ath) lines.push({ color: '#fbbf24', dashed: true, values: bars.map(() => d.ath) });
                         if (d.atl) lines.push({ color: '#60a5fa', dashed: true, values: bars.map(() => d.atl) });
                     } else if (g.screener === 'ico') {
                         if (d.first_high) lines.push({ color: '#fbbf24', dashed: true, values: bars.map(() => d.first_high) });
                         if (d.first_low)  lines.push({ color: '#60a5fa', dashed: true, values: bars.map(() => d.first_low) });
-                    } else if (g.screener === 'bb_squeeze' && d.period) {
-                        const bb = calcBBSeriesConfl(klines, d.period, d.mult);
-                        fill = { upper: bars.map((_, i) => bb.upper[offset + i]), lower: bars.map((_, i) => bb.lower[offset + i]) };
-                    } else if (g.screener === 'midline_breakout' && d.murreyLength) {
-                        const midArr = calcMidlineArrConfl(klines, d.murreyLength);
-                        lines.push({ color: '#f9fafb', values: bars.map((_, i) => midArr[offset + i]) });
-                    } else if (g.screener === 'trendline_active' && d.sup && d.res) {
-                        const lineAt = (pts, b) => (b.time >= pts.p1.time) ? pts.p1.price + lineSlopeConfl(pts.p1, pts.p2) * (b.time - pts.p1.time) : null;
-                        lines.push({ color: '#10b981', values: bars.map(b => lineAt(d.sup, b)) });
-                        lines.push({ color: '#ef4444', values: bars.map(b => lineAt(d.res, b)) });
                     }
                 }
             }
