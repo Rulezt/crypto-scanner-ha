@@ -69,6 +69,7 @@
     #grab-btn    { display: none !important; }
     #roc-btn     { display: none !important; }
     #ob-lvl-btn  { display: none !important; }
+    #lb-lvl-btn  { display: none !important; }
     #naked-btn   { display: none; }
     /* OB modal verticale */
     #ob-modal { flex-direction: column !important; }
@@ -119,6 +120,11 @@
   <a id="hdr-chart" href="chart"
      style="font-size:11px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:5px 7px;cursor:pointer;line-height:1;flex-shrink:0;text-decoration:none;display:flex;align-items:center;"
      title="Chart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.035-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.035.84-1.875 1.875-1.875h.75c1.035 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z"/></svg></a>
+  <button id="hdr-layout" onclick="openLayoutPopup()" class="hdr-btn"
+    style="font-size:14px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:6px 7px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;"
+    title="Layout grafici">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M9 3v18"/><path d="M9 12h12"/></svg>
+  </button>
   <button id="hdr-search" onclick="openChartSearch()" class="hdr-btn"
     style="font-size:14px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:6px 7px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;"
     data-i18n-title="nav_search_full" title="Cerca crypto (Ctrl+K)">
@@ -147,6 +153,9 @@
   <button id="ob-lvl-btn" onclick="toggleOBLevelsAll()" class="hdr-btn"
     style="font-size:14px;font-weight:700;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
     title="Order Book Levels (bid/ask wall)">OB</button>
+  <button id="lb-lvl-btn" onclick="toggleLBLevelsAll()" class="hdr-btn"
+    style="font-size:14px;font-weight:700;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
+    title="Livelli Book — canale Lv1/Lv2 bid/ask">LB</button>
   <button id="ind-btn" onclick="openIndPanel()" class="hdr-btn"
     style="font-size:14px;color:#B2B5BE;border:none;padding:6px 5px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;gap:2px;"
     title="Indicatori">
@@ -187,8 +196,17 @@ const SYM = new URLSearchParams(location.search).get('symbol') || 'BTCUSDT';
 
 const isMobile = window.innerWidth < 640;
 
-// Desktop: 4 col × 2 row | Mobile: 2 col × 3 row
-const TF_SLOTS = isMobile ? [
+const TF_LABELS = {'1':'1m','5':'5m','30':'30m','60':'1h','240':'4h','D':'D','W':'W','M':'M'};
+
+// ── Layout grafici (solo pagina mtf) ─────────────────────────────────────────────
+// Scelto dal bottone header, persistito in localStorage 'mtf_layout'.
+//  · standard : griglia storica (desktop 4×2, mobile 2×3 con navigazione)
+//  · split23  : 3 colonne — sinistra 2 pannelli, centro 3, destra 3. I TF dei
+//    pannelli si cambiano cliccando la targhetta TF e sono salvati in
+//    'mtf_split23_tfs' ({ "<indice>": "<tf>" }, validi per tutte le coin).
+// `row` usa la sintassi grid "start / end" su una griglia a 6 righe (mcm di 2 e 3)
+// così le due colonne restano allineate ai bordi.
+const _STANDARD_SLOTS = isMobile ? [
   { tf:'D',   label:'D',   col:'1', row:'1' },
   { tf:'240', label:'4h',  col:'2', row:'1' },
   { tf:'60',  label:'1h',  col:'1', row:'2' },
@@ -205,6 +223,33 @@ const TF_SLOTS = isMobile ? [
   { tf:'5',   label:'5m',  col:'3', row:'2' },
   { tf:'1',   label:'1m',  col:'4', row:'2' },
 ];
+const _SPLIT23_SLOTS = [
+  { tf:'D',   label:'D',   col:'1', row:'1 / 4' },
+  { tf:'240', label:'4h',  col:'1', row:'4 / 7' },
+  { tf:'60',  label:'1h',  col:'2', row:'1 / 3' },
+  { tf:'30',  label:'30m', col:'2', row:'3 / 5' },
+  { tf:'5',   label:'5m',  col:'2', row:'5 / 7' },
+  { tf:'W',   label:'W',   col:'3', row:'1 / 3' },
+  { tf:'1',   label:'1m',  col:'3', row:'3 / 5' },
+  { tf:'M',   label:'M',   col:'3', row:'5 / 7' },
+];
+const _LAYOUT_ICON_STD = `<svg width="38" height="30" viewBox="0 0 24 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="21" height="17" rx="1.5"/><path d="M6.75 1.5v17M12 1.5v17M17.25 1.5v17M1.5 10h21"/></svg>`;
+const _LAYOUT_ICON_233 = `<svg width="38" height="30" viewBox="0 0 24 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="21" height="17" rx="1.5"/><path d="M8.5 1.5v17M15.5 1.5v17"/><path d="M1.5 10h7"/><path d="M8.5 7.17h7M8.5 12.83h7"/><path d="M15.5 7.17h7M15.5 12.83h7"/></svg>`;
+const MTF_LAYOUTS = {
+  standard: { label: 'Standard',            icon: _LAYOUT_ICON_STD, cols: () => isMobile ? '1fr' : 'repeat(4, 1fr)', rows: () => isMobile ? '1fr' : '1fr 1fr', slots: _STANDARD_SLOTS },
+  split23:  { label: '2 · 3 · 3 colonne',   icon: _LAYOUT_ICON_233, cols: () => 'repeat(3, 1fr)',                    rows: () => 'repeat(6, 1fr)',              slots: _SPLIT23_SLOTS },
+};
+let curLayoutName = 'standard';
+try { const _l = localStorage.getItem('mtf_layout'); if (_l && MTF_LAYOUTS[_l]) curLayoutName = _l; } catch(e) {}
+function _getSplit23Tfs() { try { return JSON.parse(localStorage.getItem('mtf_split23_tfs')) || {}; } catch(e) { return {}; } }
+const TF_SLOTS = MTF_LAYOUTS[curLayoutName].slots.map((x, i) => {
+  const o = { ...x };
+  if (curLayoutName === 'split23') {
+    const saved = _getSplit23Tfs();
+    if (saved[i] && TF_LABELS[saved[i]]) { o.tf = saved[i]; o.label = TF_LABELS[saved[i]]; }
+  }
+  return o;
+});
 
 const DEFAULT_CANDLES = {'1':80,'5':80,'30':60,'60':60,'240':50,'D':40,'W':52,'M':24};
 const TF_SECONDS = {'1':60,'5':300,'30':1800,'60':3600,'240':14400,'D':86400,'W':604800,'M':2592000};
@@ -240,6 +285,8 @@ const DEFAULT_LEVELS_CFG = {
   prevLow:  {color:'#ef4444', style:2, width:2, vis:{chart:true, mtf:true, ob:true}},
   obBid:    {color:'#3b82f6', style:1, width:1, vis:{chart:true, mtf:true, ob:true}},
   obAsk:    {color:'#3b82f6', style:1, width:1, vis:{chart:true, mtf:true, ob:true}},
+  lbBid:    {color:'#22c55e', style:0, width:1, vis:{chart:true, mtf:true, ob:true}},
+  lbAsk:    {color:'#ef4444', style:0, width:1, vis:{chart:true, mtf:true, ob:true}},
   ath:      {color:'#f59e0b', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
   atl:      {color:'#a855f7', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
 };
@@ -276,12 +323,6 @@ function getLvCfg() {
   try {
     const s = JSON.parse(localStorage.getItem('chart_levels_cfg'));
     if (s) {
-      if (!s._obBlueMigrated) {
-        if (s.obBid) s.obBid.color = DEFAULT_LEVELS_CFG.obBid.color;
-        if (s.obAsk) s.obAsk.color = DEFAULT_LEVELS_CFG.obAsk.color;
-        s._obBlueMigrated = true;
-        try { localStorage.setItem('chart_levels_cfg', JSON.stringify(s)); } catch(e) {}
-      }
       const out = {};
       for (const k of Object.keys(DEFAULT_LEVELS_CFG)) {
         out[k] = s[k]
@@ -410,6 +451,7 @@ let channelActive = false;
 let grabActive = false;
 let grabMidlineActive = false; // toggle indipendente per vedere solo la midline GRaB senza attivare tutto l'indicatore
 let obLevelsActive = false;
+let lbLevelsActive = false;
 let emaCustomActive = false;
 let emaCustom2Active = false;
 // "Colora candele" — toggle GLOBALE condiviso su tutte le pagine (vedi candle-color.js).
@@ -432,11 +474,14 @@ function _restorePersistedIndicators() {
   if (window.getIndActive('grab')) toggleGrab();
   if (window.getIndActive('grabMidline')) toggleGrabMidlineAll();
   if (window.getIndActive('obLevels')) toggleOBLevelsAll();
+  if (window.getIndActive('lbLevels')) toggleLBLevelsAll();
   if (window.getIndActive('emaCustom')) toggleEmaCustomAll();
   if (window.getIndActive('emaCustom2')) toggleEmaCustom2All();
 }
-let _obLevelsTimer = null, _obLevelsBidVal = null, _obLevelsAskVal = null;
+let _obLevelsBidVal = null, _obLevelsAskVal = null;
 let fsObLevBidLine = null, fsObLevAskLine = null;
+let _lbBidLv1 = null, _lbBidLv2 = null, _lbAskLv1 = null, _lbAskLv2 = null;
+let fsLbBidLine1 = null, fsLbBidLine2 = null, fsLbAskLine1 = null, fsLbAskLine2 = null;
 let nakedChart = false;
 
 // ── Price alerts ──────────────────────────────────────────────────────────────
@@ -477,6 +522,82 @@ function openTfSheet(tfList, current, onSelect) {
     });
     wrap.querySelector('[data-close]').onclick = close;
 }
+
+// ── Popup "Layout grafici" (bottone header) ──────────────────────────────────────
+function openLayoutPopup() {
+    document.querySelectorAll('.mtf-layout-pop').forEach(w => w.remove());
+    const wrap = document.createElement('div');
+    wrap.className = 'mtf-layout-pop';
+    wrap.innerHTML = `<div style="position:fixed;inset:0;z-index:820;background:rgba(0,0,0,0.5);"></div>
+        <div style="position:fixed;left:50%;top:60px;transform:translateX(-50%);z-index:821;background:#161A1E;border:1px solid #2A2E39;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.6);overflow:hidden;">
+            <div style="padding:11px 16px 10px;font-size:12px;font-weight:700;color:#9CA3AF;letter-spacing:.03em;text-transform:uppercase;border-bottom:1px solid #2A2E39;">Layout grafici</div>
+            <div style="display:flex;gap:10px;padding:14px;">
+            ${Object.entries(MTF_LAYOUTS).map(([k, v]) => {
+                const sel = k === curLayoutName;
+                return `<div class="mtf-layout-opt" data-k="${k}" title="${v.label}"
+                    style="display:flex;align-items:center;justify-content:center;width:64px;height:54px;border-radius:8px;cursor:pointer;transition:border-color .12s,background .12s,color .12s;
+                    border:1px solid ${sel?'#FF9C2E':'#2A2E39'};background:${sel?'rgba(255,156,46,0.10)':'transparent'};color:${sel?'#FF9C2E':'#9CA3AF'};">${v.icon}</div>`;
+            }).join('')}
+            </div>
+        </div>`;
+    document.body.appendChild(wrap);
+    const close = () => wrap.remove();
+    wrap.firstChild.onclick = close;
+    wrap.querySelectorAll('.mtf-layout-opt').forEach(el => {
+        const sel = el.dataset.k === curLayoutName;
+        el.onmouseenter = () => { if (!sel) { el.style.borderColor = '#4B5563'; el.style.color = '#E5E7EB'; } };
+        el.onmouseleave = () => { if (!sel) { el.style.borderColor = '#2A2E39'; el.style.color = '#9CA3AF'; } };
+        el.onclick = () => { close(); switchLayout(el.dataset.k); };
+    });
+}
+// Cambio layout / cambio TF di un pannello: si persiste in localStorage e si ricarica
+// la pagina — mtf.html ricostruisce tutto lo stato (indicatori, disegni, WS) dal
+// localStorage all'avvio, quindi il reload è il modo più sicuro per riapplicare la
+// nuova griglia senza dover smontare/rimontare chart e sottoscrizioni a mano.
+function switchLayout(name) {
+    if (!MTF_LAYOUTS[name] || name === curLayoutName) return;
+    try { localStorage.setItem('mtf_layout', name); } catch(e) {}
+    location.reload();
+}
+function changePanelTf(idx, newTf) {
+    const cur = TF_SLOTS[idx] && TF_SLOTS[idx].tf;
+    if (!newTf || !TF_LABELS[newTf] || newTf === cur) return;
+    try {
+        const saved = _getSplit23Tfs();
+        saved[idx] = newTf;
+        localStorage.setItem('mtf_split23_tfs', JSON.stringify(saved));
+    } catch(e) {}
+    location.reload();
+}
+
+// ── Popup centrato per il cambio TF di un pannello (layout 2·3·3) — bottoni, 4 per riga ──
+function openTfGridPopup(current, onSelect) {
+    document.querySelectorAll('.mtf-tf-pop').forEach(w => w.remove());
+    const wrap = document.createElement('div');
+    wrap.className = 'mtf-tf-pop';
+    wrap.innerHTML = `<div style="position:fixed;inset:0;z-index:820;background:rgba(0,0,0,0.55);"></div>
+        <div style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:821;background:#161A1E;border:1px solid #2A2E39;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.6);overflow:hidden;">
+            <div style="padding:11px 16px 10px;font-size:12px;font-weight:700;color:#9CA3AF;letter-spacing:.03em;text-transform:uppercase;border-bottom:1px solid #2A2E39;">Timeframe</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px;">
+            ${FS_TFS.map(({tf, label}) => {
+                const sel = tf === current;
+                return `<button class="mtf-tf-opt" data-tf="${tf}"
+                    style="min-width:58px;padding:11px 6px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:${sel?'700':'600'};transition:border-color .12s,background .12s,color .12s;
+                    border:1px solid ${sel?'#FF9C2E':'#2A2E39'};background:${sel?'rgba(255,156,46,0.10)':'#1E222D'};color:${sel?'#FF9C2E':'#B2B5BE'};">${label}</button>`;
+            }).join('')}
+            </div>
+        </div>`;
+    document.body.appendChild(wrap);
+    const close = () => wrap.remove();
+    wrap.firstChild.onclick = close;
+    wrap.querySelectorAll('.mtf-tf-opt').forEach(el => {
+        const sel = el.dataset.tf === current;
+        el.onmouseenter = () => { if (!sel) { el.style.borderColor = '#4B5563'; el.style.color = '#E5E7EB'; } };
+        el.onmouseleave = () => { if (!sel) { el.style.borderColor = '#2A2E39'; el.style.color = '#B2B5BE'; } };
+        el.onclick = () => { close(); onSelect(el.dataset.tf); };
+    });
+}
+
 let obChart = null, obCandleS = null, obEmaS = {}, obLastEMA = {};
 let obTF = '30', obWS = null, obWsTimer = null;
 let obBidLine = null, obAskLine = null;
@@ -740,6 +861,39 @@ function _syncFsEmaCustomMtfTimer() {
     _fsEmaCustomMtfTimer = setInterval(applyFsEmaCustom, 5000);
   }
 }
+// ── Refresh periodico dei pannelli griglia in modalità MTF ────────────────────
+// Quando l'EMA ha un TF di calcolo impostato, il valore proiettato (_projectMtfEma)
+// NON viene aggiornato dai path live tick-by-tick / roll (che muovono solo
+// s.lastEmaCustom del path "Grafico"): la linea resterebbe ferma alla proiezione
+// fatta all'attivazione finché non si ricarica/cambia coin. La griglia di mtf.html
+// è una sola coin (a differenza dei 18 mini-grafici di chart.html), quindi qui un
+// poll REST ogni 5s sui TF ausiliari è sostenibile — stesso identico intervallo del
+// fullscreen (_syncFsEmaCustomMtfTimer). Re-proietta con setData, senza distruggere
+// la serie, così non sfarfalla sugli 8 pannelli.
+let _slotsEmaCustomMtfTimer = null;
+function _refreshSlotEmaCustomMtf(s, cfg) {
+  const effectiveTf = cfg['tf_' + s.cfg.tf] || '';
+  if (!emaCustomActive || !effectiveTf || !s.emaCustomSeries || !s.klines || !s.klines.length) return;
+  const mySeq = s._emaCustomMtfSeq = (s._emaCustomMtfSeq || 0) + 1;
+  (async () => {
+   try {
+    const auxKlines = await _fetchAuxKlines(effectiveTf);
+    if (s._emaCustomMtfSeq !== mySeq || !s.emaCustomSeries || !auxKlines.length) return;
+    const auxEma = calcEMA(auxKlines, cfg.length);
+    s.emaCustomSeries.setData(_projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose));
+   } catch(e) {}
+  })();
+}
+function _syncSlotsEmaCustomMtfTimer() {
+  clearInterval(_slotsEmaCustomMtfTimer); _slotsEmaCustomMtfTimer = null;
+  const cfg = getEmaCustomCfg();
+  if (emaCustomActive && slots.some(s => cfg['tf_' + s.cfg.tf])) {
+    _slotsEmaCustomMtfTimer = setInterval(() => {
+      const c = getEmaCustomCfg();
+      slots.forEach(s => _refreshSlotEmaCustomMtf(s, c));
+    }, 5000);
+  }
+}
 function toggleEmaCustomAll() {
   emaCustomActive = !emaCustomActive;
   window.setIndActive('emaCustom', emaCustomActive);
@@ -747,6 +901,7 @@ function toggleEmaCustomAll() {
   slots.forEach(s => _applyEmaCustomToChart(s.chart, s, cfg));
   if (fsChart) applyFsEmaCustom();
   _syncFsEmaCustomMtfTimer();
+  _syncSlotsEmaCustomMtfTimer();
 }
 
 // ── EMA personalizzata 2 — seconda istanza indipendente, copia 1:1 della prima
@@ -794,6 +949,31 @@ function _syncFsEmaCustom2MtfTimer() {
     _fsEmaCustom2MtfTimer = setInterval(applyFsEmaCustom2, 5000);
   }
 }
+// Refresh periodico griglia MTF per l'EMA2 — vedi commento gemello in _syncSlotsEmaCustomMtfTimer.
+let _slotsEmaCustom2MtfTimer = null;
+function _refreshSlotEmaCustom2Mtf(s, cfg) {
+  const effectiveTf = cfg['tf_' + s.cfg.tf] || '';
+  if (!emaCustom2Active || !effectiveTf || !s.emaCustom2Series || !s.klines || !s.klines.length) return;
+  const mySeq = s._emaCustom2MtfSeq = (s._emaCustom2MtfSeq || 0) + 1;
+  (async () => {
+   try {
+    const auxKlines = await _fetchAuxKlines(effectiveTf);
+    if (s._emaCustom2MtfSeq !== mySeq || !s.emaCustom2Series || !auxKlines.length) return;
+    const auxEma = calcEMA(auxKlines, cfg.length);
+    s.emaCustom2Series.setData(_projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose));
+   } catch(e) {}
+  })();
+}
+function _syncSlotsEmaCustom2MtfTimer() {
+  clearInterval(_slotsEmaCustom2MtfTimer); _slotsEmaCustom2MtfTimer = null;
+  const cfg = getEmaCustom2Cfg();
+  if (emaCustom2Active && slots.some(s => cfg['tf_' + s.cfg.tf])) {
+    _slotsEmaCustom2MtfTimer = setInterval(() => {
+      const c = getEmaCustom2Cfg();
+      slots.forEach(s => _refreshSlotEmaCustom2Mtf(s, c));
+    }, 5000);
+  }
+}
 function toggleEmaCustom2All() {
   emaCustom2Active = !emaCustom2Active;
   window.setIndActive('emaCustom2', emaCustom2Active);
@@ -801,6 +981,7 @@ function toggleEmaCustom2All() {
   slots.forEach(s => _applyEmaCustom2ToChart(s.chart, s, cfg));
   if (fsChart) applyFsEmaCustom2();
   _syncFsEmaCustom2MtfTimer();
+  _syncSlotsEmaCustom2MtfTimer();
 }
 
 // ── SMA Channel indicator (SMA20 close/high/low → canale a 3 linee) ────────────
@@ -1057,6 +1238,7 @@ const IND_LIST = [
   { label: 'GRaB',            isOn: () => grabActive,    toggle: toggleGrab,      cfgOpen: openGrabCfgPanel, col: 2 },
   { label: 'ROC',             isOn: () => rocActive,     toggle: toggleRoc,     cfgKey: 'roc',     col: 2 },
   { label: 'Order Book Levels', isOn: () => obLevelsActive, toggle: toggleOBLevelsAll, cfgKey: 'obLevels', col: 2 },
+  { label: 'Livelli Book (LB)', isOn: () => lbLevelsActive, toggle: toggleLBLevelsAll, cfgKey: 'lbLevels', col: 2 },
   { label: 'Livelli Daily',          isOn: () => getLvCfg().dayHigh.vis.mtf,  toggle: toggleDayLevelsAll,  cfgKey: 'dayLevels',  col: 3 },
   { label: 'Massimi/Minimi Storici', isOn: () => getLvCfg().ath.vis.mtf,      toggle: toggleAthAtlAll,     cfgKey: 'athAtl',     col: 3 },
   { label: 'Livelli Giorno Prec.',   isOn: () => getLvCfg().prevHigh.vis.mtf, toggle: togglePrevLevelsAll, cfgKey: 'prevLevels', col: 3 },
@@ -1244,6 +1426,22 @@ const IND_CFG_SCHEMAS = {
       _applyObLevelsToSlots();
     },
   },
+  lbLevels: {
+    title: 'Livelli Book (LB)',
+    getCfg: () => { const lv = getLvCfg(); return { bidColor: lv.lbBid.color, askColor: lv.lbAsk.color }; },
+    defaults: { bidColor: DEFAULT_LEVELS_CFG.lbBid.color, askColor: DEFAULT_LEVELS_CFG.lbAsk.color },
+    fields: [
+      { key:'bidColor', label:'Colore canale Bid', type:'color' },
+      { key:'askColor', label:'Colore canale Ask', type:'color' },
+    ],
+    apply: cfg => {
+      const lv = getLvCfg();
+      lv.lbBid.color = cfg.bidColor;
+      lv.lbAsk.color = cfg.askColor;
+      try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+      _applyLBLevelsToSlots();
+    },
+  },
   ema5:   _emaCfgSchema(5),
   ema10:  _emaCfgSchema(10),
   ema60:  _emaCfgSchema(60),
@@ -1270,6 +1468,7 @@ const IND_CFG_SCHEMAS = {
       slots.forEach(s => _applyEmaCustomToChart(s.chart, s, cfg));
       if (fsChart) applyFsEmaCustom();
       _syncFsEmaCustomMtfTimer();
+      _syncSlotsEmaCustomMtfTimer();
     },
   },
   emaCustom2: {
@@ -1294,6 +1493,7 @@ const IND_CFG_SCHEMAS = {
       slots.forEach(s => _applyEmaCustom2ToChart(s.chart, s, cfg));
       if (fsChart) applyFsEmaCustom2();
       _syncFsEmaCustom2MtfTimer();
+      _syncSlotsEmaCustom2MtfTimer();
     },
   },
 };
@@ -1348,15 +1548,30 @@ function saveIndCfgPanel() {
 }
 
 // ── Order Book Levels — overlay bid/ask sul chart principale (portato da chart.html,
-// dove è per-simbolo; qui un solo fetch per SYM basta per tutti gli 8 pannelli TF) ──
-async function _fetchOBLevels(symbol) {
-  const r = await fetch(`https://api.bybit.com/v5/market/orderbook?category=linear&symbol=${symbol}&limit=200`);
-  const d = await r.json();
-  if (d.retCode !== 0 || !d.result) return null;
-  const asks = d.result.a.map(([p,v]) => [parseFloat(p), parseFloat(v)]);
-  const bids = d.result.b.map(([p,v]) => [parseFloat(p), parseFloat(v)]);
-  if (!asks.length || !bids.length) return null;
-  return { ask: asks.reduce((m,x) => x[1]>m[1]?x:m)[0], bid: bids.reduce((m,x) => x[1]>m[1]?x:m)[0] };
+// dove è per-simbolo; qui un solo simbolo (SYM) basta per tutti gli 8 pannelli TF).
+// Aggiornato via WS (orderbook.200.SYM sulla stessa connessione di openMtfBookWS,
+// vedi sock.onopen/onmessage lì sotto), non più REST polling ogni 15s: _obLevAsks/
+// _obLevBids sono il book grezzo mantenuto snapshot+delta, il "muro" (livello a
+// volume massimo) viene ricalcolato ad ogni messaggio in _ingestObLevels. ────────
+let _obLevAsks = new Map(), _obLevBids = new Map();
+function _ingestObLevels(data, isSnapshot) {
+  if (isSnapshot) { _obLevAsks.clear(); _obLevBids.clear(); }
+  for (const [ps, qs] of (data.a || [])) { const p = parseFloat(ps), q = parseFloat(qs); if (!q) _obLevAsks.delete(p); else _obLevAsks.set(p, q); }
+  for (const [ps, qs] of (data.b || [])) { const p = parseFloat(ps), q = parseFloat(qs); if (!q) _obLevBids.delete(p); else _obLevBids.set(p, q); }
+  if (obLevelsActive && _obLevAsks.size && _obLevBids.size) {
+    let bid = null, ask = null;
+    for (const [p, v] of _obLevBids) if (!bid || v > bid[1]) bid = [p, v];
+    for (const [p, v] of _obLevAsks) if (!ask || v > ask[1]) ask = [p, v];
+    _obLevelsBidVal = bid[0]; _obLevelsAskVal = ask[0];
+    _applyObLevelsToSlots();
+  }
+  if (lbLevelsActive && _obLevAsks.size >= 2 && _obLevBids.size >= 2) {
+    const bidsByQty = [..._obLevBids.entries()].sort((a, b) => b[1] - a[1]);
+    const asksByQty = [..._obLevAsks.entries()].sort((a, b) => b[1] - a[1]);
+    _lbBidLv1 = bidsByQty[0][0]; _lbBidLv2 = bidsByQty[1][0];
+    _lbAskLv1 = asksByQty[0][0]; _lbAskLv2 = asksByQty[1][0];
+    _applyLBLevelsToSlots();
+  }
 }
 function _applyObLevelsToSlots() {
   const lv = getLvCfg();
@@ -1379,27 +1594,83 @@ function _applyObLevelsToFs() {
   if (_obLevelsBidVal != null && lv.obBid.vis?.mtf !== false) fsObLevBidLine = fsCandleS.createPriceLine({price:_obLevelsBidVal, color:lv.obBid.color, lineWidth:lv.obBid.width, lineStyle:lv.obBid.style, axisLabelVisible:true, title:''});
   if (_obLevelsAskVal != null && lv.obAsk.vis?.mtf !== false) fsObLevAskLine = fsCandleS.createPriceLine({price:_obLevelsAskVal, color:lv.obAsk.color, lineWidth:lv.obAsk.width, lineStyle:lv.obAsk.style, axisLabelVisible:true, title:''});
 }
-async function _refreshObLevelsAll() {
-  if (!obLevelsActive) return;
-  try {
-    const lv2 = await _fetchOBLevels(SYM);
-    if (!lv2 || !obLevelsActive) return;
-    _obLevelsBidVal = lv2.bid; _obLevelsAskVal = lv2.ask;
-    _applyObLevelsToSlots();
-  } catch(e) {}
+
+// ── LB Levels — canale bid tra i 2 bid a quantità maggiore + canale ask tra i 2
+// ask a quantità maggiore, distinto da OB ma sulla STESSA sottoscrizione
+// orderbook.200.SYM (vedi _obLbSyncSubscription: unsubscribe solo se ENTRAMBI OFF) ──
+function _applyLBLevelsToSlots() {
+  const lv = getLvCfg();
+  for (const s of slots) {
+    if (!s.candleS) continue;
+    for (const k of ['lbBidLine1','lbBidLine2','lbAskLine1','lbAskLine2']) {
+      if (s[k]) { try { s.candleS.removePriceLine(s[k]); } catch(e) {} s[k] = null; }
+    }
+    if (!lbLevelsActive) { s.lbBidVal1 = s.lbBidVal2 = s.lbAskVal1 = s.lbAskVal2 = null; continue; }
+    s.lbBidVal1 = _lbBidLv1; s.lbBidVal2 = _lbBidLv2;
+    s.lbAskVal1 = _lbAskLv1; s.lbAskVal2 = _lbAskLv2;
+    if (_lbBidLv1 != null && lv.lbBid.vis?.mtf !== false) {
+      s.lbBidLine1 = s.candleS.createPriceLine({price:_lbBidLv1, color:lv.lbBid.color, lineWidth:lv.lbBid.width, lineStyle:lv.lbBid.style, axisLabelVisible:false, title:''});
+      s.lbBidLine2 = s.candleS.createPriceLine({price:_lbBidLv2, color:lv.lbBid.color, lineWidth:lv.lbBid.width, lineStyle:lv.lbBid.style, axisLabelVisible:false, title:''});
+    }
+    if (_lbAskLv1 != null && lv.lbAsk.vis?.mtf !== false) {
+      s.lbAskLine1 = s.candleS.createPriceLine({price:_lbAskLv1, color:lv.lbAsk.color, lineWidth:lv.lbAsk.width, lineStyle:lv.lbAsk.style, axisLabelVisible:false, title:''});
+      s.lbAskLine2 = s.candleS.createPriceLine({price:_lbAskLv2, color:lv.lbAsk.color, lineWidth:lv.lbAsk.width, lineStyle:lv.lbAsk.style, axisLabelVisible:false, title:''});
+    }
+  }
+  _applyLBLevelsToFs();
 }
+function _applyLBLevelsToFs() {
+  if (!fsChart || !fsCandleS) return;
+  const lv = getLvCfg();
+  if (fsLbBidLine1) { try { fsCandleS.removePriceLine(fsLbBidLine1); } catch(e) {} fsLbBidLine1 = null; }
+  if (fsLbBidLine2) { try { fsCandleS.removePriceLine(fsLbBidLine2); } catch(e) {} fsLbBidLine2 = null; }
+  if (fsLbAskLine1) { try { fsCandleS.removePriceLine(fsLbAskLine1); } catch(e) {} fsLbAskLine1 = null; }
+  if (fsLbAskLine2) { try { fsCandleS.removePriceLine(fsLbAskLine2); } catch(e) {} fsLbAskLine2 = null; }
+  if (!lbLevelsActive) return;
+  if (_lbBidLv1 != null && lv.lbBid.vis?.mtf !== false) {
+    fsLbBidLine1 = fsCandleS.createPriceLine({price:_lbBidLv1, color:lv.lbBid.color, lineWidth:lv.lbBid.width, lineStyle:lv.lbBid.style, axisLabelVisible:false, title:''});
+    fsLbBidLine2 = fsCandleS.createPriceLine({price:_lbBidLv2, color:lv.lbBid.color, lineWidth:lv.lbBid.width, lineStyle:lv.lbBid.style, axisLabelVisible:false, title:''});
+  }
+  if (_lbAskLv1 != null && lv.lbAsk.vis?.mtf !== false) {
+    fsLbAskLine1 = fsCandleS.createPriceLine({price:_lbAskLv1, color:lv.lbAsk.color, lineWidth:lv.lbAsk.width, lineStyle:lv.lbAsk.style, axisLabelVisible:false, title:''});
+    fsLbAskLine2 = fsCandleS.createPriceLine({price:_lbAskLv2, color:lv.lbAsk.color, lineWidth:lv.lbAsk.width, lineStyle:lv.lbAsk.style, axisLabelVisible:false, title:''});
+  }
+}
+
+// Sottoscrizione orderbook.200.SYM condivisa tra OB e LB: la chiude solo quando
+// ENTRAMBI i toggle sono spenti, altrimenti spegnerne uno interromperebbe anche
+// l'altro che la usa ancora.
+function _obLbSyncSubscription() {
+  const need = obLevelsActive || lbLevelsActive;
+  if (mtfBookWS && mtfBookWS.readyState === WebSocket.OPEN) {
+    try { mtfBookWS.send(JSON.stringify({ op: need ? 'subscribe' : 'unsubscribe', args:[`orderbook.200.${SYM}`] })); } catch(e) {}
+  }
+  // Se il socket non è ancora aperto, il prossimo openMtfBookWS() (avvio o dopo
+  // un errore) legge obLevelsActive/lbLevelsActive in sock.onopen e la include già.
+  if (!need) { _obLevAsks.clear(); _obLevBids.clear(); }
+}
+
 function toggleOBLevelsAll() {
   obLevelsActive = !obLevelsActive;
   window.setIndActive('obLevels', obLevelsActive);
   const btn = document.getElementById('ob-lvl-btn');
   if (btn) btn.style.color = obLevelsActive ? '#3b82f6' : '#B2B5BE';
-  clearInterval(_obLevelsTimer); _obLevelsTimer = null;
-  if (obLevelsActive) {
-    _refreshObLevelsAll();
-    _obLevelsTimer = setInterval(_refreshObLevelsAll, 15000);
-  } else {
+  _obLbSyncSubscription();
+  if (!obLevelsActive) {
     _obLevelsBidVal = null; _obLevelsAskVal = null;
     _applyObLevelsToSlots();
+  }
+}
+
+function toggleLBLevelsAll() {
+  lbLevelsActive = !lbLevelsActive;
+  window.setIndActive('lbLevels', lbLevelsActive);
+  const btn = document.getElementById('lb-lvl-btn');
+  if (btn) btn.style.color = lbLevelsActive ? '#22c55e' : '#B2B5BE';
+  _obLbSyncSubscription();
+  if (!lbLevelsActive) {
+    _lbBidLv1 = _lbBidLv2 = _lbAskLv1 = _lbAskLv2 = null;
+    _applyLBLevelsToSlots();
   }
 }
 
@@ -1481,6 +1752,39 @@ class _ObBandFillPrimitive {
         ctx.save();
         ctx.fillStyle = _hexToRgba(getLvCfg().obBid.color, 0.12);
         ctx.fillRect(0, top, bitmapSize.width, Math.max(1, bot - top));
+        ctx.restore();
+      })
+    };
+    this._view = { renderer: () => renderer, zOrder: () => 'bottom' };
+  }
+  attached({ series }) { this._series = series; }
+  detached() { this._series = null; }
+  updateAllViews() {}
+  paneViews() { return [this._view]; }
+}
+
+// ── LB Levels band fill — due bande separate: bid (tra i 2 bid a quantità
+// maggiore, verde) e ask (tra i 2 ask a quantità maggiore, rossa) ─────────────
+class _LbBandFillPrimitive {
+  constructor(slot) {
+    this._slot = slot;
+    this._series = null;
+    const renderer = {
+      draw: target => target.useBitmapCoordinateSpace(({ context: ctx, bitmapSize, verticalPixelRatio }) => {
+        const s = this._slot, series = this._series;
+        if (!series || !lbLevelsActive) return;
+        const lv = getLvCfg();
+        const fillBand = (v1, v2, color) => {
+          if (v1 == null || v2 == null) return;
+          const y1 = series.priceToCoordinate(v1), y2 = series.priceToCoordinate(v2);
+          if (y1 == null || y2 == null) return;
+          const top = Math.min(y1, y2) * verticalPixelRatio, bot = Math.max(y1, y2) * verticalPixelRatio;
+          ctx.fillStyle = _hexToRgba(color, 0.15);
+          ctx.fillRect(0, top, bitmapSize.width, Math.max(1, bot - top));
+        };
+        ctx.save();
+        fillBand(s.lbBidVal1, s.lbBidVal2, lv.lbBid.color);
+        fillBand(s.lbAskVal1, s.lbAskVal2, lv.lbAsk.color);
         ctx.restore();
       })
     };
@@ -1595,6 +1899,11 @@ function fmtCountdown(secs) {
 // ── build grid ─────────────────────────────────────────────────────────────────
 function buildGrid() {
   const grid = document.getElementById('grid');
+  // Griglia dal layout scelto (vedi MTF_LAYOUTS). Inline-style: su desktop vince sul
+  // CSS di #grid; su mobile (<640px) il @media con !important riporta comunque a 1 col.
+  const _lay = MTF_LAYOUTS[curLayoutName];
+  grid.style.gridTemplateColumns = _lay.cols();
+  grid.style.gridTemplateRows    = _lay.rows();
   // Bottoni Range/Hline/Trend/Clear: unico set nell'header principale, condiviso da tutti i pannelli.
   const globalRangeBtn = document.getElementById('global-range-btn');
   const globalHlineBtn = document.getElementById('global-hline-btn');
@@ -1616,6 +1925,12 @@ function buildGrid() {
     const tfLbl = document.createElement('span');
     tfLbl.textContent = cfg.label;
     tfLbl.style.cssText = 'font-size:13px;font-weight:700;color:#60a5fa;background:#1E222D;padding:1px 6px;border-radius:2px;flex-shrink:0;';
+    // Layout 2+3: la targhetta TF è cliccabile per cambiare (e salvare) il TF del pannello.
+    if (curLayoutName === 'split23') {
+      tfLbl.style.cursor = 'pointer';
+      tfLbl.title = 'Cambia timeframe';
+      tfLbl.onclick = () => openTfGridPopup(slots[i] ? slots[i].cfg.tf : cfg.tf, nt => changePanelTf(i, nt));
+    }
 
     const spacer = document.createElement('div');
     spacer.style.flex = '1';
@@ -1747,10 +2062,13 @@ const fsBtn = document.createElement('button');
       grabMurreyS: {mid:null, lo:null, hi:null},
       grabState: null,
       obLevBidLine: null, obLevAskLine: null,
+      lbBidLine1: null, lbBidLine2: null, lbAskLine1: null, lbAskLine2: null,
+      lbBidVal1: null, lbBidVal2: null, lbAskVal1: null, lbAskVal2: null,
       klines: [],
     });
     try { candleS.attachPrimitive(new _MtfCountdownPrimitive(slots[slots.length-1])); } catch(e) {}
     try { candleS.attachPrimitive(new _ChannelFillPrimitive(slots[slots.length-1], chart)); } catch(e) {}
+    try { candleS.attachPrimitive(new _LbBandFillPrimitive(slots[slots.length-1])); } catch(e) {}
     DrawTools.attachToolContextMenu(body, {
       isAnyToolActive: () => { const s = slots[i]; return !!(s && (s.rangeActive || s.hlineActive || s.trendActive)); },
       onTrend: () => toggleSlotTrend(i), onHline: () => toggleSlotHline(i), onRange: () => toggleSlotRange(i),
@@ -1874,7 +2192,7 @@ function openWS() {
     setWSDot('live');
     sock.send(JSON.stringify({
       op: 'subscribe',
-      args: TF_SLOTS.map(s => `kline.${s.tf}.${SYM}`),
+      args: [...new Set(slots.map(s => s.cfg.tf))].map(tf => `kline.${tf}.${SYM}`),
     }));
     // Bybit requires application-level ping every 20s to keep connection alive
     _wsPingTimer = setInterval(() => {
@@ -1885,8 +2203,9 @@ function openWS() {
     let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
     if (!msg.topic || !msg.topic.startsWith('kline.')) return;
     const tf    = msg.topic.split('.')[1];
-    const idx   = slots.findIndex(s => s.cfg.tf === tf);
-    if (idx === -1) return;
+    // Nel layout 2+3 due pannelli possono avere lo stesso TF: aggiorniamo TUTTI i
+    // pannelli che usano questo TF (findIndex ne prendeva solo il primo).
+    if (!slots.some(s => s.cfg.tf === tf)) return;
     const b = msg.data[0];
     const confirmed = b.confirm === true || b.confirm === 'true';
     const candleStart = Math.floor(parseInt(b.start)/1000);
@@ -1898,7 +2217,8 @@ function openWS() {
       close: parseFloat(b.close),
       volume: parseFloat(b.volume) || 0,
     };
-    const s = slots[idx];
+    slots.forEach(s => {
+    if (s.cfg.tf !== tf) return;
     // Il confirm=true della barra appena chiusa può arrivare da Bybit con un filo di
     // ritardo rispetto al roll lato client (_mtfRollSlotIfNeeded, guidato dal book molto
     // più frequente della kline WS): se nel frattempo s.klines è già avanzato alla barra
@@ -1977,6 +2297,7 @@ function openWS() {
       }
     }
     if (grabActive || grabMidlineActive) _grabLiveUpdate(s, candle, confirmed, getGrabCfg());
+    });
   };
   sock.onerror = () => setWSDot('error');
   sock.onclose = () => {
@@ -2031,20 +2352,28 @@ function openMtfBookWS() {
   closeMtfBookWS();
   const sock = new WebSocket('wss://stream.bybit.com/v5/public/linear');
   mtfBookWS = sock;
-  sock.onopen = () => sock.send(JSON.stringify({ op: 'subscribe', args: [`orderbook.1.${SYM}`] }));
+  sock.onopen = () => {
+    const args = [`orderbook.1.${SYM}`];
+    if (obLevelsActive || lbLevelsActive) args.push(`orderbook.200.${SYM}`);
+    sock.send(JSON.stringify({ op: 'subscribe', args }));
+  };
   sock.onmessage = ev => {
     let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
-    if (!msg.topic || !msg.topic.startsWith('orderbook.') || !msg.data) return;
-    const bidRow = msg.data.b && msg.data.b[0], askRow = msg.data.a && msg.data.a[0];
-    if (!bidRow || !askRow) return;
-    const bid = parseFloat(bidRow[0]), ask = parseFloat(askRow[0]);
-    if (!isFinite(bid) || !isFinite(ask)) return;
-    const midPrice = (bid + ask) / 2;
-    for (const s of slots) _mtfBookPatchSlot(s, midPrice);
-    if (fsCandleS) _mtfBookPatchFS(midPrice);
+    if (!msg.topic || !msg.data) return;
+    if (msg.topic.startsWith('orderbook.1.')) {
+      const bidRow = msg.data.b && msg.data.b[0], askRow = msg.data.a && msg.data.a[0];
+      if (!bidRow || !askRow) return;
+      const bid = parseFloat(bidRow[0]), ask = parseFloat(askRow[0]);
+      if (!isFinite(bid) || !isFinite(ask)) return;
+      const midPrice = (bid + ask) / 2;
+      for (const s of slots) _mtfBookPatchSlot(s, midPrice);
+      if (fsCandleS) _mtfBookPatchFS(midPrice);
+    } else if (msg.topic.startsWith('orderbook.200.')) {
+      _ingestObLevels(msg.data, msg.type === 'snapshot');
+    }
   };
   sock.onerror = () => {};
-  sock.onclose = () => { mtfBookWsTimer = setTimeout(openMtfBookWS, 5000); };
+  sock.onclose = () => { _obLevAsks.clear(); _obLevBids.clear(); mtfBookWsTimer = setTimeout(openMtfBookWS, 5000); };
 }
 
 function closeMtfBookWS() {
@@ -2567,6 +2896,7 @@ let fsGrabWaveS = { high: null, low: null, close: null };
 let fsGrabMurreyS = { mid: null, lo: null, hi: null };
 let fsGrabState = null;
 const fsChannelSlot = { get channelData() { return fsChannelData; } };
+const _fsLbSlot = { get lbBidVal1() { return _lbBidLv1; }, get lbBidVal2() { return _lbBidLv2; }, get lbAskVal1() { return _lbAskLv1; }, get lbAskVal2() { return _lbAskLv2; } };
 // Adapter per riusare _grabLiveUpdate/_grabLiveColor (scritte per un oggetto "slot"
 // della grid) anche sulle variabili globali fs* del fullscreen — stesso pattern di
 // fsChannelSlot/fsCdSlot già presente in questo file.
@@ -2599,6 +2929,7 @@ function initFSChart() {
         fsEmaS[p] = addS(fsChart, 'LineSeries', {...lineBase, color, lineWidth:width+0.5, lineStyle:style??0});
     try { fsCandleS.attachPrimitive(new _ChannelFillPrimitive(fsChannelSlot, fsChart)); } catch(e) {}
     try { fsCandleS.attachPrimitive(new _MtfCountdownPrimitive(fsCdSlot)); } catch(e) {}
+    try { fsCandleS.attachPrimitive(new _LbBandFillPrimitive(_fsLbSlot)); } catch(e) {}
     fsChart.subscribeDblClick(() => { if (fsKlineCount) { fsChart.timeScale().setVisibleLogicalRange({ from: fsKlineCount - getCandlesForTF(fsTF), to: fsKlineCount + 3 }); fsChart.priceScale('right').applyOptions({ autoScale: true }); } });
     const fsPctEl = document.getElementById('fs-pct');
     fsChart.subscribeCrosshairMove(param => {

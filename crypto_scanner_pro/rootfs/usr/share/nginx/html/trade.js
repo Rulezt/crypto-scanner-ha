@@ -17,6 +17,8 @@ const DEFAULT_LEVELS_CFG = {
     prevLow:  { color: '#ef4444', style: 2, width: 2, vis:{chart:true, mtf:true, ob:true} },
     obBid:    { color: '#3b82f6', style: 0, width: 1, vis:{chart:true, mtf:true, ob:true} },
     obAsk:    { color: '#3b82f6', style: 0, width: 1, vis:{chart:true, mtf:true, ob:true} },
+    lbBid:    { color: '#22c55e', style: 0, width: 1, vis:{chart:true, mtf:true, ob:true} },
+    lbAsk:    { color: '#ef4444', style: 0, width: 1, vis:{chart:true, mtf:true, ob:true} },
     ath:      { color: '#f59e0b', style: 2, width: 1, vis:{chart:true, mtf:true, ob:false} },
     atl:      { color: '#a855f7', style: 2, width: 1, vis:{chart:true, mtf:true, ob:false} },
 };
@@ -53,12 +55,6 @@ function getLvCfg() {
     try {
         const s = JSON.parse(localStorage.getItem('chart_levels_cfg'));
         if (s) {
-            if (!s._obBlueMigrated) {
-                if (s.obBid) s.obBid.color = DEFAULT_LEVELS_CFG.obBid.color;
-                if (s.obAsk) s.obAsk.color = DEFAULT_LEVELS_CFG.obAsk.color;
-                s._obBlueMigrated = true;
-                try { localStorage.setItem('chart_levels_cfg', JSON.stringify(s)); } catch(e) {}
-            }
             const out = {};
             for (const k of Object.keys(DEFAULT_LEVELS_CFG)) {
                 out[k] = s[k]
@@ -312,6 +308,39 @@ class _ObBandFillPrimitive {
                 ctx.save();
                 ctx.fillStyle = _hexToRgba(getLvCfg().obBid.color, 0.12);
                 ctx.fillRect(0, top, bitmapSize.width, Math.max(1, bot - top));
+                ctx.restore();
+            })
+        };
+        this._view = { renderer: () => renderer, zOrder: () => 'bottom' };
+    }
+    attached({ series }) { this._series = series; }
+    detached() { this._series = null; }
+    updateAllViews() {}
+    paneViews() { return [this._view]; }
+}
+
+// ── LB Levels band fill — due bande separate: bid (tra i 2 bid a quantità
+// maggiore, verde) e ask (tra i 2 ask a quantità maggiore, rossa) ─────────────
+class _LbBandFillPrimitive {
+    constructor(slot) {
+        this._slot = slot;
+        this._series = null;
+        const renderer = {
+            draw: target => target.useBitmapCoordinateSpace(({ context: ctx, bitmapSize, verticalPixelRatio }) => {
+                const s = this._slot, series = this._series;
+                if (!series || !s.lbActive) return;
+                const lv = getLvCfg();
+                const fillBand = (v1, v2, color) => {
+                    if (v1 == null || v2 == null) return;
+                    const y1 = series.priceToCoordinate(v1), y2 = series.priceToCoordinate(v2);
+                    if (y1 == null || y2 == null) return;
+                    const top = Math.min(y1, y2) * verticalPixelRatio, bot = Math.max(y1, y2) * verticalPixelRatio;
+                    ctx.fillStyle = _hexToRgba(color, 0.15);
+                    ctx.fillRect(0, top, bitmapSize.width, Math.max(1, bot - top));
+                };
+                ctx.save();
+                fillBand(s.lbBidVal1, s.lbBidVal2, lv.lbBid.color);
+                fillBand(s.lbAskVal1, s.lbAskVal2, lv.lbAsk.color);
                 ctx.restore();
             })
         };
@@ -3353,9 +3382,11 @@ createApp({
         let hoverPriceLine = null;
         let obAskLine = null;
         let obBidLine = null;
+        let lbBidLine1 = null, lbBidLine2 = null, lbAskLine1 = null, lbAskLine2 = null;
         let dayHighLine = null, dayLowLine = null, prevHighLine = null, prevLowLine = null;
         let _dayHighPrice = null, _dayLowPrice = null, _prevHighPrice = null, _prevLowPrice = null;
         const showObLines   = ref(window.getIndActive('obLevels'));
+        const showLbLines   = ref(window.getIndActive('lbLevels'));
         const nakedChart    = ref(false);
         const showTradePanel = ref(true);
 
@@ -3440,6 +3471,8 @@ createApp({
             askPrice: 0, askPercent: '0.00',
             bidPrice: 0, bidPercent: '0.00'
         });
+        // LB — primi due livelli grezzi del book (non il "muro" a volume max di OB)
+        const lbLevels = ref({ bidLv1: null, bidLv2: null, askLv1: null, askLv2: null });
 
 
         const asksMap = new Map();
@@ -3497,6 +3530,8 @@ createApp({
                 candleS.attachPrimitive(new _OBCountdownPrimitive(_cdSlot));
                 const _obLvlSlot = { get obActive() { return showObLines.value; }, get obBidVal() { return maxLevelDistance.value.bidPrice; }, get obAskVal() { return maxLevelDistance.value.askPrice; } };
                 candleS.attachPrimitive(new _ObBandFillPrimitive(_obLvlSlot));
+                const _lbLvlSlot = { get lbActive() { return showLbLines.value; }, get lbBidVal1() { return lbLevels.value.bidLv1; }, get lbBidVal2() { return lbLevels.value.bidLv2; }, get lbAskVal1() { return lbLevels.value.askLv1; }, get lbAskVal2() { return lbLevels.value.askLv2; } };
+                candleS.attachPrimitive(new _LbBandFillPrimitive(_lbLvlSlot));
                 candleS.attachPrimitive(new _ObChannelFillPrimitive());
             } catch(e) {}
             const lineBase = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
@@ -3548,6 +3583,9 @@ createApp({
             window._obApplyDayPrevLines = _applyDayPrevLines;
             window._obApplyAthAtlLines  = _applyAthAtlLines;
             window._obUpdateObLines     = updateObLines;
+            window.toggleLbLines       = toggleLbLines;
+            window._lbShowLinesValue   = () => showLbLines.value;
+            window._lbUpdateLbLines    = updateLbLines;
             _obRestoreDrawings();
             if (_obTrendlines.length || _obTrendActive) _obTrendEnsureRAF();
             initSlTpDrag();
@@ -3934,6 +3972,15 @@ createApp({
                     maxLevelDistance.value.bidPrice   = maxBidLevel[0];
                     maxLevelDistance.value.bidPercent = (((midPrice - maxBidLevel[0]) / midPrice) * 100).toFixed(2);
                 }
+                // LB usa SEMPRE asksMap/bidsMap grezze (stesso motivo di renderMaxSafeSize
+                // sopra): per ciascun lato separatamente, i due livelli a quantità maggiore
+                // (non i primi per prezzo) — canale bid tra i 2 bid più grandi, canale ask
+                // tra i 2 ask più grandi.
+                if (bidsMap.size >= 2 && asksMap.size >= 2) {
+                    const bidsByQty = [...bidsMap.entries()].sort((a, b) => b[1] - a[1]);
+                    const asksByQty = [...asksMap.entries()].sort((a, b) => b[1] - a[1]);
+                    lbLevels.value = { bidLv1: bidsByQty[0][0], bidLv2: bidsByQty[1][0], askLv1: asksByQty[0][0], askLv2: asksByQty[1][0] };
+                }
                 if (window.parent !== window) {
                     window.parent.postMessage({
                         type: 'ob_levels',
@@ -3977,6 +4024,7 @@ createApp({
             });
 
             updateObLines();
+            updateLbLines();
             calcPressure(asksArray, bidsArray, maxAsk, maxBid);
         };
 
@@ -4414,6 +4462,39 @@ createApp({
             else clearObLines();
         };
 
+        // ── LB Levels — canale Lv1/Lv2, distinto da OB ──────────────────────────
+        const updateLbLines = () => {
+            if (!obChart || !candleS || !showLbLines.value) return;
+            const { bidLv1, bidLv2, askLv1, askLv2 } = lbLevels.value;
+            if (lbBidLine1) { try { candleS.removePriceLine(lbBidLine1); } catch(e) {} lbBidLine1 = null; }
+            if (lbBidLine2) { try { candleS.removePriceLine(lbBidLine2); } catch(e) {} lbBidLine2 = null; }
+            if (lbAskLine1) { try { candleS.removePriceLine(lbAskLine1); } catch(e) {} lbAskLine1 = null; }
+            if (lbAskLine2) { try { candleS.removePriceLine(lbAskLine2); } catch(e) {} lbAskLine2 = null; }
+            const lv = getLvCfg();
+            if (bidLv1 != null && lv.lbBid.vis?.ob !== false) {
+                lbBidLine1 = candleS.createPriceLine({ price: bidLv1, color: lv.lbBid.color, lineWidth: lv.lbBid.width, lineStyle: lv.lbBid.style, axisLabelVisible: false, title: '' });
+                lbBidLine2 = candleS.createPriceLine({ price: bidLv2, color: lv.lbBid.color, lineWidth: lv.lbBid.width, lineStyle: lv.lbBid.style, axisLabelVisible: false, title: '' });
+            }
+            if (askLv1 != null && lv.lbAsk.vis?.ob !== false) {
+                lbAskLine1 = candleS.createPriceLine({ price: askLv1, color: lv.lbAsk.color, lineWidth: lv.lbAsk.width, lineStyle: lv.lbAsk.style, axisLabelVisible: false, title: '' });
+                lbAskLine2 = candleS.createPriceLine({ price: askLv2, color: lv.lbAsk.color, lineWidth: lv.lbAsk.width, lineStyle: lv.lbAsk.style, axisLabelVisible: false, title: '' });
+            }
+        };
+
+        const clearLbLines = () => {
+            if (lbBidLine1 && candleS) { try { candleS.removePriceLine(lbBidLine1); } catch(e) {} lbBidLine1 = null; }
+            if (lbBidLine2 && candleS) { try { candleS.removePriceLine(lbBidLine2); } catch(e) {} lbBidLine2 = null; }
+            if (lbAskLine1 && candleS) { try { candleS.removePriceLine(lbAskLine1); } catch(e) {} lbAskLine1 = null; }
+            if (lbAskLine2 && candleS) { try { candleS.removePriceLine(lbAskLine2); } catch(e) {} lbAskLine2 = null; }
+        };
+
+        const toggleLbLines = () => {
+            showLbLines.value = !showLbLines.value;
+            window.setIndActive('lbLevels', showLbLines.value);
+            if (showLbLines.value) updateLbLines();
+            else clearLbLines();
+        };
+
         const toggleBookPanel = () => {
             showBook.value = !showBook.value;
             try { localStorage.setItem('ob_show_book', showBook.value ? '1' : '0'); } catch(e) {}
@@ -4427,6 +4508,7 @@ createApp({
                     if (emaS[p]) try { emaS[p].applyOptions({ visible: false }); } catch(e) {}
                 _clearDayLines();
                 clearObLines();
+                clearLbLines();
             } else {
                 for (const { p } of EMA_CFG)
                     if (emaS[p]) try { emaS[p].applyOptions({ visible: true }); } catch(e) {}
@@ -4438,6 +4520,7 @@ createApp({
                     if (_prevLowPrice  && lv.prevLow.vis?.ob  !== false) prevLowLine  = candleS.createPriceLine({price:_prevLowPrice,  color:lv.prevLow.color,  lineWidth:lv.prevLow.width,  lineStyle:lv.prevLow.style,  axisLabelVisible:false, title:''});
                 }
                 if (showObLines.value) updateObLines();
+                if (showLbLines.value) updateLbLines();
             }
         };
 
@@ -4453,6 +4536,7 @@ createApp({
             stopKlineWS();
             _clearDayLines();
             clearObLines();
+            clearLbLines();
             asksMap.clear();
             bidsMap.clear();
         };
@@ -4608,6 +4692,7 @@ createApp({
             fetchOrderBook, updateDisplay, changeChartTF,
             setHoverLine, clearHoverLine,
             showObLines, toggleObLines,
+            lbLevels, showLbLines, toggleLbLines,
             nakedChart, toggleNakedChart,
             showTradePanel, toggleBookPanel,
             tfCountdowns, openMtf,
@@ -4630,6 +4715,7 @@ const IND_LIST = [
     { label: 'GRaB',            isOn: () => _obGrabActive,toggle: toggleObGrab,    cfgOpen: openGrabCfgPanel, col: 2 },
     { label: 'ROC',             isOn: () => _obRocActive, toggle: toggleObRoc,     cfgKey: 'roc', col: 2 },
     { label: 'Order Book Levels', isOn: () => window._obShowLinesValue ? window._obShowLinesValue() : false, toggle: () => window.toggleObLines && window.toggleObLines(), cfgKey: 'obLevels', col: 2 },
+    { label: 'Livelli Book (LB)', isOn: () => window._lbShowLinesValue ? window._lbShowLinesValue() : false, toggle: () => window.toggleLbLines && window.toggleLbLines(), cfgKey: 'lbLevels', col: 2 },
     { label: 'Livelli Daily',          isOn: () => getLvCfg().dayHigh.vis.ob,  toggle: () => window.toggleDayLevelsAll  && window.toggleDayLevelsAll(),  cfgKey: 'dayLevels',  col: 3 },
     { label: 'Massimi/Minimi Storici', isOn: () => getLvCfg().ath.vis.ob,     toggle: () => window.toggleAthAtlAll     && window.toggleAthAtlAll(),     cfgKey: 'athAtl',     col: 3 },
     { label: 'Livelli Giorno Prec.',   isOn: () => getLvCfg().prevHigh.vis.ob,toggle: () => window.togglePrevLevelsAll && window.togglePrevLevelsAll(), cfgKey: 'prevLevels', col: 3 },
@@ -4813,6 +4899,22 @@ const IND_CFG_SCHEMAS = {
             lv.obAsk.color = cfg.askColor; lv.obAsk.width = cfg.width; lv.obAsk.style = cfg.style;
             try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
             if (window._obUpdateObLines) window._obUpdateObLines();
+        },
+    },
+    lbLevels: {
+        title: 'Livelli Book (LB)',
+        getCfg: () => { const lv = getLvCfg(); return { bidColor: lv.lbBid.color, askColor: lv.lbAsk.color }; },
+        defaults: { bidColor: DEFAULT_LEVELS_CFG.lbBid.color, askColor: DEFAULT_LEVELS_CFG.lbAsk.color },
+        fields: [
+            { key:'bidColor', label:'Colore canale Bid', type:'color' },
+            { key:'askColor', label:'Colore canale Ask', type:'color' },
+        ],
+        apply: cfg => {
+            const lv = getLvCfg();
+            lv.lbBid.color = cfg.bidColor;
+            lv.lbAsk.color = cfg.askColor;
+            try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+            if (window._lbUpdateLbLines) window._lbUpdateLbLines();
         },
     },
     ema5:   _emaCfgSchema(5),

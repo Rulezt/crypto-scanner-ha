@@ -850,6 +850,8 @@ const DEFAULT_LEVELS_CFG = {
     prevLow:  {color:'#ef4444', style:2, width:2, vis:{chart:true, mtf:true, ob:true}},
     obBid:    {color:'#3b82f6', style:1, width:1, vis:{chart:true, mtf:true, ob:true}},
     obAsk:    {color:'#3b82f6', style:1, width:1, vis:{chart:true, mtf:true, ob:true}},
+    lbBid:    {color:'#22c55e', style:0, width:1, vis:{chart:true, mtf:true, ob:true}},
+    lbAsk:    {color:'#ef4444', style:0, width:1, vis:{chart:true, mtf:true, ob:true}},
     ath:      {color:'#f59e0b', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
     atl:      {color:'#a855f7', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
 };
@@ -867,12 +869,6 @@ function getLvCfg() {
     try {
         const s = JSON.parse(localStorage.getItem('chart_levels_cfg'));
         if (s) {
-            if (!s._obBlueMigrated) {
-                if (s.obBid) s.obBid.color = DEFAULT_LEVELS_CFG.obBid.color;
-                if (s.obAsk) s.obAsk.color = DEFAULT_LEVELS_CFG.obAsk.color;
-                s._obBlueMigrated = true;
-                try { localStorage.setItem('chart_levels_cfg', JSON.stringify(s)); } catch(e) {}
-            }
             const out = {};
             for (const k of Object.keys(DEFAULT_LEVELS_CFG)) {
                 out[k] = s[k]
@@ -927,8 +923,14 @@ let obDayHighLine = null, obDayLowLine = null;
 let obPrevHighLine = null, obPrevLowLine = null;
 let fsMidLines = [], obMidLines = []; // kept for compat, no longer used
 let fsDayPrimitive = null, obDayPrimitive = null;
-let fsObActive = false, fsObBidLine = null, fsObAskLine = null, fsObTimer = null, fsObBidVal = null, fsObAskVal = null;
+let fsObActive = false, fsObBidLine = null, fsObAskLine = null, fsObBidVal = null, fsObAskVal = null;
 const _fsObSlot = { get obActive() { return fsObActive; }, get obBidVal() { return fsObBidVal; }, get obAskVal() { return fsObAskVal; } };
+// LB — canale colorato bid/ask basato sui primi 2 livelli grezzi del book (non il
+// "muro" a volume max di OB): due bande separate, verde lato bid tra Lv1/Lv2,
+// rossa lato ask tra Lv1/Lv2. Riusa la stessa WS orderbook.200 già aperta per OB.
+let fsLbActive = false, fsLbBidLine1 = null, fsLbBidLine2 = null, fsLbAskLine1 = null, fsLbAskLine2 = null;
+let fsLbBidVal1 = null, fsLbBidVal2 = null, fsLbAskVal1 = null, fsLbAskVal2 = null;
+const _fsLbSlot = { get lbBidVal1() { return fsLbBidVal1; }, get lbBidVal2() { return fsLbBidVal2; }, get lbAskVal1() { return fsLbAskVal1; }, get lbAskVal2() { return fsLbAskVal2; } };
 let fsAthLine = null, fsAtlLine = null, _fsAthVal = null, _fsAtlVal = null;
 
 // ── fs pseudo-slot per Canale/Bollinger/GRaB/ROC nel fullscreen ─────────
@@ -1607,6 +1609,7 @@ let CHANNEL_CFG = getChannelCfg();
 // così attivare un indicatore su chart/mtf/trade lo mantiene attivo su tutte le pagine
 // e nel fullscreen di questa stessa pagina.
 let channelActive = window.getIndActive('channel'), obLevelsActive = window.getIndActive('obLevels');
+let lbLevelsActive = window.getIndActive('lbLevels');
 let bbActive = window.getIndActive('bb');
 let rocActive = window.getIndActive('roc');
 let emaCustomActive = window.getIndActive('emaCustom');
@@ -1644,6 +1647,9 @@ function toggleHideIndMiniAll() {
     applyCfgToAllSlots();
     if (!hideIndMiniActive && obLevelsActive) {
         slots.forEach((s, idx) => { if (s.symbol) fetchSlotOBLevels(idx); });
+    }
+    if (!hideIndMiniActive && lbLevelsActive) {
+        slots.forEach((s, idx) => { if (s.symbol) fetchSlotLBLevels(idx); });
     }
 }
 function calcEMAField(bars, period, field) {
@@ -1746,6 +1752,39 @@ class _ObBandFillPrimitive {
                 ctx.save();
                 ctx.fillStyle = _hexToRgba(getLvCfg().obBid.color, 0.12);
                 ctx.fillRect(0, top, bitmapSize.width, Math.max(1, bot - top));
+                ctx.restore();
+            })
+        };
+        this._view = { renderer: () => renderer, zOrder: () => 'bottom' };
+    }
+    attached({ series }) { this._series = series; }
+    detached() { this._series = null; }
+    updateAllViews() {}
+    paneViews() { return [this._view]; }
+}
+
+// ── LB Levels band fill — due bande separate: bid (tra i 2 bid a quantità
+// maggiore, verde) e ask (tra i 2 ask a quantità maggiore, rossa) ─────────────
+class _LbBandFillPrimitive {
+    constructor(slot) {
+        this._slot = slot;
+        this._series = null;
+        const renderer = {
+            draw: target => target.useBitmapCoordinateSpace(({ context: ctx, bitmapSize, verticalPixelRatio }) => {
+                const s = this._slot, series = this._series;
+                if (!series || !lbLevelsActive) return;
+                const lv = getLvCfg();
+                const fillBand = (v1, v2, color) => {
+                    if (v1 == null || v2 == null) return;
+                    const y1 = series.priceToCoordinate(v1), y2 = series.priceToCoordinate(v2);
+                    if (y1 == null || y2 == null) return;
+                    const top = Math.min(y1, y2) * verticalPixelRatio, bot = Math.max(y1, y2) * verticalPixelRatio;
+                    ctx.fillStyle = _hexToRgba(color, 0.15);
+                    ctx.fillRect(0, top, bitmapSize.width, Math.max(1, bot - top));
+                };
+                ctx.save();
+                fillBand(s.lbBidVal1, s.lbBidVal2, lv.lbBid.color);
+                fillBand(s.lbAskVal1, s.lbAskVal2, lv.lbAsk.color);
                 ctx.restore();
             })
         };
@@ -1910,6 +1949,7 @@ const IND_LIST = [
     { label: 'Canale SMA 20',        isOn: () => channelActive,               toggle: toggleChannelAll,      cfgKey: 'channel', col: 2 },
     { label: 'Bollinger Bands',      isOn: () => bbActive,                    toggle: toggleBBAll,           cfgKey: 'bb',      col: 2 },
     { label: 'Order Book Levels',    isOn: () => obLevelsActive,              toggle: toggleOBAll,            cfgKey: 'obLevels', col: 2 },
+    { label: 'Livelli Book (LB)',    isOn: () => lbLevelsActive,              toggle: toggleLBAll,            cfgKey: 'lbLevels', col: 2 },
     { label: 'GRaB',                 isOn: () => grabActive,                  toggle: toggleGrabAll,          cfgKey: 'grab',    col: 2 },
     { label: 'ROC',                  isOn: () => rocActive,                   toggle: toggleRocAll,           cfgKey: 'roc',     col: 2 },
     { label: 'Livelli Daily',        isOn: () => getLvCfg().dayHigh.vis.chart,  toggle: toggleDayLevelsAll,  cfgKey: 'dayLevels',  col: 3 },
@@ -2108,6 +2148,22 @@ const IND_CFG_SCHEMAS = {
             const lv = getLvCfg();
             lv.obBid.color = cfg.bidColor; lv.obBid.width = cfg.width; lv.obBid.style = cfg.style;
             lv.obAsk.color = cfg.askColor; lv.obAsk.width = cfg.width; lv.obAsk.style = cfg.style;
+            try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
+            applyCfgToAllSlots();
+        },
+    },
+    lbLevels: {
+        title: 'Livelli Book (LB)',
+        getCfg: () => { const lv = getLvCfg(); return { bidColor: lv.lbBid.color, askColor: lv.lbAsk.color }; },
+        defaults: { bidColor: DEFAULT_LEVELS_CFG.lbBid.color, askColor: DEFAULT_LEVELS_CFG.lbAsk.color },
+        fields: [
+            { key:'bidColor', label:'Colore canale Bid', type:'color' },
+            { key:'askColor', label:'Colore canale Ask', type:'color' },
+        ],
+        apply: cfg => {
+            const lv = getLvCfg();
+            lv.lbBid.color = cfg.bidColor;
+            lv.lbAsk.color = cfg.askColor;
             try { localStorage.setItem('chart_levels_cfg', JSON.stringify(lv)); } catch(e) {}
             applyCfgToAllSlots();
         },
@@ -2507,40 +2563,191 @@ function attachDayLines(series, chart, klines, tf, prev) {
     try { series.attachPrimitive(prim); return prim; } catch(e) { return null; }
 }
 
-// ── OB Levels (bid/ask wall) per slot e fullscreen ────────────────────────────
-async function _fetchOBLevels(symbol) {
-    const r = await fetch(`https://api.bybit.com/v5/market/orderbook?category=linear&symbol=${symbol}&limit=200`);
-    const d = await r.json();
-    if (d.retCode !== 0 || !d.result) return null;
-    const asks = d.result.a.map(([p,v]) => [parseFloat(p), parseFloat(v)]);
-    const bids = d.result.b.map(([p,v]) => [parseFloat(p), parseFloat(v)]);
-    if (!asks.length || !bids.length) return null;
-    return {
-        ask: asks.reduce((m,x) => x[1]>m[1]?x:m)[0],
-        bid: bids.reduce((m,x) => x[1]>m[1]?x:m)[0],
+// ── OB Levels (bid/ask wall) e LB Levels (canale Lv1/Lv2) per slot e fullscreen —
+// WS condiviso orderbook.200, non più REST polling ogni 15s. Un'unica connessione
+// multiplex su tutti i simboli con OB e/o LB attivo (slot griglia + eventuale
+// fullscreen): ad ogni evento che può cambiare l'insieme dei simboli interessati si
+// richiama _obSyncSubscriptions(), che ricalcola il set desiderato da
+// slots[].symbol/fsCoin e fa il diff con quanto già sottoscritto — un punto di
+// richiamo mancato si "autocorregge" al giro successivo invece di lasciare
+// sottoscrizioni orfane o mancanti. ───────────────────────────────────────────
+let _obWS = null, _obWsTimer = null;
+let _obWsSubscribed = new Set();
+const _obBooks = new Map(); // symbol -> { a: Map<price,qty>, b: Map<price,qty> }
+
+function _obWallFrom(book) {
+    if (!book || !book.a.size || !book.b.size) return null;
+    let bid = null, ask = null;
+    for (const [p, v] of book.b) if (!bid || v > bid[1]) bid = [p, v];
+    for (const [p, v] of book.a) if (!ask || v > ask[1]) ask = [p, v];
+    return { bid: bid[0], ask: ask[0] };
+}
+
+// Livello con quantità massima e livello con seconda quantità massima, su TUTTO
+// il book (bid e ask mescolati, non per lato come il "muro" di _obWallFrom) —
+// il canale LB va tra questi due prezzi, a prescindere da quale lato appartengano.
+// Per ciascun lato, separatamente: i due livelli con quantità maggiore (non i
+// primi per prezzo) — un canale bid (tra i 2 bid a size più grande) e uno ask
+// (tra i 2 ask a size più grande).
+function _lbTopLevels(book) {
+    if (!book || book.a.size < 2 || book.b.size < 2) return null;
+    const bidsByQty = [...book.b.entries()].sort((a, b) => b[1] - a[1]);
+    const asksByQty = [...book.a.entries()].sort((a, b) => b[1] - a[1]);
+    return { bidLv1: bidsByQty[0][0], bidLv2: bidsByQty[1][0], askLv1: asksByQty[0][0], askLv2: asksByQty[1][0] };
+}
+
+function _obDesiredSymbols() {
+    const set = new Set();
+    if (obLevelsActive || lbLevelsActive) {
+        for (const s of slots) if (s.symbol) set.add(s.symbol);
+    }
+    if (((obLevelsActive && fsObActive) || (lbLevelsActive && fsLbActive)) && fsCoin && fsCoin.symbol) set.add(fsCoin.symbol);
+    return set;
+}
+
+function _obIngest(symbol, data, isSnapshot) {
+    let book = _obBooks.get(symbol);
+    if (isSnapshot || !book) { book = { a: new Map(), b: new Map() }; _obBooks.set(symbol, book); }
+    for (const [ps, qs] of (data.a || [])) { const p = parseFloat(ps), q = parseFloat(qs); if (!q) book.a.delete(p); else book.a.set(p, q); }
+    for (const [ps, qs] of (data.b || [])) { const p = parseFloat(ps), q = parseFloat(qs); if (!q) book.b.delete(p); else book.b.set(p, q); }
+    if (obLevelsActive) {
+        const wall = _obWallFrom(book);
+        if (wall) {
+            slots.forEach((s, idx) => { if (s.symbol === symbol) _drawSlotOBLevels(idx, wall); });
+            if (fsObActive && fsCoin && fsCoin.symbol === symbol) _drawFsOBLevels(wall);
+        }
+    }
+    if (lbLevelsActive) {
+        const lv2 = _lbTopLevels(book);
+        if (lv2) {
+            slots.forEach((s, idx) => { if (s.symbol === symbol) _drawSlotLBLevels(idx, lv2); });
+            if (fsLbActive && fsCoin && fsCoin.symbol === symbol) _drawFsLBLevels(lv2);
+        }
+    }
+}
+
+function _obOpenWS() {
+    if (_obWS) return;
+    clearTimeout(_obWsTimer);
+    const sock = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+    _obWS = sock;
+    sock.onopen = () => {
+        const syms = [..._obDesiredSymbols()];
+        _obWsSubscribed = new Set(syms);
+        for (let i = 0; i < syms.length; i += 10) {
+            sock.send(JSON.stringify({ op: 'subscribe', args: syms.slice(i, i + 10).map(s => `orderbook.200.${s}`) }));
+        }
+    };
+    sock.onmessage = ev => {
+        let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
+        if (!msg.topic || !msg.topic.startsWith('orderbook.200.') || !msg.data) return;
+        _obIngest(msg.topic.slice('orderbook.200.'.length), msg.data, msg.type === 'snapshot');
+    };
+    sock.onerror = () => {};
+    sock.onclose = () => {
+        _obWS = null; _obBooks.clear(); _obWsSubscribed = new Set();
+        if (_obDesiredSymbols().size) _obWsTimer = setTimeout(_obOpenWS, 5000);
     };
 }
 
-async function fetchSlotOBLevels(idx) {
+function _obCloseWS() {
+    clearTimeout(_obWsTimer);
+    if (_obWS) { try { _obWS.close(); } catch(e) {} _obWS = null; }
+    _obWsSubscribed = new Set();
+    _obBooks.clear();
+}
+
+function _obSyncSubscriptions() {
+    const desired = _obDesiredSymbols();
+    if (!desired.size) { _obCloseWS(); return; }
+    if (!_obWS || _obWS.readyState === WebSocket.CLOSED || _obWS.readyState === WebSocket.CLOSING) { _obOpenWS(); return; }
+    if (_obWS.readyState === WebSocket.CONNECTING) return; // onopen sottoscriverà l'intero set desiderato
+    const toSub   = [...desired].filter(s => !_obWsSubscribed.has(s));
+    const toUnsub = [..._obWsSubscribed].filter(s => !desired.has(s));
+    // Bybit accetta al massimo 10 topic per messaggio subscribe/unsubscribe (stesso
+    // limite già rispettato in _obOpenWS.onopen) — batch anche qui, altrimenti
+    // attivare OB Levels con molti slot già caricati (es. 18 in portrait) manderebbe
+    // un solo messaggio sovradimensionato che Bybit scarta silenziosamente.
+    if (toUnsub.length) {
+        for (let i = 0; i < toUnsub.length; i += 10) {
+            try { _obWS.send(JSON.stringify({ op: 'unsubscribe', args: toUnsub.slice(i, i + 10).map(s => `orderbook.200.${s}`) })); } catch(e) {}
+        }
+        for (const s of toUnsub) { _obWsSubscribed.delete(s); _obBooks.delete(s); }
+    }
+    if (toSub.length) {
+        for (let i = 0; i < toSub.length; i += 10) {
+            try { _obWS.send(JSON.stringify({ op: 'subscribe', args: toSub.slice(i, i + 10).map(s => `orderbook.200.${s}`) })); } catch(e) {}
+        }
+        for (const s of toSub) _obWsSubscribed.add(s);
+    }
+}
+window.addEventListener('beforeunload', _obCloseWS);
+
+function _drawSlotOBLevels(idx, wall) {
+    const s = slots[idx];
+    if (!s || !s.candleS || !obLevelsActive) return;
+    if (hideIndMiniActive) { _clearSlotOBLines(s); return; }
+    if (s.obBidLine) { try { s.candleS.removePriceLine(s.obBidLine); } catch(e) {} }
+    if (s.obAskLine) { try { s.candleS.removePriceLine(s.obAskLine); } catch(e) {} }
+    const _soblv = getLvCfg();
+    s.obBidVal = wall.bid; s.obAskVal = wall.ask;
+    if (_soblv.obBid.vis?.chart !== false) s.obBidLine = s.candleS.createPriceLine({ price: wall.bid, color:_soblv.obBid.color, lineWidth:_soblv.obBid.width, lineStyle:_soblv.obBid.style, axisLabelVisible:true, title:'' });
+    if (_soblv.obAsk.vis?.chart !== false) s.obAskLine = s.candleS.createPriceLine({ price: wall.ask, color:_soblv.obAsk.color, lineWidth:_soblv.obAsk.width, lineStyle:_soblv.obAsk.style, axisLabelVisible:true, title:'' });
+}
+
+function fetchSlotOBLevels(idx) {
     const s = slots[idx];
     if (!s || !s.symbol || !s.candleS || !obLevelsActive) return;
     if (hideIndMiniActive) { _clearSlotOBLines(s); return; }
-    try {
-        const lv = await _fetchOBLevels(s.symbol);
-        if (!lv) return;
-        if (s.obBidLine) { try { s.candleS.removePriceLine(s.obBidLine); } catch(e) {} }
-        if (s.obAskLine) { try { s.candleS.removePriceLine(s.obAskLine); } catch(e) {} }
-        const _soblv = getLvCfg();
-        s.obBidVal = lv.bid; s.obAskVal = lv.ask;
-        if (_soblv.obBid.vis?.chart !== false) s.obBidLine = s.candleS.createPriceLine({ price: lv.bid, color:_soblv.obBid.color, lineWidth:_soblv.obBid.width, lineStyle:_soblv.obBid.style, axisLabelVisible:true, title:'' });
-        if (_soblv.obAsk.vis?.chart !== false) s.obAskLine = s.candleS.createPriceLine({ price: lv.ask, color:_soblv.obAsk.color, lineWidth:_soblv.obAsk.width, lineStyle:_soblv.obAsk.style, axisLabelVisible:true, title:'' });
-    } catch(e) {}
+    _obSyncSubscriptions();
+    const wall = _obWallFrom(_obBooks.get(s.symbol));
+    if (wall) _drawSlotOBLevels(idx, wall);
 }
 
 function _clearSlotOBLines(s) {
     if (s.obBidLine) { try { s.candleS.removePriceLine(s.obBidLine); } catch(e) {} s.obBidLine = null; }
     if (s.obAskLine) { try { s.candleS.removePriceLine(s.obAskLine); } catch(e) {} s.obAskLine = null; }
     s.obBidVal = null; s.obAskVal = null;
+}
+
+// ── LB Levels (canale bid tra i 2 bid a quantità maggiore + canale ask tra i 2
+// ask a quantità maggiore) — stessa WS orderbook.200 di OB ────────────────────
+function _drawSlotLBLevels(idx, top2) {
+    const s = slots[idx];
+    if (!s || !s.candleS || !lbLevelsActive) return;
+    if (hideIndMiniActive) { _clearSlotLBLines(s); return; }
+    if (s.lbBidLine1) { try { s.candleS.removePriceLine(s.lbBidLine1); } catch(e) {} }
+    if (s.lbBidLine2) { try { s.candleS.removePriceLine(s.lbBidLine2); } catch(e) {} }
+    if (s.lbAskLine1) { try { s.candleS.removePriceLine(s.lbAskLine1); } catch(e) {} }
+    if (s.lbAskLine2) { try { s.candleS.removePriceLine(s.lbAskLine2); } catch(e) {} }
+    const lv = getLvCfg();
+    s.lbBidVal1 = top2.bidLv1; s.lbBidVal2 = top2.bidLv2;
+    s.lbAskVal1 = top2.askLv1; s.lbAskVal2 = top2.askLv2;
+    if (lv.lbBid.vis?.chart !== false) {
+        s.lbBidLine1 = s.candleS.createPriceLine({ price: top2.bidLv1, color:lv.lbBid.color, lineWidth:lv.lbBid.width, lineStyle:lv.lbBid.style, axisLabelVisible:false, title:'' });
+        s.lbBidLine2 = s.candleS.createPriceLine({ price: top2.bidLv2, color:lv.lbBid.color, lineWidth:lv.lbBid.width, lineStyle:lv.lbBid.style, axisLabelVisible:false, title:'' });
+    }
+    if (lv.lbAsk.vis?.chart !== false) {
+        s.lbAskLine1 = s.candleS.createPriceLine({ price: top2.askLv1, color:lv.lbAsk.color, lineWidth:lv.lbAsk.width, lineStyle:lv.lbAsk.style, axisLabelVisible:false, title:'' });
+        s.lbAskLine2 = s.candleS.createPriceLine({ price: top2.askLv2, color:lv.lbAsk.color, lineWidth:lv.lbAsk.width, lineStyle:lv.lbAsk.style, axisLabelVisible:false, title:'' });
+    }
+}
+
+function fetchSlotLBLevels(idx) {
+    const s = slots[idx];
+    if (!s || !s.symbol || !s.candleS || !lbLevelsActive) return;
+    if (hideIndMiniActive) { _clearSlotLBLines(s); return; }
+    _obSyncSubscriptions();
+    const top2 = _lbTopLevels(_obBooks.get(s.symbol));
+    if (top2) _drawSlotLBLevels(idx, top2);
+}
+
+function _clearSlotLBLines(s) {
+    if (s.lbBidLine1) { try { s.candleS.removePriceLine(s.lbBidLine1); } catch(e) {} s.lbBidLine1 = null; }
+    if (s.lbBidLine2) { try { s.candleS.removePriceLine(s.lbBidLine2); } catch(e) {} s.lbBidLine2 = null; }
+    if (s.lbAskLine1) { try { s.candleS.removePriceLine(s.lbAskLine1); } catch(e) {} s.lbAskLine1 = null; }
+    if (s.lbAskLine2) { try { s.candleS.removePriceLine(s.lbAskLine2); } catch(e) {} s.lbAskLine2 = null; }
+    s.lbBidVal1 = s.lbBidVal2 = s.lbAskVal1 = s.lbAskVal2 = null;
 }
 
 function _clearSlotATHLines(s) {
@@ -2567,53 +2774,104 @@ async function fetchSlotATHATL(idx) {
     } catch(e) {}
 }
 
+function _drawFsOBLevels(wall) {
+    if (!fsCoin || !fsCandleS || !fsObActive) return;
+    if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} }
+    if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} }
+    const _fsoblv = getLvCfg();
+    fsObBidVal = wall.bid; fsObAskVal = wall.ask;
+    if (_fsoblv.obBid.vis?.chart !== false) fsObBidLine = fsCandleS.createPriceLine({ price: wall.bid, color:_fsoblv.obBid.color, lineWidth:_fsoblv.obBid.width, lineStyle:_fsoblv.obBid.style, axisLabelVisible:true, title:'' });
+    if (_fsoblv.obAsk.vis?.chart !== false) fsObAskLine = fsCandleS.createPriceLine({ price: wall.ask, color:_fsoblv.obAsk.color, lineWidth:_fsoblv.obAsk.width, lineStyle:_fsoblv.obAsk.style, axisLabelVisible:true, title:'' });
+}
+
+function _drawFsLBLevels(top2) {
+    if (!fsCoin || !fsCandleS || !fsLbActive) return;
+    if (fsLbBidLine1) { try { fsCandleS.removePriceLine(fsLbBidLine1); } catch(e) {} }
+    if (fsLbBidLine2) { try { fsCandleS.removePriceLine(fsLbBidLine2); } catch(e) {} }
+    if (fsLbAskLine1) { try { fsCandleS.removePriceLine(fsLbAskLine1); } catch(e) {} }
+    if (fsLbAskLine2) { try { fsCandleS.removePriceLine(fsLbAskLine2); } catch(e) {} }
+    const lv = getLvCfg();
+    fsLbBidVal1 = top2.bidLv1; fsLbBidVal2 = top2.bidLv2;
+    fsLbAskVal1 = top2.askLv1; fsLbAskVal2 = top2.askLv2;
+    if (lv.lbBid.vis?.chart !== false) {
+        fsLbBidLine1 = fsCandleS.createPriceLine({ price: top2.bidLv1, color:lv.lbBid.color, lineWidth:lv.lbBid.width, lineStyle:lv.lbBid.style, axisLabelVisible:false, title:'' });
+        fsLbBidLine2 = fsCandleS.createPriceLine({ price: top2.bidLv2, color:lv.lbBid.color, lineWidth:lv.lbBid.width, lineStyle:lv.lbBid.style, axisLabelVisible:false, title:'' });
+    }
+    if (lv.lbAsk.vis?.chart !== false) {
+        fsLbAskLine1 = fsCandleS.createPriceLine({ price: top2.askLv1, color:lv.lbAsk.color, lineWidth:lv.lbAsk.width, lineStyle:lv.lbAsk.style, axisLabelVisible:false, title:'' });
+        fsLbAskLine2 = fsCandleS.createPriceLine({ price: top2.askLv2, color:lv.lbAsk.color, lineWidth:lv.lbAsk.width, lineStyle:lv.lbAsk.style, axisLabelVisible:false, title:'' });
+    }
+}
+
+function _clearFsLBLines() {
+    if (fsLbBidLine1) { try { fsCandleS.removePriceLine(fsLbBidLine1); } catch(e) {} fsLbBidLine1 = null; }
+    if (fsLbBidLine2) { try { fsCandleS.removePriceLine(fsLbBidLine2); } catch(e) {} fsLbBidLine2 = null; }
+    if (fsLbAskLine1) { try { fsCandleS.removePriceLine(fsLbAskLine1); } catch(e) {} fsLbAskLine1 = null; }
+    if (fsLbAskLine2) { try { fsCandleS.removePriceLine(fsLbAskLine2); } catch(e) {} fsLbAskLine2 = null; }
+    fsLbBidVal1 = fsLbBidVal2 = fsLbAskVal1 = fsLbAskVal2 = null;
+}
+
+function toggleLBAll() {
+    lbLevelsActive = !lbLevelsActive;
+    window.setIndActive('lbLevels', lbLevelsActive);
+    if (lbLevelsActive) {
+        _obSyncSubscriptions();
+        slots.forEach((s, idx) => {
+            if (!s.symbol) return;
+            const top2 = _lbTopLevels(_obBooks.get(s.symbol));
+            if (top2) _drawSlotLBLevels(idx, top2);
+        });
+    } else {
+        slots.forEach(s => _clearSlotLBLines(s));
+        _obSyncSubscriptions();
+    }
+    if (fsChart) {
+        if (lbLevelsActive) {
+            fsLbActive = true;
+            _obSyncSubscriptions();
+            const top2 = fsCoin && _lbTopLevels(_obBooks.get(fsCoin.symbol));
+            if (top2) _drawFsLBLevels(top2);
+        } else {
+            fsLbActive = false;
+            _clearFsLBLines();
+            _obSyncSubscriptions();
+        }
+    }
+}
+
 function toggleOBAll() {
     obLevelsActive = !obLevelsActive;
     window.setIndActive('obLevels', obLevelsActive);
     const btn = document.getElementById('ob-all-btn');
     if (btn) btn.style.color = obLevelsActive ? '#3b82f6' : '#B2B5BE';
-    slots.forEach((s, idx) => {
-        if (obLevelsActive) {
-            clearInterval(s.obTimer); s.obTimer = null;
-            if (s.symbol) {
-                fetchSlotOBLevels(idx);
-                s.obTimer = setInterval(() => fetchSlotOBLevels(idx), 15000);
-            }
-        } else {
-            clearInterval(s.obTimer); s.obTimer = null;
-            _clearSlotOBLines(s);
-        }
-    });
+    if (obLevelsActive) {
+        _obSyncSubscriptions();
+        slots.forEach((s, idx) => {
+            if (!s.symbol) return;
+            const wall = _obWallFrom(_obBooks.get(s.symbol));
+            if (wall) _drawSlotOBLevels(idx, wall);
+        });
+    } else {
+        slots.forEach(s => _clearSlotOBLines(s));
+        _obSyncSubscriptions();
+    }
     if (fsChart) {
         const fsObBtn = document.getElementById('fs-ob-lvl-btn');
-        clearInterval(fsObTimer); fsObTimer = null;
         if (obLevelsActive) {
             fsObActive = true;
             if (fsObBtn) { fsObBtn.style.color = '#3b82f6'; fsObBtn.style.background = 'rgba(59,130,246,0.15)'; }
-            fetchFsOBLevels();
-            fsObTimer = setInterval(fetchFsOBLevels, 15000);
+            _obSyncSubscriptions();
+            const wall = fsCoin && _obWallFrom(_obBooks.get(fsCoin.symbol));
+            if (wall) _drawFsOBLevels(wall);
         } else {
             fsObActive = false;
             if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} fsObBidLine = null; }
             if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} fsObAskLine = null; }
             fsObBidVal = null; fsObAskVal = null;
             if (fsObBtn) { fsObBtn.style.color = '#B2B5BE'; fsObBtn.style.background = '#2A2E39'; }
+            _obSyncSubscriptions();
         }
     }
-}
-
-async function fetchFsOBLevels() {
-    if (!fsCoin || !fsCandleS || !fsObActive) return;
-    try {
-        const lv = await _fetchOBLevels(fsCoin.symbol);
-        if (!lv) return;
-        if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} }
-        if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} }
-        const _fsoblv = getLvCfg();
-        fsObBidVal = lv.bid; fsObAskVal = lv.ask;
-        if (_fsoblv.obBid.vis?.chart !== false) fsObBidLine = fsCandleS.createPriceLine({ price: lv.bid, color:_fsoblv.obBid.color, lineWidth:_fsoblv.obBid.width, lineStyle:_fsoblv.obBid.style, axisLabelVisible:true, title:'' });
-        if (_fsoblv.obAsk.vis?.chart !== false) fsObAskLine = fsCandleS.createPriceLine({ price: lv.ask, color:_fsoblv.obAsk.color, lineWidth:_fsoblv.obAsk.width, lineStyle:_fsoblv.obAsk.style, axisLabelVisible:true, title:'' });
-    } catch(e) {}
 }
 
 function toggleFsOBLevels() {
@@ -2621,14 +2879,15 @@ function toggleFsOBLevels() {
     const btn = document.getElementById('fs-ob-lvl-btn');
     if (fsObActive) {
         if (btn) { btn.style.color = '#3b82f6'; btn.style.background = 'rgba(59,130,246,0.15)'; }
-        fetchFsOBLevels();
-        fsObTimer = setInterval(fetchFsOBLevels, 15000);
+        _obSyncSubscriptions();
+        const wall = fsCoin && _obWallFrom(_obBooks.get(fsCoin.symbol));
+        if (wall) _drawFsOBLevels(wall);
     } else {
-        clearInterval(fsObTimer); fsObTimer = null;
         if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} fsObBidLine = null; }
         if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} fsObAskLine = null; }
         fsObBidVal = null; fsObAskVal = null;
         if (btn) { btn.style.color = '#B2B5BE'; btn.style.background = '#2A2E39'; }
+        _obSyncSubscriptions();
     }
 }
 
@@ -2936,7 +3195,9 @@ const mtfEl = document.createElement('button');
             alertLines: new Map(),
             dayHighLine: null, dayLowLine: null,
             prevHighLine: null, prevLowLine: null,
-            obBidLine: null, obAskLine: null, obTimer: null, obBidVal: null, obAskVal: null,
+            obBidLine: null, obAskLine: null, obBidVal: null, obAskVal: null,
+            lbBidLine1: null, lbBidLine2: null, lbAskLine1: null, lbAskLine2: null,
+            lbBidVal1: null, lbBidVal2: null, lbAskVal1: null, lbAskVal2: null,
             rangeActive: false, rangeP1: null, _rangeMD: null, _rangeMM: null, _rangeMU: null, _rangeCM: null, _rangeHoverLine: null, _rangeHoverML: null,
             hlineActive: false, hlines: [], _hlineMD: null, _hlineMM: null, _hlineMU: null, _hlineCM: null, _hlineDragging: null, _hlineHoverLine: null, _hlineHoverML: null,
             trendActive: false, trendlines: [], _trendP1: null, _trendPrev: null, _trendMD: null, _trendMM: null, _trendMU: null, _trendCM: null, _trendDrag: null, _trendRAF: null,
@@ -2951,6 +3212,7 @@ const mtfEl = document.createElement('button');
         try { const _cdp = new _CountdownPrimitive(_s); candleS.attachPrimitive(_cdp); } catch(e) {}
         try { const _cfp = new _ChannelFillPrimitive(_s, chart); candleS.attachPrimitive(_cfp); } catch(e) {}
         try { const _obp = new _ObBandFillPrimitive(_s); candleS.attachPrimitive(_obp); } catch(e) {}
+        try { const _lbp = new _LbBandFillPrimitive(_s); candleS.attachPrimitive(_lbp); } catch(e) {}
         DrawTools.attachToolContextMenu(body, {
             isAnyToolActive: () => _s.rangeActive || _s.hlineActive || _s.trendActive,
             onTrend: () => toggleSlotTrend(i), onHline: () => toggleSlotHline(i), onRange: () => toggleSlotRange(i),
@@ -3281,7 +3543,7 @@ async function loadPage() {
         if (s.dayLowLine)   { try { s.candleS.removePriceLine(s.dayLowLine);   } catch(e) {} s.dayLowLine   = null; }
         if (s.prevHighLine) { try { s.candleS.removePriceLine(s.prevHighLine); } catch(e) {} s.prevHighLine = null; }
         if (s.prevLowLine)  { try { s.candleS.removePriceLine(s.prevLowLine);  } catch(e) {} s.prevLowLine  = null; }
-        clearInterval(s.obTimer); s.obTimer = null; _clearSlotOBLines(s); _clearSlotATHLines(s); s.athVal = null; s.atlVal = null;
+        _clearSlotOBLines(s); _clearSlotLBLines(s); _clearSlotATHLines(s); s.athVal = null; s.atlVal = null;
         if (s.rangeActive) { s.rangeActive = false; s.rangeBtn.style.color = '#4B5563'; if (s._rangeMD) { s.rangeCanvas.removeEventListener('mousedown', s._rangeMD); s._rangeMD = null; } if (s._rangeMM) { document.removeEventListener('mousemove', s._rangeMM); s._rangeMM = null; } if (s._rangeMU) { document.removeEventListener('mouseup', s._rangeMU); s._rangeMU = null; } if (s._rangeCM) { s.rangeCanvas.removeEventListener('contextmenu', s._rangeCM); s._rangeCM = null; } DrawTools.unwireTouch(s.rangeCanvas, s._rangeTouch); s._rangeTouch = null; s.rangeCanvas.style.pointerEvents = 'none'; s.rangeCanvas.style.cursor = ''; }
         s.rangeP1 = null; try { const rc = s.rangeCanvas.getContext('2d'); rc.clearRect(0,0,s.rangeCanvas.width,s.rangeCanvas.height); } catch(e) {}
         if (s.hlineActive) { s.hlineActive = false; s.hlineBtn.style.color = '#4B5563'; if (s._hlineMD) { s.hlineCanvas.removeEventListener('mousedown', s._hlineMD); s._hlineMD = null; } if (s._hlineMM) { document.removeEventListener('mousemove', s._hlineMM); s._hlineMM = null; } if (s._hlineMU) { document.removeEventListener('mouseup', s._hlineMU); s._hlineMU = null; } if (s._hlineCM) { s.hlineCanvas.removeEventListener('contextmenu', s._hlineCM); s._hlineCM = null; } DrawTools.unwireTouch(s.hlineCanvas, s._hlineTouch); s._hlineTouch = null; s._hlineDragging = null; s.hlineCanvas.style.pointerEvents = 'none'; s.hlineCanvas.style.cursor = ''; }
@@ -3349,11 +3611,8 @@ async function loadSlot(idx, coin) {
     await loadSlotData(idx);
     _chartRestoreDrawings(idx);
     if (curMode !== 'ibkr') {
-        if (obLevelsActive) {
-            clearInterval(s.obTimer); s.obTimer = null;
-            fetchSlotOBLevels(idx);
-            s.obTimer = setInterval(() => fetchSlotOBLevels(idx), 15000);
-        }
+        if (obLevelsActive) fetchSlotOBLevels(idx);
+        if (lbLevelsActive) fetchSlotLBLevels(idx);
         fetchSlotATHATL(idx);
     }
 }
@@ -3454,6 +3713,7 @@ function initFsChart() {
         const _fsCdSlot = { get curTF() { return fsTF; }, get lastPrice() { return _fsLastPrice; }, get lastOpen() { return _fsLastOpen; } };
         fsCandleS.attachPrimitive(new _CountdownPrimitive(_fsCdSlot));
         fsCandleS.attachPrimitive(new _ObBandFillPrimitive(_fsObSlot));
+        fsCandleS.attachPrimitive(new _LbBandFillPrimitive(_fsLbSlot));
         fsCandleS.attachPrimitive(new _ChannelFillPrimitive(_fsIndSlot, fsChart));
     } catch(e) {}
     const lineBase = { priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false };
@@ -3529,18 +3789,29 @@ async function openFullscreen(idx) {
 
     // Sync OB levels state from the grid
     const fsObBtn = document.getElementById('fs-ob-lvl-btn');
-    clearInterval(fsObTimer); fsObTimer = null;
     if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} fsObBidLine = null; }
     if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} fsObAskLine = null; }
     if (obLevelsActive) {
         fsObActive = true;
         if (fsObBtn) { fsObBtn.style.color = '#3b82f6'; fsObBtn.style.background = 'rgba(59,130,246,0.15)'; }
-        fetchFsOBLevels();
-        fsObTimer = setInterval(fetchFsOBLevels, 15000);
+        _obSyncSubscriptions();
+        const wall = _obWallFrom(_obBooks.get(fsCoin.symbol));
+        if (wall) _drawFsOBLevels(wall);
     } else {
         fsObActive = false;
         fsObBidVal = null; fsObAskVal = null;
         if (fsObBtn) { fsObBtn.style.color = '#B2B5BE'; fsObBtn.style.background = '#2A2E39'; }
+    }
+
+    // Sync LB levels state from the grid (stessa logica di OB sopra)
+    _clearFsLBLines();
+    if (lbLevelsActive) {
+        fsLbActive = true;
+        _obSyncSubscriptions();
+        const lv2 = _lbTopLevels(_obBooks.get(fsCoin.symbol));
+        if (lv2) _drawFsLBLevels(lv2);
+    } else {
+        fsLbActive = false;
     }
 }
 
@@ -3560,11 +3831,12 @@ function closeFullscreen() {
     _removeSlTpLines(); _removeEntryLine(); _tradePos = null; _instInfo = null;
     resetTradeSide('closeFsChart');
     closeFsWS();
-    clearInterval(fsObTimer); fsObTimer = null;
     fsObActive = false;
     fsObBidVal = null; fsObAskVal = null;
     const fsObBtn = document.getElementById('fs-ob-lvl-btn');
     if (fsObBtn) { fsObBtn.style.color = '#B2B5BE'; fsObBtn.style.background = '#2A2E39'; }
+    fsLbActive = false;
+    _obSyncSubscriptions();
     if (fsChart) {
         if (fsDayHighLine)  { try { fsCandleS.removePriceLine(fsDayHighLine);  } catch(e) {} fsDayHighLine  = null; }
         if (fsDayLowLine)   { try { fsCandleS.removePriceLine(fsDayLowLine);   } catch(e) {} fsDayLowLine   = null; }
@@ -3572,6 +3844,7 @@ function closeFullscreen() {
         if (fsPrevLowLine)  { try { fsCandleS.removePriceLine(fsPrevLowLine);  } catch(e) {} fsPrevLowLine  = null; }
         if (fsObBidLine) { try { fsCandleS.removePriceLine(fsObBidLine); } catch(e) {} fsObBidLine = null; }
         if (fsObAskLine) { try { fsCandleS.removePriceLine(fsObAskLine); } catch(e) {} fsObAskLine = null; }
+        _clearFsLBLines();
         if (fsAthLine)   { try { fsCandleS.removePriceLine(fsAthLine);   } catch(e) {} fsAthLine   = null; }
         if (fsAtlLine)   { try { fsCandleS.removePriceLine(fsAtlLine);   } catch(e) {} fsAtlLine   = null; }
         if (fsDayPrimitive) { try { fsCandleS.detachPrimitive(fsDayPrimitive); } catch(e) {} fsDayPrimitive = null; }
@@ -5257,6 +5530,18 @@ function applyCfgToAllSlots() {
         if (s.obAskLine) { try { s.candleS.removePriceLine(s.obAskLine); } catch(e) {} s.obAskLine = null; }
         if (!hideForMini && s.obBidVal != null && lv.obBid.vis?.chart !== false) s.obBidLine = s.candleS.createPriceLine({price:s.obBidVal, color:lv.obBid.color, lineWidth:lv.obBid.width, lineStyle:lv.obBid.style, axisLabelVisible:true, title:''});
         if (!hideForMini && s.obAskVal != null && lv.obAsk.vis?.chart !== false) s.obAskLine = s.candleS.createPriceLine({price:s.obAskVal, color:lv.obAsk.color, lineWidth:lv.obAsk.width, lineStyle:lv.obAsk.style, axisLabelVisible:true, title:''});
+        if (s.lbBidLine1) { try { s.candleS.removePriceLine(s.lbBidLine1); } catch(e) {} s.lbBidLine1 = null; }
+        if (s.lbBidLine2) { try { s.candleS.removePriceLine(s.lbBidLine2); } catch(e) {} s.lbBidLine2 = null; }
+        if (s.lbAskLine1) { try { s.candleS.removePriceLine(s.lbAskLine1); } catch(e) {} s.lbAskLine1 = null; }
+        if (s.lbAskLine2) { try { s.candleS.removePriceLine(s.lbAskLine2); } catch(e) {} s.lbAskLine2 = null; }
+        if (!hideForMini && s.lbBidVal1 != null && lv.lbBid.vis?.chart !== false) {
+            s.lbBidLine1 = s.candleS.createPriceLine({price:s.lbBidVal1, color:lv.lbBid.color, lineWidth:lv.lbBid.width, lineStyle:lv.lbBid.style, axisLabelVisible:false, title:''});
+            s.lbBidLine2 = s.candleS.createPriceLine({price:s.lbBidVal2, color:lv.lbBid.color, lineWidth:lv.lbBid.width, lineStyle:lv.lbBid.style, axisLabelVisible:false, title:''});
+        }
+        if (!hideForMini && s.lbAskVal1 != null && lv.lbAsk.vis?.chart !== false) {
+            s.lbAskLine1 = s.candleS.createPriceLine({price:s.lbAskVal1, color:lv.lbAsk.color, lineWidth:lv.lbAsk.width, lineStyle:lv.lbAsk.style, axisLabelVisible:false, title:''});
+            s.lbAskLine2 = s.candleS.createPriceLine({price:s.lbAskVal2, color:lv.lbAsk.color, lineWidth:lv.lbAsk.width, lineStyle:lv.lbAsk.style, axisLabelVisible:false, title:''});
+        }
         applyBBToSlot(s, getBbCfg());
         applyRocToSlot(s, getRocCfg());
         applyChannelToSlot(s);

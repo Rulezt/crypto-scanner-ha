@@ -137,6 +137,11 @@
                             :title="t('ob_tt_ob_lines')">
                         OB
                     </button>
+                    <button v-if="isStandalone" @click="toggleLbLines()"
+                            :class="['imbalance-toggle', showLbLines ? 'active' : '']"
+                            title="Livelli Book — canale Lv1/Lv2 bid/ask">
+                        LB
+                    </button>
                     <button v-if="isStandalone" @click="toggleBookPanel()"
                             :class="['imbalance-toggle', showBook ? 'active' : '']"
                             title="Order Book">

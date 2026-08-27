@@ -25,12 +25,6 @@ function getLvCfg() {
     try {
         const s = JSON.parse(localStorage.getItem('chart_levels_cfg'));
         if (s) {
-            if (!s._obBlueMigrated) {
-                if (s.obBid) s.obBid.color = DEFAULT_LEVELS_CFG.obBid.color;
-                if (s.obAsk) s.obAsk.color = DEFAULT_LEVELS_CFG.obAsk.color;
-                s._obBlueMigrated = true;
-                try { localStorage.setItem('chart_levels_cfg', JSON.stringify(s)); } catch(e) {}
-            }
             const out = {};
             for (const k of Object.keys(DEFAULT_LEVELS_CFG)) {
                 out[k] = s[k]

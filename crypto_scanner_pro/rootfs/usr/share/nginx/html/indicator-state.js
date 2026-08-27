@@ -9,6 +9,7 @@
     const DEFS = {
         channel:  { key: 'global_channel_active',   legacy: ['mtf_channel_active', 'ob_ch_active'] },
         obLevels: { key: 'global_ob_levels_active',  legacy: ['mtf_ob_levels_active', 'ob_lines_active'] },
+        lbLevels: { key: 'global_lb_levels_active',  legacy: [] },
         grab:     { key: 'global_grab_active',       legacy: ['mtf_grab_active', 'ob_grab_active'] },
         bb:       { key: 'global_bb_active',         legacy: ['mtf_bb_active', 'ob_bb_active'] },
         roc:      { key: 'global_roc_active',        legacy: [] },
