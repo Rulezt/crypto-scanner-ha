@@ -1,18 +1,26 @@
-// Colora candele: toggle GLOBALE unico condiviso su tutte le pagine con grafici a
-// candele (stessa chiave localStorage ovunque — non più una per pagina). Ogni pagina,
-// subito dopo aver creato/ricaricato una CandlestickSeries, chiama
-// window.applyCandleColorStyle(series) per applicare lo stile corrente (corpo
-// semi-trasparente, contorno/stoppino bianco quando attivo).
+// Colora candele: toggle PER-PAGINA (come gli altri indicatori del pannello — vedi
+// indicator-state.js). Ogni pagina, subito dopo aver creato/ricaricato una
+// CandlestickSeries, chiama window.applyCandleColorStyle(series) per applicare lo
+// stile corrente (corpo semi-trasparente, contorno/stoppino bianco quando attivo).
 (function () {
-    const KEY = 'global_candle_color_active';
+    var seg = ((location.pathname || '/').split('/').filter(Boolean)[0] || 'index')
+        .replace(/\.html?$/i, '').toLowerCase();
+    var PAGE = (seg === 'orderbook') ? 'trade' : (seg || 'index');
+    const KEY = PAGE + '__cc_active';
+    const LEGACY_GLOBAL = 'global_candle_color_active';
     const NORMAL_STYLE = { upColor: '#20B26C', downColor: '#EF454A', borderVisible: false, wickUpColor: '#20B26C', wickDownColor: '#EF454A' };
     const COLOR_STYLE = { upColor: 'rgba(255,255,255,0.12)', downColor: 'rgba(255,255,255,0.12)', borderVisible: true, wickUpColor: '#ffffff', wickDownColor: '#ffffff' };
 
-    // Migrazione one-time dai vecchi toggle per-pagina (chart/mtf/ob) alla chiave unica.
+    // Migrazione one-time PER PAGINA: eredita dalla vecchia chiave globale (o dai
+    // vecchissimi flag per-pagina), poi ogni pagina diverge.
     try {
         if (localStorage.getItem(KEY) === null) {
-            const legacy = ['chart_candle_color_active', 'mtf_candle_color_active', 'ob_candle_color_active'];
-            if (legacy.some(k => localStorage.getItem(k) === '1')) localStorage.setItem(KEY, '1');
+            const g = localStorage.getItem(LEGACY_GLOBAL);
+            if (g !== null) localStorage.setItem(KEY, g === '1' ? '1' : '0');
+            else {
+                const legacy = ['chart_candle_color_active', 'mtf_candle_color_active', 'ob_candle_color_active'];
+                if (legacy.some(k => localStorage.getItem(k) === '1')) localStorage.setItem(KEY, '1');
+            }
         }
     } catch (e) {}
 

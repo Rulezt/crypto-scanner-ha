@@ -2724,6 +2724,10 @@ def serve_draw_tools():
 def serve_candle_color():
     return send_file('/usr/share/nginx/html/candle-color.js', mimetype='application/javascript')
 
+@app.route('/candle-feed.js')
+def serve_candle_feed():
+    return send_file('/usr/share/nginx/html/candle-feed.js', mimetype='application/javascript')
+
 @app.route('/indicator-state.js')
 def serve_indicator_state():
     return send_file('/usr/share/nginx/html/indicator-state.js', mimetype='application/javascript')

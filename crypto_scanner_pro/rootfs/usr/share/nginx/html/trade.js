@@ -44,12 +44,16 @@ function computeMaxSafeSize(sortedLevels) {
     }
     return cumQty > 0 ? { qty: cumQty, notional: cumNotional } : null;
 }
+function _emaBaseOn(p, legacyEnabled) {
+  try { return window.getIndActive ? window.getIndActive('ema' + p) : (legacyEnabled !== false); }
+  catch (e) { return legacyEnabled !== false; }
+}
 function getEmaCfg() {
     try {
         const s = JSON.parse(localStorage.getItem('chart_ema_cfg'));
-        if (s && s.length === 4) return s.map((e, i) => ({ ...DEFAULT_EMA_CFG[i], ...e, enabled: e.enabled !== false }));
+        if (s && s.length === 4) return s.map((e, i) => ({ ...DEFAULT_EMA_CFG[i], ...e, enabled: _emaBaseOn(DEFAULT_EMA_CFG[i].p, e.enabled) }));
     } catch(e) {}
-    return DEFAULT_EMA_CFG.map(x => ({...x}));
+    return DEFAULT_EMA_CFG.map(x => ({...x, enabled: _emaBaseOn(x.p, x.enabled)}));
 }
 function getLvCfg() {
     try {
@@ -71,9 +75,10 @@ let _obEmaS = {}, _obLastEMA = {};
 function toggleEmaAll(period) {
     const cfg = getEmaCfg();
     const entry = cfg.find(e => e.p === period);
-    entry.enabled = !(entry.enabled !== false);
-    try { localStorage.setItem('chart_ema_cfg', JSON.stringify(cfg)); } catch(e) {}
-    EMA_CFG = cfg;
+    const _newOn = !(entry.enabled !== false);
+    if (window.setIndActive) window.setIndActive('ema' + period, _newOn);
+    entry.enabled = _newOn;
+    EMA_CFG = getEmaCfg();
     if (!_obKlines || !_obKlines.length) return;
     for (const {p, enabled} of EMA_CFG) {
         if (!_obEmaS[p]) continue;
@@ -198,13 +203,14 @@ const GRAB_STATE_LABEL = {
 const TF_OPTIONS = [
     { v: '1',   l: '1m'  },
     { v: '5',   l: '5m'  },
+    { v: '15',  l: '15m' },
     { v: '30',  l: '30m' },
     { v: '60',  l: '1h'  },
     { v: '240', l: '4h'  },
     { v: 'D',   l: 'D'   },
 ];
 
-const DEFAULT_CANDLES = { '1': 120, '5': 100, '30': 80, '60': 80, '240': 60, 'D': 50 };
+const DEFAULT_CANDLES = { '1': 120, '5': 100, '15': 80, '30': 80, '60': 80, '240': 60, 'D': 50 };
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function calcEMA(bars, period) {
@@ -254,7 +260,7 @@ function addSeries(chart, type, opts, paneIndex) {
 }
 
 // ── Candle Countdown Primitive ────────────────────────────────────────────────
-const _OB_TF_SECS = { '1':60, '5':300, '30':1800, '60':3600, '240':14400 };
+const _OB_TF_SECS = { '1':60, '5':300, '15':900, '30':1800, '60':3600, '240':14400 };
 function _obCdRemain(tf) {
     const s = Math.floor(Date.now() / 1000);
     if (_OB_TF_SECS[tf]) return _OB_TF_SECS[tf] - (s % _OB_TF_SECS[tf]);
@@ -459,7 +465,7 @@ const DEFAULT_EMA_CUSTOM_CFG = {
     length: 9, color: '#00E5FF', width: 1.5, style: 0, waitClose: true,
     // TF di calcolo indipendente per ogni TF del grafico OB (chiave 'tf_<TF grafico>'):
     // '' = segue il grafico (comportamento storico), altrimenti proietta da quel TF fisso.
-    tf_1: '', tf_5: '', tf_30: '', tf_60: '', tf_240: '', tf_D: '', tf_W: '', tf_M: '',
+    tf_1: '', tf_5: '', tf_15: '', tf_30: '', tf_60: '', tf_240: '', tf_D: '', tf_W: '', tf_M: '',
 };
 function getEmaCustomCfg() {
     try {
@@ -467,7 +473,7 @@ function getEmaCustomCfg() {
         if (s) {
             // Migrazione one-time: prima esisteva un solo campo `tf` globale (vedi chart.html).
             if (s.tf !== undefined && s.tf_1 === undefined) {
-                for (const k of ['tf_1','tf_5','tf_30','tf_60','tf_240','tf_D','tf_W','tf_M']) s[k] = s.tf;
+                for (const k of ['tf_1','tf_5','tf_15','tf_30','tf_60','tf_240','tf_D','tf_W','tf_M']) s[k] = s.tf;
                 delete s.tf;
                 try { localStorage.setItem('chart_ema_custom_cfg', JSON.stringify(s)); } catch(e) {}
             }
@@ -552,7 +558,7 @@ function toggleObEmaCustom() {
 // (vedi commenti sopra) con suffisso "2", stessi helper _projectMtfEma/_fetchAuxKlines.
 const DEFAULT_EMA_CUSTOM2_CFG = {
     length: 21, color: '#FF6EC7', width: 1.5, style: 0, waitClose: true,
-    tf_1: '', tf_5: '', tf_30: '', tf_60: '', tf_240: '', tf_D: '', tf_W: '', tf_M: '',
+    tf_1: '', tf_5: '', tf_15: '', tf_30: '', tf_60: '', tf_240: '', tf_D: '', tf_W: '', tf_M: '',
 };
 function getEmaCustom2Cfg() {
     try {
@@ -3247,18 +3253,19 @@ createApp({
         let _cdLastPrice = null, _cdLastOpen = null;
         let _cdRepaintTimer = null;
         let obKlineWS = null, obKlineWSTimer = null, _obTzOffset = 0, _obLiveCandle = null;
+        let _obFeed = null;   // sorgente candele unica (candle-feed.js): storico + kline WS
         const openMtf = () => window.open('mtf?symbol=' + symbol.value, '_blank');
 
         const tfCountdowns = ref({});
-        const _CD_TF_WARN = new Set(['30','60','240']);
+        const _CD_TF_WARN = new Set(['15','30','60','240']);
         const _updateTfCountdowns = () => {
             const obj = {};
-            for (const tf of ['1','5','30','60','240','D']) {
+            for (const tf of TF_OPTIONS.map(o => o.v)) {
                 const rem = _obCdRemain(tf);
                 let warn = false, blink = false;
                 if (tf === '1')      { warn = rem <= 10; blink = warn; }
                 else if (tf === '5') { warn = rem <= 60; blink = warn; }
-                else if (tf === '30' || tf === '60') { warn = rem <= 300; blink = rem <= 60; }
+                else if (tf === '15' || tf === '30' || tf === '60') { warn = rem <= 300; blink = rem <= 60; }
                 else if (_CD_TF_WARN.has(tf)) { warn = rem <= 300; }
                 obj[tf] = { text: _obCdFmt(rem, tf === 'D' || tf === '240'), color: warn ? '#FF9C2E' : '#F3F4F6', blink };
             }
@@ -3597,257 +3604,182 @@ createApp({
             });
         };
 
+        const _obChartRangeN = {'1':120,'5':100,'15':80,'30':80,'60':80,'240':60,'D':50,'W':52,'M':24};
+        const _obApplyChartRange = () => {
+            if (!obChart) return;
+            const _rn = _obChartRangeN[chartTF.value] || 80;
+            const off = _fsChartSpacingLocked ? _fsMinOffsetBars(obChart) : 3;
+            obChart.timeScale().setVisibleLogicalRange({ from: Math.max(0, obKlineCount - _rn), to: obKlineCount + off });
+            // Le label Entry/SL/TP/Exec (div assoluti via priceToCoordinate) vanno riallineate.
+            _updateAllLabels();
+        };
+
+        // onReady del feed: storico caricato o risincronizzato (riconnessione WS / ritorno
+        // da tab in background). Ridisegna candele + indicatori sui dati freschi.
+        const _obFeedReady = (bars) => {
+            if (!candleS) return;
+            if (_obFeed && _obFeed.tzOffsetS != null) { _obTzOffset = _obFeed.tzOffsetS; _obTzOffsetG = _obFeed.tzOffsetS; }
+            candleS.setData(bars);
+            if (bars.length) { _cdLastPrice = bars[bars.length-1].close; _cdLastOpen = bars[bars.length-1].open; _obLiveCandle = { ...bars[bars.length-1] }; }
+            obKlineCount = bars.length;
+            _obKlines = bars;
+            if (_obBbActive) _obApplyBB();
+            if (_obRocActive) _obApplyRoc();
+            if (_obEmaCustomActive) _obApplyEmaCustom();
+            _syncObEmaCustomMtfTimer();
+            if (_obEmaCustom2Active) _obApplyEmaCustom2();
+            _syncObEmaCustom2MtfTimer();
+            if (_obChActive) _obApplyChannel();
+            if (_obGrabActive || _obGrabMidlineActive) _obApplyGrab();
+            _applyCandleStyle(candleS);
+            candleS.applyOptions({ priceFormat: getPriceFormat(bars[bars.length - 1]?.close) });
+            for (const { p, enabled } of EMA_CFG) {
+                if (enabled === false) { emaS[p].setData([]); lastEMA[p] = null; continue; }
+                const ema = calcEMA(bars, p);
+                emaS[p].setData(ema);
+                lastEMA[p] = ema[ema.length - 1].value;
+            }
+            if (nakedChart.value)
+                for (const { p } of EMA_CFG)
+                    if (emaS[p]) try { emaS[p].applyOptions({ visible: false }); } catch(e) {}
+            lastConfirmedTime = bars.length ? bars[bars.length - 1].time : 0;
+            // Reset vista solo al primo caricamento del feed: un resync non deve spostare lo zoom.
+            if (!_obFeed || !_obFeed._firstReady) {
+                _obApplyChartRange();
+                requestAnimationFrame(_obApplyChartRange);
+                if (obChart) obChart.priceScale('right').applyOptions({ autoScale: true });
+                if (_obFeed) _obFeed._firstReady = true;
+            }
+        };
+
+        // onUpdate del feed: variazione live della barra in formazione. SOLO kline WS —
+        // niente mid del book, niente roll sintetico (erano la causa di candele congelate,
+        // buchi tra le candele e candele rosse mentre il prezzo saliva).
+        const _obFeedUpdate = (candle, ctx) => {
+            if (!candleS) return;
+            const confirmed = ctx.confirmed, isNewBar = ctx.isNewBar;
+            _cdLastPrice = candle.close; _cdLastOpen = candle.open;
+            _obLiveCandle = { ...candle };
+            if (_obGrabActive) _obGrabColorCandle(candle);
+            else try { candleS.update(candle); } catch(e) {}
+
+            // Chiusura barra: blocca EMA/EMA-custom sulla candela appena confermata
+            // (mirror della vecchia logica "justConfirmed" del poll REST).
+            if (isNewBar && ctx.bars.length >= 2) {
+                const prevBar = ctx.bars[ctx.bars.length - 2];
+                if (prevBar.time > lastConfirmedTime) {
+                    for (const { p } of EMA_CFG) {
+                        if (lastEMA[p] == null) continue;
+                        const ek = 2 / (p + 1);
+                        lastEMA[p] = prevBar.close * ek + lastEMA[p] * (1 - ek);
+                    }
+                    if (_obLastEmaCustom != null) {
+                        const eck = 2 / (getEmaCustomCfg().length + 1);
+                        _obLastEmaCustom = prevBar.close * eck + _obLastEmaCustom * (1 - eck);
+                    }
+                    if (_obLastEmaCustom2 != null) {
+                        const eckB = 2 / (getEmaCustom2Cfg().length + 1);
+                        _obLastEmaCustom2 = prevBar.close * eckB + _obLastEmaCustom2 * (1 - eckB);
+                    }
+                    _obGrabConfirmPrev(prevBar);
+                    lastConfirmedTime = prevBar.time;
+                }
+            }
+
+            for (const { p } of EMA_CFG) {
+                if (lastEMA[p] == null) continue;
+                const ek = 2 / (p + 1);
+                const live = candle.close * ek + lastEMA[p] * (1 - ek);
+                try { emaS[p].update({ time: candle.time, value: live }); } catch(e) {}
+            }
+            if (_obEmaCustomActive && _obEmaCustomSeries && _obLastEmaCustom != null) {
+                const eck2 = 2 / (getEmaCustomCfg().length + 1);
+                const live2 = candle.close * eck2 + _obLastEmaCustom * (1 - eck2);
+                try { _obEmaCustomSeries.update({ time: candle.time, value: live2 }); } catch(e) {}
+            }
+            if (_obEmaCustom2Active && _obEmaCustom2Series && _obLastEmaCustom2 != null) {
+                const eckB2 = 2 / (getEmaCustom2Cfg().length + 1);
+                const liveB2 = candle.close * eckB2 + _obLastEmaCustom2 * (1 - eckB2);
+                try { _obEmaCustom2Series.update({ time: candle.time, value: liveB2 }); } catch(e) {}
+            }
+            if (_obBbActive && _obBbSeries.upper) {
+                const bbCfg = getBbCfg();
+                if (_obKlines.length >= bbCfg.period) {
+                    const sl = _obKlines.slice(-bbCfg.period);
+                    const mean = sl.reduce((a, c) => a + c.close, 0) / bbCfg.period;
+                    const std  = Math.sqrt(sl.reduce((a, c) => a + (c.close - mean) ** 2, 0) / bbCfg.period);
+                    _obBbSeries.upper.update({ time: candle.time, value: mean + bbCfg.mult * std });
+                    _obBbSeries.mid.update(  { time: candle.time, value: mean });
+                    _obBbSeries.lower.update({ time: candle.time, value: mean - bbCfg.mult * std });
+                }
+            }
+            if (_obRocActive && _obRocSeries) {
+                const rocCfg = getRocCfg();
+                if (_obKlines.length > rocCfg.length) {
+                    const rocPrev = _obKlines[_obKlines.length - 1 - rocCfg.length].close;
+                    _obRocSeries.update({ time: candle.time, value: 100 * (candle.close - rocPrev) / rocPrev });
+                }
+            }
+            if (_obChActive) _obChUpdateTail(_obKlines);
+            _obGrabUpdateTail(candle, confirmed);
+        };
+
         const loadChartData = async (tf) => {
             if (!candleS) return;
             _obChartTF = tf;
             _obLoadSeq++;
             const _mySeq = _obLoadSeq;
+            // Day/Prev H/L: fetch leggero in parallelo (klines/live D, cache ws_manager).
+            const dayPromise = fetch(`api/klines/live?symbol=${symbol.value}&interval=D`).then(r => r.json()).catch(() => null);
+
+            _clearDayLines();
+            _dayHighPrice = _dayLowPrice = _prevHighPrice = _prevLowPrice = null;
+            if (athLine && candleS) { try { candleS.removePriceLine(athLine); } catch(e) {} athLine = null; }
+            if (atlLine && candleS) { try { candleS.removePriceLine(atlLine); } catch(e) {} atlLine = null; }
+            _athVal = _atlVal = null;
+            _fetchAthAtl(symbol.value);
+
+            // Sorgente candele unica (candle-feed.js): storico + un WS kline condiviso.
+            if (!_obFeed) {
+                _obFeed = window.CandleFeed.open({
+                    symbol: symbol.value, tf,
+                    onReady:  (bars)     => _obFeedReady(bars),
+                    onUpdate: (bar, cx)  => _obFeedUpdate(bar, cx),
+                });
+            } else {
+                _obFeed._firstReady = false;
+                _obFeed.setSymbolTF(symbol.value, tf);
+            }
+
             try {
-                // Le linee Day/Prev H/L usano solo le ultime 2 candele D: partite in parallelo
-                // al fetch principale, e su /api/klines/live (una sola chiamata Bybit, cache
-                // ws_manager) invece di /api/klines (pagina fino a 5 richieste Bybit in sequenza
-                // per l'intero storico daily) — prima girava DOPO il fetch principale sullo
-                // stesso endpoint pesante, raddoppiando l'attesa ad ogni cambio TF.
-                const dayPromise = fetch(`api/klines/live?symbol=${symbol.value}&interval=D`).then(r => r.json()).catch(() => null);
-
-                const r = await fetch(`api/klines?symbol=${symbol.value}&interval=${tf}`);
-                const j = await r.json();
-                if (!j.success || !j.data || !j.data.length) return;
-                // Se nel frattempo è partito un altro changeChartTF (TF cambiato di nuovo
-                // prima che questa fetch finisse), questa risposta è superata: scartarla
-                // evita di sovrascrivere le candele del TF corrente con dati vecchi.
+                const jd = await dayPromise;
                 if (_obLoadSeq !== _mySeq) return;
-                const klines = j.data;
-                if (j.utc_offset_s != null) { _obTzOffset = j.utc_offset_s; _obTzOffsetG = j.utc_offset_s; }
-
-                candleS.setData(klines);
-                if (klines.length) { _cdLastPrice = klines[klines.length-1].close; _cdLastOpen = klines[klines.length-1].open; _obLiveCandle = { ...klines[klines.length-1] }; }
-                obKlineCount = klines.length;
-                _obKlines = klines;
-                if (_obBbActive) _obApplyBB();
-                if (_obRocActive) _obApplyRoc();
-                if (_obEmaCustomActive) _obApplyEmaCustom();
-                _syncObEmaCustomMtfTimer();
-                if (_obEmaCustom2Active) _obApplyEmaCustom2();
-                _syncObEmaCustom2MtfTimer();
-                if (_obChActive) _obApplyChannel();
-                if (_obGrabActive || _obGrabMidlineActive) _obApplyGrab();
-                _applyCandleStyle(candleS);
-                candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length - 1]?.close) });
-
-                for (const { p, enabled } of EMA_CFG) {
-                    if (enabled === false) { emaS[p].setData([]); lastEMA[p] = null; continue; }
-                    const ema = calcEMA(klines, p);
-                    emaS[p].setData(ema);
-                    lastEMA[p] = ema[ema.length - 1].value;
-                }
-                if (nakedChart.value)
-                    for (const { p } of EMA_CFG)
-                        if (emaS[p]) try { emaS[p].applyOptions({ visible: false }); } catch(e) {}
-                lastConfirmedTime = klines[klines.length - 1].time;
-
-                const _TF_N = {'1':120,'5':100,'15':80,'30':80,'60':80,'240':60,'D':50,'W':52,'M':24};
-                const _rn = _TF_N[tf] || 80;
-                const _applyRange = () => {
-                    if (obChart) { const off = _fsChartSpacingLocked ? _fsMinOffsetBars(obChart) : 3; obChart.timeScale().setVisibleLogicalRange({ from: Math.max(0, obKlineCount - _rn), to: obKlineCount + off }); }
-                    // Le label Entry/SL/TP/Exec sono div assoluti posizionati via priceToCoordinate:
-                    // il cambio TF sposta la price scale (nuovi dati + autoScale), vanno riallineate.
-                    _updateAllLabels();
-                };
-                _applyRange();
-                requestAnimationFrame(_applyRange);
-                if (obChart) obChart.priceScale('right').applyOptions({ autoScale: true });
-
-                // Day / Prev H/L lines
-                _clearDayLines();
-                _dayHighPrice = _dayLowPrice = _prevHighPrice = _prevLowPrice = null;
-                if (athLine && candleS) { try { candleS.removePriceLine(athLine); } catch(e) {} athLine = null; }
-                if (atlLine && candleS) { try { candleS.removePriceLine(atlLine); } catch(e) {} atlLine = null; }
-                _athVal = _atlVal = null;
-                _fetchAthAtl(symbol.value);
-                try {
-                    const jd = await dayPromise;
-                    if (_obLoadSeq !== _mySeq) return;
-                    if (jd && jd.success && jd.data && jd.data.length) {
-                        const lv = getLvCfg();
-                        const today = jd.data[jd.data.length - 1];
-                        _dayHighPrice = today.high;
-                        _dayLowPrice  = today.low;
+                if (jd && jd.success && jd.data && jd.data.length) {
+                    const lv = getLvCfg();
+                    const today = jd.data[jd.data.length - 1];
+                    _dayHighPrice = today.high;
+                    _dayLowPrice  = today.low;
+                    if (!nakedChart.value) {
+                        if (lv.dayHigh.vis?.ob !== false) dayHighLine = candleS.createPriceLine({price:today.high, color:lv.dayHigh.color, lineWidth:lv.dayHigh.width, lineStyle:lv.dayHigh.style, axisLabelVisible:false, title:''});
+                        if (lv.dayLow.vis?.ob  !== false) dayLowLine  = candleS.createPriceLine({price:today.low,  color:lv.dayLow.color,  lineWidth:lv.dayLow.width,  lineStyle:lv.dayLow.style,  axisLabelVisible:false, title:''});
+                    }
+                    if (jd.data.length >= 2) {
+                        const prev = jd.data[jd.data.length - 2];
+                        _prevHighPrice = prev.high;
+                        _prevLowPrice  = prev.low;
                         if (!nakedChart.value) {
-                            if (lv.dayHigh.vis?.ob !== false) dayHighLine = candleS.createPriceLine({price:today.high, color:lv.dayHigh.color, lineWidth:lv.dayHigh.width, lineStyle:lv.dayHigh.style, axisLabelVisible:false, title:''});
-                            if (lv.dayLow.vis?.ob  !== false) dayLowLine  = candleS.createPriceLine({price:today.low,  color:lv.dayLow.color,  lineWidth:lv.dayLow.width,  lineStyle:lv.dayLow.style,  axisLabelVisible:false, title:''});
-                        }
-                        if (jd.data.length >= 2) {
-                            const prev = jd.data[jd.data.length - 2];
-                            _prevHighPrice = prev.high;
-                            _prevLowPrice  = prev.low;
-                            if (!nakedChart.value) {
-                                if (lv.prevHigh.vis?.ob !== false) prevHighLine = candleS.createPriceLine({price:prev.high, color:lv.prevHigh.color, lineWidth:lv.prevHigh.width, lineStyle:lv.prevHigh.style, axisLabelVisible:false, title:''});
-                                if (lv.prevLow.vis?.ob  !== false) prevLowLine  = candleS.createPriceLine({price:prev.low,  color:lv.prevLow.color,  lineWidth:lv.prevLow.width,  lineStyle:lv.prevLow.style,  axisLabelVisible:false, title:''});
-                            }
+                            if (lv.prevHigh.vis?.ob !== false) prevHighLine = candleS.createPriceLine({price:prev.high, color:lv.prevHigh.color, lineWidth:lv.prevHigh.width, lineStyle:lv.prevHigh.style, axisLabelVisible:false, title:''});
+                            if (lv.prevLow.vis?.ob  !== false) prevLowLine  = candleS.createPriceLine({price:prev.low,  color:lv.prevLow.color,  lineWidth:lv.prevLow.width,  lineStyle:lv.prevLow.style,  axisLabelVisible:false, title:''});
                         }
                     }
-                } catch(e) {}
-
-                startChartPolling(tf);
-                startKlineWS(tf);
-            } catch (e) { console.error('Chart load error:', e); }
+                }
+            } catch(e) {}
         };
 
-        // WS kline diretto (stesso topic di chart.html/mtf.html): la candela in
-        // formazione segue il prezzo tick-by-tick invece di aspettare il poll REST (3s).
-        const startKlineWS = (tf) => {
-            if (obKlineWS) { try { obKlineWS.close(); } catch(e) {} obKlineWS = null; }
-            clearTimeout(obKlineWSTimer);
-            const sock = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-            obKlineWS = sock;
-            sock.onopen = () => {
-                sock.send(JSON.stringify({ op: 'subscribe', args: [`kline.${tf}.${symbol.value}`] }));
-            };
-            sock.onmessage = (event) => {
-                if (!candleS) return;
-                let msg; try { msg = JSON.parse(event.data); } catch(e) { return; }
-                if (!msg.topic || !msg.topic.startsWith('kline.')) return;
-                const b = msg.data && msg.data[0];
-                if (!b) return;
-                const candle = {
-                    time:   Math.floor(parseInt(b.start) / 1000) + _obTzOffset,
-                    open:   parseFloat(b.open), high: parseFloat(b.high),
-                    low:    parseFloat(b.low),  close: parseFloat(b.close),
-                    volume: parseFloat(b.volume),
-                };
-                // Il confirm=true della barra appena chiusa può arrivare da Bybit con un
-                // filo di ritardo rispetto al roll lato client (_obRollNewBarIfNeeded, guidato
-                // dal book molto più frequente della kline WS): se nel frattempo _obLiveCandle
-                // è già avanzata alla barra nuova, questo messaggio "vecchio" va scartato —
-                // altrimenti riporta _obLiveCandle indietro e il prossimo roll riapre la barra
-                // nuova da zero, cancellando il movimento reale già accumulato (doji fantasma
-                // seguito dalla barra successiva coi dati veri, bug segnalato 2026-08-24).
-                if (_obLiveCandle && candle.time < _obLiveCandle.time) return;
-                if (_obGrabActive) _obGrabColorCandle(candle);
-                else try { candleS.update(candle); } catch(e) {}
-                // Canale SMA20: prima veniva aggiornato SOLO dal polling REST ogni 3s (sotto),
-                // mai da qui — quindi la banda restava ferma per secondi mentre candela/prezzo
-                // si muovevano col book (più frequente), poi "scattava" di colpo al valore
-                // corretto: il salto ripetuto è il disegno seghettato segnalato sulle ultime
-                // candele.
-                if (_obChActive) _obChUpdateTail([..._obKlines, candle]);
-                _cdLastPrice = candle.close; _cdLastOpen = candle.open;
-                _obLiveCandle = { ...candle };
-            };
-            sock.onerror = () => {};
-            sock.onclose = () => { obKlineWSTimer = setTimeout(() => startKlineWS(chartTF.value), 4000); };
-        };
-
-        const stopKlineWS = () => {
-            clearTimeout(obKlineWSTimer);
-            if (obKlineWS) { try { obKlineWS.close(); } catch(e) {} obKlineWS = null; }
-        };
-
-        const startChartPolling = (tf) => {
-            stopChartPolling();
-            const poll = async () => {
-                if (!candleS) return;
-                try {
-                    const r = await fetch(`api/klines/live?symbol=${symbol.value}&interval=${tf}`);
-                    const j = await r.json();
-                    if (j.success && j.data && j.data.length) {
-                        const candles = j.data;
-                        const last    = candles[candles.length - 1];
-                        const prev    = candles[candles.length - 2];
-                        // Il buffer server-side (ws_manager) crea la barra nuova solo al primo
-                        // tick Bybit ricevuto per quel bar_start — per ~1-1.5s dopo ogni boundary
-                        // può quindi rispondere ancora con la barra VECCHIA come "last". Se nel
-                        // frattempo il roll lato client (_obRollNewBarIfNeeded, guidato dal book,
-                        // più reattivo) è già avanzato, applicare questa risposta stale
-                        // riporterebbe indietro _obLiveCandle: il prossimo roll riaprirebbe la
-                        // barra nuova da zero, cancellando il movimento reale già accumulato
-                        // (stesso bug/fix della kline WS diretta sopra, bug segnalato 2026-08-24,
-                        // qui però proveniva dal poll REST — non coperto dal primo fix).
-                        if (_obLiveCandle && last.time < _obLiveCandle.time) { chartPollTimer = setTimeout(poll, 3000); return; }
-                        _cdLastPrice = last.close; _cdLastOpen = last.open; _obLiveCandle = { ...last };
-                        // Update the last two candles (current forming + previous if just confirmed)
-                        for (const k of candles.slice(-2)) {
-                            try { candleS.update(k); } catch(e) {}
-                        }
-                        // Update EMAs: if a new candle started, lock in the previous EMA
-                        const justConfirmed = prev && prev.time > lastConfirmedTime;
-                        if (justConfirmed) {
-                            for (const { p } of EMA_CFG) {
-                                if (lastEMA[p] == null) continue;
-                                const ek = 2 / (p + 1);
-                                lastEMA[p] = prev.close * ek + lastEMA[p] * (1 - ek);
-                            }
-                            if (_obLastEmaCustom != null) {
-                                const eck = 2 / (getEmaCustomCfg().length + 1);
-                                _obLastEmaCustom = prev.close * eck + _obLastEmaCustom * (1 - eck);
-                            }
-                            if (_obLastEmaCustom2 != null) {
-                                const eckB = 2 / (getEmaCustom2Cfg().length + 1);
-                                _obLastEmaCustom2 = prev.close * eckB + _obLastEmaCustom2 * (1 - eckB);
-                            }
-                            _obGrabConfirmPrev(prev);
-                            lastConfirmedTime = prev.time;
-                        }
-                        // Live EMA for current forming candle
-                        for (const { p } of EMA_CFG) {
-                            if (lastEMA[p] == null) continue;
-                            const ek   = 2 / (p + 1);
-                            const live = last.close * ek + lastEMA[p] * (1 - ek);
-                            try { emaS[p].update({ time: last.time, value: live }); } catch(e) {}
-                        }
-                        if (_obEmaCustomActive && _obEmaCustomSeries && _obLastEmaCustom != null) {
-                            const eck2 = 2 / (getEmaCustomCfg().length + 1);
-                            const live2 = last.close * eck2 + _obLastEmaCustom * (1 - eck2);
-                            try { _obEmaCustomSeries.update({ time: last.time, value: live2 }); } catch(e) {}
-                        }
-                        if (_obEmaCustom2Active && _obEmaCustom2Series && _obLastEmaCustom2 != null) {
-                            const eckB2 = 2 / (getEmaCustom2Cfg().length + 1);
-                            const liveB2 = last.close * eckB2 + _obLastEmaCustom2 * (1 - eckB2);
-                            try { _obEmaCustom2Series.update({ time: last.time, value: liveB2 }); } catch(e) {}
-                        }
-                        // Keep _obKlines in sync (rolling window per il ricalcolo BB)
-                        if (_obKlines.length) {
-                            const lastK = _obKlines[_obKlines.length - 1];
-                            if (lastK.time === last.time) _obKlines[_obKlines.length - 1] = { ...last };
-                            else _obKlines.push({ ...last });
-                        }
-                        if (_obBbActive && _obBbSeries.upper) {
-                            const bbCfg = getBbCfg();
-                            if (_obKlines.length >= bbCfg.period) {
-                                const sl = _obKlines.slice(-bbCfg.period);
-                                const mean = sl.reduce((a, c) => a + c.close, 0) / bbCfg.period;
-                                const std  = Math.sqrt(sl.reduce((a, c) => a + (c.close - mean) ** 2, 0) / bbCfg.period);
-                                _obBbSeries.upper.update({ time: last.time, value: mean + bbCfg.mult * std });
-                                _obBbSeries.mid.update(  { time: last.time, value: mean });
-                                _obBbSeries.lower.update({ time: last.time, value: mean - bbCfg.mult * std });
-                            }
-                        }
-                        if (_obRocActive && _obRocSeries) {
-                            const rocCfg = getRocCfg();
-                            if (_obKlines.length > rocCfg.length) {
-                                const rocPrev = _obKlines[_obKlines.length - 1 - rocCfg.length].close;
-                                _obRocSeries.update({ time: last.time, value: 100 * (last.close - rocPrev) / rocPrev });
-                            }
-                        }
-                        _obGrabUpdateTail(last, false);
-                        // NON richiamare _obChUpdateTail qui: il WS (startKlineWS) aggiorna già
-                        // il canale in tempo reale ad ogni tick sulla candela in formazione. Farlo
-                        // anche qui con il close del polling REST (fino a 3s più vecchio) creava un
-                        // dente di sega — il valore veniva tirato indietro ogni 3s prima che il
-                        // prossimo tick WS lo ricorreggesse. Bug reale segnalato con screenshot,
-                        // vedi _obChUpdateTail in startKlineWS.
-                    }
-                } catch(e) {}
-                chartPollTimer = setTimeout(poll, 3000);
-            };
-            poll();
-        };
-
-        const stopChartPolling = () => {
-            clearTimeout(chartPollTimer);
-            chartPollTimer = null;
-        };
+        // La connessione kline e il poll REST candele vivono ora in candle-feed.js.
+        // Restano come no-op perché changeChartTF/cleanup li invocano ancora.
+        const stopKlineWS = () => {};
+        const stopChartPolling = () => {};
 
         const changeChartTF = (tf) => {
             if (tf === chartTF.value || !candleS) return;
@@ -4115,125 +4047,7 @@ createApp({
             return price.toPrecision(6);
         };
 
-        // Se l'orologio locale ha superato il boundary della candela in formazione,
-        // ne apre subito una nuova lato client invece di aspettare il WS kline
-        // (trade-driven: silenzioso se il mercato è calmo) o il poll REST (ogni 3s).
-        // WS kline / poll REST arrivano comunque poco dopo e "correggono" i valori
-        // sintetici con quelli ufficiali (stesso pattern del patch mid-price sotto).
-        const _obRollNewBarIfNeeded = (midPrice) => {
-            if (!_obLiveCandle || !candleS) return false;
-            const tf = chartTF.value;
-            const barSecs = _OB_TF_SECS[tf] || (tf === 'D' ? 86400 : 0);
-            if (!barSecs) return false;
-            // Bybit allinea i bar boundary all'epoch UTC: bisogna arrotondare PRIMA in UTC
-            // e solo dopo applicare _obTzOffset. Arrotondare il tempo già shiftato (come
-            // prima) è sbagliato quando l'offset non è multiplo esatto di barSecs (es.
-            // offset +2h su barSecs=4h): produce un boundary sfasato di
-            // "_obTzOffset % barSecs" secondi rispetto a quello reale, e la candela WS
-            // autentica (correttamente allineata) arriva poi con un time "più vecchio" del
-            // boundary sintetico già scritto sulla serie — stesso bug/fix di
-            // _expectedBarOpen in mtf.html, mai portato qui.
-            const nowUtc = Math.floor(Date.now() / 1000);
-            const expectedOpen = Math.floor(nowUtc / barSecs) * barSecs + _obTzOffset;
-            if (expectedOpen <= _obLiveCandle.time) return false;
-
-            // Se il book resta silenzioso per più di un boundary (mercato calmo, tab in
-            // background, WS momentaneamente muto), saltare direttamente a "adesso" lasciava
-            // un buco visivo sulla serie: le barre intermedie mai aperte semplicemente non
-            // esistevano fra l'ultima candela reale e quella corrente (bug segnalato
-            // 2026-08-25, screenshot). Fix: si itera un boundary alla volta fino a
-            // raggiungere expectedOpen, riempiendo ogni barra mancante con una candela
-            // piatta al prezzo di chiusura precedente — solo l'ULTIMA (quella corrente)
-            // riflette davvero midPrice.
-            // Cap di sicurezza: un tab lasciato in background per ore/giorni potrebbe
-            // richiedere migliaia di barre sintetiche in un colpo solo (freeze). Oltre la
-            // soglia si riempiono solo le ultime MAX_FILL_BARS, accettando un buco residuo
-            // in quel caso estremo (si autocorregge comunque al prossimo cambio TF/reload,
-            // che rifà un fetch REST completo).
-            const MAX_FILL_BARS = 300;
-            const missingBars = (expectedOpen - _obLiveCandle.time) / barSecs;
-            const fillStart = missingBars > MAX_FILL_BARS
-                ? expectedOpen - MAX_FILL_BARS * barSecs
-                : _obLiveCandle.time + barSecs;
-            for (let boundary = fillStart; boundary <= expectedOpen; boundary += barSecs) {
-                const isNowBar = boundary === expectedOpen;
-                const prevClose = _obLiveCandle.close;
-                if (_obLiveCandle.time > lastConfirmedTime) {
-                    for (const { p } of EMA_CFG) {
-                        if (lastEMA[p] == null) continue;
-                        const ek = 2 / (p + 1);
-                        lastEMA[p] = prevClose * ek + lastEMA[p] * (1 - ek);
-                    }
-                    if (_obLastEmaCustom != null) {
-                        const eck = 2 / (getEmaCustomCfg().length + 1);
-                        _obLastEmaCustom = prevClose * eck + _obLastEmaCustom * (1 - eck);
-                    }
-                    if (_obLastEmaCustom2 != null) {
-                        const eckB = 2 / (getEmaCustom2Cfg().length + 1);
-                        _obLastEmaCustom2 = prevClose * eckB + _obLastEmaCustom2 * (1 - eckB);
-                    }
-                    _obGrabConfirmPrev(_obLiveCandle);
-                    lastConfirmedTime = _obLiveCandle.time;
-                }
-                if (_obKlines.length) {
-                    const lastK = _obKlines[_obKlines.length - 1];
-                    if (lastK.time === _obLiveCandle.time) _obKlines[_obKlines.length - 1] = { ..._obLiveCandle };
-                    else _obKlines.push({ ..._obLiveCandle });
-                }
-
-                const newCandle = isNowBar ? {
-                    time: boundary, open: prevClose,
-                    high: Math.max(prevClose, midPrice), low: Math.min(prevClose, midPrice),
-                    close: midPrice, volume: 0,
-                } : {
-                    time: boundary, open: prevClose, high: prevClose, low: prevClose, close: prevClose, volume: 0,
-                };
-                _obLiveCandle = newCandle;
-                // Prima, con GRaB attivo, la barra appena aperta dal roll non veniva disegnata
-                // qui (il chiamante in processOrderBook salta il ramo _obGrabColorCandle quando
-                // il roll ha già "consumato" il tick con return true) — restava assente dalla
-                // serie fino al tick successivo del book, un giro perso non necessario.
-                if (_obGrabActive) _obGrabColorCandle(newCandle);
-                else { try { candleS.update({ ...newCandle }); } catch(e) {} }
-                _cdLastPrice = newCandle.close; _cdLastOpen = newCandle.open;
-
-                for (const { p } of EMA_CFG) {
-                    if (lastEMA[p] == null) continue;
-                    const ek   = 2 / (p + 1);
-                    const live = newCandle.close * ek + lastEMA[p] * (1 - ek);
-                    try { emaS[p].update({ time: newCandle.time, value: live }); } catch(e) {}
-                }
-                if (_obBbActive && _obBbSeries.upper && _obKlines.length) {
-                    const bbCfg = getBbCfg();
-                    const sl = [..._obKlines.slice(-(bbCfg.period - 1)), newCandle];
-                    if (sl.length >= bbCfg.period) {
-                        const mean = sl.reduce((a, c) => a + c.close, 0) / bbCfg.period;
-                        const std  = Math.sqrt(sl.reduce((a, c) => a + (c.close - mean) ** 2, 0) / bbCfg.period);
-                        _obBbSeries.upper.update({ time: newCandle.time, value: mean + bbCfg.mult * std });
-                        _obBbSeries.mid.update(  { time: newCandle.time, value: mean });
-                        _obBbSeries.lower.update({ time: newCandle.time, value: mean - bbCfg.mult * std });
-                    }
-                }
-                if (_obRocActive && _obRocSeries && _obKlines.length >= getRocCfg().length) {
-                    const rocCfg = getRocCfg();
-                    const rocPrev = _obKlines[_obKlines.length - rocCfg.length].close;
-                    _obRocSeries.update({ time: newCandle.time, value: 100 * (newCandle.close - rocPrev) / rocPrev });
-                }
-                if (_obEmaCustomActive && _obEmaCustomSeries && _obLastEmaCustom != null) {
-                    const eck2 = 2 / (getEmaCustomCfg().length + 1);
-                    const live2 = newCandle.close * eck2 + _obLastEmaCustom * (1 - eck2);
-                    try { _obEmaCustomSeries.update({ time: newCandle.time, value: live2 }); } catch(e) {}
-                }
-                if (_obEmaCustom2Active && _obEmaCustom2Series && _obLastEmaCustom2 != null) {
-                    const eckB2 = 2 / (getEmaCustom2Cfg().length + 1);
-                    const liveB2 = newCandle.close * eckB2 + _obLastEmaCustom2 * (1 - eckB2);
-                    try { _obEmaCustom2Series.update({ time: newCandle.time, value: liveB2 }); } catch(e) {}
-                }
-                if (_obKlines.length) _obChUpdateTail([..._obKlines, newCandle]);
-                _obGrabUpdateTail(newCandle, false);
-            }
-            return true;
-        };
+        // roll sintetico lato client RIMOSSO (candele-feed.js gestisce tutto via kline WS).
 
         // ============================
         //  ORDER BOOK FETCH & WS
@@ -4290,16 +4104,8 @@ createApp({
                 _obLivePrice        = midPrice;
                 spread.value        = `${formatPrice(spreadValue)} (${spreadPercent.toFixed(3)}%)`;
                 if (groupingOptions.value.length === 0) calculateGroupingOptions(midPrice);
-                // Bybit throttla lo stream kline a ~1/s: la candela in formazione segue
-                // anche il mid-price del book (molto più frequente) per restare allineata.
-                if (_obLiveCandle && candleS && !_obRollNewBarIfNeeded(midPrice)) {
-                    _obLiveCandle.close = midPrice;
-                    if (midPrice > _obLiveCandle.high) _obLiveCandle.high = midPrice;
-                    if (midPrice < _obLiveCandle.low)  _obLiveCandle.low  = midPrice;
-                    if (_obGrabActive) _obGrabColorCandle(_obLiveCandle);
-                    else try { candleS.update({ ..._obLiveCandle }); } catch(e) {}
-                    _cdLastPrice = _obLiveCandle.close;
-                }
+                // NB: il book NON alimenta più la candela (il mid bid/ask la faceva apparire
+                // rossa mentre il prezzo saliva). La candela vive solo sul kline WS del feed.
             }
 
             _obScheduleRender();
@@ -4534,6 +4340,7 @@ createApp({
             if (tradeReconnTimer)  clearTimeout(tradeReconnTimer);
             stopChartPolling();
             stopKlineWS();
+            if (_obFeed) { try { _obFeed.close(); } catch(e) {} _obFeed = null; }
             _clearDayLines();
             clearObLines();
             clearLbLines();
@@ -4928,12 +4735,13 @@ const IND_CFG_SCHEMAS = {
             { key:'color', label:'Colore', type:'color' },
             { key:'width', label:'Spessore', type:'number', min:1, max:5, step:0.5 },
             { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
-            { key:'tf_1',   label:'TF calcolo — grafico 1m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-            { key:'tf_5',   label:'TF calcolo — grafico 5m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-            { key:'tf_30',  label:'TF calcolo — grafico 30m', type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-            { key:'tf_60',  label:'TF calcolo — grafico 1h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-            { key:'tf_240', label:'TF calcolo — grafico 4h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-            { key:'tf_D',   label:'TF calcolo — grafico D',   type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_1',   label:'TF calcolo — grafico 1m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_5',   label:'TF calcolo — grafico 5m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_15',  label:'TF calcolo — grafico 15m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_30',  label:'TF calcolo — grafico 30m', type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_60',  label:'TF calcolo — grafico 1h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_240', label:'TF calcolo — grafico 4h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_D',   label:'TF calcolo — grafico D',   type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
             { key:'waitClose', label:'Attendi la chiusura del timeframe', type:'checkbox' },
         ],
         apply: cfg => {
@@ -4949,12 +4757,13 @@ const IND_CFG_SCHEMAS = {
             { key:'color', label:'Colore', type:'color' },
             { key:'width', label:'Spessore', type:'number', min:1, max:5, step:0.5 },
             { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
-            { key:'tf_1',   label:'TF calcolo — grafico 1m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-            { key:'tf_5',   label:'TF calcolo — grafico 5m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-            { key:'tf_30',  label:'TF calcolo — grafico 30m', type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-            { key:'tf_60',  label:'TF calcolo — grafico 1h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-            { key:'tf_240', label:'TF calcolo — grafico 4h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-            { key:'tf_D',   label:'TF calcolo — grafico D',   type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_1',   label:'TF calcolo — grafico 1m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_5',   label:'TF calcolo — grafico 5m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_15',  label:'TF calcolo — grafico 15m',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_30',  label:'TF calcolo — grafico 30m', type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_60',  label:'TF calcolo — grafico 1h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_240', label:'TF calcolo — grafico 4h',  type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+            { key:'tf_D',   label:'TF calcolo — grafico D',   type:'select', raw:true, options:[['','Uguale al grafico'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
             { key:'waitClose', label:'Attendi la chiusura del timeframe', type:'checkbox' },
         ],
         apply: cfg => {

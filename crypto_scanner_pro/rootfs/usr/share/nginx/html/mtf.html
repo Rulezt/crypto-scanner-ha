@@ -6,9 +6,10 @@
 <title>MTF View - Crypto Scanner Pro v4.4.7</title>
 <script src="/prefs-sync.js"></script>
 <script src="/i18n.js"></script>
-<script src="/candle-color.js"></script>
-<script src="/indicator-state.js"></script>
+<script src="/candle-color.js?v=4"></script>
+<script src="/indicator-state.js?v=4"></script>
 <script src="/draw-tools.js"></script>
+<script src="/candle-feed.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzBCMEUxMSIvPgogIDxsaW5lIHgxPSIxIiB5MT0iOSIgeDI9IjMxIiB5Mj0iOSIgc3Ryb2tlPSIjMWEzYTRhIiBzdHJva2Utd2lkdGg9IjAuNCIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMTciIHgyPSIzMSIgeTI9IjE3IiBzdHJva2U9IiMxYTNhNGEiIHN0cm9rZS13aWR0aD0iMC40Ii8+CiAgPGxpbmUgeDE9IjEiIHkxPSIyNSIgeDI9IjMxIiB5Mj0iMjUiIHN0cm9rZT0iIzFhM2E0YSIgc3Ryb2tlLXdpZHRoPSIwLjQiLz4KICA8bGluZSB4MT0iNCIgeTE9IjciIHgyPSI0IiB5Mj0iMjkiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyLjUiIHk9IjE0IiB3aWR0aD0iMyIgaGVpZ2h0PSI5IiBmaWxsPSIjMDBDOEZGIi8+CiAgPGxpbmUgeDE9IjEyIiB5MT0iMyIgeDI9IjEyIiB5Mj0iMjYiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIxMC41IiB5PSI3IiB3aWR0aD0iMyIgaGVpZ2h0PSIxMyIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIyMCIgeTE9IjYiIHgyPSIyMCIgeTI9IjI4IiBzdHJva2U9IiMwMEM4RkYiIHN0cm9rZS13aWR0aD0iMC44Ii8+CiAgPHJlY3QgeD0iMTguNSIgeT0iMTMiIHdpZHRoPSIzIiBoZWlnaHQ9IjkiIGZpbGw9IiMwMEM4RkYiLz4KICA8bGluZSB4MT0iMjgiIHkxPSIxMCIgeDI9IjI4IiB5Mj0iMzAiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIwLjgiLz4KICA8cmVjdCB4PSIyNi41IiB5PSIxNiIgd2lkdGg9IjMiIGhlaWdodD0iOCIgZmlsbD0iIzAwQzhGRiIvPgogIDxsaW5lIHgxPSIxIiB5MT0iMzAiIHgyPSIzMCIgeTI9IjIiIHN0cm9rZT0iIzAwQzhGRiIgc3Ryb2tlLXdpZHRoPSIxLjIiLz4KICA8cG9seWdvbiBwb2ludHM9IjMwLDIgMjQsNS41IDI2LjUsOC41IiBmaWxsPSIjMDBDOEZGIi8+Cjwvc3ZnPgo=">
 <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
 <style>
@@ -46,6 +47,8 @@
 
   .hdr-btn { background:none; border-radius:6px; transition:background-color .15s,color .15s; }
   .hdr-btn:hover { background-color:#2B3139; color:#E5E7EB; }
+  #hdr-refresh.spinning svg { animation: hdrSpin .7s linear infinite; }
+  @keyframes hdrSpin { to { transform: rotate(360deg); } }
 
   @media (max-width: 639px) {
     /* Grid mobile: 1 TF per volta, navigazione via JS */
@@ -125,6 +128,11 @@
     title="Layout grafici">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M9 3v18"/><path d="M9 12h12"/></svg>
   </button>
+  <button id="hdr-refresh" onclick="refreshCharts()" class="hdr-btn"
+    style="font-size:14px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:6px 7px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;"
+    title="Aggiorna grafici">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+  </button>
   <button id="hdr-search" onclick="openChartSearch()" class="hdr-btn"
     style="font-size:14px;color:#B2B5BE;background:#2A2E39;border:none;border-radius:3px;padding:6px 7px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;"
     data-i18n-title="nav_search_full" title="Cerca crypto (Ctrl+K)">
@@ -196,16 +204,15 @@ const SYM = new URLSearchParams(location.search).get('symbol') || 'BTCUSDT';
 
 const isMobile = window.innerWidth < 640;
 
-const TF_LABELS = {'1':'1m','5':'5m','30':'30m','60':'1h','240':'4h','D':'D','W':'W','M':'M'};
+const TF_LABELS = {'1':'1m','5':'5m','15':'15m','30':'30m','60':'1h','240':'4h','D':'D','W':'W','M':'M'};
 
 // ── Layout grafici (solo pagina mtf) ─────────────────────────────────────────────
 // Scelto dal bottone header, persistito in localStorage 'mtf_layout'.
 //  · standard : griglia storica (desktop 4×2, mobile 2×3 con navigazione)
-//  · split23  : 3 colonne — sinistra 2 pannelli, centro 3, destra 3. I TF dei
-//    pannelli si cambiano cliccando la targhetta TF e sono salvati in
-//    'mtf_split23_tfs' ({ "<indice>": "<tf>" }, validi per tutte le coin).
-// `row` usa la sintassi grid "start / end" su una griglia a 6 righe (mcm di 2 e 3)
-// così le due colonne restano allineate ai bordi.
+//  · split23  : 3 colonne × 3 righe = 9 pannelli. I TF dei pannelli si cambiano
+//    cliccando la targhetta TF e sono salvati in 'mtf_split333_tfs'
+//    ({ "<indice>": "<tf>" }, validi per tutte le coin).
+//    (chiave layout ancora 'split23' per compatibilità localStorage.)
 const _STANDARD_SLOTS = isMobile ? [
   { tf:'D',   label:'D',   col:'1', row:'1' },
   { tf:'240', label:'4h',  col:'2', row:'1' },
@@ -224,24 +231,25 @@ const _STANDARD_SLOTS = isMobile ? [
   { tf:'1',   label:'1m',  col:'4', row:'2' },
 ];
 const _SPLIT23_SLOTS = [
-  { tf:'D',   label:'D',   col:'1', row:'1 / 4' },
-  { tf:'240', label:'4h',  col:'1', row:'4 / 7' },
-  { tf:'60',  label:'1h',  col:'2', row:'1 / 3' },
-  { tf:'30',  label:'30m', col:'2', row:'3 / 5' },
-  { tf:'5',   label:'5m',  col:'2', row:'5 / 7' },
-  { tf:'W',   label:'W',   col:'3', row:'1 / 3' },
-  { tf:'1',   label:'1m',  col:'3', row:'3 / 5' },
-  { tf:'M',   label:'M',   col:'3', row:'5 / 7' },
+  { tf:'M',   label:'M',   col:'1', row:'1' },
+  { tf:'W',   label:'W',   col:'1', row:'2' },
+  { tf:'D',   label:'D',   col:'1', row:'3' },
+  { tf:'240', label:'4h',  col:'2', row:'1' },
+  { tf:'60',  label:'1h',  col:'2', row:'2' },
+  { tf:'30',  label:'30m', col:'2', row:'3' },
+  { tf:'15',  label:'15m', col:'3', row:'1' },
+  { tf:'5',   label:'5m',  col:'3', row:'2' },
+  { tf:'1',   label:'1m',  col:'3', row:'3' },
 ];
 const _LAYOUT_ICON_STD = `<svg width="38" height="30" viewBox="0 0 24 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="21" height="17" rx="1.5"/><path d="M6.75 1.5v17M12 1.5v17M17.25 1.5v17M1.5 10h21"/></svg>`;
-const _LAYOUT_ICON_233 = `<svg width="38" height="30" viewBox="0 0 24 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="21" height="17" rx="1.5"/><path d="M8.5 1.5v17M15.5 1.5v17"/><path d="M1.5 10h7"/><path d="M8.5 7.17h7M8.5 12.83h7"/><path d="M15.5 7.17h7M15.5 12.83h7"/></svg>`;
+const _LAYOUT_ICON_333 = `<svg width="38" height="30" viewBox="0 0 24 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="21" height="17" rx="1.5"/><path d="M8.5 1.5v17M15.5 1.5v17M1.5 7.17h21M1.5 12.83h21"/></svg>`;
 const MTF_LAYOUTS = {
   standard: { label: 'Standard',            icon: _LAYOUT_ICON_STD, cols: () => isMobile ? '1fr' : 'repeat(4, 1fr)', rows: () => isMobile ? '1fr' : '1fr 1fr', slots: _STANDARD_SLOTS },
-  split23:  { label: '2 · 3 · 3 colonne',   icon: _LAYOUT_ICON_233, cols: () => 'repeat(3, 1fr)',                    rows: () => 'repeat(6, 1fr)',              slots: _SPLIT23_SLOTS },
+  split23:  { label: '3 · 3 · 3 colonne',   icon: _LAYOUT_ICON_333, cols: () => 'repeat(3, 1fr)',                    rows: () => 'repeat(3, 1fr)',              slots: _SPLIT23_SLOTS },
 };
 let curLayoutName = 'standard';
 try { const _l = localStorage.getItem('mtf_layout'); if (_l && MTF_LAYOUTS[_l]) curLayoutName = _l; } catch(e) {}
-function _getSplit23Tfs() { try { return JSON.parse(localStorage.getItem('mtf_split23_tfs')) || {}; } catch(e) { return {}; } }
+function _getSplit23Tfs() { try { return JSON.parse(localStorage.getItem('mtf_split333_tfs')) || {}; } catch(e) { return {}; } }
 const TF_SLOTS = MTF_LAYOUTS[curLayoutName].slots.map((x, i) => {
   const o = { ...x };
   if (curLayoutName === 'split23') {
@@ -251,8 +259,8 @@ const TF_SLOTS = MTF_LAYOUTS[curLayoutName].slots.map((x, i) => {
   return o;
 });
 
-const DEFAULT_CANDLES = {'1':80,'5':80,'30':60,'60':60,'240':50,'D':40,'W':52,'M':24};
-const TF_SECONDS = {'1':60,'5':300,'30':1800,'60':3600,'240':14400,'D':86400,'W':604800,'M':2592000};
+const DEFAULT_CANDLES = {'1':80,'5':80,'15':70,'30':60,'60':60,'240':50,'D':40,'W':52,'M':24};
+const TF_SECONDS = {'1':60,'5':300,'15':900,'30':1800,'60':3600,'240':14400,'D':86400,'W':604800,'M':2592000};
 function getCandlesForTF(tf) {
   try {
     const s = JSON.parse(localStorage.getItem('chart_candles_per_tf'));
@@ -290,19 +298,24 @@ const DEFAULT_LEVELS_CFG = {
   ath:      {color:'#f59e0b', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
   atl:      {color:'#a855f7', style:2, width:1, vis:{chart:true, mtf:true, ob:false}},
 };
+function _emaBaseOn(p, legacyEnabled) {
+  try { return window.getIndActive ? window.getIndActive('ema' + p) : (legacyEnabled !== false); }
+  catch (e) { return legacyEnabled !== false; }
+}
 function getEmaCfg() {
   try {
     const s = JSON.parse(localStorage.getItem('chart_ema_cfg'));
-    if (s && s.length === 4) return s.map((e, i) => ({ ...DEFAULT_EMA_CFG[i], ...e, enabled: e.enabled !== false }));
+    if (s && s.length === 4) return s.map((e, i) => ({ ...DEFAULT_EMA_CFG[i], ...e, enabled: _emaBaseOn(DEFAULT_EMA_CFG[i].p, e.enabled) }));
   } catch(e) {}
-  return DEFAULT_EMA_CFG.map(x => ({...x}));
+  return DEFAULT_EMA_CFG.map(x => ({...x, enabled: _emaBaseOn(x.p, x.enabled)}));
 }
 function toggleEmaAll(period) {
   const cfg = getEmaCfg();
   const entry = cfg.find(e => e.p === period);
-  entry.enabled = !(entry.enabled !== false);
-  try { localStorage.setItem('chart_ema_cfg', JSON.stringify(cfg)); } catch(e) {}
-  EMA_CFG = cfg;
+  const _newOn = !(entry.enabled !== false);
+  if (window.setIndActive) window.setIndActive('ema' + period, _newOn);
+  entry.enabled = _newOn;
+  EMA_CFG = getEmaCfg();
   slots.forEach(applyEmaToSlot);
   if (fsChart) applyFsEma();
 }
@@ -440,9 +453,7 @@ function _mtfRestoreDrawings() {
   }
 }
 let _mouseOverSlot = -1;
-let ws      = null;
 let _mtfAthVal = null, _mtfAtlVal = null;
-let wsTimer = null;
 let mtfBookWS = null, mtfBookWsTimer = null;
 let mobileSlotIdx = 0;
 let bbActive = false;
@@ -491,12 +502,12 @@ let activeAlerts = [];
 
 // OB fullscreen
 const OB_TFS = [
-  {tf:'1',label:'1m'},{tf:'5',label:'5m'},{tf:'30',label:'30m'},
+  {tf:'1',label:'1m'},{tf:'5',label:'5m'},{tf:'15',label:'15m'},{tf:'30',label:'30m'},
   {tf:'60',label:'1h'},{tf:'240',label:'4h'},{tf:'D',label:'D'},
   {tf:'W',label:'W'},{tf:'M',label:'M'},
 ];
 const FS_TFS = [
-  {tf:'1',label:'1m'},{tf:'5',label:'5m'},{tf:'30',label:'30m'},
+  {tf:'1',label:'1m'},{tf:'5',label:'5m'},{tf:'15',label:'15m'},{tf:'30',label:'30m'},
   {tf:'60',label:'1h'},{tf:'240',label:'4h'},{tf:'D',label:'D'},
   {tf:'W',label:'W'},{tf:'M',label:'M'},
 ];
@@ -565,12 +576,12 @@ function changePanelTf(idx, newTf) {
     try {
         const saved = _getSplit23Tfs();
         saved[idx] = newTf;
-        localStorage.setItem('mtf_split23_tfs', JSON.stringify(saved));
+        localStorage.setItem('mtf_split333_tfs', JSON.stringify(saved));
     } catch(e) {}
     location.reload();
 }
 
-// ── Popup centrato per il cambio TF di un pannello (layout 2·3·3) — bottoni, 4 per riga ──
+// ── Popup centrato per il cambio TF di un pannello (layout 3·3·3) — bottoni, 4 per riga ──
 function openTfGridPopup(current, onSelect) {
     document.querySelectorAll('.mtf-tf-pop').forEach(w => w.remove());
     const wrap = document.createElement('div');
@@ -785,7 +796,7 @@ const DEFAULT_EMA_CUSTOM_CFG = {
   length: 9, color: '#00E5FF', width: 1.5, style: 0, waitClose: true,
   // TF di calcolo indipendente per ogni TF del grafico host (chiave 'tf_<TF grafico>'):
   // '' = segue quel pannello (comportamento storico), altrimenti proietta da quel TF fisso.
-  tf_1: '', tf_5: '', tf_30: '', tf_60: '', tf_240: '', tf_D: '', tf_W: '', tf_M: '',
+  tf_1: '', tf_5: '', tf_15: '', tf_30: '', tf_60: '', tf_240: '', tf_D: '', tf_W: '', tf_M: '',
 };
 function getEmaCustomCfg() {
   try {
@@ -793,7 +804,7 @@ function getEmaCustomCfg() {
     if (s) {
       // Migrazione one-time: prima esisteva un solo campo `tf` globale (vedi chart.html).
       if (s.tf !== undefined && s.tf_1 === undefined) {
-        for (const k of ['tf_1','tf_5','tf_30','tf_60','tf_240','tf_D','tf_W','tf_M']) s[k] = s.tf;
+        for (const k of ['tf_1','tf_5','tf_15','tf_30','tf_60','tf_240','tf_D','tf_W','tf_M']) s[k] = s.tf;
         delete s.tf;
         try { localStorage.setItem('chart_ema_custom_cfg', JSON.stringify(s)); } catch(e) {}
       }
@@ -908,7 +919,7 @@ function toggleEmaCustomAll() {
 // (vedi commenti sopra) con suffisso "2", stessi helper _projectMtfEma/_fetchAuxKlines.
 const DEFAULT_EMA_CUSTOM2_CFG = {
   length: 21, color: '#FF6EC7', width: 1.5, style: 0, waitClose: true,
-  tf_1: '', tf_5: '', tf_30: '', tf_60: '', tf_240: '', tf_D: '', tf_W: '', tf_M: '',
+  tf_1: '', tf_5: '', tf_15: '', tf_30: '', tf_60: '', tf_240: '', tf_D: '', tf_W: '', tf_M: '',
 };
 function getEmaCustom2Cfg() {
   try { const s = JSON.parse(localStorage.getItem('chart_ema_custom2_cfg')); if (s) return { ...DEFAULT_EMA_CUSTOM2_CFG, ...s }; } catch(e) {}
@@ -1453,14 +1464,15 @@ const IND_CFG_SCHEMAS = {
       { key:'color', label:'Colore', type:'color' },
       { key:'width', label:'Spessore', type:'number', min:1, max:5, step:0.5 },
       { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
-      { key:'tf_1',   label:'TF calcolo — pannello 1m',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_5',   label:'TF calcolo — pannello 5m',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_30',  label:'TF calcolo — pannello 30m', type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_60',  label:'TF calcolo — pannello 1h',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_240', label:'TF calcolo — pannello 4h',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_D',   label:'TF calcolo — pannello D',   type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_W',   label:'TF calcolo — pannello W',   type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_M',   label:'TF calcolo — pannello M',   type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_1',   label:'TF calcolo — pannello 1m',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_5',   label:'TF calcolo — pannello 5m',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_15',  label:'TF calcolo — pannello 15m',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_30',  label:'TF calcolo — pannello 30m', type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_60',  label:'TF calcolo — pannello 1h',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_240', label:'TF calcolo — pannello 4h',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_D',   label:'TF calcolo — pannello D',   type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_W',   label:'TF calcolo — pannello W',   type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_M',   label:'TF calcolo — pannello M',   type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
       { key:'waitClose', label:'Attendi la chiusura del timeframe', type:'checkbox' },
     ],
     apply: cfg => {
@@ -1478,14 +1490,15 @@ const IND_CFG_SCHEMAS = {
       { key:'color', label:'Colore', type:'color' },
       { key:'width', label:'Spessore', type:'number', min:1, max:5, step:0.5 },
       { key:'style', label:'Stile linea', type:'select', options:[[0,'Solido'],[1,'Tratteggiato'],[2,'Punteggiato']] },
-      { key:'tf_1',   label:'TF calcolo — pannello 1m',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_5',   label:'TF calcolo — pannello 5m',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_30',  label:'TF calcolo — pannello 30m', type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_60',  label:'TF calcolo — pannello 1h',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_240', label:'TF calcolo — pannello 4h',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_D',   label:'TF calcolo — pannello D',   type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_W',   label:'TF calcolo — pannello W',   type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
-      { key:'tf_M',   label:'TF calcolo — pannello M',   type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_1',   label:'TF calcolo — pannello 1m',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_5',   label:'TF calcolo — pannello 5m',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_15',  label:'TF calcolo — pannello 15m',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_30',  label:'TF calcolo — pannello 30m', type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_60',  label:'TF calcolo — pannello 1h',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_240', label:'TF calcolo — pannello 4h',  type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_D',   label:'TF calcolo — pannello D',   type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_W',   label:'TF calcolo — pannello W',   type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
+      { key:'tf_M',   label:'TF calcolo — pannello M',   type:'select', raw:true, options:[['','Uguale al pannello'],['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1h'],['240','4h'],['D','D'],['W','W'],['M','M']] },
       { key:'waitClose', label:'Attendi la chiusura del timeframe', type:'checkbox' },
     ],
     apply: cfg => {
@@ -1642,12 +1655,16 @@ function _applyLBLevelsToFs() {
 // l'altro che la usa ancora.
 function _obLbSyncSubscription() {
   const need = obLevelsActive || lbLevelsActive;
-  if (mtfBookWS && mtfBookWS.readyState === WebSocket.OPEN) {
-    try { mtfBookWS.send(JSON.stringify({ op: need ? 'subscribe' : 'unsubscribe', args:[`orderbook.200.${SYM}`] })); } catch(e) {}
+  if (need) {
+    // apre la connessione se serve (ora è dedicata a OB/LB: non c'è più orderbook.1)
+    if (!mtfBookWS) openMtfBookWS();
+    else if (mtfBookWS.readyState === WebSocket.OPEN) {
+      try { mtfBookWS.send(JSON.stringify({ op: 'subscribe', args:[`orderbook.200.${SYM}`] })); } catch(e) {}
+    }
+  } else {
+    closeMtfBookWS();
+    _obLevAsks.clear(); _obLevBids.clear();
   }
-  // Se il socket non è ancora aperto, il prossimo openMtfBookWS() (avvio o dopo
-  // un errore) legge obLevelsActive/lbLevelsActive in sock.onopen e la include già.
-  if (!need) { _obLevAsks.clear(); _obLevBids.clear(); }
 }
 
 function toggleOBLevelsAll() {
@@ -1810,7 +1827,7 @@ function addS(chart, type, opts, paneIndex) {
 }
 
 // ── Candle Countdown Primitive ─────────────────────────────────────────────────
-const _MTF_TF_SECS = {'1':60,'5':300,'30':1800,'60':3600,'240':14400,'D':86400,'W':604800};
+const _MTF_TF_SECS = {'1':60,'5':300,'15':900,'30':1800,'60':3600,'240':14400,'D':86400,'W':604800};
 function _mtfCdRemain(tf) {
     const now = Math.floor(Date.now()/1000), sec = _MTF_TF_SECS[tf];
     if (tf === 'M') { const d=new Date(now*1000); return Math.max(0, Math.ceil((Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+1, 1) - now*1000) / 1000)); }
@@ -1819,8 +1836,8 @@ function _mtfCdRemain(tf) {
     if (tf === 'D') return 86400-(now%86400);
     return sec-(now%sec);
 }
-const _MTF_CD_WARN_S  = {'1':30, '5':60, '30':300, '60':600, '240':300, 'D':3600, 'W':86400, 'M':86400};
-const _MTF_CD_BLINK_S = {'1':10, '5':10, '30':60,  '60':60};
+const _MTF_CD_WARN_S  = {'1':30, '5':60, '15':180, '30':300, '60':600, '240':300, 'D':3600, 'W':86400, 'M':86400};
+const _MTF_CD_BLINK_S = {'1':10, '5':10, '15':60, '30':60,  '60':60};
 function updateFSCountdown() {
     for (const {tf} of FS_TFS) {
         const el = document.getElementById('fs-tf-cd-' + tf);
@@ -2134,178 +2151,195 @@ async function loadAll() {
   _restorePersistedIndicators();
   _mtfRestoreDrawings();
   fetchMTFATHATL();
-  openWS();
+  setWSDot('live');
   openMtfBookWS();
   syncAllAlertLines();
   initNotifications();
   setTimeout(pollTriggeredAlerts, 15000);
 }
 
-async function loadSlot(idx, dailyData) {
-  const s = slots[idx];
+// Refresh "soft" dei grafici: ogni CandleFeed rifà il fetch dello storico e richiama
+// onReady → _mtfSlotReady ridisegna candele + indicatori GIÀ attivi sui dati freschi.
+// Zoom/pan, disegni, alert e stato on/off indicatori restano intatti (nessun off→on).
+let _refreshingCharts = false;
+async function refreshCharts() {
+  if (_refreshingCharts) return;
+  _refreshingCharts = true;
+  const btn = document.getElementById('hdr-refresh');
+  if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
   try {
-    const r = await fetch(`api/klines?symbol=${SYM}&interval=${s.cfg.tf}&_t=${Date.now()}`);
-    const j = await r.json();
-    if (!j.success) return;
-    const klines = j.data; if (!TZ_OFFSET_S && j.utc_offset_s) TZ_OFFSET_S = j.utc_offset_s;
-    s.candleS.setData(klines);
-    if (klines.length) { s.lastPrice = klines[klines.length-1].close; s.lastOpen = klines[klines.length-1].open; }
-    s.klineCount = klines.length;
-    s.klines = klines.slice();
-    s.klinesVolMap = new Map(klines.map(k => [k.time, k.volume]));
-    const _lastN = klines.slice(-20);
-    s.avgVol = _lastN.length > 0 ? _lastN.reduce((acc,k) => acc+(k.volume||0), 0) / _lastN.length : 0;
-    s.dayPrimitive = attachDayLines(s.candleS, s.chart, klines, s.cfg.tf, s.dayPrimitive);
-    s.candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
-    applyEmaToSlot(s);
-    _applyCandleStyle(s.candleS);
-    s.chart.timeScale().setVisibleLogicalRange({ from: klines.length - getCandlesForTF(s.cfg.tf), to: klines.length + 3 });
+    // Daily H/L: rimuovi le vecchie price line e lascia che _mtfSlotReady le ricrei
+    try {
+      const rd = await fetch(`api/klines?symbol=${SYM}&interval=D&_t=${Date.now()}`);
+      const jd = await rd.json();
+      if (jd.success && jd.data && jd.data.length >= 2)
+        _mtfDailyData = { today: jd.data[jd.data.length-1], prev: jd.data[jd.data.length-2] };
+    } catch(e) {}
+    slots.forEach(s => {
+      ['dayHighLine','dayLowLine','prevHighLine','prevLowLine'].forEach(k => {
+        if (s[k]) { try { s.candleS.removePriceLine(s[k]); } catch(e) {} s[k] = null; }
+      });
+    });
 
-    // H / L / pH / pL lines
-    if (dailyData) {
-      const {today, prev} = dailyData;
-      s.dayHighVal = today.high; s.dayLowVal = today.low;
-      s.prevHighVal = prev.high; s.prevLowVal = prev.low;
-      const _slvl = getLvCfg();
-      if (_slvl.dayHigh.vis?.mtf  !== false) s.dayHighLine  = s.candleS.createPriceLine({price:today.high,color:_slvl.dayHigh.color, lineWidth:_slvl.dayHigh.width, lineStyle:_slvl.dayHigh.style, axisLabelVisible:false,title:''});
-      if (_slvl.dayLow.vis?.mtf   !== false) s.dayLowLine   = s.candleS.createPriceLine({price:today.low, color:_slvl.dayLow.color,  lineWidth:_slvl.dayLow.width,  lineStyle:_slvl.dayLow.style,  axisLabelVisible:false,title:''});
-      if (_slvl.prevHigh.vis?.mtf !== false) s.prevHighLine = s.candleS.createPriceLine({price:prev.high, color:_slvl.prevHigh.color,lineWidth:_slvl.prevHigh.width,lineStyle:_slvl.prevHigh.style,axisLabelVisible:false,title:''});
-      if (_slvl.prevLow.vis?.mtf  !== false) s.prevLowLine  = s.candleS.createPriceLine({price:prev.low,  color:_slvl.prevLow.color, lineWidth:_slvl.prevLow.width, lineStyle:_slvl.prevLow.style, axisLabelVisible:false,title:''});
-    }
-  } catch(e) {
-    console.error(`MTF load ${s.cfg.label} error:`, e);
+    slots.forEach(s => { if (s.feed) s.feed.resync(); });
+    fetchMTFATHATL();
+  } finally {
+    setTimeout(() => { if (btn) { btn.classList.remove('spinning'); btn.disabled = false; } }, 500);
+    _refreshingCharts = false;
   }
 }
 
-// ── WebSocket ──────────────────────────────────────────────────────────────────
-let _wsPingTimer = null;
+// Ultimo daily {today,prev} caricato da loadAll — usato anche dai resync del feed
+// (che chiamano onReady senza conoscere il daily) per ridisegnare le linee H/L.
+let _mtfDailyData = null;
 
-function openWS() {
-  closeWS();
-  setWSDot('connecting');
-  // const locale per i handler: se openWS() viene richiamata di nuovo prima che questa
-  // connessione finisca di aprirsi, la variabile globale `ws` punta già al socket nuovo —
-  // send() sul vecchio (via `ws` condivisa) fallirebbe con "Still in CONNECTING state".
-  const sock = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-  ws = sock;
-  sock.onopen = () => {
-    setWSDot('live');
-    sock.send(JSON.stringify({
-      op: 'subscribe',
-      args: [...new Set(slots.map(s => s.cfg.tf))].map(tf => `kline.${tf}.${SYM}`),
-    }));
-    // Bybit requires application-level ping every 20s to keep connection alive
-    _wsPingTimer = setInterval(() => {
-      if (sock.readyState === WebSocket.OPEN) sock.send('{"op":"ping"}');
-    }, 20000);
-  };
-  sock.onmessage = ev => {
-    let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
-    if (!msg.topic || !msg.topic.startsWith('kline.')) return;
-    const tf    = msg.topic.split('.')[1];
-    // Nel layout 2+3 due pannelli possono avere lo stesso TF: aggiorniamo TUTTI i
-    // pannelli che usano questo TF (findIndex ne prendeva solo il primo).
-    if (!slots.some(s => s.cfg.tf === tf)) return;
-    const b = msg.data[0];
-    const confirmed = b.confirm === true || b.confirm === 'true';
-    const candleStart = Math.floor(parseInt(b.start)/1000);
-    const candle = {
-      time:  candleStart + TZ_OFFSET_S,
-      open:  parseFloat(b.open),
-      high:  parseFloat(b.high),
-      low:   parseFloat(b.low),
-      close: parseFloat(b.close),
-      volume: parseFloat(b.volume) || 0,
-    };
-    slots.forEach(s => {
-    if (s.cfg.tf !== tf) return;
-    // Il confirm=true della barra appena chiusa può arrivare da Bybit con un filo di
-    // ritardo rispetto al roll lato client (_mtfRollSlotIfNeeded, guidato dal book molto
-    // più frequente della kline WS): se nel frattempo s.klines è già avanzato alla barra
-    // nuova, questo messaggio "vecchio" va scartato — altrimenti push(...) lo accoderebbe
-    // fuori ordine cronologico e il prossimo roll riaprirebbe la barra nuova da zero,
-    // cancellando il movimento reale già accumulato (bug segnalato 2026-08-24, stesso
-    // meccanismo già corretto in trade.js — vedi _obRollNewBarIfNeeded).
-    if (s.klines.length && candleStart + TZ_OFFSET_S < s.klines[s.klines.length - 1].time) return;
-    s.lastCandleStartUtc = candleStart;
-    s.lastWsMs = Date.now();
-    try { s.candleS.update(candle); } catch(e) { console.error('mtf WS update skipped ('+tf+'):', e); }
-    s.lastPrice = candle.close; s.lastOpen = candle.open;
-    for (const {p} of EMA_CFG) {
-      if (s.lastEMA[p] === null) continue;
-      const k    = 2/(p+1);
-      const live = candle.close * k + s.lastEMA[p] * (1-k);
-      s.emaS[p].update({time: candle.time, value: live});
-      if (confirmed) s.lastEMA[p] = live;
+// Ogni slot ha un CandleFeed (sorgente candele unica e condivisa — vedi candle-feed.js).
+// loadSlot lo crea al primo giro e lo rippunta ai giri successivi (cambio coin).
+async function loadSlot(idx, dailyData) {
+  const s = slots[idx];
+  if (dailyData) _mtfDailyData = dailyData;
+  return new Promise((resolve) => {
+    s._pendingReady = resolve;
+    if (!s.feed) {
+      s.feed = window.CandleFeed.open({
+        symbol: SYM, tf: s.cfg.tf,
+        onReady:  (bars)     => { _mtfSlotReady(s, bars); const r = s._pendingReady; s._pendingReady = null; if (r) r(); },
+        onUpdate: (bar, ctx) => _mtfSlotUpdate(s, bar, ctx),
+      });
+    } else {
+      s.feed._firstReady = false;
+      s.feed.setSymbolTF(SYM, s.cfg.tf);
     }
-    // aggiorna klines live
-    let isNewBar = false;
-    if (s.klines.length > 0) {
-      const last = s.klines[s.klines.length-1];
-      if (last.time === candle.time) {
-        s.klines[s.klines.length-1] = {time:candle.time,open:last.open,high:Math.max(last.high,candle.high),low:Math.min(last.low,candle.low),close:candle.close,volume:candle.volume};
-      } else {
-        s.klines.push({...candle});
-        isNewBar = true;
-      }
-    }
-    if (bbActive && s.bbSeries.upper) {
-      const _bb = getBbCfg();
-      if (s.klines.length >= _bb.period) {
-        const sl = s.klines.slice(-_bb.period);
-        const mean = sl.reduce((a,c)=>a+c.close,0)/_bb.period;
-        const std  = Math.sqrt(sl.reduce((a,c)=>a+(c.close-mean)**2,0)/_bb.period);
-        s.bbSeries.upper.update({time:candle.time, value:mean+_bb.mult*std});
-        s.bbSeries.mid.update(  {time:candle.time, value:mean});
-        s.bbSeries.lower.update({time:candle.time, value:mean-_bb.mult*std});
-      }
-    }
-    if (rocActive && s.rocSeries) {
-      const _roc = getRocCfg();
-      if (s.klines.length > _roc.length) {
-        const _rocPrev = s.klines[s.klines.length - 1 - _roc.length].close;
-        s.rocSeries.update({time:candle.time, value:100*(candle.close-_rocPrev)/_rocPrev});
-      }
-    }
-    if (emaCustomActive && s.emaCustomSeries && s.lastEmaCustom != null) {
-      const _ec = getEmaCustomCfg();
-      const k = 2/(_ec.length+1);
-      const live = candle.close * k + s.lastEmaCustom * (1-k);
-      s.emaCustomSeries.update({time:candle.time, value:live});
-      if (confirmed) s.lastEmaCustom = live;
-    }
-    if (emaCustom2Active && s.emaCustom2Series && s.lastEmaCustom2 != null) {
-      const _ec2 = getEmaCustom2Cfg();
-      const k2 = 2/(_ec2.length+1);
-      const live2 = candle.close * k2 + s.lastEmaCustom2 * (1-k2);
-      s.emaCustom2Series.update({time:candle.time, value:live2});
-      if (confirmed) s.lastEmaCustom2 = live2;
-    }
-    if (channelActive && s.channelSeries.upper && s.klines.length >= getChannelCfg().period) {
-      const _cper = getChannelCfg().period;
-      const csl = s.klines.slice(-_cper);
-      let sumC=0, sumH=0, sumL=0;
-      for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
-      const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
-      s.channelSeries.mid.update(  {time:candle.time, value:liveC});
-      s.channelSeries.upper.update({time:candle.time, value:liveH});
-      s.channelSeries.lower.update({time:candle.time, value:liveL});
-      if (s.channelData) {
-        const _cdUpd = (arr, val) => { const last = arr[arr.length-1], pt = {time:candle.time, value:val}; if (last && last.time === candle.time) arr[arr.length-1] = pt; else arr.push(pt); };
-        _cdUpd(s.channelData.upper, liveH);
-        _cdUpd(s.channelData.lower, liveL);
-      }
-    }
-    if (grabActive || grabMidlineActive) _grabLiveUpdate(s, candle, confirmed, getGrabCfg());
-    });
-  };
-  sock.onerror = () => setWSDot('error');
-  sock.onclose = () => {
-    setWSDot('off');
-    clearInterval(_wsPingTimer); _wsPingTimer = null;
-    wsTimer = setTimeout(openWS, 5000);
-  };
+    // Difesa: se onReady non arriva (fetch giù) non bloccare loadAll all'infinito.
+    setTimeout(() => { const r = s._pendingReady; if (r === resolve) { s._pendingReady = null; r(); } }, 8000);
+  });
 }
+
+// Ridisegna dai bars correnti le serie indicatore GIÀ ESISTENTI dello slot. Usato dai
+// resync del feed (riconnessione WS / ritorno da tab in background): le candele chiuse
+// sono identiche, serve solo riallineare le serie. Le serie vengono create/distrutte
+// altrove dalle toggle (toggleBB/toggleChannel/…), qui non si tocca l'on/off.
+function _mtfRefillSlotIndicators(s) {
+  if (s.bbSeries && s.bbSeries.upper && s.klines.length >= getBbCfg().period) {
+    const _bb = getBbCfg(), bb = calcBB(s.klines, _bb.period, _bb.mult);
+    s.bbSeries.upper.setData(bb.upper); s.bbSeries.mid.setData(bb.mid); s.bbSeries.lower.setData(bb.lower);
+  }
+  if (s.channelSeries && s.channelSeries.upper && s.klines.length >= getChannelCfg().period) {
+    const c = calcChannel(s.klines, getChannelCfg().period);
+    s.channelSeries.upper.setData(c.upper); s.channelSeries.mid.setData(c.mid); s.channelSeries.lower.setData(c.lower);
+    if (s.channelData) s.channelData = { upper: c.upper, lower: c.lower };
+  }
+  if (rocActive && s.rocSeries) _applyRocToChart(s.chart, s, getRocCfg());
+  if (emaCustomActive && s.emaCustomSeries) _applyEmaCustomToChart(s.chart, s, getEmaCustomCfg());
+  if (emaCustom2Active && s.emaCustom2Series) _applyEmaCustom2ToChart(s.chart, s, getEmaCustom2Cfg());
+  if (grabActive || grabMidlineActive) applyGrabToSlot(s, getGrabCfg());
+}
+
+function _mtfSlotReady(s, klines) {
+  if (!TZ_OFFSET_S && s.feed && s.feed.tzOffsetS) TZ_OFFSET_S = s.feed.tzOffsetS;
+  s.candleS.setData(klines);
+  if (klines.length) { s.lastPrice = klines[klines.length-1].close; s.lastOpen = klines[klines.length-1].open; }
+  s.klineCount = klines.length;
+  s.klines = klines;                          // stesso riferimento del feed
+  s.klinesVolMap = new Map(klines.map(k => [k.time, k.volume]));
+  const _lastN = klines.slice(-20);
+  s.avgVol = _lastN.length > 0 ? _lastN.reduce((acc,k) => acc+(k.volume||0), 0) / _lastN.length : 0;
+  s.dayPrimitive = attachDayLines(s.candleS, s.chart, klines, s.cfg.tf, s.dayPrimitive);
+  s.candleS.applyOptions({ priceFormat: getPriceFormat(klines[klines.length-1]?.close) });
+  applyEmaToSlot(s);
+  _mtfRefillSlotIndicators(s);
+  _applyCandleStyle(s.candleS);
+  // Solo al primo caricamento resetta la vista: un resync (riconnessione WS / ritorno
+  // dal tab in background) non deve far saltare lo zoom/scroll dell'utente.
+  if (!s.feed || !s.feed._firstReady) {
+    s.chart.timeScale().setVisibleLogicalRange({ from: klines.length - getCandlesForTF(s.cfg.tf), to: klines.length + 3 });
+    if (s.feed) s.feed._firstReady = true;
+  }
+
+  // H / L / pH / pL lines
+  const dailyData = _mtfDailyData;
+  if (dailyData && !s.dayHighLine && !s.dayLowLine) {
+    const {today, prev} = dailyData;
+    s.dayHighVal = today.high; s.dayLowVal = today.low;
+    s.prevHighVal = prev.high; s.prevLowVal = prev.low;
+    const _slvl = getLvCfg();
+    if (_slvl.dayHigh.vis?.mtf  !== false) s.dayHighLine  = s.candleS.createPriceLine({price:today.high,color:_slvl.dayHigh.color, lineWidth:_slvl.dayHigh.width, lineStyle:_slvl.dayHigh.style, axisLabelVisible:false,title:''});
+    if (_slvl.dayLow.vis?.mtf   !== false) s.dayLowLine   = s.candleS.createPriceLine({price:today.low, color:_slvl.dayLow.color,  lineWidth:_slvl.dayLow.width,  lineStyle:_slvl.dayLow.style,  axisLabelVisible:false,title:''});
+    if (_slvl.prevHigh.vis?.mtf !== false) s.prevHighLine = s.candleS.createPriceLine({price:prev.high, color:_slvl.prevHigh.color,lineWidth:_slvl.prevHigh.width,lineStyle:_slvl.prevHigh.style,axisLabelVisible:false,title:''});
+    if (_slvl.prevLow.vis?.mtf  !== false) s.prevLowLine  = s.candleS.createPriceLine({price:prev.low,  color:_slvl.prevLow.color, lineWidth:_slvl.prevLow.width, lineStyle:_slvl.prevLow.style, axisLabelVisible:false,title:''});
+  }
+}
+
+// Aggiornamento live della barra in formazione — ESCLUSIVAMENTE dai messaggi kline WS
+// (il feed ha già aggiornato l'array bars e fatto il guard anti-stale). Niente book,
+// niente roll sintetico: erano la causa di candele congelate / rosse mentre il prezzo
+// saliva.
+function _mtfSlotUpdate(s, candle, ctx) {
+  const confirmed = ctx.confirmed;
+  s.lastCandleStartUtc = Math.floor((candle.time - (s.feed ? s.feed.tzOffsetS : TZ_OFFSET_S)));
+  s.lastWsMs = Date.now();
+  try { s.candleS.update(candle); } catch(e) { console.error('mtf feed update skipped ('+s.cfg.tf+'):', e); }
+  s.lastPrice = candle.close; s.lastOpen = candle.open;
+  for (const {p} of EMA_CFG) {
+    if (s.lastEMA[p] === null) continue;
+    const k    = 2/(p+1);
+    const live = candle.close * k + s.lastEMA[p] * (1-k);
+    s.emaS[p].update({time: candle.time, value: live});
+    if (confirmed) s.lastEMA[p] = live;
+  }
+  if (bbActive && s.bbSeries.upper) {
+    const _bb = getBbCfg();
+    if (s.klines.length >= _bb.period) {
+      const sl = s.klines.slice(-_bb.period);
+      const mean = sl.reduce((a,c)=>a+c.close,0)/_bb.period;
+      const std  = Math.sqrt(sl.reduce((a,c)=>a+(c.close-mean)**2,0)/_bb.period);
+      s.bbSeries.upper.update({time:candle.time, value:mean+_bb.mult*std});
+      s.bbSeries.mid.update(  {time:candle.time, value:mean});
+      s.bbSeries.lower.update({time:candle.time, value:mean-_bb.mult*std});
+    }
+  }
+  if (rocActive && s.rocSeries) {
+    const _roc = getRocCfg();
+    if (s.klines.length > _roc.length) {
+      const _rocPrev = s.klines[s.klines.length - 1 - _roc.length].close;
+      s.rocSeries.update({time:candle.time, value:100*(candle.close-_rocPrev)/_rocPrev});
+    }
+  }
+  if (emaCustomActive && s.emaCustomSeries && s.lastEmaCustom != null) {
+    const _ec = getEmaCustomCfg();
+    const k = 2/(_ec.length+1);
+    const live = candle.close * k + s.lastEmaCustom * (1-k);
+    s.emaCustomSeries.update({time:candle.time, value:live});
+    if (confirmed) s.lastEmaCustom = live;
+  }
+  if (emaCustom2Active && s.emaCustom2Series && s.lastEmaCustom2 != null) {
+    const _ec2 = getEmaCustom2Cfg();
+    const k2 = 2/(_ec2.length+1);
+    const live2 = candle.close * k2 + s.lastEmaCustom2 * (1-k2);
+    s.emaCustom2Series.update({time:candle.time, value:live2});
+    if (confirmed) s.lastEmaCustom2 = live2;
+  }
+  if (channelActive && s.channelSeries.upper && s.klines.length >= getChannelCfg().period) {
+    const _cper = getChannelCfg().period;
+    const csl = s.klines.slice(-_cper);
+    let sumC=0, sumH=0, sumL=0;
+    for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
+    const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
+    s.channelSeries.mid.update(  {time:candle.time, value:liveC});
+    s.channelSeries.upper.update({time:candle.time, value:liveH});
+    s.channelSeries.lower.update({time:candle.time, value:liveL});
+    if (s.channelData) {
+      const _cdUpd = (arr, val) => { const last = arr[arr.length-1], pt = {time:candle.time, value:val}; if (last && last.time === candle.time) arr[arr.length-1] = pt; else arr.push(pt); };
+      _cdUpd(s.channelData.upper, liveH);
+      _cdUpd(s.channelData.lower, liveL);
+    }
+  }
+  if (grabActive || grabMidlineActive) _grabLiveUpdate(s, candle, confirmed, getGrabCfg());
+}
+
+// ── WebSocket ──────────────────────────────────────────────────────────────────
+// La connessione kline WS vive in candle-feed.js (hub condiviso, una per pagina).
+// Qui resta solo il pallino di stato, acceso da loadAll().
 
 function toggleBrowserFullscreen() {
     if (!document.fullscreenElement) {
@@ -2324,12 +2358,6 @@ document.addEventListener('fullscreenchange', () => {
     }
 });
 
-function closeWS() {
-  clearTimeout(wsTimer);
-  clearInterval(_wsPingTimer); _wsPingTimer = null;
-  if (ws) { try { ws.close(); } catch(e) {} ws = null; }
-}
-
 function setWSDot(state) {
   const colors = { connecting:'#F59E0B', live:'#10b981', error:'#ef4444', off:'#6B7280' };
   const color  = colors[state] || colors.off;
@@ -2338,37 +2366,24 @@ function setWSDot(state) {
   if (d) { d.style.background = color; d.style.animation = pulse ? 'pulse 2s cubic-bezier(.4,0,.6,1) infinite' : ''; }
 }
 
-window.addEventListener('beforeunload', closeWS);
 
-// ── Book WS (solo top-of-book, per il prezzo live) ────────────────────────────
-// Il kline WS di Bybit è trade-driven e throttlato a ~1/s: se il mercato è
-// fermo il prezzo della candela in formazione resta "vecchio" per secondi.
-// Il book (orderbook.1, aggiornato ad ogni variazione di best bid/ask) segue
-// il prezzo molto più da vicino, quindi lo usiamo per "spingere" la candela
-// live tra un kline update e l'altro — stesso pattern già in uso in trade.js.
-// Un'unica sottoscrizione condivisa alimenta tutti gli slot della griglia e,
-// se aperto, il grafico fullscreen.
+// ── Book WS — solo per gli indicatori OB/LB (orderbook.200) ───────────────────
+// Le candele NON passano più di qui (il mid bid/ask le faceva apparire rosse in
+// salita); la sorgente candele è candle-feed.js.
 function openMtfBookWS() {
   closeMtfBookWS();
+  if (!obLevelsActive && !lbLevelsActive) return;
   const sock = new WebSocket('wss://stream.bybit.com/v5/public/linear');
   mtfBookWS = sock;
   sock.onopen = () => {
-    const args = [`orderbook.1.${SYM}`];
-    if (obLevelsActive || lbLevelsActive) args.push(`orderbook.200.${SYM}`);
-    sock.send(JSON.stringify({ op: 'subscribe', args }));
+    sock.send(JSON.stringify({ op: 'subscribe', args: [`orderbook.200.${SYM}`] }));
   };
   sock.onmessage = ev => {
     let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
     if (!msg.topic || !msg.data) return;
-    if (msg.topic.startsWith('orderbook.1.')) {
-      const bidRow = msg.data.b && msg.data.b[0], askRow = msg.data.a && msg.data.a[0];
-      if (!bidRow || !askRow) return;
-      const bid = parseFloat(bidRow[0]), ask = parseFloat(askRow[0]);
-      if (!isFinite(bid) || !isFinite(ask)) return;
-      const midPrice = (bid + ask) / 2;
-      for (const s of slots) _mtfBookPatchSlot(s, midPrice);
-      if (fsCandleS) _mtfBookPatchFS(midPrice);
-    } else if (msg.topic.startsWith('orderbook.200.')) {
+    // orderbook.1 non alimenta più le candele (lo faceva col mid bid/ask → candele rosse
+    // in salita). Resta solo il feed orderbook.200 per gli indicatori OB/LB.
+    if (msg.topic.startsWith('orderbook.200.')) {
       _ingestObLevels(msg.data, msg.type === 'snapshot');
     }
   };
@@ -2381,313 +2396,10 @@ function closeMtfBookWS() {
   if (mtfBookWS) { try { mtfBookWS.close(); } catch(e) {} mtfBookWS = null; }
 }
 window.addEventListener('beforeunload', closeMtfBookWS);
-
-// Calcola l'inizio del bar "corrente" secondo il wall-clock, nello stesso sistema
-// di riferimento (UTC boundary + TZ_OFFSET_S per il display) usato da REST/WS.
-// Bybit allinea i bar boundary all'epoch UTC: bisogna arrotondare PRIMA in UTC e
-// solo dopo applicare TZ_OFFSET_S. Arrotondare il tempo già shiftato (nowUtc +
-// offset) è sbagliato quando l'offset non è multiplo esatto di barSecs (es.
-// offset +2h su barSecs=4h/D/W): produce un boundary sfasato di
-// "TZ_OFFSET_S % barSecs" secondi rispetto a quello reale, e la candela WS
-// autentica (correttamente allineata) arriva poi con un time "più vecchio" del
-// boundary sintetico già scritto sulla serie → lightweight-charts throws
-// "Cannot update oldest data" e salta il resto dell'update di quel tick.
-// Il mensile (M) è un caso speciale: TF_SECONDS.M=2592000 è un'approssimazione
-// fissa a 30 giorni, che NON corrisponde ai bar mensili reali di Bybit (allineati
-// al calendario, 28-31 giorni) — va calcolato con l'inizio del mese di calendario
-// corrente, non con una divisione a intervallo fisso.
-function _expectedBarOpen(tf, barSecs) {
-  const nowUtc = Math.floor(Date.now() / 1000);
-  if (tf === 'M') {
-    const d = new Date(nowUtc * 1000);
-    return Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) / 1000) + TZ_OFFSET_S;
-  }
-  return Math.floor(nowUtc / barSecs) * barSecs + TZ_OFFSET_S;
-}
-
-// Se il boundary del TF è stato superato, apre subito una nuova candela lato
-// client (invece di aspettare il prossimo kline confermato) usando il
-// mid-price del book. WS kline continua ad arrivare e corregge i valori
-// sintetici con quelli ufficiali non appena disponibili.
-function _mtfRollSlotIfNeeded(s, midPrice) {
-  const klines = s.klines;
-  if (!s.candleS || !klines.length) return false;
-  const barSecs = TF_SECONDS[s.cfg.tf];
-  if (!barSecs) return false;
-  const expectedOpen = _expectedBarOpen(s.cfg.tf, barSecs);
-  if (expectedOpen <= klines[klines.length - 1].time) return false;
-
-  // Se il book resta silenzioso per più di un boundary (mercato calmo, tab in background),
-  // saltare direttamente a "adesso" lasciava un buco visivo: le barre intermedie mai aperte
-  // semplicemente non esistevano fra l'ultima candela reale e quella corrente (bug
-  // segnalato 2026-08-25, screenshot). Fix: si itera un boundary alla volta, riempiendo
-  // ogni barra mancante con una candela piatta al prezzo di chiusura precedente — solo
-  // l'ultima (quella corrente) riflette davvero midPrice. Il TF mensile ('M') ha boundary
-  // a lunghezza variabile (28-31 giorni): niente iterazione a passo fisso, resta il salto
-  // diretto originale (caso estremo, richiederebbe un tab aperto a cavallo di fine mese).
-  const isMonthly = s.cfg.tf === 'M';
-  const MAX_FILL_BARS = 300;
-  const missingBars = (expectedOpen - klines[klines.length - 1].time) / barSecs;
-  let boundary = isMonthly ? expectedOpen
-    : (missingBars > MAX_FILL_BARS ? expectedOpen - MAX_FILL_BARS * barSecs : klines[klines.length - 1].time + barSecs);
-
-  while (true) {
-    const last = klines[klines.length - 1];
-    const isNowBar = isMonthly || boundary >= expectedOpen;
-    const prevClose = last.close;
-    for (const { p } of EMA_CFG) {
-      if (s.lastEMA[p] == null) continue;
-      const k = 2 / (p + 1);
-      s.lastEMA[p] = prevClose * k + s.lastEMA[p] * (1 - k);
-    }
-    if (s.lastEmaCustom != null) {
-      const _eck = 2 / (getEmaCustomCfg().length + 1);
-      s.lastEmaCustom = prevClose * _eck + s.lastEmaCustom * (1 - _eck);
-    }
-    if (s.lastEmaCustom2 != null) {
-      const _eckB = 2 / (getEmaCustom2Cfg().length + 1);
-      s.lastEmaCustom2 = prevClose * _eckB + s.lastEmaCustom2 * (1 - _eckB);
-    }
-    if (grabActive && s.grabState) {
-      // A differenza di lastEMA (EMA di close), qui usiamo gli high/low REALI dell'ultima
-      // candela chiusa (non prevClose) — s.grabState traccia EMA(high)/EMA(low) separate.
-      const _gk = 2 / (getGrabCfg().emaPeriod + 1);
-      s.grabState.emaHigh  = last.high  * _gk + s.grabState.emaHigh  * (1 - _gk);
-      s.grabState.emaLow   = last.low   * _gk + s.grabState.emaLow   * (1 - _gk);
-      s.grabState.emaClose = prevClose * _gk + s.grabState.emaClose * (1 - _gk);
-    }
-
-    const newCandle = isNowBar ? {
-      time: expectedOpen, open: prevClose,
-      high: Math.max(prevClose, midPrice), low: Math.min(prevClose, midPrice),
-      close: midPrice, volume: 0,
-    } : {
-      time: boundary, open: prevClose, high: prevClose, low: prevClose, close: prevClose, volume: 0,
-    };
-    klines.push({ ...newCandle });
-    s.lastPrice = newCandle.close; s.lastOpen = newCandle.open;
-    if (!grabActive) { try { s.candleS.update(newCandle); } catch(e) {} }
-
-    for (const { p } of EMA_CFG) {
-      if (s.lastEMA[p] == null) continue;
-      const k    = 2 / (p + 1);
-      const live = newCandle.close * k + s.lastEMA[p] * (1 - k);
-      try { s.emaS[p].update({ time: newCandle.time, value: live }); } catch(e) {}
-    }
-    if (bbActive && s.bbSeries.upper && klines.length >= getBbCfg().period) {
-      const _bb = getBbCfg();
-      const sl = klines.slice(-_bb.period);
-      const mean = sl.reduce((a,c)=>a+c.close,0)/_bb.period;
-      const std  = Math.sqrt(sl.reduce((a,c)=>a+(c.close-mean)**2,0)/_bb.period);
-      s.bbSeries.upper.update({time:newCandle.time, value:mean+_bb.mult*std});
-      s.bbSeries.mid.update(  {time:newCandle.time, value:mean});
-      s.bbSeries.lower.update({time:newCandle.time, value:mean-_bb.mult*std});
-    }
-    if (rocActive && s.rocSeries && klines.length > getRocCfg().length) {
-      const _roc = getRocCfg();
-      const _rocPrev = klines[klines.length - 1 - _roc.length].close;
-      s.rocSeries.update({time:newCandle.time, value:100*(newCandle.close-_rocPrev)/_rocPrev});
-    }
-    if (emaCustomActive && s.emaCustomSeries && s.lastEmaCustom != null) {
-      // Stesso schema di EMA_CFG sopra: lastEmaCustom è già stato "confermato" sul prevClose
-      // (decadimento prima della creazione di newCandle) — qui si calcola solo il valore da
-      // disegnare per la barra corrente (midPrice o, per una filler, lo stesso prevClose),
-      // senza persisterlo: verrà confermato al prossimo roll.
-      const _eck2 = 2 / (getEmaCustomCfg().length + 1);
-      const live2 = newCandle.close * _eck2 + s.lastEmaCustom * (1 - _eck2);
-      try { s.emaCustomSeries.update({ time: newCandle.time, value: live2 }); } catch(e) {}
-    }
-    if (emaCustom2Active && s.emaCustom2Series && s.lastEmaCustom2 != null) {
-      const _eckB2 = 2 / (getEmaCustom2Cfg().length + 1);
-      const liveB2 = newCandle.close * _eckB2 + s.lastEmaCustom2 * (1 - _eckB2);
-      try { s.emaCustom2Series.update({ time: newCandle.time, value: liveB2 }); } catch(e) {}
-    }
-    if (channelActive && s.channelSeries.upper && klines.length >= getChannelCfg().period) {
-      const _cper = getChannelCfg().period;
-      const csl = klines.slice(-_cper);
-      let sumC=0, sumH=0, sumL=0;
-      for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
-      const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
-      s.channelSeries.mid.update(  {time:newCandle.time, value:liveC});
-      s.channelSeries.upper.update({time:newCandle.time, value:liveH});
-      s.channelSeries.lower.update({time:newCandle.time, value:liveL});
-      if (s.channelData) {
-        const _cdUpd = (arr, val) => { const lastP = arr[arr.length-1], pt = {time:newCandle.time, value:val}; if (lastP && lastP.time === newCandle.time) arr[arr.length-1] = pt; else arr.push(pt); };
-        _cdUpd(s.channelData.upper, liveH);
-        _cdUpd(s.channelData.lower, liveL);
-      }
-    }
-    if (grabActive || grabMidlineActive) _grabLiveUpdate(s, newCandle, false, getGrabCfg());
-
-    if (isNowBar) break;
-    boundary += barSecs;
-  }
-  return true;
-}
-
-function _mtfBookPatchSlot(s, midPrice) {
-  const klines = s.klines;
-  if (!s.candleS || !klines.length) return;
-  if (_mtfRollSlotIfNeeded(s, midPrice)) return;
-  const last = klines[klines.length - 1];
-  last.close = midPrice;
-  if (midPrice > last.high) last.high = midPrice;
-  if (midPrice < last.low)  last.low  = midPrice;
-  s.lastPrice = last.close;
-  // Il book (orderbook.1) aggiorna candela/TB/GRaB ad ogni tick, ma prima il Canale
-  // veniva ricalcolato SOLO dal kline WS (throttlato da Bybit a ~1/s): la banda restava
-  // ferma per secondi e poi "scattava" di colpo al valore corretto — il salto ripetuto
-  // è quello che sembrava un disegno seghettato sulle ultime candele. Stessa formula già
-  // usata in _mtfRollSlotIfNeeded/kline WS, solo estesa anche a questo path più frequente.
-  if (channelActive && s.channelSeries.upper && klines.length >= getChannelCfg().period) {
-    const _cper = getChannelCfg().period;
-    const csl = klines.slice(-_cper);
-    let sumC=0, sumH=0, sumL=0;
-    for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
-    const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
-    s.channelSeries.mid.update(  {time:last.time, value:liveC});
-    s.channelSeries.upper.update({time:last.time, value:liveH});
-    s.channelSeries.lower.update({time:last.time, value:liveL});
-    if (s.channelData) {
-      const _cdUpd = (arr, val) => { const lastP = arr[arr.length-1], pt = {time:last.time, value:val}; if (lastP && lastP.time === last.time) arr[arr.length-1] = pt; else arr.push(pt); };
-      _cdUpd(s.channelData.upper, liveH);
-      _cdUpd(s.channelData.lower, liveL);
-    }
-  }
-  if (grabActive) _grabLiveColor(s, last, getGrabCfg());
-  else try { s.candleS.update({ ...last }); } catch(e) {}
-}
-
-function _mtfRollFSIfNeeded(midPrice) {
-  if (!fsCandleS || !fsKlines.length) return false;
-  const barSecs = TF_SECONDS[fsTF];
-  if (!barSecs) return false;
-  const expectedOpen = _expectedBarOpen(fsTF, barSecs);
-  if (expectedOpen <= fsKlines[fsKlines.length - 1].time) return false;
-
-  // Stesso fix di _mtfRollSlotIfNeeded (buco visivo se il book resta silenzioso per più
-  // di un boundary) — vedi commento lì per il dettaglio.
-  const isMonthly = fsTF === 'M';
-  const MAX_FILL_BARS = 300;
-  const missingBars = (expectedOpen - fsKlines[fsKlines.length - 1].time) / barSecs;
-  let boundary = isMonthly ? expectedOpen
-    : (missingBars > MAX_FILL_BARS ? expectedOpen - MAX_FILL_BARS * barSecs : fsKlines[fsKlines.length - 1].time + barSecs);
-
-  while (true) {
-    const last = fsKlines[fsKlines.length - 1];
-    const isNowBar = isMonthly || boundary >= expectedOpen;
-    const prevClose = last.close;
-    for (const { p } of EMA_CFG) {
-      if (fsLastEMA[p] == null) continue;
-      const k = 2 / (p + 1);
-      fsLastEMA[p] = prevClose * k + fsLastEMA[p] * (1 - k);
-    }
-    if (fsLastEmaCustom != null) {
-      const _eck = 2 / (getEmaCustomCfg().length + 1);
-      fsLastEmaCustom = prevClose * _eck + fsLastEmaCustom * (1 - _eck);
-    }
-    if (fsLastEmaCustom2 != null) {
-      const _eckB = 2 / (getEmaCustom2Cfg().length + 1);
-      fsLastEmaCustom2 = prevClose * _eckB + fsLastEmaCustom2 * (1 - _eckB);
-    }
-    if (grabActive && fsGrabState) {
-      const _gk = 2 / (getGrabCfg().emaPeriod + 1);
-      fsGrabState.emaHigh  = last.high  * _gk + fsGrabState.emaHigh  * (1 - _gk);
-      fsGrabState.emaLow   = last.low   * _gk + fsGrabState.emaLow   * (1 - _gk);
-      fsGrabState.emaClose = prevClose * _gk + fsGrabState.emaClose * (1 - _gk);
-    }
-
-    const newCandle = isNowBar ? {
-      time: expectedOpen, open: prevClose,
-      high: Math.max(prevClose, midPrice), low: Math.min(prevClose, midPrice),
-      close: midPrice, volume: 0,
-    } : {
-      time: boundary, open: prevClose, high: prevClose, low: prevClose, close: prevClose, volume: 0,
-    };
-    fsKlines.push({ ...newCandle });
-    fsLastPrice = newCandle.close; fsLastOpen = newCandle.open;
-    if (!grabActive) { try { fsCandleS.update(newCandle); } catch(e) {} }
-
-    for (const { p } of EMA_CFG) {
-      if (fsLastEMA[p] == null) continue;
-      const k    = 2 / (p + 1);
-      const live = newCandle.close * k + fsLastEMA[p] * (1 - k);
-      try { fsEmaS[p].update({ time: newCandle.time, value: live }); } catch(e) {}
-    }
-    if (bbActive && fsBbSeries.upper && fsKlines.length >= getBbCfg().period) {
-      const _bb = getBbCfg();
-      const sl = fsKlines.slice(-_bb.period);
-      const mean = sl.reduce((a,c)=>a+c.close,0)/_bb.period;
-      const std  = Math.sqrt(sl.reduce((a,c)=>a+(c.close-mean)**2,0)/_bb.period);
-      fsBbSeries.upper.update({time:newCandle.time, value:mean+_bb.mult*std});
-      fsBbSeries.mid.update(  {time:newCandle.time, value:mean});
-      fsBbSeries.lower.update({time:newCandle.time, value:mean-_bb.mult*std});
-    }
-    if (rocActive && fsRocSeries && fsKlines.length > getRocCfg().length) {
-      const _roc = getRocCfg();
-      const _rocPrev = fsKlines[fsKlines.length - 1 - _roc.length].close;
-      fsRocSeries.update({time:newCandle.time, value:100*(newCandle.close-_rocPrev)/_rocPrev});
-    }
-    if (emaCustomActive && fsEmaCustomSeries && fsLastEmaCustom != null) {
-      const _eck2 = 2 / (getEmaCustomCfg().length + 1);
-      const live2 = newCandle.close * _eck2 + fsLastEmaCustom * (1 - _eck2);
-      try { fsEmaCustomSeries.update({ time: newCandle.time, value: live2 }); } catch(e) {}
-    }
-    if (emaCustom2Active && fsEmaCustom2Series && fsLastEmaCustom2 != null) {
-      const _eckB2 = 2 / (getEmaCustom2Cfg().length + 1);
-      const liveB2 = newCandle.close * _eckB2 + fsLastEmaCustom2 * (1 - _eckB2);
-      try { fsEmaCustom2Series.update({ time: newCandle.time, value: liveB2 }); } catch(e) {}
-    }
-    if (channelActive && fsChannelSeries.upper && fsKlines.length >= getChannelCfg().period) {
-      const _cper = getChannelCfg().period;
-      const csl = fsKlines.slice(-_cper);
-      let sumC=0, sumH=0, sumL=0;
-      for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
-      const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
-      fsChannelSeries.mid.update(  {time:newCandle.time, value:liveC});
-      fsChannelSeries.upper.update({time:newCandle.time, value:liveH});
-      fsChannelSeries.lower.update({time:newCandle.time, value:liveL});
-      if (fsChannelData) {
-        const _cdUpd = (arr, val) => { const lastP = arr[arr.length-1], pt = {time:newCandle.time, value:val}; if (lastP && lastP.time === newCandle.time) arr[arr.length-1] = pt; else arr.push(pt); };
-        _cdUpd(fsChannelData.upper, liveH);
-        _cdUpd(fsChannelData.lower, liveL);
-      }
-    }
-    if (grabActive || grabMidlineActive) _grabLiveUpdate(fsGrabSlot, newCandle, false, getGrabCfg());
-
-    if (isNowBar) break;
-    boundary += barSecs;
-  }
-  return true;
-}
-
-function _mtfBookPatchFS(midPrice) {
-  if (!fsCandleS || !fsKlines.length) return;
-  if (_mtfRollFSIfNeeded(midPrice)) return;
-  const last = fsKlines[fsKlines.length - 1];
-  last.close = midPrice;
-  if (midPrice > last.high) last.high = midPrice;
-  if (midPrice < last.low)  last.low  = midPrice;
-  fsLastPrice = last.close;
-  // Vedi commento in _mtfBookPatchSlot: stesso fix, versione fullscreen.
-  if (channelActive && fsChannelSeries.upper && fsKlines.length >= getChannelCfg().period) {
-    const _cper = getChannelCfg().period;
-    const csl = fsKlines.slice(-_cper);
-    let sumC=0, sumH=0, sumL=0;
-    for (const c of csl) { sumC += c.close; sumH += c.high; sumL += c.low; }
-    const liveC = sumC/_cper, liveH = sumH/_cper, liveL = sumL/_cper;
-    fsChannelSeries.mid.update(  {time:last.time, value:liveC});
-    fsChannelSeries.upper.update({time:last.time, value:liveH});
-    fsChannelSeries.lower.update({time:last.time, value:liveL});
-    if (fsChannelData) {
-      const _cdUpd = (arr, val) => { const lastP = arr[arr.length-1], pt = {time:last.time, value:val}; if (lastP && lastP.time === last.time) arr[arr.length-1] = pt; else arr.push(pt); };
-      _cdUpd(fsChannelData.upper, liveH);
-      _cdUpd(fsChannelData.lower, liveL);
-    }
-  }
-  if (grabActive) { _grabLiveColor(fsGrabSlot, last, getGrabCfg()); return; }
-  try { fsCandleS.update({ ...last }); } catch(e) {}
-}
+// NB: roll sintetico client (_expectedBarOpen/_mtfRollSlotIfNeeded/_mtfRollFSIfNeeded)
+// e patch candela col mid del book (_mtfBookPatchSlot/_mtfBookPatchFS) RIMOSSI:
+// erano la causa di candele congelate e rosse mentre il prezzo saliva. La candela
+// ora si muove solo sui messaggi kline WS gestiti da candle-feed.js.
 
 function closeMtfTab() {
   window.close();

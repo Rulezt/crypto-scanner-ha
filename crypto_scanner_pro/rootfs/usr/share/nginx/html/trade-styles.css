@@ -516,20 +516,30 @@ body.orderbook-page #app {
     font-weight: 600;
 }
 
-.max-ask-dist {
-    color: #ef4444;
+.max-ask-dist,
+.max-bid-dist {
     font-family: monospace;
-    min-width: 7ch;
-    display: inline-block;
-    text-align: right;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
-.max-bid-dist {
-    color: #10b981;
-    font-family: monospace;
-    min-width: 7ch;
-    display: inline-block;
-    text-align: right;
+.max-ask-dist { color: #ef4444; }
+.max-bid-dist { color: #10b981; }
+
+.max-ask-dist svg,
+.max-bid-dist svg,
+.max-ask-dist img,
+.max-bid-dist img {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+}
+
+/* Icona bear (PNG monocromo nero) tinta di rosso — stesso filtro di chart.html */
+.max-ask-dist img.bear-ico {
+    object-fit: contain;
+    filter: invert(57%) sepia(74%) saturate(533%) hue-rotate(312deg) brightness(107%) contrast(96%);
 }
 
 .orderbook-container.paused {
