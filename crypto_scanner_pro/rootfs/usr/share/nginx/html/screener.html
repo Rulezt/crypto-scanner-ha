@@ -141,8 +141,14 @@
         <div>
             <!-- Scanner Cards -->
             <div class="space-y-6">
-                <!-- Scanner Cards Grid -->
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+                <!-- Blocco scanner collassabile (stesso pattern di Alert Recenti) -->
+                <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
+                    <div class="px-4 py-3 bg-dark-hover border-b border-dark-border flex items-center justify-between cursor-pointer select-none" onclick="toggleScanners()">
+                        <h3 class="text-sm font-medium flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span data-i18n="scr_scanners_title">Scanner</span></h3>
+                        <svg id="scanners-chevron" class="w-4 h-4 text-gray-400 transition-transform duration-200" style="transform:rotate(90deg)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                    <!-- Scanner Cards Grid -->
+                    <div id="scanners-container" class="p-2 sm:p-4 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
                     <!-- ATH/ATL Scanner -->
                     <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-amber-500 transition-all">
                         <div class="flex items-center justify-between mb-2">
@@ -257,15 +263,8 @@
                         <a href="ema60" class="mt-2 block text-xs text-emerald-500 hover:text-emerald-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
                     </div>
 
-                    <!-- Confluence Scanner (solo visuale, aggrega tutti gli altri screener) -->
-                    <div class="bg-dark-card border border-dark-border rounded-lg p-2 sm:p-4 hover:border-indigo-500 transition-all">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-indigo-400 text-xs sm:text-sm font-medium">Confluence</div>
-                        </div>
-                        <div class="text-xs text-gray-600 mt-1 leading-tight" data-i18n="scr_confl_desc">Coin segnalate da 2+ screener diversi contemporaneamente</div>
-                        <a href="confluence" class="mt-2 block text-xs text-indigo-500 hover:text-indigo-300" data-i18n="scr_dt_visual">→ Scanner visuale</a>
-                    </div>
-                </div>
+                    </div><!-- /#scanners-container -->
+                </div><!-- /blocco scanner -->
 
                 <!-- Alert Recenti -->
                 <div class="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
@@ -310,7 +309,6 @@
                         <tr class="border-b border-dark-border text-xs text-gray-500 uppercase tracking-wider">
                             <th class="px-4 py-2 text-left w-10">#</th>
                             <th id="hv-th-symbol"        class="px-4 py-2 text-left  cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('symbol')">Coin<span class="hv-arrow"> ⇅</span></th>
-                            <th id="hv-th-price"         class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('price')"><span data-i18n="col_price">Prezzo</span><span class="hv-arrow"> ⇅</span></th>
                             <th id="hv-th-change_24h"    class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('change_24h')"><span data-i18n="col_change24">Var 24h</span><span class="hv-arrow"> ⇅</span></th>
                             <th id="hv-th-volume_24h"    class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('volume_24h')"><span data-i18n="col_vol24">Volume 24h</span><span class="hv-arrow"> ⇅</span></th>
                             <th id="hv-th-ema60_30m"     class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('ema60_30m')"><span data-i18n="col_ema60">EMA60 30m</span><span class="hv-arrow"> ⇅</span></th>
@@ -318,7 +316,6 @@
                             <th id="hv-th-ema_touch_count" class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('ema_touch_count')"><span data-i18n="col_touch_ema">Tocchi EMA</span><span class="hv-arrow"> ⇅</span></th>
                             <th id="hv-th-ath_dist" class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('ath_dist')"><span data-i18n="col_dist_ath">Dist ATH</span><span class="hv-arrow"> ⇅</span></th>
                             <th id="hv-th-atl_dist" class="px-4 py-2 text-right cursor-pointer select-none hover:text-gray-300" onclick="setHvSort('atl_dist')"><span data-i18n="col_dist_atl">Dist ATL</span><span class="hv-arrow"> ⇅</span></th>
-                            <th class="px-4 py-2 text-right"></th>
                         </tr>
                     </thead>
                     <tbody id="hv-tbody">
@@ -720,6 +717,19 @@
             renderAlerts();
         }
 
+        function _applyScannersCollapsed(collapsed) {
+            const container = document.getElementById('scanners-container');
+            const chevron   = document.getElementById('scanners-chevron');
+            if (!container) return;
+            container.classList.toggle('hidden', collapsed);
+            if (chevron) chevron.style.transform = collapsed ? '' : 'rotate(90deg)';
+        }
+        function toggleScanners() {
+            const collapsed = !document.getElementById('scanners-container').classList.contains('hidden');
+            _applyScannersCollapsed(collapsed);
+            try { localStorage.setItem('screener_scanners_collapsed', collapsed ? '1' : '0'); } catch(e) {}
+        }
+
         function toggleAlerts() {
             const container = document.getElementById('alerts-container');
             const filterBar = document.getElementById('alerts-filter-bar');
@@ -867,7 +877,7 @@
         }
 
         function updateHvSortHeaders() {
-            ['symbol','price','change_24h','volume_24h','ema60_30m','ema60_dist','ema_touch_count','ath_dist','atl_dist'].forEach(col => {
+            ['symbol','change_24h','volume_24h','ema60_30m','ema60_dist','ema_touch_count','ath_dist','atl_dist'].forEach(col => {
                 const th = document.getElementById(`hv-th-${col}`);
                 if (!th) return;
                 const span = th.querySelector('.hv-arrow');
@@ -905,7 +915,6 @@
             return `<tr class="border-b border-dark-border/40 hover:bg-dark-hover/60">
                 <td class="px-4 py-2.5 text-gray-600 text-xs w-10">${i + 1}</td>
                 <td class="px-4 py-2.5 font-medium text-gray-200 cursor-pointer" data-symbol="${c.symbol}" data-tf="30" onmouseenter="showScreenshotTip(this)" onmouseleave="hideScreenshotTip()" onclick="openScreenshotFullscreen(this)">${coin}</td>
-                <td id="hvp-${c.symbol}" class="px-4 py-2.5 text-right text-gray-300 font-mono text-xs">$${fmtPrice(c.price)}</td>
                 <td id="hvc-${c.symbol}" class="px-4 py-2.5 text-right ${chgClass} font-medium text-xs">${chgStr}</td>
                 <td id="hvv-${c.symbol}" class="px-4 py-2.5 text-right text-gray-400 text-xs">${fmtVol(c.volume_24h)}</td>
                 <td id="hve-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs ${emaClass}">${emaTxt}</td>
@@ -913,10 +922,6 @@
                 <td id="hvt-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs text-gray-400">${touchTxt}</td>
                 <td id="hvath-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs leading-tight">${athTxt}</td>
                 <td id="hvatl-${c.symbol}" class="px-4 py-2.5 text-right font-mono text-xs leading-tight">${atlTxt}</td>
-                <td class="px-4 py-2.5 text-right whitespace-nowrap">
-                    <a href="https://www.bybit.com/trade/usdt/${c.symbol}" target="_blank" rel="noopener" style="font-size:10px;color:#f59e0b;background:#1E2230;border-radius:3px;padding:1px 6px;text-decoration:none;white-space:nowrap;">Bybit ↗</a>
-                    <a href="mtf?symbol=${c.symbol}" target="_blank" style="font-size:10px;color:#60a5fa;background:#1E2230;border-radius:3px;padding:1px 6px;text-decoration:none;white-space:nowrap;">MTF ↗</a>
-                </td>
             </tr>`;
         }
 
@@ -943,7 +948,7 @@
         function rebuildHvTable() {
             const filtered = filterHvData(_hvData);
             const sorted = sortHvData(filtered);
-            const empty = '<tr><td colspan="11" class="text-center py-8 text-gray-500 text-sm">'+window.t('scr_no_filter_coin')+'</td></tr>';
+            const empty = '<tr><td colspan="9" class="text-center py-8 text-gray-500 text-sm">'+window.t('scr_no_filter_coin')+'</td></tr>';
             document.getElementById('hv-tbody').innerHTML = sorted.length ? sorted.map((c, i) => renderHvRow(c, i)).join('') : empty;
             const countEl = document.getElementById('hv-count');
             if (countEl) { countEl.textContent = sorted.length; countEl.classList.toggle('hidden', sorted.length === 0); }
@@ -963,7 +968,7 @@
                 const updEl = document.getElementById('hv-updated');
 
                 if (!data.success || !data.data || data.data.length === 0) {
-                    document.getElementById('hv-tbody').innerHTML = '<tr><td colspan="11" class="text-center py-8 text-gray-500 text-sm">'+window.t('no_coin')+'</td></tr>';
+                    document.getElementById('hv-tbody').innerHTML = '<tr><td colspan="9" class="text-center py-8 text-gray-500 text-sm">'+window.t('no_coin')+'</td></tr>';
                     _hvData = []; _hvKey = null;
                     return;
                 }
@@ -979,15 +984,11 @@
                     _hvData = data.data;
                     // Update cells in-place (row order stays as currently sorted)
                     data.data.forEach(c => {
-                        const priceEl = document.getElementById(`hvp-${c.symbol}`);
                         const chgEl   = document.getElementById(`hvc-${c.symbol}`);
                         const volEl   = document.getElementById(`hvv-${c.symbol}`);
                         const emaEl   = document.getElementById(`hve-${c.symbol}`);
                         const distEl  = document.getElementById(`hvd-${c.symbol}`);
                         const touchEl = document.getElementById(`hvt-${c.symbol}`);
-                        if (priceEl) {
-                            priceEl.textContent = '$' + fmtPrice(c.price);
-                        }
                         if (chgEl) {
                             const positive = c.change_24h >= 0;
                             chgEl.textContent = (positive ? '+' : '') + c.change_24h.toFixed(2) + '%';
@@ -1311,6 +1312,7 @@
             } catch (e) {}
         }
 
+        try { _applyScannersCollapsed(localStorage.getItem('screener_scanners_collapsed') === '1'); } catch(e) {}
         init();
     </script>
 

@@ -268,6 +268,14 @@ function getCandlesForTF(tf) {
   } catch(e) {}
   return DEFAULT_CANDLES[tf] || 60;
 }
+// Zoom della GRIGLIA mtf: i pannelli sono piccoli (fino a 9 in split 3·3·3), quindi
+// si mostrano meno candele (candele più grandi) rispetto a chart/trade. Il fullscreen
+// mtf resta su getCandlesForTF() pieno. Rispetta comunque le preferenze per-TF
+// dell'utente (chart_candles_per_tf), scalandole.
+const MTF_GRID_ZOOM = 0.6;
+function getGridCandlesForTF(tf) {
+  return Math.max(15, Math.round(getCandlesForTF(tf) * MTF_GRID_ZOOM));
+}
 
 function getPriceFormat(price) {
   const p = Math.abs(price || 0);
@@ -1160,14 +1168,16 @@ function applyGrabToSlot(s, cfg) {
     if (cfg.showRange) { s.grabMurreyS.lo.setData(m.lo); s.grabMurreyS.hi.setData(m.hi); }
   }
 }
-// Aggiorna colore candela + wave + murrey per un nuovo tick, SENZA confermare lo
-// stato (s.grabState) — usato da WS/roll (full, con conferma su candela chiusa)
-// e dal patch mid-price book (cheap, riusa solo l'ultimo stato noto, stesso
-// pattern di s.lastEMA che non si muove durante il patch — vedi _mtfBookPatchSlot).
+// Colore barra GRaB per la candela LIVE, SENZA effetti collaterali: serve a colorare
+// direttamente l'update PRINCIPALE della candela (in _mtfSlotUpdate/connectFSWS) invece
+// di fare un secondo `candleS.update()` colorato subito dopo quello "nudo" — quel doppio
+// update faceva lampeggiare ogni candela sul colore di default per un frame ad ogni tick.
 function _grabLiveColor(s, candle, cfg) {
-  if (!grabActive || !s.grabState) return;
-  const color = grabBarColor(candle.close, candle.open, s.grabState.emaHigh, s.grabState.emaLow, cfg);
-  try { s.candleS.update({...candle, color, wickColor:color, borderColor:color}); } catch(e) {}
+  if (!grabActive || !s.grabState) return null;
+  const k = 2/(cfg.emaPeriod+1);
+  const lh = candle.high * k + s.grabState.emaHigh * (1-k);
+  const ll = candle.low  * k + s.grabState.emaLow  * (1-k);
+  return grabBarColor(candle.close, candle.open, lh, ll, cfg);
 }
 function _grabLiveUpdate(s, candle, confirmed, cfg) {
   const midlineOn = grabActive ? cfg.showMidline : grabMidlineActive;
@@ -1176,8 +1186,8 @@ function _grabLiveUpdate(s, candle, confirmed, cfg) {
     const liveEmaHigh  = candle.high  * k + s.grabState.emaHigh  * (1-k);
     const liveEmaLow   = candle.low   * k + s.grabState.emaLow   * (1-k);
     const liveEmaClose = candle.close * k + s.grabState.emaClose * (1-k);
-    const color = grabBarColor(candle.close, candle.open, liveEmaHigh, liveEmaLow, cfg);
-    try { s.candleS.update({...candle, color, wickColor:color, borderColor:color}); } catch(e) {}
+    // La ricolorazione della candela è già applicata all'update principale via
+    // _grabLiveColor(); qui restano solo wave EMA + avanzamento stato.
     if (cfg.showWave && s.grabWaveS.high) {
       s.grabWaveS.high.update({time:candle.time, value:liveEmaHigh});
       s.grabWaveS.low.update( {time:candle.time, value:liveEmaLow});
@@ -2092,7 +2102,7 @@ const fsBtn = document.createElement('button');
       onClear: clearAllDrawings,
       hasDrawings: () => slots.some(s => s.hlines && s.hlines.length) || !!sharedTrendlines.length,
     });
-    chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) { s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getCandlesForTF(s.cfg.tf), to: s.klineCount + 3 }); s.chart.priceScale('right').applyOptions({ autoScale: true }); } });
+    chart.subscribeDblClick(() => { const s = slots[i]; if (s && s.klineCount) { s.chart.timeScale().setVisibleLogicalRange({ from: s.klineCount - getGridCandlesForTF(s.cfg.tf), to: s.klineCount + 3 }); s.chart.priceScale('right').applyOptions({ autoScale: true }); } });
   });
 }
 
@@ -2181,7 +2191,11 @@ async function refreshCharts() {
       });
     });
 
-    slots.forEach(s => { if (s.feed) s.feed.resync(); });
+    // "Aggiorna" è un gesto esplicito dell'utente: deve anche RIPRISTINARE lo zoom/vista
+    // iniziale di ogni pannello. Il guard `_firstReady` in _mtfSlotReady serve solo a NON
+    // spostare la vista sui resync automatici (riconnessione WS / ritorno dal tab in
+    // background) — qui lo azzeriamo apposta prima del resync così la vista viene rifatta.
+    slots.forEach(s => { if (s.feed) { s.feed._firstReady = false; s.feed.resync(); } });
     fetchMTFATHATL();
   } finally {
     setTimeout(() => { if (btn) { btn.classList.remove('spinning'); btn.disabled = false; } }, 500);
@@ -2250,9 +2264,16 @@ function _mtfSlotReady(s, klines) {
   _mtfRefillSlotIndicators(s);
   _applyCandleStyle(s.candleS);
   // Solo al primo caricamento resetta la vista: un resync (riconnessione WS / ritorno
-  // dal tab in background) non deve far saltare lo zoom/scroll dell'utente.
-  if (!s.feed || !s.feed._firstReady) {
-    s.chart.timeScale().setVisibleLogicalRange({ from: klines.length - getCandlesForTF(s.cfg.tf), to: klines.length + 3 });
+  // dal tab in background) non deve far saltare lo zoom/scroll dell'utente. Eccezione:
+  // se il resync riporta un numero di barre molto diverso dal precedente (tipico dopo un
+  // riavvio server, quando l'API restituisce prima dati parziali poi lo storico completo
+  // → candele larghissime / grafico mezzo vuoto che non si riprende più), rifà il fit.
+  const _prevCount = s.feed ? (s.feed._lastReadyCount || 0) : 0;
+  const _countJumped = _prevCount > 0 &&
+    Math.abs(klines.length - _prevCount) / Math.max(_prevCount, 50) > 0.15;
+  if (s.feed) s.feed._lastReadyCount = klines.length;
+  if (!s.feed || !s.feed._firstReady || _countJumped) {
+    s.chart.timeScale().setVisibleLogicalRange({ from: klines.length - getGridCandlesForTF(s.cfg.tf), to: klines.length + 3 });
     if (s.feed) s.feed._firstReady = true;
   }
 
@@ -2278,7 +2299,12 @@ function _mtfSlotUpdate(s, candle, ctx) {
   const confirmed = ctx.confirmed;
   s.lastCandleStartUtc = Math.floor((candle.time - (s.feed ? s.feed.tzOffsetS : TZ_OFFSET_S)));
   s.lastWsMs = Date.now();
-  try { s.candleS.update(candle); } catch(e) { console.error('mtf feed update skipped ('+s.cfg.tf+'):', e); }
+  const _gCfg = (grabActive || grabMidlineActive) ? getGrabCfg() : null;
+  const _gCol = _gCfg ? _grabLiveColor(s, candle, _gCfg) : null;
+  try {
+    if (_gCol) s.candleS.update({ ...candle, color:_gCol, wickColor:_gCol, borderColor:_gCol });
+    else s.candleS.update(candle);
+  } catch(e) { console.error('mtf feed update skipped ('+s.cfg.tf+'):', e); }
   s.lastPrice = candle.close; s.lastOpen = candle.open;
   for (const {p} of EMA_CFG) {
     if (s.lastEMA[p] === null) continue;
@@ -2334,7 +2360,7 @@ function _mtfSlotUpdate(s, candle, ctx) {
       _cdUpd(s.channelData.lower, liveL);
     }
   }
-  if (grabActive || grabMidlineActive) _grabLiveUpdate(s, candle, confirmed, getGrabCfg());
+  if (grabActive || grabMidlineActive) _grabLiveUpdate(s, candle, confirmed, _gCfg || getGrabCfg());
 }
 
 // ── WebSocket ──────────────────────────────────────────────────────────────────
@@ -2901,7 +2927,12 @@ function connectFSWS() {
         // (_mtfRollFSIfNeeded) va scartato, altrimenti push() lo accoda fuori ordine e il
         // prossimo roll riapre la barra nuova da zero (bug segnalato 2026-08-24).
         if (fsKlines.length && candle.time < fsKlines[fsKlines.length - 1].time) return;
-        try { fsCandleS.update(candle); } catch(e) { console.error('mtf FS WS update skipped:', e); }
+        const _fsGCfg = (grabActive || grabMidlineActive) ? getGrabCfg() : null;
+        const _fsGCol = _fsGCfg ? _grabLiveColor(fsGrabSlot, candle, _fsGCfg) : null;
+        try {
+            if (_fsGCol) fsCandleS.update({ ...candle, color:_fsGCol, wickColor:_fsGCol, borderColor:_fsGCol });
+            else fsCandleS.update(candle);
+        } catch(e) { console.error('mtf FS WS update skipped:', e); }
         fsLastPrice = candle.close; fsLastOpen = candle.open;
         for (const {p} of EMA_CFG) {
             if (fsLastEMA[p] == null) continue;
@@ -2964,7 +2995,7 @@ function connectFSWS() {
                     _cdUpd(fsChannelData.lower, liveL);
                 }
             }
-            if (grabActive || grabMidlineActive) _grabLiveUpdate(fsGrabSlot, candle, confirmed, getGrabCfg());
+            if (grabActive || grabMidlineActive) _grabLiveUpdate(fsGrabSlot, candle, confirmed, _fsGCfg || getGrabCfg());
         }
     };
     sock.onerror = () => {};

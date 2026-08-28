@@ -840,17 +840,21 @@ function resetGrabCfgPanel() {
     if (_obGrabActive || _obGrabMidlineActive) _obApplyGrab();
 }
 
-// Ricolora la candela riusando l'ultimo stato noto (no recompute) — per i punti ad
-// alta frequenza (WS kline raw, patch mid-price book) dove basta evitare che
-// l'update "spoglio" (senza color) faccia sfarfallare via il colore GRaB.
+// Ricolora la candela LIVE con il colore GRaB (EMA-H/L decadute sul tick corrente) —
+// è l'UNICO update della candela per tick: _obGrabUpdateTail() poi aggiorna solo
+// wave/murrey. Prima c'erano DUE update candela/tick (qui + dentro _obGrabUpdateTail)
+// con math diversa (stato grezzo vs decaduto) → possibile sfarfallio di colore.
 function _obGrabColorCandle(candle) {
     if (!_obGrabActive || !_obGrabState || !_obCandleS) return;
     const cfg = getGrabCfg();
-    const color = grabBarColor(candle.close, candle.open, _obGrabState.emaHigh, _obGrabState.emaLow, cfg);
+    const k = 2 / (cfg.emaPeriod + 1);
+    const lh = candle.high * k + _obGrabState.emaHigh * (1 - k);
+    const ll = candle.low  * k + _obGrabState.emaLow  * (1 - k);
+    const color = grabBarColor(candle.close, candle.open, lh, ll, cfg);
     try { _obCandleS.update({ ...candle, color, wickColor: color, borderColor: color }); } catch(e) {}
 }
-// Full recompute (live emaHigh/Low/Close + ricolora + wave/murrey) — per i punti
-// "ufficiali" (poll REST 3s, roll-forward nuova candela), mirror di _obChUpdateTail.
+// wave/murrey + avanzamento stato per un nuovo tick. La ricolorazione della candela
+// è già stata fatta da _obGrabColorCandle() sull'update principale.
 function _obGrabUpdateTail(candle, confirmed) {
     const cfg = getGrabCfg();
     const midlineOn = _obGrabActive ? cfg.showMidline : _obGrabMidlineActive;
@@ -859,8 +863,6 @@ function _obGrabUpdateTail(candle, confirmed) {
         const liveEmaHigh  = candle.high  * k + _obGrabState.emaHigh  * (1 - k);
         const liveEmaLow   = candle.low   * k + _obGrabState.emaLow   * (1 - k);
         const liveEmaClose = candle.close * k + _obGrabState.emaClose * (1 - k);
-        const color = grabBarColor(candle.close, candle.open, liveEmaHigh, liveEmaLow, cfg);
-        try { _obCandleS.update({ ...candle, color, wickColor: color, borderColor: color }); } catch(e) {}
         if (cfg.showWave && _obGrabWaveSeries.high) {
             _obGrabWaveSeries.high.update({ time: candle.time, value: liveEmaHigh });
             _obGrabWaveSeries.low.update( { time: candle.time, value: liveEmaLow });
@@ -3643,8 +3645,18 @@ createApp({
                 for (const { p } of EMA_CFG)
                     if (emaS[p]) try { emaS[p].applyOptions({ visible: false }); } catch(e) {}
             lastConfirmedTime = bars.length ? bars[bars.length - 1].time : 0;
-            // Reset vista solo al primo caricamento del feed: un resync non deve spostare lo zoom.
-            if (!_obFeed || !_obFeed._firstReady) {
+            // Reset vista al primo caricamento; un resync normale (stesso storico, stesso
+            // numero di barre a ±pochi) NON deve spostare lo zoom dell'utente. MA: se il
+            // resync riporta un numero di barre molto diverso dal precedente — tipico dopo
+            // un riavvio server, quando /api/klines restituisce prima pochi dati parziali e
+            // poi lo storico completo — la vista salvata resta fuori scala (candele
+            // larghissime / grafico mezzo vuoto) e non si riprende più da sola: rifà il fit
+            // anche se _firstReady è già true.
+            const _prevCount = _obFeed ? (_obFeed._lastReadyCount || 0) : 0;
+            const _countJumped = _prevCount > 0 &&
+                Math.abs(obKlineCount - _prevCount) / Math.max(_prevCount, 50) > 0.15;
+            if (_obFeed) _obFeed._lastReadyCount = obKlineCount;
+            if (!_obFeed || !_obFeed._firstReady || _countJumped) {
                 _obApplyChartRange();
                 requestAnimationFrame(_obApplyChartRange);
                 if (obChart) obChart.priceScale('right').applyOptions({ autoScale: true });
@@ -3660,7 +3672,7 @@ createApp({
             const confirmed = ctx.confirmed, isNewBar = ctx.isNewBar;
             _cdLastPrice = candle.close; _cdLastOpen = candle.open;
             _obLiveCandle = { ...candle };
-            if (_obGrabActive) _obGrabColorCandle(candle);
+            if (_obGrabActive && _obGrabState) _obGrabColorCandle(candle);
             else try { candleS.update(candle); } catch(e) {}
 
             // Chiusura barra: blocca EMA/EMA-custom sulla candela appena confermata

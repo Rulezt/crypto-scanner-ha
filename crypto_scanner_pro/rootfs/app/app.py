@@ -2828,11 +2828,6 @@ def ema_custom_flip_page():
     return send_file('/usr/share/nginx/html/ema-custom-flip.html')
 
 
-@app.route('/confluence', methods=['GET'])
-@app.route('/confluence.html', methods=['GET'])
-def confluence_page():
-    return send_file('/usr/share/nginx/html/confluence.html')
-
 @app.route('/ico', methods=['GET'])
 @app.route('/ico.html', methods=['GET'])
 def ico_page():

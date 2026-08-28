@@ -1893,6 +1893,18 @@ function applyGrabToSlot(s, cfg) {
         if (cfg.showRange) { s.grabMurreyS.lo.setData(m.lo); s.grabMurreyS.hi.setData(m.hi); }
     }
 }
+// Colore barra GRaB per la candela LIVE, senza effetti collaterali. Serve a colorare
+// direttamente l'update PRINCIPALE della candela (in openWS/connectFsWS) invece di
+// fare un secondo `candleS.update()` colorato subito dopo quello "nudo": quel doppio
+// update faceva lampeggiare ogni candela sul colore di default per un frame ad ogni
+// tick WS (≈6-7 volte/s per grafico, ×9 grafici) → sensazione di lentezza/rottura.
+function _grabLiveColor(s, candle, cfg) {
+    if (!grabActive || !s.grabState) return null;
+    const k = 2/(cfg.emaPeriod+1);
+    const lh = candle.high * k + s.grabState.emaHigh * (1-k);
+    const ll = candle.low  * k + s.grabState.emaLow  * (1-k);
+    return grabBarColor(candle.close, candle.open, lh, ll, cfg);
+}
 function _grabLiveUpdate(s, candle, confirmed, cfg) {
     const midlineOn = grabActive ? cfg.showMidline : grabMidlineActive;
     if (grabActive && s.grabState) {
@@ -1900,8 +1912,8 @@ function _grabLiveUpdate(s, candle, confirmed, cfg) {
         const liveEmaHigh  = candle.high  * k + s.grabState.emaHigh  * (1-k);
         const liveEmaLow   = candle.low   * k + s.grabState.emaLow   * (1-k);
         const liveEmaClose = candle.close * k + s.grabState.emaClose * (1-k);
-        const color = grabBarColor(candle.close, candle.open, liveEmaHigh, liveEmaLow, cfg);
-        try { s.candleS.update({...candle, color, wickColor:color, borderColor:color}); } catch(e) {}
+        // La ricolorazione della candela è già stata applicata all'update principale
+        // tramite _grabLiveColor(); qui restano solo wave EMA + avanzamento stato.
         if (cfg.showWave && s.grabWaveS.high) {
             s.grabWaveS.high.update({time:candle.time, value:liveEmaHigh});
             s.grabWaveS.low.update( {time:candle.time, value:liveEmaLow});
@@ -4034,7 +4046,10 @@ function connectFsWS() {
             low:  parseFloat(b.low),  close: parseFloat(b.close),
         };
         _fsLastPrice = candle.close; _fsLastOpen = candle.open;
-        fsCandleS.update(candle);
+        const _fsGCfg = (grabActive || grabMidlineActive) ? getGrabCfg() : null;
+        const _fsGCol = _fsGCfg ? _grabLiveColor(_fsIndSlot, candle, _fsGCfg) : null;
+        if (_fsGCol) fsCandleS.update({ ...candle, color:_fsGCol, wickColor:_fsGCol, borderColor:_fsGCol });
+        else fsCandleS.update(candle);
         for (const {p} of EMA_CFG) {
             if (fsLastEMA[p] == null) continue;
             const k = 2/(p+1);
@@ -4094,7 +4109,7 @@ function connectFsWS() {
                     _cdUpd(_fsChannelData.lower, liveL);
                 }
             }
-            if (grabActive || grabMidlineActive) _grabLiveUpdate(_fsIndSlot, candle, confirmed, getGrabCfg());
+            if (grabActive || grabMidlineActive) _grabLiveUpdate(_fsIndSlot, candle, confirmed, _fsGCfg || getGrabCfg());
         }
     };
     sock.onerror = () => setFsWSDot('error');
@@ -4141,7 +4156,10 @@ function openWS() {
             low:  parseFloat(b.low),  close: parseFloat(b.close),
             volume: parseFloat(b.volume) || 0,
         };
-        s.candleS.update(candle);
+        const _gCfg = (grabActive || grabMidlineActive) ? getGrabCfg() : null;
+        const _gCol = _gCfg ? _grabLiveColor(s, candle, _gCfg) : null;
+        if (_gCol) s.candleS.update({ ...candle, color:_gCol, wickColor:_gCol, borderColor:_gCol });
+        else s.candleS.update(candle);
         s.lastPrice = candle.close;
         s.lastOpen  = candle.open;
         _livePrice[s.symbol] = s.lastPrice;
@@ -4203,7 +4221,7 @@ function openWS() {
                     _cdUpd(s.channelData.lower, liveL);
                 }
             }
-            if (grabActive || grabMidlineActive) _grabLiveUpdate(s, candle, confirmed, getGrabCfg());
+            if (grabActive || grabMidlineActive) _grabLiveUpdate(s, candle, confirmed, _gCfg || getGrabCfg());
         }
     };
     sock.onerror = () => setWSDot('error');

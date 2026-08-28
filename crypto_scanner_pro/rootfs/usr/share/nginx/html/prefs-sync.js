@@ -8,7 +8,7 @@
     'bot_cfg_draft', 'bot_channel_visibility', 'ob_book_w_pct',
     'ath_atl_cfg', 'e223f_cfg', 'ecf_cfg', 'ico_cfg',
     'third_touch_cfg', 'ema60_cfg',
-    'confl_cfg', 'mtf_drawings', 'ob_drawings', 'inline_drawings', 'lockedStockSymbols', 'chart_grid_drawings'
+    'mtf_drawings', 'ob_drawings', 'inline_drawings', 'lockedStockSymbols', 'chart_grid_drawings'
   ];
   var SUFFIX_MATCH = '_columns_order';
 
