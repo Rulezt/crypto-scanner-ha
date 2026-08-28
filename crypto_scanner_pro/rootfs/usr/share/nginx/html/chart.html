@@ -1907,7 +1907,10 @@ function _grabLiveColor(s, candle, cfg) {
 }
 function _grabLiveUpdate(s, candle, confirmed, cfg) {
     const midlineOn = grabActive ? cfg.showMidline : grabMidlineActive;
-    if (grabActive && s.grabState) {
+    // `s.klines.length` come ulteriore guardia: durante uno switchSlotTF le candele sono
+    // azzerate e le serie GRaB smontate — un tick WS che arriva in questa finestra non
+    // deve toccare serie in transizione (vedi commento in switchSlotTF).
+    if (grabActive && s.grabState && s.klines.length) {
         const k = 2/(cfg.emaPeriod+1);
         const liveEmaHigh  = candle.high  * k + s.grabState.emaHigh  * (1-k);
         const liveEmaLow   = candle.low   * k + s.grabState.emaLow   * (1-k);
@@ -1915,9 +1918,11 @@ function _grabLiveUpdate(s, candle, confirmed, cfg) {
         // La ricolorazione della candela è già stata applicata all'update principale
         // tramite _grabLiveColor(); qui restano solo wave EMA + avanzamento stato.
         if (cfg.showWave && s.grabWaveS.high) {
-            s.grabWaveS.high.update({time:candle.time, value:liveEmaHigh});
-            s.grabWaveS.low.update( {time:candle.time, value:liveEmaLow});
-            s.grabWaveS.close.update({time:candle.time, value:liveEmaClose});
+            try {
+                s.grabWaveS.high.update({time:candle.time, value:liveEmaHigh});
+                s.grabWaveS.low.update( {time:candle.time, value:liveEmaLow});
+                s.grabWaveS.close.update({time:candle.time, value:liveEmaClose});
+            } catch(e) {}
         }
         if (confirmed) { s.grabState.emaHigh = liveEmaHigh; s.grabState.emaLow = liveEmaLow; s.grabState.emaClose = liveEmaClose; }
     }
@@ -1925,8 +1930,10 @@ function _grabLiveUpdate(s, candle, confirmed, cfg) {
         const win = s.klines.slice(-cfg.murreyLength);
         let h = -Infinity, l = Infinity;
         for (const c of win) { h = Math.max(h,c.high); l = Math.min(l,c.low); }
-        if (midlineOn && s.grabMurreyS.mid) s.grabMurreyS.mid.update({time:candle.time, value:l+(h-l)/2});
-        if (grabActive && cfg.showRange && s.grabMurreyS.lo) { s.grabMurreyS.lo.update({time:candle.time, value:l}); s.grabMurreyS.hi.update({time:candle.time, value:h}); }
+        try {
+            if (midlineOn && s.grabMurreyS.mid) s.grabMurreyS.mid.update({time:candle.time, value:l+(h-l)/2});
+            if (grabActive && cfg.showRange && s.grabMurreyS.lo) { s.grabMurreyS.lo.update({time:candle.time, value:l}); s.grabMurreyS.hi.update({time:candle.time, value:h}); }
+        } catch(e) {}
     }
 }
 function toggleGrabMidlineAll() {
@@ -3509,6 +3516,17 @@ async function switchSlotTF(idx, tf) {
     if (s.rocSeries) { try { s.rocSeries.setData([]); } catch(e) {} }
     for (const k of ['upper','mid','lower']) { if (s.channelSeries[k]) { try { s.chart.removeSeries(s.channelSeries[k]); } catch(e) {} s.channelSeries[k]=null; } }
     s.channelData = null;
+    // GRaB: come BB/Canale, va smontato PRIMA dell'await. Se loadSlotData esce in
+    // anticipo (fetch fallita → `!j.success`, o switch-TF rapido → guard `_loadSeq`)
+    // le serie e `grabState` del TF vecchio resterebbero attivi con `s.klines=[]`: il
+    // primo tick WS del TF nuovo (già sottoscritto a fondo funzione) entrerebbe in
+    // `_grabLiveUpdate` e chiamerebbe `series.update()` con un time anteriore all'ultimo
+    // punto della serie vecchia (evidente passando a un TF più alto) → LWC "Cannot update
+    // oldest data" → serie corrotta → "Value is null" a ogni redraw del countdown (timer
+    // 1s) → grafico bloccato.
+    for (const k of ['high','low','close']) { if (s.grabWaveS[k])   { try { s.chart.removeSeries(s.grabWaveS[k]);   } catch(e) {} s.grabWaveS[k]   = null; } }
+    for (const k of ['mid','lo','hi'])      { if (s.grabMurreyS[k]) { try { s.chart.removeSeries(s.grabMurreyS[k]); } catch(e) {} s.grabMurreyS[k] = null; } }
+    s.grabState = null;
     s.klines = [];
     s.candleS.setData([]);
     for (const {p} of EMA_CFG) s.emaSeries[p].setData([]);
@@ -3955,6 +3973,12 @@ async function switchFsTF(tf) {
     fsCandleS.setData([]);
     for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
     fsLastEMA = {};
+    // Stessa cautela di switchSlotTF: smonta le serie/lo stato GRaB PRIMA dell'await, così
+    // se loadFsData esce in anticipo (fetch giù) connectFsWS() non trova serie del TF
+    // vecchio da aggiornare con time fuori ordine.
+    for (const k of ['high','low','close']) { if (_fsGrabWaveS[k])   { try { fsChart.removeSeries(_fsGrabWaveS[k]);   } catch(e) {} _fsGrabWaveS[k]   = null; } }
+    for (const k of ['mid','lo','hi'])      { if (_fsGrabMurreyS[k]) { try { fsChart.removeSeries(_fsGrabMurreyS[k]); } catch(e) {} _fsGrabMurreyS[k] = null; } }
+    _fsGrabState = null; fsKlines = [];
     await loadFsData(); connectFsWS();
 }
 

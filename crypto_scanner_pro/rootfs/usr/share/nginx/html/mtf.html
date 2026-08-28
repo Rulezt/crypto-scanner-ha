@@ -1181,7 +1181,11 @@ function _grabLiveColor(s, candle, cfg) {
 }
 function _grabLiveUpdate(s, candle, confirmed, cfg) {
   const midlineOn = grabActive ? cfg.showMidline : grabMidlineActive;
-  if (grabActive && s.grabState) {
+  // `s.klines.length` + try/catch: un tick WS che arriva mentre le serie GRaB sono in
+  // transizione (resync feed / cambio layout) non deve chiamare update() su una serie
+  // vuota o con un time fuori ordine → LWC "Cannot update oldest data" corromperebbe la
+  // serie (poi "Value is null" a ogni redraw). Stesso fix di chart.html.
+  if (grabActive && s.grabState && s.klines.length) {
     const k = 2/(cfg.emaPeriod+1);
     const liveEmaHigh  = candle.high  * k + s.grabState.emaHigh  * (1-k);
     const liveEmaLow   = candle.low   * k + s.grabState.emaLow   * (1-k);
@@ -1189,9 +1193,11 @@ function _grabLiveUpdate(s, candle, confirmed, cfg) {
     // La ricolorazione della candela è già applicata all'update principale via
     // _grabLiveColor(); qui restano solo wave EMA + avanzamento stato.
     if (cfg.showWave && s.grabWaveS.high) {
-      s.grabWaveS.high.update({time:candle.time, value:liveEmaHigh});
-      s.grabWaveS.low.update( {time:candle.time, value:liveEmaLow});
-      s.grabWaveS.close.update({time:candle.time, value:liveEmaClose});
+      try {
+        s.grabWaveS.high.update({time:candle.time, value:liveEmaHigh});
+        s.grabWaveS.low.update( {time:candle.time, value:liveEmaLow});
+        s.grabWaveS.close.update({time:candle.time, value:liveEmaClose});
+      } catch(e) {}
     }
     if (confirmed) { s.grabState.emaHigh = liveEmaHigh; s.grabState.emaLow = liveEmaLow; s.grabState.emaClose = liveEmaClose; }
   }
@@ -1199,8 +1205,10 @@ function _grabLiveUpdate(s, candle, confirmed, cfg) {
     const win = s.klines.slice(-cfg.murreyLength);
     let h = -Infinity, l = Infinity;
     for (const c of win) { h = Math.max(h,c.high); l = Math.min(l,c.low); }
-    if (midlineOn && s.grabMurreyS.mid) s.grabMurreyS.mid.update({time:candle.time, value:l+(h-l)/2});
-    if (grabActive && cfg.showRange && s.grabMurreyS.lo) { s.grabMurreyS.lo.update({time:candle.time, value:l}); s.grabMurreyS.hi.update({time:candle.time, value:h}); }
+    try {
+      if (midlineOn && s.grabMurreyS.mid) s.grabMurreyS.mid.update({time:candle.time, value:l+(h-l)/2});
+      if (grabActive && cfg.showRange && s.grabMurreyS.lo) { s.grabMurreyS.lo.update({time:candle.time, value:l}); s.grabMurreyS.hi.update({time:candle.time, value:h}); }
+    } catch(e) {}
   }
 }
 
