@@ -483,9 +483,9 @@ function getEmaCustomCfg() {
     return { ...DEFAULT_EMA_CUSTOM_CFG };
 }
 // ── Timeframe di calcolo (porting Pine indicator(timeframe=..., timeframe_gaps=...)):
-// vedi commento gemello in chart.html per il dettaglio. Qui il grafico order book è
-// sempre "a schermo singolo" (nessuna griglia con più istanze), quindi il polling di
-// aggiornamento (_syncObEmaCustomMtfTimer) resta sempre attivo mentre il TF MTF è attivo.
+// vedi commento gemello in chart.html per il dettaglio. L'aggiornamento della linea
+// proiettata è event-driven (_obEmaCustomMtfTick su ogni update candela) — vedi il
+// blocco "EMA personalizzata (modalità MTF)" più sotto.
 function _projectMtfEma(hostKlines, auxKlines, auxEma, waitClose) {
     if (!hostKlines.length || !auxKlines.length || !auxEma.length) return [];
     const out = [];
@@ -506,19 +506,12 @@ async function _fetchAuxKlines(sym, tf) {
     } catch(e) { return []; }
 }
 let _obEmaCustomActive = window.getIndActive('emaCustom'), _obEmaCustomSeries = null, _obLastEmaCustom = null;
-let _obEmaCustomMtfSeq = 0, _obEmaCustomMtfTimer = null;
-function _syncObEmaCustomMtfTimer() {
-    clearInterval(_obEmaCustomMtfTimer); _obEmaCustomMtfTimer = null;
-    const cfg = getEmaCustomCfg();
-    const effectiveTf = cfg['tf_' + _obChartTF] || '';
-    if (_obEmaCustomActive && effectiveTf && _obChart) {
-        _obEmaCustomMtfTimer = setInterval(_obApplyEmaCustom, 5000);
-    }
-}
+let _obEmaCustomMtfSeq = 0;
 function _obApplyEmaCustom() {
     if (_obEmaCustomSeries) { try { _obChart.removeSeries(_obEmaCustomSeries); } catch(e) {} _obEmaCustomSeries = null; }
     _obLastEmaCustom = null;
     _obEmaCustomMtfSeq++;
+    _obEmaMtfState[1] = { bucket: null, bars: -1, lastFetch: 0 };
     if (!_obEmaCustomActive || !_obChart || !_obKlines.length) return;
     const cfg = getEmaCustomCfg();
     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
@@ -533,25 +526,13 @@ function _obApplyEmaCustom() {
         _obLastEmaCustom = ema[ema.length - 1].value;
         return;
     }
-    const mySeq = _obEmaCustomMtfSeq;
-    const sym = _obSymbol;
-    if (!sym) return;
-    (async () => {
-      try {
-        const auxKlines = await _fetchAuxKlines(sym, effectiveTf);
-        if (_obEmaCustomMtfSeq !== mySeq || !_obEmaCustomSeries) return;
-        if (!auxKlines.length) { console.warn('EMA personalizzata: nessun dato per TF', effectiveTf, sym); return; }
-        const auxEma = calcEMA(auxKlines, cfg.length);
-        const projected = _projectMtfEma(_obKlines, auxKlines, auxEma, cfg.waitClose);
-        _obEmaCustomSeries.setData(projected);
-      } catch(e) { console.error('EMA personalizzata (MTF) errore:', e); }
-    })();
+    _obRefreshEmaCustomMtf(1); // prima proiezione; gli aggiornamenti successivi sono event-driven (_obEmaCustomMtfTick)
 }
 function toggleObEmaCustom() {
     _obEmaCustomActive = !_obEmaCustomActive;
     window.setIndActive('emaCustom', _obEmaCustomActive);
     _obApplyEmaCustom();
-    _syncObEmaCustomMtfTimer();
+    _syncObEmaCustomMtf();
 }
 
 // ── EMA personalizzata 2 — seconda istanza indipendente, copia 1:1 della prima
@@ -568,19 +549,12 @@ function getEmaCustom2Cfg() {
     return { ...DEFAULT_EMA_CUSTOM2_CFG };
 }
 let _obEmaCustom2Active = window.getIndActive('emaCustom2'), _obEmaCustom2Series = null, _obLastEmaCustom2 = null;
-let _obEmaCustom2MtfSeq = 0, _obEmaCustom2MtfTimer = null;
-function _syncObEmaCustom2MtfTimer() {
-    clearInterval(_obEmaCustom2MtfTimer); _obEmaCustom2MtfTimer = null;
-    const cfg = getEmaCustom2Cfg();
-    const effectiveTf = cfg['tf_' + _obChartTF] || '';
-    if (_obEmaCustom2Active && effectiveTf && _obChart) {
-        _obEmaCustom2MtfTimer = setInterval(_obApplyEmaCustom2, 5000);
-    }
-}
+let _obEmaCustom2MtfSeq = 0;
 function _obApplyEmaCustom2() {
     if (_obEmaCustom2Series) { try { _obChart.removeSeries(_obEmaCustom2Series); } catch(e) {} _obEmaCustom2Series = null; }
     _obLastEmaCustom2 = null;
     _obEmaCustom2MtfSeq++;
+    _obEmaMtfState[2] = { bucket: null, bars: -1, lastFetch: 0 };
     if (!_obEmaCustom2Active || !_obChart || !_obKlines.length) return;
     const cfg = getEmaCustom2Cfg();
     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
@@ -592,25 +566,95 @@ function _obApplyEmaCustom2() {
         _obLastEmaCustom2 = ema[ema.length - 1].value;
         return;
     }
-    const mySeq = _obEmaCustom2MtfSeq;
-    const sym = _obSymbol;
-    if (!sym) return;
-    (async () => {
-      try {
-        const auxKlines = await _fetchAuxKlines(sym, effectiveTf);
-        if (_obEmaCustom2MtfSeq !== mySeq || !_obEmaCustom2Series) return;
-        if (!auxKlines.length) { console.warn('EMA personalizzata 2: nessun dato per TF', effectiveTf, sym); return; }
-        const auxEma = calcEMA(auxKlines, cfg.length);
-        const projected = _projectMtfEma(_obKlines, auxKlines, auxEma, cfg.waitClose);
-        _obEmaCustom2Series.setData(projected);
-      } catch(e) { console.error('EMA personalizzata 2 (MTF) errore:', e); }
-    })();
+    _obRefreshEmaCustomMtf(2);
 }
 function toggleObEmaCustom2() {
     _obEmaCustom2Active = !_obEmaCustom2Active;
     window.setIndActive('emaCustom2', _obEmaCustom2Active);
     _obApplyEmaCustom2();
-    _syncObEmaCustom2MtfTimer();
+    _syncObEmaCustomMtf();
+}
+
+// ── EMA personalizzata (modalità MTF): refresh event-driven ───────────────────
+// In modalità "TF di calcolo" la linea è una proiezione (_projectMtfEma) del TF
+// ausiliario: gli update tick-by-tick non la toccano (muovono solo _obLastEmaCustom
+// del path "Grafico"). Va ri-proiettata quando (1) cresce lo storico host o (2) si
+// chiude una barra del TF ausiliario — entrambi eventi già presenti su _obFeedUpdate.
+// Con waitClose:false anche la barra ausiliaria in formazione deriva col prezzo:
+// gestito da un timer lento condiviso (5s) che parte SOLO in quel caso. Con la
+// config di default (waitClose:true) → zero polling, nessun setInterval cieco.
+const _AUX_TF_SECS = {'1':60,'3':180,'5':300,'15':900,'30':1800,'60':3600,'120':7200,'240':14400,'360':21600,'720':43200,'D':86400,'W':604800,'M':2592000};
+function _auxTfBucket(tf) {
+    if (!_AUX_TF_SECS[tf]) return 0;
+    const now = Math.floor(Date.now() / 1000);
+    if (tf === 'M') { const d = new Date(now * 1000); return d.getUTCFullYear() * 12 + d.getUTCMonth(); }
+    if (tf === 'W') return Math.floor((now + 259200) / 604800); // barre settimanali Bybit: lunedì 00:00 UTC
+    return Math.floor(now / _AUX_TF_SECS[tf]);
+}
+const _obEmaMtfState = { 1: { bucket: null, bars: -1, lastFetch: 0 }, 2: { bucket: null, bars: -1, lastFetch: 0 } };
+let _obEmaMtfDirty = new Set(), _obEmaMtfFlushT = null, _obEmaMtfSlowT = null;
+function _obEmaMtfCfg(n)    { return n === 2 ? getEmaCustom2Cfg() : getEmaCustomCfg(); }
+function _obEmaMtfActive(n) { return n === 2 ? _obEmaCustom2Active : _obEmaCustomActive; }
+function _obEmaMtfSeries(n) { return n === 2 ? _obEmaCustom2Series : _obEmaCustomSeries; }
+function _obEmaMtfSeq(n)    { return n === 2 ? _obEmaCustom2MtfSeq : _obEmaCustomMtfSeq; }
+// Ri-proietta la linea MTF SENZA distruggere la serie (solo setData) — usata sia dal
+// primo apply sia dal refresh event-driven. Guardata da _obEmaCustom(2)MtfSeq.
+function _obRefreshEmaCustomMtf(n) {
+    const cfg = _obEmaMtfCfg(n), s = _obEmaMtfSeries(n);
+    const effectiveTf = cfg['tf_' + _obChartTF] || '';
+    if (!_obEmaMtfActive(n) || !s || !effectiveTf || !_obChart || !_obKlines.length || !_obSymbol) return;
+    const mySeq = _obEmaMtfSeq(n), sym = _obSymbol;
+    const st = _obEmaMtfState[n];
+    st.lastFetch = Date.now();
+    st.bucket = _auxTfBucket(effectiveTf);
+    st.bars = _obKlines.length;
+    (async () => {
+      try {
+        const auxKlines = await _fetchAuxKlines(sym, effectiveTf);
+        if (_obEmaMtfSeq(n) !== mySeq) return;
+        const cur = _obEmaMtfSeries(n);
+        if (!cur || !auxKlines.length) { st.bucket = null; return; } // fetch fallito: riprova al prossimo tick
+        const auxEma = calcEMA(auxKlines, cfg.length);
+        const projected = _projectMtfEma(_obKlines, auxKlines, auxEma, cfg.waitClose);
+        cur.setData(projected);
+        st.lastVal = projected.length ? projected[projected.length - 1].value : null;
+        st.bars = _obKlines.length;
+      } catch(e) { st.bucket = null; console.error('EMA personalizzata (MTF) refresh:', e); }
+    })();
+}
+// Sonda O(1) chiamata da OGNI update candela: refetch, prolungamento piatto della linea
+// (nuova barra host, stessa barra ausiliaria), o niente.
+function _obEmaCustomMtfTick() {
+    for (const n of [1, 2]) {
+        const cur = _obEmaMtfSeries(n);
+        if (!_obEmaMtfActive(n) || !cur) continue;
+        const cfg = _obEmaMtfCfg(n);
+        const effectiveTf = cfg['tf_' + _obChartTF] || '';
+        if (!effectiveTf) continue;
+        const st = _obEmaMtfState[n];
+        const bucketChanged = _auxTfBucket(effectiveTf) !== st.bucket;
+        const slowDue = cfg.waitClose === false && (Date.now() - st.lastFetch) >= 5000;
+        if (bucketChanged || slowDue) { _obEmaMtfDirty.add(n); continue; }
+        if (_obKlines.length !== st.bars && st.lastVal != null && _obKlines.length) {
+            try { cur.update({ time: _obKlines[_obKlines.length - 1].time, value: st.lastVal }); } catch(e) {}
+            st.bars = _obKlines.length;
+        }
+    }
+    if (_obEmaMtfDirty.size && !_obEmaMtfFlushT) _obEmaMtfFlushT = setTimeout(_obFlushEmaCustomMtf, 150);
+}
+function _obFlushEmaCustomMtf() {
+    _obEmaMtfFlushT = null;
+    const pending = [..._obEmaMtfDirty]; _obEmaMtfDirty.clear();
+    pending.forEach((n, i) => setTimeout(() => _obRefreshEmaCustomMtf(n), i * 120));
+}
+// Timer lento condiviso: SOLO se un'istanza MTF ha waitClose:false (caso non default).
+function _syncObEmaCustomMtf() {
+    clearInterval(_obEmaMtfSlowT); _obEmaMtfSlowT = null;
+    const needSlow = [1, 2].some(n => {
+        const cfg = _obEmaMtfCfg(n);
+        return _obEmaMtfActive(n) && (cfg['tf_' + _obChartTF] || '') && cfg.waitClose === false;
+    });
+    if (needSlow && _obChart) _obEmaMtfSlowT = setInterval(_obEmaCustomMtfTick, 5000);
 }
 
 // ── Canale SMA 20 (SMA di high/close/low → 3 linee + riempimento) ──────────────
@@ -3628,9 +3672,8 @@ createApp({
             if (_obBbActive) _obApplyBB();
             if (_obRocActive) _obApplyRoc();
             if (_obEmaCustomActive) _obApplyEmaCustom();
-            _syncObEmaCustomMtfTimer();
             if (_obEmaCustom2Active) _obApplyEmaCustom2();
-            _syncObEmaCustom2MtfTimer();
+            _syncObEmaCustomMtf();
             if (_obChActive) _obApplyChannel();
             if (_obGrabActive || _obGrabMidlineActive) _obApplyGrab();
             _applyCandleStyle(candleS);
@@ -3734,6 +3777,7 @@ createApp({
             }
             if (_obChActive) _obChUpdateTail(_obKlines);
             _obGrabUpdateTail(candle, confirmed);
+            _obEmaCustomMtfTick(); // ri-proietta EMA personalizzata MTF solo se una barra host/ausiliaria è cambiata
         };
 
         const loadChartData = async (tf) => {
@@ -4491,8 +4535,8 @@ createApp({
             cleanup();
             clearInterval(_cdRepaintTimer);
             clearInterval(_tradePollT); _tradePollT = null;
-            clearInterval(_obEmaCustomMtfTimer); _obEmaCustomMtfTimer = null;
-            clearInterval(_obEmaCustom2MtfTimer); _obEmaCustom2MtfTimer = null;
+            clearInterval(_obEmaMtfSlowT); _obEmaMtfSlowT = null;
+            clearTimeout(_obEmaMtfFlushT); _obEmaMtfFlushT = null;
         });
 
         return {
@@ -4759,7 +4803,7 @@ const IND_CFG_SCHEMAS = {
         apply: cfg => {
             try { localStorage.setItem('chart_ema_custom_cfg', JSON.stringify(cfg)); } catch(e) {}
             _obApplyEmaCustom();
-            _syncObEmaCustomMtfTimer();
+            _syncObEmaCustomMtf();
         },
     },
     emaCustom2: {
@@ -4781,7 +4825,7 @@ const IND_CFG_SCHEMAS = {
         apply: cfg => {
             try { localStorage.setItem('chart_ema_custom2_cfg', JSON.stringify(cfg)); } catch(e) {}
             _obApplyEmaCustom2();
-            _syncObEmaCustom2MtfTimer();
+            _syncObEmaCustomMtf();
         },
     },
 };

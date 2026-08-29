@@ -843,10 +843,104 @@ async function _fetchAuxKlines(tf) {
     return (j.success && j.data) ? j.data : [];
   } catch(e) { return []; }
 }
+// ── EMA personalizzata (modalità MTF): refresh event-driven ───────────────────
+// In modalità "TF di calcolo" la linea è una proiezione (_projectMtfEma) del TF
+// ausiliario: gli update tick-by-tick non la toccano (muovono solo s.lastEmaCustom
+// del path "Grafico"). Va ri-proiettata solo quando (1) cresce lo storico host o
+// (2) si chiude una barra del TF ausiliario — entrambi eventi già presenti sui
+// messaggi candela (_mtfSlotUpdate / FS WS). Con waitClose:false anche la barra
+// ausiliaria in formazione deriva col prezzo: gestito da un timer lento condiviso
+// (5s) che parte SOLO in quel caso. Default (waitClose:true) → zero polling.
+const _AUX_TF_SECS = {'1':60,'3':180,'5':300,'15':900,'30':1800,'60':3600,'120':7200,'240':14400,'360':21600,'720':43200,'D':86400,'W':604800,'M':2592000};
+function _auxTfBucket(tf) {
+  if (!_AUX_TF_SECS[tf]) return 0;
+  const now = Math.floor(Date.now() / 1000);
+  if (tf === 'M') { const d = new Date(now * 1000); return d.getUTCFullYear() * 12 + d.getUTCMonth(); }
+  if (tf === 'W') return Math.floor((now + 259200) / 604800); // barre settimanali Bybit: lunedì 00:00 UTC
+  return Math.floor(now / _AUX_TF_SECS[tf]);
+}
+const _emaMtfDirty = { 1: new Set(), 2: new Set() };
+let _emaMtfFlushT = null, _emaMtfSlowT = null;
+function _emaMtfActive(n)    { return n === 2 ? emaCustom2Active : emaCustomActive; }
+function _emaMtfGetCfg(n)    { return n === 2 ? getEmaCustom2Cfg() : getEmaCustomCfg(); }
+function _emaMtfSeries(s, n) { return n === 2 ? s.emaCustom2Series : s.emaCustomSeries; }
+function _emaMtfSeqKey(n)    { return n === 2 ? '_emaCustom2MtfSeq' : '_emaCustomMtfSeq'; }
+function _emaMtfStKey(n)     { return n === 2 ? '_emaMtf2St' : '_emaMtf1St'; }
+function _emaMtfSt(s, n)     { return s[_emaMtfStKey(n)] || (s[_emaMtfStKey(n)] = { bucket: null, bars: -1, lastFetch: 0 }); }
+// Ri-proietta la linea MTF SENZA distruggere la serie (solo setData). Guardata dal seq.
+function _refreshEmaCustomMtf(s, n) {
+  const cfg = _emaMtfGetCfg(n);
+  const effectiveTf = cfg['tf_' + s.cfg.tf] || '';
+  if (!_emaMtfActive(n) || !effectiveTf || !_emaMtfSeries(s, n) || !s.klines || !s.klines.length) return;
+  const seqKey = _emaMtfSeqKey(n);
+  const mySeq = s[seqKey] = (s[seqKey] || 0) + 1;
+  const st = _emaMtfSt(s, n);
+  st.lastFetch = Date.now();
+  st.bucket = _auxTfBucket(effectiveTf);
+  st.bars = s.klines.length;
+  (async () => {
+   try {
+    const auxKlines = await _fetchAuxKlines(effectiveTf);
+    if (s[seqKey] !== mySeq) return;
+    const cur = _emaMtfSeries(s, n);
+    if (!cur || !auxKlines.length) { st.bucket = null; return; } // fetch fallito: riprova al prossimo tick
+    const auxEma = calcEMA(auxKlines, cfg.length);
+    const projected = _projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose);
+    cur.setData(projected);
+    st.lastVal = projected.length ? projected[projected.length - 1].value : null;
+    st.bars = s.klines.length;
+   } catch(e) { st.bucket = null; console.error('EMA personalizzata (MTF) refresh:', e); }
+  })();
+}
+// Sonda O(1) chiamata da OGNI update candela: refetch, prolungamento piatto della linea
+// (nuova barra host, stessa barra ausiliaria), o niente.
+function _emaCustomMtfTick(s, n) {
+  const cur = _emaMtfSeries(s, n);
+  if (!_emaMtfActive(n) || !cur) return;
+  const cfg = _emaMtfGetCfg(n);
+  const effectiveTf = cfg['tf_' + s.cfg.tf] || '';
+  if (!effectiveTf) return;
+  const st = _emaMtfSt(s, n);
+  const bucketChanged = _auxTfBucket(effectiveTf) !== st.bucket;
+  const slowDue = cfg.waitClose === false && (Date.now() - st.lastFetch) >= 5000;
+  if (bucketChanged || slowDue) {
+    _emaMtfDirty[n].add(s);
+    if (!_emaMtfFlushT) _emaMtfFlushT = setTimeout(_flushEmaCustomMtf, 150);
+    return;
+  }
+  if (s.klines && s.klines.length !== st.bars && st.lastVal != null && s.klines.length) {
+    try { cur.update({ time: s.klines[s.klines.length - 1].time, value: st.lastVal }); } catch(e) {}
+    st.bars = s.klines.length;
+  }
+}
+function _flushEmaCustomMtf() {
+  _emaMtfFlushT = null;
+  const jobs = [];
+  for (const n of [1, 2]) { for (const s of _emaMtfDirty[n]) jobs.push([s, n]); _emaMtfDirty[n].clear(); }
+  jobs.forEach(([s, n], i) => setTimeout(() => _refreshEmaCustomMtf(s, n), i * 120));
+}
+function _fsModalOpen() { const el = document.getElementById('fs-modal'); return !!el && el.style.display !== 'none'; }
+function _emaCustomMtfTickAll() {
+  slots.forEach(s => { _emaCustomMtfTick(s, 1); _emaCustomMtfTick(s, 2); });
+  if (_fsModalOpen()) { _emaCustomMtfTick(fsEmaCustomSlot, 1); _emaCustomMtfTick(fsEmaCustom2Slot, 2); }
+}
+// Timer lento condiviso: SOLO se un'istanza MTF (griglia o fullscreen) ha waitClose:false.
+function _syncEmaCustomMtf() {
+  clearInterval(_emaMtfSlowT); _emaMtfSlowT = null;
+  const needSlow = [1, 2].some(n => {
+    if (!_emaMtfActive(n)) return false;
+    const cfg = _emaMtfGetCfg(n);
+    if (cfg.waitClose !== false) return false;
+    return slots.some(s => cfg['tf_' + s.cfg.tf]) || (_fsModalOpen() && cfg['tf_' + fsTF]);
+  });
+  if (needSlow) _emaMtfSlowT = setInterval(_emaCustomMtfTickAll, 5000);
+}
+
 function _applyEmaCustomToChart(chart, s, cfg) {
   if (s.emaCustomSeries) { try { chart.removeSeries(s.emaCustomSeries); } catch(e) {} s.emaCustomSeries = null; }
   s.lastEmaCustom = null;
   s._emaCustomMtfSeq = (s._emaCustomMtfSeq || 0) + 1;
+  s._emaMtf1St = { bucket: null, bars: -1, lastFetch: 0 };
   if (!emaCustomActive || !chart || !s.klines || !s.klines.length) return;
   const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
   s.emaCustomSeries = addS(chart, 'LineSeries', { ...lb, color: cfg.color, lineWidth: cfg.width, lineStyle: cfg.style ?? 0 });
@@ -859,59 +953,7 @@ function _applyEmaCustomToChart(chart, s, cfg) {
     s.lastEmaCustom = ema[ema.length - 1].value;
     return;
   }
-  const mySeq = s._emaCustomMtfSeq;
-  (async () => {
-   try {
-    const auxKlines = await _fetchAuxKlines(effectiveTf);
-    if (s._emaCustomMtfSeq !== mySeq || !s.emaCustomSeries) return;
-    if (!auxKlines.length) { console.warn('EMA personalizzata: nessun dato per TF', effectiveTf); return; }
-    const auxEma = calcEMA(auxKlines, cfg.length);
-    const projected = _projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose);
-    s.emaCustomSeries.setData(projected);
-   } catch(e) { console.error('EMA personalizzata (MTF) errore:', e); }
-  })();
-}
-let _fsEmaCustomMtfTimer = null;
-function _syncFsEmaCustomMtfTimer() {
-  clearInterval(_fsEmaCustomMtfTimer); _fsEmaCustomMtfTimer = null;
-  const cfg = getEmaCustomCfg();
-  const effectiveTf = cfg['tf_' + fsTF] || '';
-  if (emaCustomActive && effectiveTf && fsChart) {
-    _fsEmaCustomMtfTimer = setInterval(applyFsEmaCustom, 5000);
-  }
-}
-// ── Refresh periodico dei pannelli griglia in modalità MTF ────────────────────
-// Quando l'EMA ha un TF di calcolo impostato, il valore proiettato (_projectMtfEma)
-// NON viene aggiornato dai path live tick-by-tick / roll (che muovono solo
-// s.lastEmaCustom del path "Grafico"): la linea resterebbe ferma alla proiezione
-// fatta all'attivazione finché non si ricarica/cambia coin. La griglia di mtf.html
-// è una sola coin (a differenza dei 18 mini-grafici di chart.html), quindi qui un
-// poll REST ogni 5s sui TF ausiliari è sostenibile — stesso identico intervallo del
-// fullscreen (_syncFsEmaCustomMtfTimer). Re-proietta con setData, senza distruggere
-// la serie, così non sfarfalla sugli 8 pannelli.
-let _slotsEmaCustomMtfTimer = null;
-function _refreshSlotEmaCustomMtf(s, cfg) {
-  const effectiveTf = cfg['tf_' + s.cfg.tf] || '';
-  if (!emaCustomActive || !effectiveTf || !s.emaCustomSeries || !s.klines || !s.klines.length) return;
-  const mySeq = s._emaCustomMtfSeq = (s._emaCustomMtfSeq || 0) + 1;
-  (async () => {
-   try {
-    const auxKlines = await _fetchAuxKlines(effectiveTf);
-    if (s._emaCustomMtfSeq !== mySeq || !s.emaCustomSeries || !auxKlines.length) return;
-    const auxEma = calcEMA(auxKlines, cfg.length);
-    s.emaCustomSeries.setData(_projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose));
-   } catch(e) {}
-  })();
-}
-function _syncSlotsEmaCustomMtfTimer() {
-  clearInterval(_slotsEmaCustomMtfTimer); _slotsEmaCustomMtfTimer = null;
-  const cfg = getEmaCustomCfg();
-  if (emaCustomActive && slots.some(s => cfg['tf_' + s.cfg.tf])) {
-    _slotsEmaCustomMtfTimer = setInterval(() => {
-      const c = getEmaCustomCfg();
-      slots.forEach(s => _refreshSlotEmaCustomMtf(s, c));
-    }, 5000);
-  }
+  _refreshEmaCustomMtf(s, 1); // prima proiezione; poi aggiornamenti event-driven (_emaCustomMtfTick)
 }
 function toggleEmaCustomAll() {
   emaCustomActive = !emaCustomActive;
@@ -919,8 +961,7 @@ function toggleEmaCustomAll() {
   const cfg = getEmaCustomCfg();
   slots.forEach(s => _applyEmaCustomToChart(s.chart, s, cfg));
   if (fsChart) applyFsEmaCustom();
-  _syncFsEmaCustomMtfTimer();
-  _syncSlotsEmaCustomMtfTimer();
+  _syncEmaCustomMtf();
 }
 
 // ── EMA personalizzata 2 — seconda istanza indipendente, copia 1:1 della prima
@@ -937,6 +978,7 @@ function _applyEmaCustom2ToChart(chart, s, cfg) {
   if (s.emaCustom2Series) { try { chart.removeSeries(s.emaCustom2Series); } catch(e) {} s.emaCustom2Series = null; }
   s.lastEmaCustom2 = null;
   s._emaCustom2MtfSeq = (s._emaCustom2MtfSeq || 0) + 1;
+  s._emaMtf2St = { bucket: null, bars: -1, lastFetch: 0 };
   if (!emaCustom2Active || !chart || !s.klines || !s.klines.length) return;
   const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
   s.emaCustom2Series = addS(chart, 'LineSeries', { ...lb, color: cfg.color, lineWidth: cfg.width, lineStyle: cfg.style ?? 0 });
@@ -947,51 +989,7 @@ function _applyEmaCustom2ToChart(chart, s, cfg) {
     s.lastEmaCustom2 = ema[ema.length - 1].value;
     return;
   }
-  const mySeq = s._emaCustom2MtfSeq;
-  (async () => {
-   try {
-    const auxKlines = await _fetchAuxKlines(effectiveTf);
-    if (s._emaCustom2MtfSeq !== mySeq || !s.emaCustom2Series) return;
-    if (!auxKlines.length) { console.warn('EMA personalizzata 2: nessun dato per TF', effectiveTf); return; }
-    const auxEma = calcEMA(auxKlines, cfg.length);
-    const projected = _projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose);
-    s.emaCustom2Series.setData(projected);
-   } catch(e) { console.error('EMA personalizzata 2 (MTF) errore:', e); }
-  })();
-}
-let _fsEmaCustom2MtfTimer = null;
-function _syncFsEmaCustom2MtfTimer() {
-  clearInterval(_fsEmaCustom2MtfTimer); _fsEmaCustom2MtfTimer = null;
-  const cfg = getEmaCustom2Cfg();
-  const effectiveTf = cfg['tf_' + fsTF] || '';
-  if (emaCustom2Active && effectiveTf && fsChart) {
-    _fsEmaCustom2MtfTimer = setInterval(applyFsEmaCustom2, 5000);
-  }
-}
-// Refresh periodico griglia MTF per l'EMA2 — vedi commento gemello in _syncSlotsEmaCustomMtfTimer.
-let _slotsEmaCustom2MtfTimer = null;
-function _refreshSlotEmaCustom2Mtf(s, cfg) {
-  const effectiveTf = cfg['tf_' + s.cfg.tf] || '';
-  if (!emaCustom2Active || !effectiveTf || !s.emaCustom2Series || !s.klines || !s.klines.length) return;
-  const mySeq = s._emaCustom2MtfSeq = (s._emaCustom2MtfSeq || 0) + 1;
-  (async () => {
-   try {
-    const auxKlines = await _fetchAuxKlines(effectiveTf);
-    if (s._emaCustom2MtfSeq !== mySeq || !s.emaCustom2Series || !auxKlines.length) return;
-    const auxEma = calcEMA(auxKlines, cfg.length);
-    s.emaCustom2Series.setData(_projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose));
-   } catch(e) {}
-  })();
-}
-function _syncSlotsEmaCustom2MtfTimer() {
-  clearInterval(_slotsEmaCustom2MtfTimer); _slotsEmaCustom2MtfTimer = null;
-  const cfg = getEmaCustom2Cfg();
-  if (emaCustom2Active && slots.some(s => cfg['tf_' + s.cfg.tf])) {
-    _slotsEmaCustom2MtfTimer = setInterval(() => {
-      const c = getEmaCustom2Cfg();
-      slots.forEach(s => _refreshSlotEmaCustom2Mtf(s, c));
-    }, 5000);
-  }
+  _refreshEmaCustomMtf(s, 2);
 }
 function toggleEmaCustom2All() {
   emaCustom2Active = !emaCustom2Active;
@@ -999,8 +997,7 @@ function toggleEmaCustom2All() {
   const cfg = getEmaCustom2Cfg();
   slots.forEach(s => _applyEmaCustom2ToChart(s.chart, s, cfg));
   if (fsChart) applyFsEmaCustom2();
-  _syncFsEmaCustom2MtfTimer();
-  _syncSlotsEmaCustom2MtfTimer();
+  _syncEmaCustomMtf();
 }
 
 // ── SMA Channel indicator (SMA20 close/high/low → canale a 3 linee) ────────────
@@ -1497,8 +1494,7 @@ const IND_CFG_SCHEMAS = {
       try { localStorage.setItem('chart_ema_custom_cfg', JSON.stringify(cfg)); } catch(e) {}
       slots.forEach(s => _applyEmaCustomToChart(s.chart, s, cfg));
       if (fsChart) applyFsEmaCustom();
-      _syncFsEmaCustomMtfTimer();
-      _syncSlotsEmaCustomMtfTimer();
+      _syncEmaCustomMtf();
     },
   },
   emaCustom2: {
@@ -1523,8 +1519,7 @@ const IND_CFG_SCHEMAS = {
       try { localStorage.setItem('chart_ema_custom2_cfg', JSON.stringify(cfg)); } catch(e) {}
       slots.forEach(s => _applyEmaCustom2ToChart(s.chart, s, cfg));
       if (fsChart) applyFsEmaCustom2();
-      _syncFsEmaCustom2MtfTimer();
-      _syncSlotsEmaCustom2MtfTimer();
+      _syncEmaCustomMtf();
     },
   },
 };
@@ -2369,6 +2364,7 @@ function _mtfSlotUpdate(s, candle, ctx) {
     }
   }
   if (grabActive || grabMidlineActive) _grabLiveUpdate(s, candle, confirmed, _gCfg || getGrabCfg());
+  _emaCustomMtfTick(s, 1); _emaCustomMtfTick(s, 2); // ri-proietta EMA personalizzata MTF solo su cambio barra host/ausiliaria
 }
 
 // ── WebSocket ──────────────────────────────────────────────────────────────────
@@ -2896,9 +2892,8 @@ async function loadFSData() {
         applyFsBB();
         applyFsRoc();
         applyFsEmaCustom();
-        _syncFsEmaCustomMtfTimer();
         applyFsEmaCustom2();
-        _syncFsEmaCustom2MtfTimer();
+        _syncEmaCustomMtf();
         applyFsChannel();
         applyFsGrab();
         _applyCandleStyle(fsCandleS);
@@ -3005,6 +3000,7 @@ function connectFSWS() {
             }
             if (grabActive || grabMidlineActive) _grabLiveUpdate(fsGrabSlot, candle, confirmed, _fsGCfg || getGrabCfg());
         }
+        _emaCustomMtfTick(fsEmaCustomSlot, 1); _emaCustomMtfTick(fsEmaCustom2Slot, 2);
     };
     sock.onerror = () => {};
     sock.onclose = () => { fsWsTimer = setTimeout(connectFSWS, 5000); };
@@ -3047,8 +3043,7 @@ function openFSModal(idx) {
 }
 
 function closeFSModal() {
-    clearInterval(_fsEmaCustomMtfTimer); _fsEmaCustomMtfTimer = null;
-    clearInterval(_fsEmaCustom2MtfTimer); _fsEmaCustom2MtfTimer = null;
+    _emaMtfDirty[1].delete(fsEmaCustomSlot); _emaMtfDirty[2].delete(fsEmaCustom2Slot);
     if (fsRangeActive) toggleFsRange();
     if (fsHlineActive) toggleFsHline();
     if (fsTrendActive) toggleFsTrend();
@@ -3068,8 +3063,11 @@ function closeFSModal() {
         for (const k of ['high','low','close']) { if (fsGrabWaveS[k]) { try { fsChart.removeSeries(fsGrabWaveS[k]); } catch(e) {} fsGrabWaveS[k] = null; } }
         for (const k of ['mid','lo','hi'])      { if (fsGrabMurreyS[k]) { try { fsChart.removeSeries(fsGrabMurreyS[k]); } catch(e) {} fsGrabMurreyS[k] = null; } }
         fsGrabState = null;
+        if (fsEmaCustomSeries)  { try { fsChart.removeSeries(fsEmaCustomSeries); }  catch(e) {} fsEmaCustomSeries = null; }
+        if (fsEmaCustom2Series) { try { fsChart.removeSeries(fsEmaCustom2Series); } catch(e) {} fsEmaCustom2Series = null; }
         fsChannelData = null; fsKlines = [];
     }
+    _syncEmaCustomMtf();
 }
 
 // #fs-modal (con #fs-chart-body) è HTML DOPO questo <script>, non ancora parsato qui:

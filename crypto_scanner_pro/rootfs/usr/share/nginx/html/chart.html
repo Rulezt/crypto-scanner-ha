@@ -1497,6 +1497,7 @@ function applyEmaCustomToSlot(s, cfg) {
     if (s.emaCustomSeries) { try { s.chart.removeSeries(s.emaCustomSeries); } catch(e) {} s.emaCustomSeries = null; }
     s.lastEmaCustom = null;
     s._emaCustomMtfSeq = (s._emaCustomMtfSeq || 0) + 1;
+    s._emaMtf1St = { bucket: null, bars: -1, lastFetch: 0 };
     if (!emaCustomActive || (hideIndMiniActive && slots.includes(s)) || !s.klines || !s.klines.length) return;
     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
     s.emaCustomSeries = addSeries(s.chart, 'LineSeries', { ...lb, color: cfg.color, lineWidth: cfg.width, lineStyle: cfg.style ?? 0 });
@@ -1512,31 +1513,10 @@ function applyEmaCustomToSlot(s, cfg) {
         s.lastEmaCustom = ema[ema.length - 1].value;
         return;
     }
-    // Multi-timeframe: lastEmaCustom resta null (i blocchi di update live tick-by-tick lo
-    // saltano automaticamente) — l'aggiornamento in tempo reale, dove previsto, passa dal
-    // timer di polling (_syncFsEmaCustomMtfTimer), non da qui.
-    const mySeq = s._emaCustomMtfSeq;
-    const symbol = s.symbol;
-    if (!symbol) return;
-    (async () => {
-        try {
-            const auxKlines = await _fetchAuxKlines(symbol, effectiveTf);
-            if (s._emaCustomMtfSeq !== mySeq || !s.emaCustomSeries) return; // superato (TF/coin cambiati nel frattempo)
-            if (!auxKlines.length) { console.warn('EMA personalizzata: nessun dato per TF', effectiveTf, symbol); return; }
-            const auxEma = calcEMA(auxKlines, cfg.length);
-            const projected = _projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose);
-            s.emaCustomSeries.setData(projected);
-        } catch(e) { console.error('EMA personalizzata (MTF) errore:', e); }
-    })();
-}
-let _fsEmaCustomMtfTimer = null;
-function _syncFsEmaCustomMtfTimer() {
-    clearInterval(_fsEmaCustomMtfTimer); _fsEmaCustomMtfTimer = null;
-    const cfg = getEmaCustomCfg();
-    const effectiveTf = cfg['tf_' + _fsIndSlot.curTF] || '';
-    if (emaCustomActive && effectiveTf && fsChart) {
-        _fsEmaCustomMtfTimer = setInterval(() => applyEmaCustomToSlot(_fsIndSlot, getEmaCustomCfg()), 5000);
-    }
+    // Multi-timeframe: prima proiezione qui, poi aggiornamenti event-driven (_emaCustomMtfTick
+    // sui messaggi kline WS — griglia e fullscreen). lastEmaCustom resta null così i blocchi
+    // di update live tick-by-tick del path "Grafico" la saltano.
+    _refreshEmaCustomMtf(s, 1);
 }
 function toggleEmaCustomAll() {
     emaCustomActive = !emaCustomActive;
@@ -1544,7 +1524,7 @@ function toggleEmaCustomAll() {
     const cfg = getEmaCustomCfg();
     slots.forEach(s => applyEmaCustomToSlot(s, cfg));
     if (fsChart) applyEmaCustomToSlot(_fsIndSlot, cfg);
-    _syncFsEmaCustomMtfTimer();
+    _syncEmaCustomMtf();
 }
 
 // ── EMA personalizzata 2 — seconda istanza indipendente, stessa logica/TF-map della
@@ -1561,6 +1541,7 @@ function applyEmaCustom2ToSlot(s, cfg) {
     if (s.emaCustom2Series) { try { s.chart.removeSeries(s.emaCustom2Series); } catch(e) {} s.emaCustom2Series = null; }
     s.lastEmaCustom2 = null;
     s._emaCustom2MtfSeq = (s._emaCustom2MtfSeq || 0) + 1;
+    s._emaMtf2St = { bucket: null, bars: -1, lastFetch: 0 };
     if (!emaCustom2Active || (hideIndMiniActive && slots.includes(s)) || !s.klines || !s.klines.length) return;
     const lb = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
     s.emaCustom2Series = addSeries(s.chart, 'LineSeries', { ...lb, color: cfg.color, lineWidth: cfg.width, lineStyle: cfg.style ?? 0 });
@@ -1571,28 +1552,7 @@ function applyEmaCustom2ToSlot(s, cfg) {
         s.lastEmaCustom2 = ema[ema.length - 1].value;
         return;
     }
-    const mySeq = s._emaCustom2MtfSeq;
-    const symbol = s.symbol;
-    if (!symbol) return;
-    (async () => {
-        try {
-            const auxKlines = await _fetchAuxKlines(symbol, effectiveTf);
-            if (s._emaCustom2MtfSeq !== mySeq || !s.emaCustom2Series) return;
-            if (!auxKlines.length) { console.warn('EMA personalizzata 2: nessun dato per TF', effectiveTf, symbol); return; }
-            const auxEma = calcEMA(auxKlines, cfg.length);
-            const projected = _projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose);
-            s.emaCustom2Series.setData(projected);
-        } catch(e) { console.error('EMA personalizzata 2 (MTF) errore:', e); }
-    })();
-}
-let _fsEmaCustom2MtfTimer = null;
-function _syncFsEmaCustom2MtfTimer() {
-    clearInterval(_fsEmaCustom2MtfTimer); _fsEmaCustom2MtfTimer = null;
-    const cfg = getEmaCustom2Cfg();
-    const effectiveTf = cfg['tf_' + _fsIndSlot.curTF] || '';
-    if (emaCustom2Active && effectiveTf && fsChart) {
-        _fsEmaCustom2MtfTimer = setInterval(() => applyEmaCustom2ToSlot(_fsIndSlot, getEmaCustom2Cfg()), 5000);
-    }
+    _refreshEmaCustomMtf(s, 2);
 }
 function toggleEmaCustom2All() {
     emaCustom2Active = !emaCustom2Active;
@@ -1600,7 +1560,109 @@ function toggleEmaCustom2All() {
     const cfg = getEmaCustom2Cfg();
     slots.forEach(s => applyEmaCustom2ToSlot(s, cfg));
     if (fsChart) applyEmaCustom2ToSlot(_fsIndSlot, cfg);
-    _syncFsEmaCustom2MtfTimer();
+    _syncEmaCustomMtf();
+}
+
+// ── EMA personalizzata (modalità MTF): refresh event-driven ───────────────────
+// In modalità "TF di calcolo" la linea è una proiezione (_projectMtfEma) del TF
+// ausiliario: gli update tick-by-tick non la toccano. Va ri-proiettata solo quando
+// (1) cresce lo storico host o (2) si chiude una barra del TF ausiliario — entrambi
+// eventi già presenti sui messaggi kline WS (griglia + fullscreen). Con waitClose:false
+// anche la barra ausiliaria in formazione deriva col prezzo: gestito da un timer lento
+// condiviso (5s) che parte SOLO in quel caso. Default (waitClose:true) → zero polling,
+// e la griglia fino a 18 mini-grafici non genera fetch ridondanti.
+const _AUX_TF_SECS = {'1':60,'3':180,'5':300,'15':900,'30':1800,'60':3600,'120':7200,'240':14400,'360':21600,'720':43200,'D':86400,'W':604800,'M':2592000};
+function _auxTfBucket(tf) {
+    if (!_AUX_TF_SECS[tf]) return 0;
+    const now = Math.floor(Date.now() / 1000);
+    if (tf === 'M') { const d = new Date(now * 1000); return d.getUTCFullYear() * 12 + d.getUTCMonth(); }
+    if (tf === 'W') return Math.floor((now + 259200) / 604800); // barre settimanali Bybit: lunedì 00:00 UTC
+    return Math.floor(now / _AUX_TF_SECS[tf]);
+}
+const _emaMtfDirty = { 1: new Set(), 2: new Set() };
+let _emaMtfFlushT = null, _emaMtfSlowT = null;
+function _emaMtfActive(n)    { return n === 2 ? emaCustom2Active : emaCustomActive; }
+function _emaMtfGetCfg(n)    { return n === 2 ? getEmaCustom2Cfg() : getEmaCustomCfg(); }
+function _emaMtfSeries(s, n) { return n === 2 ? s.emaCustom2Series : s.emaCustomSeries; }
+function _emaMtfSeqKey(n)    { return n === 2 ? '_emaCustom2MtfSeq' : '_emaCustomMtfSeq'; }
+function _emaMtfStKey(n)     { return n === 2 ? '_emaMtf2St' : '_emaMtf1St'; }
+function _emaMtfSt(s, n)     { return s[_emaMtfStKey(n)] || (s[_emaMtfStKey(n)] = { bucket: null, bars: -1, lastFetch: 0 }); }
+// Ri-proietta la linea MTF SENZA distruggere la serie (solo setData). Guardata dal seq.
+function _refreshEmaCustomMtf(s, n) {
+    const cfg = _emaMtfGetCfg(n);
+    const effectiveTf = cfg['tf_' + s.curTF] || '';
+    if (!_emaMtfActive(n) || !effectiveTf || !_emaMtfSeries(s, n) || !s.klines || !s.klines.length || !s.symbol) return;
+    const seqKey = _emaMtfSeqKey(n);
+    const mySeq = s[seqKey] = (s[seqKey] || 0) + 1;
+    const symbol = s.symbol;
+    const st = _emaMtfSt(s, n);
+    st.lastFetch = Date.now();
+    st.bucket = _auxTfBucket(effectiveTf);
+    st.bars = s.klines.length;
+    (async () => {
+        try {
+            const auxKlines = await _fetchAuxKlines(symbol, effectiveTf);
+            if (s[seqKey] !== mySeq) return;
+            const cur = _emaMtfSeries(s, n);
+            if (!cur || !auxKlines.length) { st.bucket = null; return; } // fetch fallito: riprova al prossimo tick
+            const auxEma = calcEMA(auxKlines, cfg.length);
+            const projected = _projectMtfEma(s.klines, auxKlines, auxEma, cfg.waitClose);
+            cur.setData(projected);
+            st.lastVal = projected.length ? projected[projected.length - 1].value : null;
+            st.bars = s.klines.length;
+        } catch(e) { st.bucket = null; console.error('EMA personalizzata (MTF) refresh:', e); }
+    })();
+}
+// Sonda O(1) chiamata da OGNI messaggio kline: decide se serve un refetch, un semplice
+// prolungamento piatto della linea (nuova barra host, stessa barra ausiliaria), o niente.
+function _emaCustomMtfTick(s, n) {
+    const cur = _emaMtfSeries(s, n);
+    if (!_emaMtfActive(n) || !cur) return;
+    const cfg = _emaMtfGetCfg(n);
+    const effectiveTf = cfg['tf_' + s.curTF] || '';
+    if (!effectiveTf) return;
+    const st = _emaMtfSt(s, n);
+    const bucketChanged = _auxTfBucket(effectiveTf) !== st.bucket;
+    const slowDue = cfg.waitClose === false && (Date.now() - st.lastFetch) >= 5000;
+    if (bucketChanged || slowDue) {
+        _emaMtfDirty[n].add(s);
+        if (!_emaMtfFlushT) _emaMtfFlushT = setTimeout(_flushEmaCustomMtf, 150);
+        return;
+    }
+    // Stessa barra ausiliaria ma è comparsa una nuova candela host: la linea prosegue
+    // piatta sull'ultimo valore proiettato, senza refetch (chiave per i 18 mini-grafici).
+    if (s.klines && s.klines.length !== st.bars && st.lastVal != null && s.klines.length) {
+        try { cur.update({ time: s.klines[s.klines.length - 1].time, value: st.lastVal }); } catch(e) {}
+        st.bars = s.klines.length;
+    }
+}
+function _flushEmaCustomMtf() {
+    _emaMtfFlushT = null;
+    const jobs = [];
+    for (const n of [1, 2]) { for (const s of _emaMtfDirty[n]) jobs.push([s, n]); _emaMtfDirty[n].clear(); }
+    // fetch staggerati (~120ms) per non lanciare fino a 18 richieste in contemporanea sulla griglia
+    jobs.forEach(([s, n], i) => setTimeout(() => _refreshEmaCustomMtf(s, n), i * 120));
+}
+function _emaCustomMtfTickAll() {
+    slots.forEach(s => { _emaCustomMtfTick(s, 1); _emaCustomMtfTick(s, 2); });
+    if (fsCoin) { _emaCustomMtfTick(_fsIndSlot, 1); _emaCustomMtfTick(_fsIndSlot, 2); }
+}
+// Alla riconnessione WS: azzera il bucket così il primo messaggio successivo ri-proietta.
+function _emaCustomMtfResetBuckets() {
+    for (const s of slots) { if (s._emaMtf1St) s._emaMtf1St.bucket = null; if (s._emaMtf2St) s._emaMtf2St.bucket = null; }
+    if (_fsIndSlot._emaMtf1St) _fsIndSlot._emaMtf1St.bucket = null;
+    if (_fsIndSlot._emaMtf2St) _fsIndSlot._emaMtf2St.bucket = null;
+}
+// Timer lento condiviso: SOLO se un'istanza MTF (griglia o fullscreen) ha waitClose:false.
+function _syncEmaCustomMtf() {
+    clearInterval(_emaMtfSlowT); _emaMtfSlowT = null;
+    const needSlow = [1, 2].some(n => {
+        if (!_emaMtfActive(n)) return false;
+        const cfg = _emaMtfGetCfg(n);
+        if (cfg.waitClose !== false) return false;
+        return slots.some(s => cfg['tf_' + s.curTF]) || (fsCoin && cfg['tf_' + _fsIndSlot.curTF]);
+    });
+    if (needSlow) _emaMtfSlowT = setInterval(_emaCustomMtfTickAll, 5000);
 }
 
 // ── SMA Channel indicator (SMA20 close/high/low → canale a 3 linee) ────────────
@@ -2218,7 +2280,7 @@ const IND_CFG_SCHEMAS = {
             try { localStorage.setItem('chart_ema_custom_cfg', JSON.stringify(cfg)); } catch(e) {}
             slots.forEach(s => applyEmaCustomToSlot(s, cfg));
             if (fsChart) applyEmaCustomToSlot(_fsIndSlot, cfg);
-            _syncFsEmaCustomMtfTimer();
+            _syncEmaCustomMtf();
         },
     },
     emaCustom2: {
@@ -2243,7 +2305,7 @@ const IND_CFG_SCHEMAS = {
             try { localStorage.setItem('chart_ema_custom2_cfg', JSON.stringify(cfg)); } catch(e) {}
             slots.forEach(s => applyEmaCustom2ToSlot(s, cfg));
             if (fsChart) applyEmaCustom2ToSlot(_fsIndSlot, cfg);
-            _syncFsEmaCustom2MtfTimer();
+            _syncEmaCustomMtf();
         },
     },
 };
@@ -3853,8 +3915,7 @@ async function openFullscreen(idx) {
 }
 
 function closeFullscreen() {
-    clearInterval(_fsEmaCustomMtfTimer); _fsEmaCustomMtfTimer = null;
-    clearInterval(_fsEmaCustom2MtfTimer); _fsEmaCustom2MtfTimer = null;
+    _emaMtfDirty[1].delete(_fsIndSlot); _emaMtfDirty[2].delete(_fsIndSlot);
     if (fsRangeActive) toggleFsRange();
     if (fsHlineActive) toggleFsHline();
     if (fsTrendActive) toggleFsTrend();
@@ -3888,10 +3949,14 @@ function closeFullscreen() {
         fsCandleS.setData([]);
         for (const {p} of EMA_CFG) fsEmaS[p].setData([]);
         fsLastEMA = {};
+        if (_fsEmaCustomSeries)  { try { fsChart.removeSeries(_fsEmaCustomSeries); }  catch(e) {} _fsEmaCustomSeries  = null; }
+        if (_fsEmaCustom2Series) { try { fsChart.removeSeries(_fsEmaCustom2Series); } catch(e) {} _fsEmaCustom2Series = null; }
+        _fsLastEmaCustom = null; _fsLastEmaCustom2 = null;
     }
     _fsAthVal = null; _fsAtlVal = null;
     fsCoin = null;
     _fsSlotIdx = null;
+    _syncEmaCustomMtf();
 }
 
 // Riporta hline/trendline correnti del fullscreen sul mini-chart d'origine, così le
@@ -4012,9 +4077,8 @@ async function loadFsData() {
         applyChannelToSlot(_fsIndSlot);
         applyGrabToSlot(_fsIndSlot, getGrabCfg());
         applyEmaCustomToSlot(_fsIndSlot, getEmaCustomCfg());
-        _syncFsEmaCustomMtfTimer();
         applyEmaCustom2ToSlot(_fsIndSlot, getEmaCustom2Cfg());
-        _syncFsEmaCustom2MtfTimer();
+        _syncEmaCustomMtf();
         fsKlineCount = klines.length;
         const _fn = TF_DEFAULT_N[fsTF] || 80;
         const _fr = () => fsChart.timeScale().setVisibleLogicalRange({ from: Math.max(0, fsKlineCount - _fn), to: fsKlineCount + 3 });
@@ -4135,9 +4199,10 @@ function connectFsWS() {
             }
             if (grabActive || grabMidlineActive) _grabLiveUpdate(_fsIndSlot, candle, confirmed, _fsGCfg || getGrabCfg());
         }
+        _emaCustomMtfTick(_fsIndSlot, 1); _emaCustomMtfTick(_fsIndSlot, 2);
     };
     sock.onerror = () => setFsWSDot('error');
-    sock.onclose = () => { setFsWSDot('off'); fsWsTimer = setTimeout(connectFsWS, 5000); };
+    sock.onclose = () => { setFsWSDot('off'); _emaCustomMtfResetBuckets(); fsWsTimer = setTimeout(connectFsWS, 5000); };
 }
 
 function closeFsWS() {
@@ -4164,6 +4229,7 @@ function openWS() {
     sock.onopen = () => {
         setWSDot('live');
         sock.send(JSON.stringify({ op:'subscribe', args: active.map(s => `kline.${s.curTF}.${s.symbol}`) }));
+        _emaCustomMtfResetBuckets();
     };
     sock.onmessage = ev => {
         let msg; try { msg = JSON.parse(ev.data); } catch(e) { return; }
@@ -4247,6 +4313,7 @@ function openWS() {
             }
             if (grabActive || grabMidlineActive) _grabLiveUpdate(s, candle, confirmed, _gCfg || getGrabCfg());
         }
+        _emaCustomMtfTick(s, 1); _emaCustomMtfTick(s, 2);
     };
     sock.onerror = () => setWSDot('error');
     sock.onclose = () => { setWSDot('off'); wsTimer = setTimeout(openWS, 5000); };
