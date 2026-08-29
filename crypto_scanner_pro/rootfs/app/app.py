@@ -22,6 +22,7 @@ from scanners.ath_atl_scanner import ATHATLScanner
 from scanners.ico_levels_scanner import ICOLevelsScanner
 from scanners.double_touch import DoubleTouchScanner
 from scanners.bot_engine import BotEngine
+from scanners.trump_radar import TrumpRadarScanner
 from ws_manager import BybitWSManager
 from private_ws_manager import BybitPrivateWSPool
 import journal
@@ -240,6 +241,13 @@ DEFAULT_CONFIG = {
         'sl_pct': 1.0,
         'tp_pct': 2.0,
     },
+    'trump_radar': {
+        'enabled': True,
+        'poll_interval_minutes': 1,
+        'alert_score_threshold': 50,
+        'info_score_threshold': 30,
+        'similarity_threshold': 0.85,
+    },
     'general': {
         'min_volume_24h': 10000000,
         'min_var_pct_24h': 5.0,
@@ -417,6 +425,12 @@ def init_scanners():
             **config['bot']
         )
 
+        scanners['trump_radar'] = TrumpRadarScanner(
+            telegram_config=telegram_config,
+            live_config=config,
+            **config['trump_radar']
+        )
+
         logger.info("✅ Scanners initialized")
     except Exception as e:
         logger.error(f"❌ Error initializing scanners: {e}")
@@ -459,6 +473,21 @@ def run_scanner(config_name, scanner_key, interval_minutes):
 
         time.sleep(interval_minutes * 60)
 
+
+def run_trump_radar():
+    """Loop dedicato: il Trump Radar raccoglie SEMPRE (la finestra oraria dello
+    scanner limita solo l'invio degli alert, non la raccolta) — vedi _process()."""
+    while True:
+        try:
+            scanner = scanners.get('trump_radar')
+            if scanner and config.get('trump_radar', {}).get('enabled', True):
+                scanner.scan()
+        except Exception as e:
+            logger.error(f"❌ Error in trump_radar scanner: {e}")
+        interval = config.get('trump_radar', {}).get('poll_interval_minutes', 1)
+        time.sleep(max(0.5, float(interval)) * 60)
+
+
 def start_scanners():
     """Start all scanner threads"""
     global scanner_threads
@@ -483,6 +512,11 @@ def start_scanners():
     alert_thread = threading.Thread(target=check_price_alerts, daemon=True)
     alert_thread.start()
     logger.info("✅ price alert checker thread started")
+
+    tr_thread = threading.Thread(target=run_trump_radar, daemon=True)
+    tr_thread.start()
+    scanner_threads['trump_radar'] = tr_thread
+    logger.info("✅ trump_radar thread started")
 
 # ========== API ENDPOINTS ==========
 
@@ -2846,6 +2880,106 @@ def bot_page():
     if session.get('role') != 'admin':
         return redirect(url_for('index'))
     return send_file('/usr/share/nginx/html/bot.html')
+
+
+# ── Trump Market Radar (solo admin) ──────────────────────────────────────────
+TRUMP_KEYWORDS_PATH = '/data/trump_keywords.json'
+
+
+def _trump_admin_guard(api=False):
+    if not session.get('logged_in'):
+        return (jsonify({'error': 'unauthorized'}), 401) if api else redirect(url_for('login_page'))
+    if session.get('role') != 'admin':
+        return (jsonify({'error': 'forbidden'}), 403) if api else redirect(url_for('index'))
+    return None
+
+
+@app.route('/trump-radar', methods=['GET'])
+@app.route('/trump-radar.html', methods=['GET'])
+@login_required
+def trump_radar_page():
+    if session.get('role') != 'admin':
+        return redirect(url_for('index'))
+    return send_file('/usr/share/nginx/html/trump-radar.html')
+
+
+@app.route('/api/trump-radar/feed', methods=['GET'])
+def trump_radar_feed():
+    g = _trump_admin_guard(api=True)
+    if g:
+        return g
+    sc = scanners.get('trump_radar')
+    if not sc:
+        return jsonify({'posts': [], 'stats': {}})
+    try:
+        limit = min(200, int(request.args.get('limit', 60)))
+    except Exception:
+        limit = 60
+    return jsonify({'posts': sc.get_recent(limit), 'stats': sc.get_stats()})
+
+
+@app.route('/api/trump-radar/config', methods=['GET', 'POST'])
+def trump_radar_config():
+    g = _trump_admin_guard(api=True)
+    if g:
+        return g
+    global config
+    if request.method == 'GET':
+        return jsonify(config.get('trump_radar', {}))
+    try:
+        body = request.get_json() or {}
+        cur = config.setdefault('trump_radar', {})
+        for k in ('enabled', 'poll_interval_minutes', 'alert_score_threshold',
+                  'info_score_threshold', 'similarity_threshold'):
+            if k in body:
+                cur[k] = body[k]
+        save_config()
+        init_scanners()
+        return jsonify({'success': True, 'config': cur})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/trump-radar/keywords', methods=['GET', 'POST'])
+def trump_radar_keywords():
+    g = _trump_admin_guard(api=True)
+    if g:
+        return g
+    if request.method == 'GET':
+        try:
+            with open(TRUMP_KEYWORDS_PATH, 'r') as f:
+                return jsonify(json.load(f))
+        except Exception:
+            default = os.path.join(os.path.dirname(__file__), 'scanners', 'trump_keywords_default.json')
+            with open(default, 'r') as f:
+                return jsonify(json.load(f))
+    try:
+        body = request.get_json(force=True)
+        if not isinstance(body, dict) or 'categories' not in body or 'action_levels' not in body:
+            return jsonify({'success': False, 'error': 'JSON deve avere "categories" e "action_levels"'}), 400
+        os.makedirs(os.path.dirname(TRUMP_KEYWORDS_PATH), exist_ok=True)
+        with open(TRUMP_KEYWORDS_PATH, 'w') as f:
+            json.dump(body, f, indent=2)
+        sc = scanners.get('trump_radar')
+        if sc:
+            sc.reload_keywords()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@app.route('/api/trump-radar/test', methods=['POST'])
+def trump_radar_test():
+    g = _trump_admin_guard(api=True)
+    if g:
+        return g
+    sc = scanners.get('trump_radar')
+    if not sc:
+        return jsonify({'error': 'scanner non attivo'}), 503
+    text = (request.get_json() or {}).get('text', '')
+    if not text.strip():
+        return jsonify({'error': 'testo vuoto'}), 400
+    return jsonify(sc.classify_preview(text))
 
 
 @app.route('/trade', methods=['GET'])

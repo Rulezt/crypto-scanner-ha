@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trump Radar - Crypto Scanner Pro</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%230B0E11'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23f87171' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%23f87171'/%3E%3C/svg%3E">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0B0E11; color: #e5e7eb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; font-size: 14px; }
+    a { color: #60a5fa; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 18px; background: #161A1E; border-bottom: 1px solid #2a2a2a; position: sticky; top: 0; z-index: 100; flex-wrap: wrap; }
+    .header h1 { font-size: 1rem; color: #f9fafb; display: flex; align-items: center; gap: 8px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #6b7280; }
+    .dot.ok { background: #10b981; } .dot.err { background: #ef4444; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 18px; }
+    .card { background: #161A1E; border: 1px solid #2A2E39; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .card h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; margin-bottom: 12px; }
+    .stats { display: flex; gap: 22px; flex-wrap: wrap; }
+    .stat { display: flex; flex-direction: column; gap: 2px; }
+    .stat .n { font-size: 1.35rem; font-weight: 700; color: #f9fafb; }
+    .stat .l { font-size: 0.68rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; }
+    .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+    label { font-size: 0.7rem; color: #9ca3af; display: block; margin-bottom: 4px; }
+    input[type="number"], textarea { background: #1f2937; color: #f9fafb; border: 1px solid #374151; border-radius: 4px; padding: 6px 9px; font-size: 0.85rem; font-family: inherit; }
+    input[type="number"] { width: 90px; }
+    textarea { width: 100%; min-height: 260px; font-family: 'Monaco','Consolas',monospace; font-size: 0.74rem; line-height: 1.5; }
+    .btn { background: #374151; color: #f9fafb; border: 1px solid #4b5563; padding: 7px 14px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: background 0.15s; }
+    .btn:hover { background: #4b5563; }
+    .btn.primary { background: #b45309; border-color: #b45309; }
+    .btn.primary:hover { background: #92400e; }
+    .toggle { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #e5e7eb; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    thead th { text-align: left; color: #6b7280; font-weight: 600; font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 10px; border-bottom: 1px solid #2A2E39; }
+    tbody tr { border-bottom: 1px solid rgba(42,46,57,0.4); }
+    tbody tr:hover { background: rgba(30,34,45,0.5); }
+    td { padding: 9px 10px; vertical-align: top; }
+    .t-time { color: #6b7280; font-family: monospace; font-size: 0.72rem; white-space: nowrap; }
+    .t-text { max-width: 460px; color: #d1d5db; cursor: pointer; line-height: 1.45; }
+    .t-text.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .score { display: inline-block; min-width: 30px; text-align: center; padding: 2px 7px; border-radius: 10px; font-weight: 700; font-size: 0.74rem; }
+    .s0 { background: #1f2937; color: #6b7280; }
+    .s30 { background: rgba(16,185,129,0.15); color: #34d399; }
+    .s50 { background: rgba(234,179,8,0.18); color: #facc15; }
+    .s70 { background: rgba(249,115,22,0.2); color: #fb923c; }
+    .s85 { background: rgba(239,68,68,0.2); color: #f87171; }
+    .pill { display: inline-block; padding: 1px 7px; border-radius: 8px; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.03em; margin: 1px 2px 1px 0; background: #1f2937; color: #9ca3af; }
+    .st-archived { color: #6b7280; } .st-duplicate { color: #a78bfa; }
+    .st-watch { color: #facc15; } .st-alerted { color: #f87171; font-weight: 700; } .st-info { color: #34d399; }
+    .tk { font-family: monospace; font-size: 0.72rem; color: #93c5fd; }
+    .muted { color: #6b7280; font-size: 0.75rem; }
+    .err { color: #f87171; font-size: 0.78rem; margin-top: 6px; }
+    .ok { color: #34d399; font-size: 0.78rem; margin-top: 6px; }
+    pre.preview { background: #0d1117; border: 1px solid #2A2E39; border-radius: 6px; padding: 12px; font-size: 0.75rem; color: #cbd5e1; white-space: pre-wrap; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1><span id="hdot" class="dot"></span> 📻 Trump Market Radar</h1>
+    <div><a href="/screener">← Screener</a></div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <h2>Stato</h2>
+      <div class="stats" id="stats"><span class="muted">Caricamento…</span></div>
+      <div class="muted" id="fetchinfo" style="margin-top:12px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Configurazione</h2>
+      <div class="row">
+        <label class="toggle"><input type="checkbox" id="cfg-enabled"> Attivo</label>
+        <div><label>Poll (minuti)</label><input type="number" id="cfg-poll" min="0.5" step="0.5"></div>
+        <div><label>Soglia alert Telegram</label><input type="number" id="cfg-alert" min="0" max="100"></div>
+        <div><label>Soglia "info" (sotto = archivia)</label><input type="number" id="cfg-info" min="0" max="100"></div>
+        <div><label>Soglia similarità (dup)</label><input type="number" id="cfg-sim" min="0" max="1" step="0.01"></div>
+        <button class="btn primary" onclick="saveConfig()">Salva</button>
+      </div>
+      <div id="cfg-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Test classificatore (non salva)</h2>
+      <textarea id="test-text" style="min-height:80px;" placeholder="Incolla qui una dichiarazione di Trump…"></textarea>
+      <div style="margin-top:8px;"><button class="btn" onclick="runTest()">Analizza</button></div>
+      <pre class="preview" id="test-out" style="display:none;"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Feed live <span class="muted" style="text-transform:none;letter-spacing:0;">(aggiornamento ogni 20s)</span></h2>
+      <table>
+        <thead><tr><th>Ora</th><th>Testo</th><th>Categorie</th><th>Azione</th><th>Score</th><th>Tickers</th><th>Stato</th></tr></thead>
+        <tbody id="feed"><tr><td colspan="7" class="muted">Caricamento…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Editor keyword / asset (JSON)</h2>
+      <textarea id="kw"></textarea>
+      <div style="margin-top:8px;"><button class="btn primary" onclick="saveKeywords()">Salva keyword</button>
+        <button class="btn" onclick="loadKeywords()">Ricarica</button></div>
+      <div id="kw-msg"></div>
+    </div>
+  </div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmtTime = ts => { const d = new Date(ts * 1000); return d.toLocaleString('it-IT', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); };
+const scoreCls = s => s >= 85 ? 's85' : s >= 70 ? 's70' : s >= 50 ? 's50' : s >= 30 ? 's30' : 's0';
+const esc = s => (s || '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+async function loadFeed() {
+  try {
+    const r = await fetch('/api/trump-radar/feed?limit=80');
+    if (r.status === 403 || r.status === 401) { document.body.innerHTML = '<div class="wrap"><div class="card">Accesso riservato agli amministratori.</div></div>'; return; }
+    const j = await r.json();
+    renderStats(j.stats);
+    renderFeed(j.posts);
+  } catch (e) { $('hdot').className = 'dot err'; }
+}
+
+function renderStats(s) {
+  if (!s) return;
+  $('hdot').className = 'dot ' + (s.last_fetch_ok === false ? 'err' : (s.last_fetch_ok ? 'ok' : ''));
+  $('stats').innerHTML = [
+    ['today_total', 'post oggi'], ['today_archived', 'archiviati'],
+    ['today_watch', 'watch'], ['today_alerted', 'alert inviati'], ['total_posts', 'totale storico'],
+  ].map(([k, l]) => `<div class="stat"><span class="n">${s[k] ?? '–'}</span><span class="l">${l}</span></div>`).join('');
+  const t = s.last_fetch_ts ? fmtTime(s.last_fetch_ts) : 'mai';
+  $('fetchinfo').textContent = `Ultima fetch: ${t}` + (s.last_error ? `  ·  errore: ${s.last_error}` : '  ·  ok');
+}
+
+function renderFeed(posts) {
+  if (!posts || !posts.length) { $('feed').innerHTML = '<tr><td colspan="7" class="muted">Nessun post ancora.</td></tr>'; return; }
+  $('feed').innerHTML = posts.map(p => {
+    const tk = [].concat(p.tickers.direct || [], p.tickers.sector || []).slice(0, 6).join(' ');
+    const cats = (p.categories || []).map(c => `<span class="pill">${c.replace(/_/g, ' ')}</span>`).join('');
+    return `<tr>
+      <td class="t-time">${fmtTime(p.ts)}</td>
+      <td><div class="t-text clamp" onclick="this.classList.toggle('clamp')">${esc(p.text)}</div>
+          <div class="muted" style="margin-top:3px;">${esc(p.reason || '')} · <a href="${esc(p.url)}" target="_blank">fonte</a></div></td>
+      <td>${cats || '<span class="muted">–</span>'}</td>
+      <td class="muted">${p.action_level || ''}</td>
+      <td><span class="score ${scoreCls(p.score)}">${p.score}</span></td>
+      <td class="tk">${tk || '<span class="muted">–</span>'}</td>
+      <td class="st-${p.status}">${(p.status || '').toUpperCase()}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadConfig() {
+  const j = await (await fetch('/api/trump-radar/config')).json();
+  $('cfg-enabled').checked = j.enabled !== false;
+  $('cfg-poll').value = j.poll_interval_minutes ?? 1;
+  $('cfg-alert').value = j.alert_score_threshold ?? 50;
+  $('cfg-info').value = j.info_score_threshold ?? 30;
+  $('cfg-sim').value = j.similarity_threshold ?? 0.85;
+}
+async function saveConfig() {
+  $('cfg-msg').innerHTML = '';
+  const body = {
+    enabled: $('cfg-enabled').checked,
+    poll_interval_minutes: parseFloat($('cfg-poll').value),
+    alert_score_threshold: parseInt($('cfg-alert').value),
+    info_score_threshold: parseInt($('cfg-info').value),
+    similarity_threshold: parseFloat($('cfg-sim').value),
+  };
+  const j = await (await fetch('/api/trump-radar/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+  $('cfg-msg').innerHTML = j.success ? '<div class="ok">Salvato.</div>' : `<div class="err">${esc(j.error || 'errore')}</div>`;
+}
+
+async function loadKeywords() {
+  const j = await (await fetch('/api/trump-radar/keywords')).json();
+  $('kw').value = JSON.stringify(j, null, 2);
+  $('kw-msg').innerHTML = '';
+}
+async function saveKeywords() {
+  $('kw-msg').innerHTML = '';
+  let parsed;
+  try { parsed = JSON.parse($('kw').value); }
+  catch (e) { $('kw-msg').innerHTML = `<div class="err">JSON non valido: ${esc(e.message)}</div>`; return; }
+  const j = await (await fetch('/api/trump-radar/keywords', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(parsed) })).json();
+  $('kw-msg').innerHTML = j.success ? '<div class="ok">Salvato — attivo dal prossimo ciclo.</div>' : `<div class="err">${esc(j.error || 'errore')}</div>`;
+}
+
+async function runTest() {
+  const text = $('test-text').value.trim();
+  if (!text) return;
+  const j = await (await fetch('/api/trump-radar/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })).json();
+  $('test-out').style.display = 'block';
+  $('test-out').textContent = JSON.stringify(j, null, 2);
+}
+
+loadFeed(); loadConfig(); loadKeywords();
+setInterval(loadFeed, 20000);
+</script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+{
+  "categories": {
+    "semiconductors": {
+      "weight": 18,
+      "terms": ["nvidia", "nvda", "amd", "semiconductor", "semiconductors", "chip ", "chips", "tsmc", "micron", "intel", "broadcom", "asml", "chip act", "chips act", "export controls"],
+      "assets": { "direct": ["NVDA", "AMD", "AVGO", "MU"], "sector": ["SOXX", "SMH"], "indirect": ["TSM", "ASML", "QQQ"] }
+    },
+    "tariffs_trade": {
+      "weight": 20,
+      "terms": ["tariff", "tariffs", "duty", "duties", "import tax", "trade deal", "trade war", "trade deficit", "reciprocal", "section 232", "section 301"],
+      "assets": { "direct": [], "sector": ["SPY", "QQQ", "DIA"], "indirect": ["FXI", "EWW", "EWC", "EWG", "EWJ"] }
+    },
+    "china": {
+      "weight": 16,
+      "terms": ["china", "chinese", "beijing", "xi jinping", "cny", "yuan", "taiwan"],
+      "assets": { "direct": [], "sector": ["FXI", "MCHI", "KWEB"], "indirect": ["SPY", "SOXX"] }
+    },
+    "fed_rates": {
+      "weight": 20,
+      "terms": ["federal reserve", "the fed", "jerome powell", "powell", "interest rate", "interest rates", "rate cut", "rate hike", "cut rates", "raise rates", "monetary policy", "quantitative"],
+      "assets": { "direct": [], "sector": ["TLT", "IEF", "SHY"], "indirect": ["SPY", "GLD", "UUP"] }
+    },
+    "inflation": {
+      "weight": 14,
+      "terms": ["inflation", "cpi", "consumer prices", "cost of living", "prices are"],
+      "assets": { "direct": [], "sector": ["TIP", "TLT"], "indirect": ["GLD", "SPY"] }
+    },
+    "dollar_fx": {
+      "weight": 13,
+      "terms": ["the dollar", "us dollar", "strong dollar", "weak dollar", "devalue", "currency manipulation", "reserve currency"],
+      "assets": { "direct": [], "sector": ["UUP", "FXE", "FXY"], "indirect": ["GLD"] }
+    },
+    "energy_oil": {
+      "weight": 15,
+      "terms": ["oil", "crude", "opec", "gasoline", "gas prices", "natural gas", "lng", "drilling", "drill baby", "energy independence", "strategic petroleum", "pipeline"],
+      "assets": { "direct": ["XOM", "CVX", "OXY"], "sector": ["XLE", "USO", "UNG"], "indirect": [] }
+    },
+    "geopolitics": {
+      "weight": 14,
+      "terms": ["russia", "putin", "ukraine", "iran", "israel", "north korea", "venezuela", "sanctions", "military strike", "war"],
+      "assets": { "direct": ["LMT", "RTX", "NOC"], "sector": ["ITA", "XLE"], "indirect": ["GLD", "USO"] }
+    },
+    "crypto": {
+      "weight": 14,
+      "terms": ["bitcoin", "btc", "ethereum", " eth ", "crypto", "cryptocurrency", "stablecoin", "digital assets", "digital asset", "strategic reserve", "sec crypto"],
+      "assets": { "direct": ["BTCUSDT", "ETHUSDT"], "sector": [], "indirect": ["COIN", "MSTR"] }
+    },
+    "pharma_health": {
+      "weight": 12,
+      "terms": ["drug prices", "drug price", "pharmaceutical", "pharma", "big pharma", "medicare", "medicaid", "fda", "insulin", "prescription"],
+      "assets": { "direct": ["PFE", "MRK", "LLY", "JNJ"], "sector": ["XBI", "XLV", "IHF"], "indirect": [] }
+    },
+    "banks_finance": {
+      "weight": 12,
+      "terms": ["banks", "big banks", "wall street", "jpmorgan", "goldman sachs", "bank of america", "financial regulation", "deregulation", "dodd-frank", "basel"],
+      "assets": { "direct": ["JPM", "GS", "BAC", "WFC"], "sector": ["XLF", "KRE"], "indirect": [] }
+    },
+    "taxes_fiscal": {
+      "weight": 15,
+      "terms": ["tax cut", "tax cuts", "corporate tax", "income tax", "capital gains", "tax reform", "debt ceiling", "government shutdown", "budget", "deficit spending"],
+      "assets": { "direct": [], "sector": ["SPY", "IWM"], "indirect": ["TLT"] }
+    },
+    "autos": {
+      "weight": 11,
+      "terms": ["auto industry", "automakers", "car companies", "ev mandate", "electric vehicle", "tesla", "detroit", "ford", "general motors"],
+      "assets": { "direct": ["TSLA", "F", "GM"], "sector": ["CARZ"], "indirect": [] }
+    },
+    "big_tech": {
+      "weight": 12,
+      "terms": ["big tech", "google", "apple", "amazon", "meta", "facebook", "microsoft", "antitrust", "section 230", "tiktok"],
+      "assets": { "direct": ["GOOGL", "AAPL", "AMZN", "META", "MSFT"], "sector": ["XLK", "QQQ"], "indirect": [] }
+    }
+  },
+  "action_levels": {
+    "EXECUTIVE": {
+      "weight": 25,
+      "patterns": ["effective immediately", "i have signed", "i just signed", "i am signing", "i have decided", "i have directed", "i hereby", "executive order", "as of today", "starting today"]
+    },
+    "ANNOUNCEMENT": {
+      "weight": 22,
+      "patterns": ["i am announcing", "we are announcing", "i am imposing", "we will impose", "will be imposing", "we are imposing", "i am placing", "we are placing a", "will be placed on", "we are terminating", "i am terminating"]
+    },
+    "PRE_ANNOUNCEMENT": {
+      "weight": 16,
+      "patterns": ["will announce", "we will be announcing", "announcement will be", "next week", "in the coming days", "in the coming weeks", "very soon", "shortly", "by monday", "by friday", "on monday", "you will see", "get ready"]
+    },
+    "PLAN": {
+      "weight": 10,
+      "patterns": ["we are going to", "we're going to", "we plan to", "we intend to", "we will be", "i will be", "my administration will", "we are preparing"]
+    },
+    "CONSIDERATION": {
+      "weight": 5,
+      "patterns": ["considering", "we are looking at", "looking at", "may impose", "might impose", "thinking about", "studying", "on the table", "an option", "could happen", "we'll see"]
+    },
+    "THREAT": {
+      "weight": 12,
+      "patterns": ["if they don't", "or else", "they will pay", "there will be consequences", "massive tariffs", "100% tariff", "unless they", "better make a deal"]
+    },
+    "COMMENT": {
+      "weight": 1,
+      "patterns": []
+    }
+  }
+}
